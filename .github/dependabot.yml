@@ -10,3 +10,8 @@ updates:
     labels:
       - dependencies
       - ci
+    # One pull request per update round, so the owner approves once.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
