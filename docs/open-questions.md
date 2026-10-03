@@ -60,6 +60,8 @@ owner 2026-10-03 已決定各工具永遠可以獨立使用與發佈，Workstati
 
 owner 2026-10-03 原話：「另外那個 private 一直用 github action private repo 不應該頻繁觸發」。背景：FreeformHelper（private）同日因 Actions 分鐘或花費上限停擺，每個 PR 會跑 6 個 Windows job。public repo（NFC、NFU、nvt_fw_core）的 Actions 不計分鐘。
 
+owner 同日 14:5x 補充（由 commander 轉述）：「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」。哪些測試可以放到 public repo 執行、private repo 的程式碼怎麼在不公開的前提下受測，還沒決定。
+
 要放進共用 CI 方案的候選做法，還沒決定也還沒實作：
 
 - workflow 設 `concurrency` 並 `cancel-in-progress`，新的 push 取消舊的 run。
