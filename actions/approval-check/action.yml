@@ -1,0 +1,128 @@
+name: Approval check
+description: Check a pull request against its base branch approval policy and report a commit status.
+
+inputs:
+  policy-path:
+    description: Policy JSON path relative to the base checkout.
+    required: false
+    default: .github/approval-policy.json
+  status-context:
+    description: Commit status context to report.
+    required: false
+    default: governance/approval-rule
+  token:
+    description: Token for reading the pull request and reporting commit status.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Mark approval pending
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        GH_REPO: ${{ github.repository }}
+        APPROVAL_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        APPROVAL_STATUS_CONTEXT: ${{ inputs.status-context }}
+        APPROVAL_STATUS_STATE: pending
+        APPROVAL_STATUS_DESCRIPTION: Approval rule is being evaluated
+        APPROVAL_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        for attempt in 1 2 3; do
+          if gh api -X POST "repos/$GH_REPO/statuses/$APPROVAL_HEAD_SHA" \
+            -f "state=$APPROVAL_STATUS_STATE" \
+            -f "context=$APPROVAL_STATUS_CONTEXT" \
+            -f "description=$APPROVAL_STATUS_DESCRIPTION" \
+            -f "target_url=$APPROVAL_RUN_URL"; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then sleep 2; fi
+        done
+        exit 1
+    - name: Check out the base branch
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        ref: ${{ github.event.pull_request.base.ref }}
+        path: .approval-base
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.13'
+    - name: Resolve checked-out base SHA
+      shell: bash
+      run: |
+        base_sha=$(git -C .approval-base rev-parse HEAD)
+        echo "APPROVAL_BASE_SHA=$base_sha" >> "$GITHUB_ENV"
+    - name: Check approval
+      id: approval_check
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        APPROVAL_REPOSITORY: ${{ github.repository }}
+        APPROVAL_PULL_REQUEST: ${{ github.event.pull_request.number }}
+        APPROVAL_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+        APPROVAL_POLICY_PATH: ${{ inputs.policy-path }}
+      run: |
+        # The policy must come from the base checkout: resolve symlinks and
+        # refuse any path that leaves .approval-base.
+        result=1
+        base_root=$(realpath .approval-base)
+        if policy_file=$(realpath -e -- ".approval-base/$APPROVAL_POLICY_PATH") &&
+            [[ "$policy_file" == "$base_root"/* ]]; then
+          if python -B "$GITHUB_ACTION_PATH/approval_check.py" \
+            --policy "$policy_file" \
+            --repository "$APPROVAL_REPOSITORY" \
+            --pull-request "$APPROVAL_PULL_REQUEST" \
+            --checked-out-base "$APPROVAL_BASE_SHA" \
+            --summary "$GITHUB_STEP_SUMMARY"; then
+            result=0
+          else
+            result=$?
+          fi
+        else
+          echo "policy-path must name an existing file inside the base checkout" >&2
+        fi
+        echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+        exit 0
+    - name: Report approval status
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        GH_REPO: ${{ github.repository }}
+        APPROVAL_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        APPROVAL_EXIT_CODE: ${{ steps.approval_check.outputs.exit_code }}
+        APPROVAL_STATUS_CONTEXT: ${{ inputs.status-context }}
+        APPROVAL_SUCCESS_DESCRIPTION: Approval rule satisfied
+        APPROVAL_FAILURE_DESCRIPTION: Approval rule not satisfied
+        APPROVAL_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        if [ "$APPROVAL_EXIT_CODE" = 0 ]; then
+          state=success
+          description="$APPROVAL_SUCCESS_DESCRIPTION"
+        else
+          state=failure
+          description="$APPROVAL_FAILURE_DESCRIPTION"
+        fi
+        for attempt in 1 2 3; do
+          if gh api -X POST "repos/$GH_REPO/statuses/$APPROVAL_HEAD_SHA" \
+            -f "state=$state" \
+            -f "context=$APPROVAL_STATUS_CONTEXT" \
+            -f "description=$description" \
+            -f "target_url=$APPROVAL_RUN_URL"; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then sleep 2; fi
+        done
+        exit 1
+    - name: Fail if approval failed
+      if: ${{ !cancelled() }}
+      shell: bash
+      env:
+        APPROVAL_EXIT_CODE: ${{ steps.approval_check.outputs.exit_code }}
+      run: |
+        if [ "$APPROVAL_EXIT_CODE" != 0 ]; then
+          exit 1
+        fi

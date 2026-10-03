@@ -1,0 +1,30 @@
+name: approval
+
+# GitHub reads this workflow from the pull request's merge ref.
+# Require commit status governance/approval-rule and build-and-test in rulesets.
+# Same-named check runs accumulate per head; the latest commit status wins.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, edited,
+            converted_to_draft]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: approval-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  approval:
+    name: governance / approval
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check approval
+        # Replace the 40-zero placeholder with the SHA of a protected tag in nvt_fw_core.
+        uses: Dennis40816/nvt_fw_core/actions/approval-check@0000000000000000000000000000000000000000
