@@ -10,6 +10,18 @@
 4. **各 repo 的差異留在各 repo 的 policy 檔**：哪些路徑高風險、R3 角色、沿用白名單。共用的是判定邏輯，不是路徑清單。
 5. **試點選 NFU**：先把它的檢查器原樣搬進共用 repo、行為不變，再上第一條新規則「改動不大時，已有的核准保留」。NFH 的 `S15.005c` 直接採用共用檢查器，不要做第三份實作（owner 已讓 NFH 暫停這兩項等方案）。NFC 最後遷移，選在發佈之間的空檔。
 
+## 範圍精簡（owner 2026-10-03 10:4x）
+
+owner 要求避免過度設計，只保留做到「改一次、三邊生效」所需的最小部分。「改一次」靠共用 action，「三邊生效」靠 Dependabot 的升版 PR；以下項目延後，本文其他段落提到它們時，以這一節為準：
+
+| 項目 | 處理 |
+|---|---|
+| 漂移報告（每週比對 ruleset、引用的 SHA、共用文字段落） | 延後，三個 repo 都採用共用檢查器後再看要不要 |
+| 三個 repo 的契約測試 | 不另建；哪個 repo 採用，就在那個 PR 把它的 policy 與一兩個 fixture 加進共用測試 |
+| 從 policy 產生 CODEOWNERS 的腳本 | 不做；CODEOWNERS 照現在手動維護 |
+| 共用規則文字的同步 bot | 先不做；規則文字只寫在共用 action 的 README，各 repo 採用時在同一個 PR 手動改一次 `CONTRIBUTING.md` 並連到 README |
+| ruleset 範本與管理用 App 的套用 workflow | 延到階段 3，只做 NFH 需要的那一份；管理用 App 到時再建。NFC、NFU 的 ruleset 現在不動 |
+
 ## 會影響設計的 GitHub 限制
 
 | 限制 | 出處 | 影響 |
@@ -72,10 +84,10 @@
 
 | 階段 | 內容 | 動到哪裡 | owner 要做的事 |
 |---|---|---|---|
-| 0 | `nvt_fw_core` 以 public 建到 GitHub。檢查器 v0 是 NFU `approval_check.py` 原樣搬過去，做成 composite action，帶 NFU 的測試與 fixture。匯出 NFC、NFU 現行 ruleset 寫成範本與參數檔。寫套用 workflow（先只產出差異）與漂移報告 | 只有共用 repo | 在預先填好的頁面按建立；建管理用 App 並把私鑰放進受保護 environment；第一份 ruleset 手動設定；核准第一個 PR |
+| 0 | `nvt_fw_core` 以 public 建到 GitHub。檢查器 v0 是 NFU `approval_check.py` 原樣搬過去，做成 composite action，帶 NFU 的測試與 fixture（PR #1） | 只有共用 repo | 核准 PR；共用 repo 的 `main` 與 `v*` tag ruleset 手動設定 |
 | 1 | **試點 NFU，規則不變**：`approval.yml` 改成 `uses: <共用 repo>/approval-check@<SHA>`；commit status 名稱維持 `governance/approval-rule`，所以 ruleset 不用改；加 `dependabot.yml` | NFU 兩個檔案 | 核准；workflow 檔要由 owner push 或交給 Dependabot |
 | 2 | **試點第一條新規則：accept 沿用**。在共用 repo 實作（預設關閉），NFU 的 policy 打開並設白名單。走一次完整流程：共用 repo 改一次 → Dependabot 開 PR → NFU 生效 | 共用 repo；NFU 的 policy 與 `CONTRIBUTING.md` | 核准兩個 PR |
-| 3 | **NFH 採用**：`S15.005c` 用共用 action 加 NFH 自己的 policy（先用兩層，與現行文件一致），CODEOWNERS 由腳本產生；`S15.005d` 的 ruleset 用範本，由管理用 App 套用 | NFH | 確認 private repo 能用 ruleset；在 GitHub 核准套用 |
+| 3 | **NFH 採用**：`S15.005c` 用共用 action 加 NFH 自己的 policy（先用兩層，與現行文件一致），CODEOWNERS 手動維護；`S15.005d` 的 ruleset 用範本，由管理用 App 套用（範本與套用 workflow 在這一階段才做） | NFH | 確認 private repo 能用 ruleset；建管理用 App；在 GitHub 核准套用 |
 | 4 | **NFC 遷移**：檢查器 v1 支援 R0–R3 與角色（以 NFC `authority_check.py` 為底，加上 NFU 的防偽規則與從 base 執行）。選在兩次發佈之間；同步修訂 ADR 0080，並確認 `release_promotion_policy.py` 對 review 證據的要求 | NFC（全部是 R3） | 核准；調整 trunk 與 `main` 的 required check |
 | 5 | 之後再看：.NET SDK 安裝、action 釘版檢查、行數檢查等 CI 步驟做成共用 action；發佈流程做成 reusable workflow | 依情況 | 等各專案有雛型 |
 

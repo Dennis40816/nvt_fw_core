@@ -27,6 +27,7 @@ Avalonia 主版本不一致：共用 UI 元件上線前，NFH 要從 11 升到 1
 | 關於與授權頁 | 未查 | 未查 | 未查 | 未評估 | 未定 |
 | CLI 慣例 | NvtFwCombiner.Cli | 未查 | Nvt.Replay.Cli | 未評估 | 未定 |
 | 發佈與打包 | 未查 | 未查 | 有 package 與 release 腳本（從 session 回報得知） | 未評估 | 未定 |
+| codex 派工工具（排隊、派工、審查、收尾） | 有：`lane.sh`、`dispatch.ps1`、`creview.sh`、`vq.sh` | 有（排隊與收尾腳本） | 有（未查） | 未評估 | **之後收進 nvt_fw_core**；不寫死模型與 effort，用 codex 預設（`~/.codex/config.toml`，定期調整），個別任務由派工者指定（owner 2026-10-03）。時程「之後」，不排進共用 CI 的階段 0～2 |
 
 ## 成熟度怎麼評
 
