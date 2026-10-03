@@ -668,7 +668,14 @@ class ApprovalCheckTests(unittest.TestCase):
         self.assertIn('if [ "$APPROVAL_EXIT_CODE" = 0 ]; then', action)
         self.assertIn('if [ "$APPROVAL_EXIT_CODE" != 0 ]; then', action)
         self.assertIn('python -B "$GITHUB_ACTION_PATH/approval_check.py"', action)
-        self.assertIn('--policy ".approval-base/$APPROVAL_POLICY_PATH"', action)
+        # The policy path is resolved and must stay inside the base checkout.
+        self.assertIn('base_root=$(realpath .approval-base)', action)
+        self.assertIn('policy_file=$(realpath -e -- '
+                      '".approval-base/$APPROVAL_POLICY_PATH")', action)
+        self.assertIn('[[ "$policy_file" == "$base_root"/* ]]', action)
+        self.assertIn('--policy "$policy_file"', action)
+        self.assertNotIn('--policy ".approval-base/', action)
+        self.assertIn("result=1\n", action)
         self.assertIn('base_sha=$(git -C .approval-base rev-parse HEAD)', action)
         self.assertIn('echo "APPROVAL_BASE_SHA=$base_sha" >> "$GITHUB_ENV"',
                       action)

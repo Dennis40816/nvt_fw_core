@@ -65,15 +65,24 @@ runs:
         APPROVAL_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
         APPROVAL_POLICY_PATH: ${{ inputs.policy-path }}
       run: |
-        if python -B "$GITHUB_ACTION_PATH/approval_check.py" \
-          --policy ".approval-base/$APPROVAL_POLICY_PATH" \
-          --repository "$APPROVAL_REPOSITORY" \
-          --pull-request "$APPROVAL_PULL_REQUEST" \
-          --checked-out-base "$APPROVAL_BASE_SHA" \
-          --summary "$GITHUB_STEP_SUMMARY"; then
-          result=0
+        # The policy must come from the base checkout: resolve symlinks and
+        # refuse any path that leaves .approval-base.
+        result=1
+        base_root=$(realpath .approval-base)
+        if policy_file=$(realpath -e -- ".approval-base/$APPROVAL_POLICY_PATH") &&
+            [[ "$policy_file" == "$base_root"/* ]]; then
+          if python -B "$GITHUB_ACTION_PATH/approval_check.py" \
+            --policy "$policy_file" \
+            --repository "$APPROVAL_REPOSITORY" \
+            --pull-request "$APPROVAL_PULL_REQUEST" \
+            --checked-out-base "$APPROVAL_BASE_SHA" \
+            --summary "$GITHUB_STEP_SUMMARY"; then
+            result=0
+          else
+            result=$?
+          fi
         else
-          result=$?
+          echo "policy-path must name an existing file inside the base checkout" >&2
         fi
         echo "exit_code=$result" >> "$GITHUB_OUTPUT"
         exit 0
