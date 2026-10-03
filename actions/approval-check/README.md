@@ -18,4 +18,6 @@
 
 Ruleset 應 require commit status `governance/approval-rule`，來源選 **GitHub Actions**；不要 require 同名 check run。此 action 每次會先送 pending，最後送 success 或 failure commit status。
 
-與 NFU 原版相比，`approval_check.py` 唯一差異是新增 `--policy <path>`。未指定時仍讀 `ROOT / ".github/approval-policy.json"`；其他判定邏輯、輸出訊息及 User-Agent 不變。
+來源是 NFU（`Dennis40816/nvt-event-buffer-replay`）`0.1.2` 的 `1648c42`。PR #1 說明、commit `f4ce0d3` 與 tag `v0.1.0` 的訊息誤寫為 `ceef4ef`，以本段為準。
+
+與 NFU 原版相比，`approval_check.py` 唯一差異是新增 `--policy <path>`。未指定時仍讀 `ROOT / ".github/approval-policy.json"`；其他判定邏輯、輸出訊息及 User-Agent 不變。action 另外會先確認 policy 路徑解析後位於 base checkout 內，否則判定失敗。
