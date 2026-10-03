@@ -48,3 +48,10 @@ NFC 12.0.5、NFU 12.1.1、NFH 11.3.12。NFH 何時升到 12，以及 AvaloniaEdi
 ## 9. 專門的 NVT Core session 何時開
 
 owner 已決定由專門的 session 開發，但要等雛型。交接檔在 commander 的本機資料夾（`nvt-core-adr-brief.md`）。
+
+## 10. Workstation 的組成與版本
+
+owner 2026-10-03 已決定各工具永遠可以獨立使用與發佈，Workstation 是額外的整合發佈（見 [decisions.md](decisions.md)）。還沒決定、等雛型階段再問：
+
+- Workstation 能不能只挑其中幾個工具組裝。
+- Workstation 的版本與各工具版本怎麼對應。

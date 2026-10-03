@@ -24,3 +24,4 @@
 | 2026-10-03 08:2x | 保留範圍選「只保留審查 accept」；「改動不大」選「路徑加內容」 | 只有獨立審查的 accept 在小改動後保留；定義見 [shared-ci/approval-carryover.md](shared-ci/approval-carryover.md) 的定義乙 | 有效 |
 | 2026-10-03 08:2x | 誰套用 ruleset：選「另建管理用 App」；私鑰選「受保護 environment」 | 管理用 App 的私鑰只放在本 repo 的受保護 environment，每次套用由 owner 在 GitHub 核准；agent 拿不到私鑰 | 有效 |
 | 2026-10-03 08:2x | trunk 命名：「現有分支維持 但後續要統一」 | 現有 trunk 不改名；之後的新版本統一一種形式（哪一種待定） | 有效 |
+| 2026-10-03 08:4x | 「我講清楚一點，就算有 workstation 每個功能還是可以獨立使用發布 其他部門可能只需要其中幾個 例如 NFC」（在 commander 畫面，由 commander 轉述） | Workstation 是額外的整合發佈，不取代各工具的單獨版本；NFC、NFH、NFU 永遠可以單獨安裝、使用、發佈，各有自己的版本號與發佈包；共用核心只能隨工具一起打包，不能依賴任何一個工具 | 有效 |
