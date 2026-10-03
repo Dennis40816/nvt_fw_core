@@ -55,3 +55,16 @@ owner 2026-10-03 已決定各工具永遠可以獨立使用與發佈，Workstati
 
 - Workstation 能不能只挑其中幾個工具組裝。
 - Workstation 的版本與各工具版本怎麼對應。
+
+## 11. private repo 的 CI 成本規則
+
+owner 2026-10-03 原話：「另外那個 private 一直用 github action private repo 不應該頻繁觸發」。背景：FreeformHelper（private）同日因 Actions 分鐘或花費上限停擺，每個 PR 會跑 6 個 Windows job。public repo（NFC、NFU、nvt_fw_core）的 Actions 不計分鐘。
+
+要放進共用 CI 方案的候選做法，還沒決定也還沒實作：
+
+- workflow 設 `concurrency` 並 `cancel-in-progress`，新的 push 取消舊的 run。
+- 只改文件的 PR 只跑輕量的結構檢查。
+- 重的 job 改成手動觸發，或靠標籤觸發。
+- 以沙盒外本機驗證為主要關卡，只有準備合併的 head 才 push 觸發 CI；小改動合併成較少的 PR。
+
+改 workflow 屬於 `.github/workflows` 變更，App 不能推，要由 owner 決定後由 owner push。
