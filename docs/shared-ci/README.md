@@ -5,6 +5,7 @@ The first step for NVT Core (owner 2026-10-03). Goal: change a governance or CI 
 - [`inventory.md`](inventory.md): an inventory of the three repositories' current workflows, approval rules, rulesets, governance documents, and validation scripts, marking each item as identical across all three, already diverged, or specific to one repository
 - [`approval-carryover.md`](approval-carryover.md): the draft of the first rule to share, 「改動不大時，已有的核准保留」 ("Keep existing approvals for small changes"), including several definitions of 「改動不大」 ("small change"), how to evaluate it, risks, and what needs to change to apply it to each repository
 - [`proposal.md`](proposal.md): a comparison of and recommendations for sharing approaches, the adoption sequence, and decisions for the owner
+- [`path-guard.md`](path-guard.md): a design draft for a shared path guard, local verification, exceptions, and the NFH-first roll-out
 
 Written by session 「NVT CORE」 (2026-10-03). No repository files or settings were changed during the inventory and proposal stage.
 
