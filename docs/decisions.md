@@ -20,7 +20,7 @@
 | 2026-10-03 08:2x | 共用 CI 放哪裡：選「nvt_fw_core 改 public」 | 共用的 CI 與治理放在本 repo，本 repo 改成 public | 有效 |
 | 2026-10-03 08:2x | 公開前清理：選「移除路徑與 NFH 細節」 | 移除本機絕對路徑；NFH（private）只寫到摘要層級；Git 歷史也要乾淨 | 有效 |
 | 2026-10-03 08:2x | 建 repo：「你開好之後我按下建立就好」 | agent 準備好預先填好的建立頁面，owner 只按建立 | 有效 |
-| 2026-10-03 08:2x | 共用方式選「混合做法」；試點選「NFU」；治理變更選「兩道核准」；紀錄格式選「NFC 遷移時統一」 | 見 [shared-ci/proposal.md](shared-ci/proposal.md)「owner 的決定」 | 有效 |
+| 2026-10-03 08:2x | 共用方式選「混合做法」；試點選「NFU」；治理變更選「兩道核准」；紀錄格式選「NFC 遷移時統一」 | 見 [shared-ci/proposal.md](shared-ci/proposal.md)「owner 的決定」 | 有效；試點被 2026-10-05 01:2x 那則改為 NFH |
 | 2026-10-03 08:2x | 保留範圍選「只保留審查 accept」；「改動不大」選「路徑加內容」 | 只有獨立審查的 accept 在小改動後保留；定義見 [shared-ci/approval-carryover.md](shared-ci/approval-carryover.md) 的定義乙 | 有效 |
 | 2026-10-03 08:2x | 誰套用 ruleset：選「另建管理用 App」；私鑰選「受保護 environment」 | 管理用 App 的私鑰只放在本 repo 的受保護 environment，每次套用由 owner 在 GitHub 核准；agent 拿不到私鑰 | 有效 |
 | 2026-10-03 08:2x | trunk 命名：「現有分支維持 但後續要統一」 | 現有 trunk 不改名；之後的新版本統一一種形式（哪一種待定） | 有效 |
@@ -31,3 +31,4 @@
 | 2026-10-03 14:4x | 「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」（在 commander 畫面，由 commander 轉述） | 測試以 public repo 執行為原則；private repo 少開 PR、少跑 CI。哪些測試能放到 public、怎麼放，見 [open-questions.md](open-questions.md) 第 11 節 | 有效，做法待定 |
 | 2026-10-04 20:3x | 「在之後用 fable 5.5 or codex astra or bel 去進行 console 系統的研發 優先在 free form helper 上試運行 之後推送到 nvt core 作為公版的 console 系統，其他的 repo 模組也漸漸像 console 系統一樣，抽象成可共用的結構後，統整到 NVT Core」（在 commander 畫面，由 commander 轉述） | console 系統的新架構先在 NFH 試做，成熟後推到本 repo 當公版；其他模組之後照同樣模式，逐一抽象成共用結構再整合進本 repo。見 [components.md](components.md) | 有效，時程「之後」 |
 | 2026-10-04 21:1x | 「另外以後 pr 文件請預設用英文」（在 commander 畫面，由 commander 轉述） | 之後新開的 PR，標題、說明與 review 留言預設用英文；已經開著的 PR 不改。本 repo 沒有寫 PR 語言的範本，不用改 | 有效 |
+| 2026-10-05 01:2x | 共用 CI 試點選「改由 NFH 試點，1.3.2 結束後開始」；README 選「三處都修」；舊分支選「已合併進 main 的就刪」（在 commander 畫面回答，由 commander 轉述） | 試點從 NFU 改為 NFH（主開發已移到 public 的 `nvt-freeform-helper`），等 NFH 的 CI 修正與 1.3.2 完成後開始，NFU 接在 NFH 之後；見 [shared-ci/proposal.md](shared-ci/proposal.md)「導入順序」 | 有效 |

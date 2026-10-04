@@ -1,6 +1,6 @@
 # nvt_fw_core
 
-NVT 韌體工具族的共用核心。**目前是規劃階段：這個 repo 只有規劃文件，沒有程式碼。**
+NVT 韌體工具族的共用核心。**共用核心本身還在規劃階段，還沒有程式碼。** 目前這個 repo 放規劃文件，以及第一步「共用的 CI/CD 與治理框架」的程式碼：共用核准檢查 [`actions/approval-check`](actions/approval-check/)。
 
 ## 這個 repo 是什麼
 
@@ -9,7 +9,7 @@ NVT 有三個各自獨立的韌體工具：
 | 簡稱 | 工具 | Repo | 目前版本線 |
 |---|---|---|---|
 | NFC | NVT FW Combiner | `Dennis40816/nvt_fw_combiner` | 1.2.x |
-| NFH | Freeform Helper | `Dennis40816/FreeformHelper` | 1.3.x |
+| NFH | Freeform Helper | `Dennis40816/nvt-freeform-helper`（2026-10-04 起的主開發 repo） | 1.3.x |
 | NFU | NVT FW UTIL（原 Event Buffer Replay） | `Dennis40816/nvt-event-buffer-replay` | 0.x |
 
 三個工具都有啟動、外殼、設定、診斷這類彼此相似的部分。這個 repo 用來規劃它們的共用核心，最終目標是整合成一個 NVT FW Workstation。
@@ -18,11 +18,10 @@ owner（Dennis）的暫定目標，原話：
 
 > 三個版本的 2.0.0 時都開始共用核心架構並在下一個重大版本更新推出整合型的 work station
 
-## 現況（2026-10-03）
+## 現況（2026-10-05）
 
-- 只有規劃，還沒開始開發。
-- 共用核心的程式碼最後放在哪裡（這個 repo、NFC 的 2.0 主幹、或共用套件）還沒決定，見 [docs/open-questions.md](docs/open-questions.md)。
-- 細節要等各專案各自有雛型後再一起探討。
+- 共用核心：只有規劃，還沒開始開發。程式碼最後放在哪裡（這個 repo、NFC 的 2.0 主幹、或共用套件）還沒決定，見 [docs/open-questions.md](docs/open-questions.md)。細節要等各專案各自有雛型後再一起探討。
+- 共用的 CI/CD 與治理：共用核准檢查 `v0.1.0` 已發佈，三個工具 repo 都還沒採用。試點是 NFH，等 NFH 的 CI 修正與 1.3.2 完成後開始。進度見 [docs/shared-ci/README.md](docs/shared-ci/README.md)。
 
 ## 原則
 
@@ -38,7 +37,8 @@ owner（Dennis）的暫定目標，原話：
 - [docs/components.md](docs/components.md)：元件對照表（三個專案各自的實作與成熟度）
 - [docs/decisions.md](docs/decisions.md)：owner 的決定紀錄
 - [docs/open-questions.md](docs/open-questions.md)：還沒決定的事
+- [docs/shared-ci/README.md](docs/shared-ci/README.md)：共用的 CI/CD 與治理框架（盤點、方案、進度）
 
 ## 誰維護
 
-目前由 commander session 依 owner 的指示維護。專門的「NVT Core」session 開起來之後由它接手。規劃內容的變更要有 owner 的決定為依據，並記進 [docs/decisions.md](docs/decisions.md)。
+2026-10-03 起由專門的 session「NVT CORE」依 owner 的指示維護。規劃內容的變更要有 owner 的決定為依據，並記進 [docs/decisions.md](docs/decisions.md)。每個 PR 都要 owner 核准才能合併。

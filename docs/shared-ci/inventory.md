@@ -2,6 +2,8 @@
 
 盤點時間：2026-10-03 07:00 前後（台北）。只讀 Git ref 與 GitHub 公開 API，沒有改任何 repo 或設定。
 
+2026-10-04 起 NFH 的主開發移到 public 的 `Dennis40816/nvt-freeform-helper`，原本 private 的 `FreeformHelper` 之後封存。本文 NFH 的部分是轉移前的盤點。
+
 ## 讀取範圍
 
 | 簡稱 | Repo | GitHub 可見性 | 讀取的 ref | 備註 |
