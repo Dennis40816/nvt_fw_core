@@ -8,7 +8,7 @@
 | 2026-10-02 21:34 | 「照常 0.x → 1.0 → 2.0」 | NFU 不跳號 | 有效 |
 | 2026-10-02 21:34 | 「各自就緒就發，共用核心先到先採用」 | 三個 2.0.0 不要求同時發佈 | 有效 |
 | 2026-10-02 21:38 | 「基本上我覺得邏輯上是由 NFC 訂好開發 launcher 等共用核心骨架伊因為他是目前最完整的 repo 所有也不能說 1.x.x 不能投入，我比較 prefer 平行開發之後直接取代」 | NFC 訂 launcher 等骨架；1.x 照常投入；平行開發後直接取代 | 部分由 2026-10-03 00:4x 那則修正：只有 launcher 確定由 NFC 做 |
-| 2026-10-02 21:43 | 「另開一個專門的 session」 | 共用核心由專門的 session 開發 | 有效，但 session 還沒開 |
+| 2026-10-02 21:43 | 「另開一個專門的 session」 | 共用核心由專門的 session 開發 | 有效；session「NVT CORE」2026-10-03 已開 |
 | 2026-10-02 21:43 | 「先只做 ADR，實作等 10-05 之後」 | 先寫架構決策紀錄 | **被下一則取代**：ADR 也暫緩 |
 | 2026-10-02 21:48 | 「我覺得這都很重要但目前開發優先級別是 NFC >= NFH > NVT Core (是否有分。lib ... 我還沒想清楚＞NFU」 | 優先順序 NFC ≥ NFH > NVT Core > NFU；要不要拆成多個 lib 還沒想清楚 | 有效 |
 | 2026-10-02 21:48 | 「基本上是要先有專案各自雛型後再一起探討的」 | 細節等各專案有雛型後再一起探討；現在不開 session、不寫共用程式碼 | 有效 |
@@ -28,4 +28,6 @@
 | 2026-10-03 10:4x | 「Codex 請常用 sol6.1 xhigh 並注意 over engineering 的問題」（在 commander 畫面，由 commander 轉述）；精簡四題在 NVT CORE 畫面都選建議：漂移報告延後、契約測試與 CODEOWNERS 腳本採用時再補、文字同步先不做 bot、ruleset 範本與套用 workflow 等 NFH 要設 ruleset 時 | 共用 CI 只保留「改一次、三邊生效」的最小部分，見 [shared-ci/proposal.md](shared-ci/proposal.md)「範圍精簡」 | 有效 |
 | 2026-10-03 10:5x | 「派工腳本應該是動態評估喔 寫死不推薦 頂多使用預設 我們可以定期改預設 預期派工腳本也會進入到 NVT FW CORE」（在 commander 畫面，由 commander 轉述） | codex 派工腳本之後收進本 repo 成為共用工具；不寫死模型與 effort，用 codex 預設並定期調整，個別任務由派工者依任務指定；時程「之後」，見 [components.md](components.md) | 有效 |
 | 2026-10-03 14:3x | 「另外那個 private 一直用 github action private repo 不應該頻繁觸發」（在 commander 畫面，由 commander 轉述） | private repo 的 CI 要省用；共用 CI 方案要加一條 private repo 的 CI 成本規則，候選做法見 [open-questions.md](open-questions.md) 第 11 節 | 有效，做法待定 |
-| 2026-10-03 14:5x | 「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」（在 commander 畫面，由 commander 轉述） | 測試以 public repo 執行為原則；private repo 少開 PR、少跑 CI。哪些測試能放到 public、怎麼放，見 [open-questions.md](open-questions.md) 第 11 節 | 有效，做法待定 |
+| 2026-10-03 14:4x | 「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」（在 commander 畫面，由 commander 轉述） | 測試以 public repo 執行為原則；private repo 少開 PR、少跑 CI。哪些測試能放到 public、怎麼放，見 [open-questions.md](open-questions.md) 第 11 節 | 有效，做法待定 |
+| 2026-10-04 20:3x | 「在之後用 fable 5.5 or codex astra or bel 去進行 console 系統的研發 優先在 free form helper 上試運行 之後推送到 nvt core 作為公版的 console 系統，其他的 repo 模組也漸漸像 console 系統一樣，抽象成可共用的結構後，統整到 NVT Core」（在 commander 畫面，由 commander 轉述） | console 系統的新架構先在 NFH 試做，成熟後推到本 repo 當公版；其他模組之後照同樣模式，逐一抽象成共用結構再整合進本 repo。見 [components.md](components.md) | 有效，時程「之後」 |
+| 2026-10-04 21:1x | 「另外以後 pr 文件請預設用英文」（在 commander 畫面，由 commander 轉述） | 之後新開的 PR，標題、說明與 review 留言預設用英文；已經開著的 PR 不改。本 repo 沒有寫 PR 語言的範本，不用改 | 有效 |

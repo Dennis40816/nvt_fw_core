@@ -41,13 +41,13 @@ NFC 12.0.5、NFU 12.1.1、NFH 11.3.12。NFH 何時升到 12，以及 AvaloniaEdi
 
 ## 8. 治理
 
-三個工具的 repo 已經用同一套「公版」規則（ADR、核准檢查、ruleset）。這個 repo 目前只有文件，還沒套用；開始放程式碼之前要決定怎麼套。
+三個工具的 repo 已經用同一套「公版」規則（ADR、核准檢查、ruleset）。2026-10-03 起這個 repo 自己也套用了：`main` 與 `v*` tag 的 ruleset、CODEOWNERS、自我測試 CI。
 
 2026-10-03 盤點後發現「公版」只剩骨架相同，核准檢查已分成 NFC、NFU 兩套實作。共用方式的方案與要 owner 決定的 10 題見 [shared-ci/proposal.md](shared-ci/proposal.md)。
 
 ## 9. 專門的 NVT Core session 何時開
 
-owner 已決定由專門的 session 開發，但要等雛型。交接檔在 commander 的本機資料夾（`nvt-core-adr-brief.md`）。
+已解決：session「NVT CORE」2026-10-03 已開，先做共用的 CI/CD 與治理框架。共用核心的程式碼仍然要等各專案有雛型。
 
 ## 10. Workstation 的組成與版本
 
@@ -60,7 +60,7 @@ owner 2026-10-03 已決定各工具永遠可以獨立使用與發佈，Workstati
 
 owner 2026-10-03 原話：「另外那個 private 一直用 github action private repo 不應該頻繁觸發」。背景：FreeformHelper（private）同日因 Actions 分鐘或花費上限停擺，每個 PR 會跑 6 個 Windows job。public repo（NFC、NFU、nvt_fw_core）的 Actions 不計分鐘。
 
-owner 同日 14:5x 補充（由 commander 轉述）：「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」。哪些測試可以放到 public repo 執行、private repo 的程式碼怎麼在不公開的前提下受測，還沒決定。
+owner 同日 14:4x 補充（由 commander 轉述）：「所有測試都應該住在 public 執行才正確，對於 private 而言不應該執行太多的 PR 與 CI」。哪些測試可以放到 public repo 執行、private repo 的程式碼怎麼在不公開的前提下受測，還沒決定。
 
 要放進共用 CI 方案的候選做法，還沒決定也還沒實作：
 
