@@ -1,8 +1,8 @@
+[English](Lifecycle.md) | [中文](Lifecycle.zh-TW.md)
+
 # Lifecycle
 
-English | [繁體中文](README.zh-TW.md)
-
-UI-independent refresh coalescing and an undo stack in `Nvt.Core.Lifecycle`.
+UI-independent refresh coalescing and an undo stack in `src/Nvt.Core/Lifecycle/`, namespace `Nvt.Core.Lifecycle`.
 Both helpers use caller-supplied delegates and depend only on .NET. They contain
 no Avalonia, dispatcher, or NFH types.
 

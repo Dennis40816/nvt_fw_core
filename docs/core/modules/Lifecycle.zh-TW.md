@@ -1,8 +1,8 @@
+[English](Lifecycle.md) | [中文](Lifecycle.zh-TW.md)
+
 # Lifecycle
 
-[English](README.md) | 繁體中文
-
-`Nvt.Core.Lifecycle` 提供不依賴 UI 的更新合併與復原堆疊。
+`src/Nvt.Core/Lifecycle/`（命名空間 `Nvt.Core.Lifecycle`）提供不依賴 UI 的更新合併與復原堆疊。
 兩個輔助類別都使用呼叫端提供的委派，僅依賴 .NET，不包含 Avalonia、
 dispatcher 或 NFH 型別。
 
