@@ -1,0 +1,190 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:panels="clr-namespace:Nvt.Core.Avalonia.Panels">
+  <Style Selector="panels|CollapsiblePanel">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate TargetType="panels:CollapsiblePanel">
+        <Border Classes="panelBlockRoot" HorizontalAlignment="Stretch">
+          <StackPanel>
+            <ToggleButton Classes="panelBlockHeader"
+                          IsEnabled="{TemplateBinding IsCollapsible}"
+                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                          HorizontalAlignment="Stretch">
+              <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Text="{TemplateBinding Title}"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource NfcTextStrongBrush}"
+                           VerticalAlignment="Center" />
+                <ContentPresenter Grid.Column="1"
+                                  Content="{TemplateBinding HeaderRight}"
+                                  VerticalAlignment="Center"
+                                  Margin="10,0,0,0" />
+                <Border Grid.Column="2"
+                        Classes="panelBlockChevronHost"
+                        Margin="10,0,0,0"
+                        IsVisible="{TemplateBinding IsCollapsible}">
+                  <Path Classes="panelBlockChevron" />
+                </Border>
+              </Grid>
+            </ToggleButton>
+            <Border Classes="panelBlockContent"
+                    IsVisible="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                HorizontalAlignment="Stretch" />
+            </Border>
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border.panelBlockRoot">
+      <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="10,10,0,0" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <ControlTemplate TargetType="ToggleButton">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader TextBlock, ^ /template/ ToggleButton.panelBlockHeader SelectableTextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader SelectableTextBlock">
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader Path.panelBlockChevron">
+      <Setter Property="Data" Value="M0 0 L6 6 L12 0" />
+      <Setter Property="Stroke" Value="{DynamicResource NfcTextSecondaryBrush}" />
+      <Setter Property="StrokeThickness" Value="1.5" />
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Height" Value="12" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pointerover">
+      <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pressed">
+      <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="10,10,0,0" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked TextBlock, ^ /template/ ToggleButton.panelBlockHeader:checked SelectableTextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked Path.panelBlockChevron">
+      <Setter Property="Stroke" Value="{DynamicResource NfcTextStrongBrush}" />
+      <Setter Property="Data" Value="M0 6 L6 0 L12 6" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked:pointerover">
+      <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked:pressed">
+      <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:disabled">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^ /template/ Border.panelBlockChevronHost">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="^ /template/ Border.panelBlockContent">
+      <Setter Property="Padding" Value="10" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+  </Style>
+  <Style Selector="panels|WorkspaceShell">
+    <Setter Property="Template">
+      <ControlTemplate TargetType="panels:WorkspaceShell">
+        <Border Padding="14">
+          <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource NfcSpace16}">
+              <StackPanel Spacing="{DynamicResource NfcSpace2}">
+                <SelectableTextBlock Classes="workspaceMainTitle" Text="{TemplateBinding Title}" />
+                <SelectableTextBlock Text="{TemplateBinding Subtitle}"
+                                     Foreground="{DynamicResource NfcTextMutedBrush}"
+                                     TextWrapping="Wrap" />
+              </StackPanel>
+              <ContentPresenter Grid.Column="1"
+                                Content="{TemplateBinding HeaderRight}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top" />
+            </Grid>
+            <Border Grid.Row="1" Classes="workspaceTopLayerBox">
+              <ContentPresenter Content="{TemplateBinding SummaryContent}" />
+            </Border>
+            <Border Grid.Row="2" Classes="workspaceTopLayerBox">
+              <ContentPresenter Content="{TemplateBinding ToolbarContent}" />
+            </Border>
+            <Border Grid.Row="3"
+                    Background="{DynamicResource NfcSurfaceBrush}"
+                    BorderBrush="{DynamicResource NfcBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{DynamicResource NfcCompactCornerRadius}"
+                    Padding="8">
+              <Grid ColumnSpacing="{DynamicResource NfcSpace12}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="{Binding LeftColumnWidth, RelativeSource={RelativeSource TemplatedParent}}" />
+                  <ColumnDefinition Width="{Binding RightColumnWidth, RelativeSource={RelativeSource TemplatedParent}}" />
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Content="{TemplateBinding LeftContent}" />
+                <ContentPresenter Grid.Column="1" Content="{TemplateBinding RightContent}" />
+              </Grid>
+            </Border>
+            <ContentPresenter Grid.Row="4" Content="{TemplateBinding FooterContent}" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Border.workspaceTopLayerBox">
+      <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}" />
+      <Setter Property="Padding" Value="10,8" />
+    </Style>
+    <Style Selector="^ /template/ SelectableTextBlock.workspaceMainTitle">
+      <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="{DynamicResource NfcFontSize16}" />
+    </Style>
+  </Style>
+</Styles>
