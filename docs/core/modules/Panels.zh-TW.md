@@ -67,7 +67,7 @@
 | `BrushTextPrimary` | `NfcTextStrongBrush` |
 | `BrushTextSubtle` | `NfcTextSecondaryBrush` |
 | `BrushTextMuted` | `NfcTextMutedBrush` |
-| `BrushBgInteractiveHover` | `NfcSelectionSurfaceBrush` |
+| `BrushBgInteractiveHover` | `NfcAccentSurfaceBrush` |
 | `BrushBgInteractivePressed` | `NfcSecondaryActionPressedBrush` |
 | `RadiusSm` | `NfcCompactCornerRadius` |
 | `Space2` | `NfcSpace2` |
@@ -93,19 +93,19 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 NFH 導入不在本次抽出範圍內。導入 PR 依下列方式驗證展開／收合行為與內容位置零差異：
 
 1. 保留預設欄寬：`LeftColumnWidth=2.2*` 與 `RightColumnWidth=*` 已重現 `NotchExportMainLeftColumnWidth` 及 `NotchExportMainRightColumnWidth`。
-2. 在使用端資源範圍內，將 NFH token 值對應至上表 Core 鍵，包含兩種主題、字型與圓角。共用鍵也影響同一範圍內的其他 Core 樣式；選擇範圍時應驗證那些使用處。
+2. 採用 Core 的色彩。不在應用程式範圍以 NFH 的值覆寫 `Nfc*` 鍵。NFH 只保留自己的情境樣式。
 3. 在 NFH 測試專案執行既有 `UiLayoutGuardTests`、`HeadlessUiSmokeTests`、`WorkspaceViewsSmokeTests`、`NotchExportSelectionWindowSmokeTests`、`UiVisualSnapshotTests` 與 `UiRenderedVisualSnapshotTests`。相關檔案位於 `tests/FreeformHelper.Tests/UI/Snapshots/` 與 `UI/Smoke/`。導入後也重新執行等效的合成 Panels 行為測試。這些既有廣泛測試不能取代控制項狀態比較。
 4. 比較未設定／明確設定的初始展開狀態、展開／收合標頭、鍵盤與滑鼠切換、停用／重新啟用收合、不可收合時嘗試收合，以及有內容／空白的標頭右側。比較所有工作區插槽、副標題換行、面板標題截斷、標頭懸停／按下／停用狀態，以及雙欄比例。前後使用相同作業系統、字型、DPI、主題、視窗大小與合成內容。
-5. NFH UI 快照可能改變，包括箭頭、Core 色彩替代，以及局部標頭 presenter。導入 PR 附上前後對照圖片，逐項審查視覺變更，僅為核准的變更更新 NFH 快照基準。展開與收合行為保持相同。
+5. NFH UI 快照可能改變，包括箭頭、Core 色彩替代，以及局部標頭 presenter。深色模式下，Core 的摘要與工具列區塊比主區域亮，NFH 的則較暗。圖片必須呈現這一點。導入 PR 附上前後對照圖片，逐項審查視覺變更，僅為核准的變更更新 NFH 快照基準。展開與收合行為保持相同。
 
 ## 已知差異
 
 - 以通用名稱取代 `HidePanelBlock` 與 `ReviewWorkspaceShell`。工作區唯一新增的屬性是兩個 `GridLength` 欄寬。
-- NFH 使用圖示字型的 `ExpandMore` 與 `ExpandLess` 字元。Core 在相同的 20×20 容器中以向量 `Path` 繪製，收合時朝下、展開時朝上。固定的 12×12 版面與 1.5 線寬取代 `IconSizeSm=12` 字型圖示；現有 token 沒有適用的圖示尺寸／幾何資源。不新增圖示屬性或圖示字型相依項目。
-- NFH 依賴使用端的 `ToggleButton` 範本。Core 為面板標頭提供局部、最小的繫結 `ContentPresenter`，讓樣式可搭配既有無視窗測試應用程式，無須新增主題套件。樣式選擇器限定於兩個抽出的控制項。標頭互動與展開繫結保持相同，使用端主題渲染可能不同。
+- NFH 使用圖示字型的 `ExpandMore` 與 `ExpandLess` 字元。Core 在相同的 20×20 容器中以向量 `Path` 繪製，收合時朝下、展開時朝上。置中於容器的固定 12×6 版面與 1.5 線寬取代 `IconSizeSm=12` 字型圖示；現有 token 沒有適用的圖示尺寸／幾何資源。不新增圖示屬性或圖示字型相依項目。
+- NFH 依賴使用端的 `ToggleButton` 範本。Core 為面板標頭提供局部、最小的繫結 `ContentPresenter`，讓樣式可搭配既有無視窗測試應用程式，無須新增主題套件。樣式選擇器限定於兩個抽出的控制項。Core 與其按鈕樣式相同，在該 presenter 上設定標頭的背景與邊框筆刷，因此使用端主題的切換按鈕 presenter 規則不會取代它們。標頭互動與展開繫結保持相同。
 - NFH 以全域規則對切換按鈕內所有 `SelectableTextBlock` 設定 `IsHitTestVisible=False` 與 `Focusable=False`。Core 只在面板標頭內套用這兩個設定，因此可選取的標頭內容不會擋住切換。
 - 控制項不設定字型，沿用使用端的字型，與 NFH 的全域文字字型規則相同；該規則留在 NFH。
-- Core 對應的筆刷值可能與 NFH 色彩不同。對應依據是語意，不代表像素完全相等。NFH 提供自己的對應值並審查導入圖片。
+- Core 對應的筆刷值可能與 NFH 色彩不同。對應依據是語意，不代表像素完全相等。NFH 採用 Core 的色彩並審查導入圖片。
 - 現有資源沒有合適型別／數值時，以常值保留凍結幾何。Core 間距鍵是 `double`；直接作為 `Thickness` 屬性的 `DynamicResource` 會造成型別轉換錯誤，因此厚度數值維持常值，不新增轉換器或 token。
 
 | 沒有對應 Core 資源的 NFH token | 保留的常值／替代方式 |

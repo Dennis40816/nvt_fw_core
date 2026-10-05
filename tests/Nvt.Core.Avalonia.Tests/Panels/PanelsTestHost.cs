@@ -11,10 +11,11 @@ internal static class PanelsTestHost
 {
     internal static readonly Uri StylesUri = new("avares://Nvt.Core.Avalonia/Panels/PanelsStyles.axaml");
 
-    internal static Window Create(Control control)
+    internal static Window Create(Control control, Action<Window>? configure = null)
     {
         var host = new Window { Width = 960, Height = 640, Content = control };
         host.Styles.Add(new StyleInclude(StylesUri) { Source = StylesUri });
+        configure?.Invoke(host);
         host.Show();
         host.UpdateLayout();
         return host;

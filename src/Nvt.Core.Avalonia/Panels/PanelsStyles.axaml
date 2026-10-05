@@ -83,15 +83,19 @@
       <Setter Property="Stroke" Value="{DynamicResource NfcTextSecondaryBrush}" />
       <Setter Property="StrokeThickness" Value="1.5" />
       <Setter Property="Width" Value="12" />
-      <Setter Property="Height" Value="12" />
+      <Setter Property="Height" Value="6" />
       <Setter Property="Stretch" Value="Uniform" />
       <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pointerover">
-      <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
     </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pressed">
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}" />
+    </Style>
+    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pressed /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
     </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked">
@@ -106,12 +110,6 @@
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked Path.panelBlockChevron">
       <Setter Property="Stroke" Value="{DynamicResource NfcTextStrongBrush}" />
       <Setter Property="Data" Value="M0 6 L6 0 L12 6" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked:pointerover">
-      <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked:pressed">
-      <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
     </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader:disabled">
       <Setter Property="Opacity" Value="1" />

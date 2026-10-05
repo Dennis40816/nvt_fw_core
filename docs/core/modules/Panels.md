@@ -67,7 +67,7 @@ Every resource reference in `PanelsStyles.axaml` uses an existing `Nfc*` key thr
 | `BrushTextPrimary` | `NfcTextStrongBrush` |
 | `BrushTextSubtle` | `NfcTextSecondaryBrush` |
 | `BrushTextMuted` | `NfcTextMutedBrush` |
-| `BrushBgInteractiveHover` | `NfcSelectionSurfaceBrush` |
+| `BrushBgInteractiveHover` | `NfcAccentSurfaceBrush` |
 | `BrushBgInteractivePressed` | `NfcSecondaryActionPressedBrush` |
 | `RadiusSm` | `NfcCompactCornerRadius` |
 | `Space2` | `NfcSpace2` |
@@ -93,19 +93,19 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 NFH adoption is outside this extraction. Its adoption PR verifies zero difference in expand/collapse behavior and content placement as follows:
 
 1. Keep the default widths: `LeftColumnWidth=2.2*` and `RightColumnWidth=*` already reproduce `NotchExportMainLeftColumnWidth` and `NotchExportMainRightColumnWidth`.
-2. Map NFH's token values to the Core keys above in the host's resource scope, including both themes, typography and corner radius. Shared keys affect their scope's other Core styles too; verify those consumers when choosing the scope.
+2. Adopt Core's colors. Do not override `Nfc*` keys with NFH values at application scope. NFH keeps only its own context styles.
 3. Run the NFH test project with the existing `UiLayoutGuardTests`, `HeadlessUiSmokeTests`, `WorkspaceViewsSmokeTests`, `NotchExportSelectionWindowSmokeTests`, `UiVisualSnapshotTests` and `UiRenderedVisualSnapshotTests`. The relevant files are under `tests/FreeformHelper.Tests/UI/Snapshots/` and `UI/Smoke/`. Re-run the equivalent synthetic Panels characterizations after adoption as well. These existing broad tests do not replace the control-state comparisons.
 4. Compare unset/explicit initial expansion, expanded/collapsed headers, keyboard and pointer toggles, disabling/re-enabling collapsibility, attempted collapse while non-collapsible, and populated/empty header-right content. Compare all workspace slots, wrapping subtitles, trimmed panel titles, header hover/pressed/disabled states and the two column proportions. Use the same OS, fonts, DPI, theme, window size and synthetic content before and after.
-5. NFH UI snapshots may change, including the chevron, Core palette substitutions and the local header presenter. Attach before-and-after images to the adoption PR, review each visual change and update NFH's snapshot baselines only for approved changes. Expand and collapse behavior stays identical.
+5. NFH UI snapshots may change, including the chevron, Core palette substitutions and the local header presenter. In dark mode, Core's summary and toolbar boxes are lighter than the main region, while NFH's are darker. The images must show this. Attach before-and-after images to the adoption PR, review each visual change and update NFH's snapshot baselines only for approved changes. Expand and collapse behavior stays identical.
 
 ## Known differences
 
 - Generic names replace `HidePanelBlock` and `ReviewWorkspaceShell`. The shell's only new properties are its two `GridLength` widths.
-- NFH uses the icon font's `ExpandMore` and `ExpandLess` glyphs. Core draws a vector `Path`, down when collapsed and up when expanded, in the same 20-by-20 host. Its fixed 12-by-12 layout and 1.5 stroke replace the `IconSizeSm=12` font glyph; no suitable icon size/geometry token exists. There is no icon property or icon-font dependency.
-- NFH relies on the host's `ToggleButton` template. Core supplies a minimal, bound `ContentPresenter` scoped to the panel header so these styles work with the existing headless application and without a new theme package. Style selectors are scoped to the two extracted controls. Header interaction and expansion binding remain the same; host-theme rendering may differ.
+- NFH uses the icon font's `ExpandMore` and `ExpandLess` glyphs. Core draws a vector `Path`, down when collapsed and up when expanded, in the same 20-by-20 host. Its fixed 12-by-6 layout, centered in the host, and 1.5 stroke replace the `IconSizeSm=12` font glyph; no suitable icon size/geometry token exists. There is no icon property or icon-font dependency.
+- NFH relies on the host's `ToggleButton` template. Core supplies a minimal, bound `ContentPresenter` scoped to the panel header so these styles work with the existing headless application and without a new theme package. Style selectors are scoped to the two extracted controls. Core sets the header's background and border brush on that presenter, as Core's button styles do, so a host theme's toggle-button presenter rules do not replace them. Header interaction and expansion binding remain the same.
 - NFH sets `IsHitTestVisible=False` and `Focusable=False` on every `SelectableTextBlock` inside a toggle button through a global rule. Core applies the same two setters only inside the panel header, so selectable header content does not block toggling.
 - The controls set no font. The host's font applies, as with NFH's global text font rule, which stays in NFH.
-- Core's mapped brush values can differ from NFH's palette. The mapping is semantic, not a claim of pixel equality. NFH supplies its own mapped values and reviews adoption images.
+- Core's mapped brush values can differ from NFH's palette. The mapping is semantic, not a claim of pixel equality. NFH adopts Core's colors and reviews adoption images.
 - Where no existing resource of the required type/value fits, the frozen geometry remains literal. Core spacing keys are `double`; using one directly as a `DynamicResource` for a `Thickness` property causes an invalid cast, so thickness values stay literal without adding converters or tokens.
 
 | NFH token without a matching Core resource | Retained literal / replacement |

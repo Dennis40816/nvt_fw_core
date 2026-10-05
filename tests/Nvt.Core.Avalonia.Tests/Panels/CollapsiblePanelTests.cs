@@ -9,6 +9,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.Panels;
 using Xunit;
@@ -221,6 +222,58 @@ public sealed class CollapsiblePanelTests
         finally { host.Close(); }
     }
 
+    /// <summary>Header hover and pressed backgrounds use Core's secondary pair, even under a host theme that styles the presenter.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HeaderStatesUseCoreBrushesOverHostThemeRules(bool dark)
+    {
+        var panel = new CollapsiblePanel { Title = "Title", Content = new TextBlock { Text = "Body" } };
+        Window host = PanelsTestHost.Create(panel, window =>
+        {
+            window.Resources[typeof(ToggleButton)] = HostToggleTheme();
+            window.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+        });
+        try
+        {
+            ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
+            ContentPresenter presenter = Assert.Single(header.GetVisualDescendants().OfType<ContentPresenter>(),
+                candidate => candidate.Name == "PART_ContentPresenter");
+            Assert.True(header.IsChecked);
+            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.Background).Color);
+            AssertBrush(presenter.BorderBrush, "NfcBorderBrush", dark);
+
+            Point center = header.TranslatePoint(new Point(header.Bounds.Width / 2, header.Bounds.Height / 2), host)!.Value;
+            host.MouseMove(center);
+            AssertBrush(presenter.Background, "NfcAccentSurfaceBrush", dark);
+            host.MouseDown(center, MouseButton.Left);
+            AssertBrush(presenter.Background, "NfcSecondaryActionPressedBrush", dark);
+            host.MouseUp(center, MouseButton.Left);
+            Assert.False(panel.IsExpanded);
+            AssertBrush(presenter.Background, "NfcAccentSurfaceBrush", dark);
+            AssertBrush(presenter.BorderBrush, "NfcBorderBrush", dark);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>A toggle button in the panel body keeps its own template and geometry.</summary>
+    [AvaloniaFact]
+    public void BodyToggleButtonKeepsItsOwnTemplate()
+    {
+        var bodyToggle = new ToggleButton { Content = "Body toggle" };
+        var panel = new CollapsiblePanel { Content = bodyToggle };
+        Window host = PanelsTestHost.Create(panel);
+        try
+        {
+            ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
+            Assert.NotNull(header.Template);
+            Assert.NotSame(header.Template, bodyToggle.Template);
+            Assert.NotEqual(new Thickness(12, 10), bodyToggle.Padding);
+            Assert.NotEqual(new Thickness(0, 0, 0, 1), bodyToggle.BorderThickness);
+        }
+        finally { host.Close(); }
+    }
+
     /// <summary>Ports NFH's flat layout and no-Expander concern; header content remains visible when collapsed.</summary>
     [AvaloniaFact]
     public void FlatHeaderShowsTitleAndRightContentAboveTheBody()
@@ -262,5 +315,34 @@ public sealed class CollapsiblePanelTests
             Assert.False(content.IsEffectivelyVisible);
         }
         finally { host.Close(); }
+    }
+
+    private static readonly string[] HostStates = [":pointerover", ":pressed", ":checked"];
+
+    private static ControlTheme HostToggleTheme()
+    {
+        var theme = new ControlTheme(typeof(ToggleButton));
+        foreach (string state in HostStates)
+        {
+            theme.Children.Add(new Style(selector => selector.Nesting().Class(state).Template()
+                .OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, Brushes.Red),
+                    new Setter(ContentPresenter.BorderBrushProperty, Brushes.Red),
+                },
+            });
+        }
+
+        return theme;
+    }
+
+    private static void AssertBrush(IBrush? actual, string key, bool dark)
+    {
+        Assert.True(Application.Current!.TryGetResource(key, dark ? ThemeVariant.Dark : ThemeVariant.Light,
+            out object? expected));
+        Assert.Equal(Assert.IsAssignableFrom<ISolidColorBrush>(expected).Color,
+            Assert.IsAssignableFrom<ISolidColorBrush>(actual).Color);
     }
 }
