@@ -1,0 +1,39 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Button.confirmDialogDangerButton">
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.confirmDialogActionButton">
+    <Setter Property="MinHeight" Value="36"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="Padding" Value="14,8"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.confirmDialogDangerButton StackPanel.confirmDialogDangerContent">
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Spacing" Value="{DynamicResource NfcSpace8}"/>
+  </Style>
+  <Style Selector="Button.confirmDialogDangerButton SelectableTextBlock.confirmDialogDangerText">
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.danger Path.confirmDialogDangerIcon">
+    <Setter Property="Stroke" Value="{DynamicResource NfcDangerTextBrush}"/>
+    <Setter Property="Width" Value="24"/>
+    <Setter Property="Height" Value="24"/>
+    <Setter Property="Stretch" Value="Uniform"/>
+    <Setter Property="StrokeThickness" Value="2"/>
+    <Setter Property="StrokeLineCap" Value="Round"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Path.warningDialogIcon">
+    <Setter Property="Stroke" Value="{DynamicResource NfcWarningAccentBrush}"/>
+    <Setter Property="Width" Value="20"/>
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="Stretch" Value="Uniform"/>
+    <Setter Property="StrokeThickness" Value="2"/>
+  </Style>
+</Styles>
