@@ -225,8 +225,10 @@ def normalized_attempt_text(text: str) -> str:
 
 
 def classify(policy: dict, base_ref: str, files: list[dict]) -> tuple[str, str]:
-    if base_ref.casefold() == policy["owner_gated_base_branch"].casefold():
+    owner_branch = policy.get("owner_gated_base_branch")
+    if owner_branch is not None and base_ref.casefold() == owner_branch.casefold():
         return "owner-gated", f"base branch {base_ref}"
+    tests_non_added = policy.get("tests_non_added")
     for item in files:
         name, status = item.get("filename"), item.get("status")
         require(isinstance(name, str) and isinstance(status, str),
@@ -240,7 +242,8 @@ def classify(policy: dict, base_ref: str, files: list[dict]) -> tuple[str, str]:
             if any(path_matches(path, pattern)
                    for pattern in policy["owner_gated_patterns"]):
                 return "owner-gated", f"owner-gated path {path}"
-            if status != "added" and path_matches(path, policy["tests_non_added"]):
+            if (status != "added" and tests_non_added is not None
+                    and path_matches(path, tests_non_added)):
                 return "owner-gated", f"{status} file under tests: {path}"
     return "review-gated", "no owner-gated path or base branch"
 
@@ -316,6 +319,8 @@ def evaluate(reader: Reader, policy: dict,
     record_ok, record_reason = record_result(reviews, policy, head_sha)
     if gate == "owner-gated":
         owner_ok, owner_reason = owner_result(reviews, policy["owner"], head_sha)
+        if policy.get("owner_requires_review_record", True) is False:
+            record_ok, record_reason = True, "not required for owner-gated pull request"
     else:
         owner_ok, owner_reason = True, "not required for review-gated pull request"
     if reader.fixture is None:
