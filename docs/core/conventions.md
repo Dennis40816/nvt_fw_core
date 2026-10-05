@@ -104,6 +104,15 @@ NFC adopts the font set in two steps:
 1. Extract with zero difference first.
 2. Apply the new role table in a separate pull request. Attach before/after images and obtain the owner's approval.
 
+## Theme keys
+
+Core styles use only the `Nfc*` keys in `src/Nvt.Core.Avalonia/Theme/`. Pick each key by the role of its use, not by the source tool's token name.
+
+- Use Core's existing state pairs for hover and pressed. For example, `Button.secondary` uses `NfcAccentSurfaceBrush` for hover and `NfcSecondaryActionPressedBrush` for pressed.
+- Several source tokens may map to one Core key. One source token may map to different keys in different modules.
+- Tools adopt Core's colors. Do not override `Nfc*` keys with a tool's own values at application scope.
+- Each module document lists its source-to-Core mapping and every literal under "Known differences".
+
 ## Public repository hygiene and license
 
 Keep local paths, user names, machine names, secrets, and private repository details out of public files.
