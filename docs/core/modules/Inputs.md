@@ -91,7 +91,6 @@ Value and event behavior must remain identical. NFH UI snapshots may change due 
 | `BorderRightThin` | `1,0,0,0` |
 | `SpinButtonWidth` | `6` |
 | `RadiusRightMd` | `0,10,10,0` |
-| `BrushTransparent` | `Transparent` |
 
 Source details retained beyond the task summary: normalization and wheel/drag decimal arithmetic can throw `OverflowException` before clamping; no saturating arithmetic is added. A read-only change during a captured drag does not cancel the drag, and programmatic text changes still update a focused read-only input. Formatting while still editing can queue another live parse: Enter or Escape on `12.3456` with snapping disabled and format `0.###` yields value/text `12.346` after queued text events; lost focus ends editing before those events and keeps value `12.3456` with text `12.346`. Bounds and step options are not given new validation.
 

@@ -91,7 +91,6 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 | `BorderRightThin` | `1,0,0,0` |
 | `SpinButtonWidth` | `6` |
 | `RadiusRightMd` | `0,10,10,0` |
-| `BrushTransparent` | `Transparent` |
 
 保留而超出任務摘要的來源細節：正規化及滾輪／拖曳 decimal 運算可能在限制範圍前拋出 `OverflowException`，不新增飽和運算。已擷取拖曳期間變更唯讀不會取消拖曳，且程式變更已取得焦點的唯讀輸入文字仍會更新數值。仍在編輯時格式化可排入另一次即時解析：停用吸附且格式為 `0.###` 時，對 `12.3456` 按 Enter 或 Escape，佇列文字事件處理完後數值／文字為 `12.346`；失焦在這些事件前結束編輯，保留數值 `12.3456`，文字為 `12.346`。不新增上下限與步長選項驗證。
 
