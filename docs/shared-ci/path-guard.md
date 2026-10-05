@@ -1,6 +1,6 @@
 # Shared CI path guard: design draft
 
-Status: design only, 2026-10-05. No scanner, action, workflow, or policy is implemented by this document. Roll-out follows the [NFH pilot](proposal.md#adoption-order).
+Design only, 2026-10-05. No scanner, action, workflow, or policy is implemented by this document. Roll-out follows the [NFH pilot](proposal.md#adoption-order); progress is in the [single status table](README.md#current-status-2026-10-05).
 
 ## Problem
 
@@ -18,7 +18,7 @@ Ignore documentation examples, binary files, generated/build output, dependencie
 
 ## Exceptions
 
-A deliberate invalid-path test or retained text fixture may need an exception. Propose one entry per repository-relative file and SHA-256 fingerprint of the exact offending source line, excluding its line ending, with a reason. This avoids copying the path into the policy, survives CRLF/LF changes, and stops matching when the line changes. Do not allow directory-wide or rule-wide suppressions.
+A deliberate invalid-path test or retained text fixture may need an exception. Recommended encoding: one entry per repository-relative file and SHA-256 fingerprint of the exact offending source line, excluding its line ending, with a reason. This implementation detail avoids copying the path into the policy, survives CRLF/LF changes, and stops matching when the line changes. Do not allow directory-wide or rule-wide suppressions.
 
 Review exception changes through the repository's existing governance process and CODEOWNERS. An exception permits that source line only; it does not establish that a required runtime fixture was loaded. Prefer fixing an accidental dependency on a local path.
 
@@ -32,16 +32,18 @@ Keep the guard to one lightweight scan using Git and PowerShell already availabl
 
 ## Roll-out and acceptance
 
-1. After NFH's CI fixes and 1.3.2 are complete, confirm its public scan scope and exceptions, implement the shared action, and connect NFH's local verification and existing CI verification job to the same revision. This is separate from completing the approval-checker pilot.
+1. Start now (owner 2026-10-05 20:0x, Taipei, relayed by commander): confirm NFH's public scan scope and exceptions, implement the shared action, and connect NFH's local verification and existing CI verification job to the same revision. Run the new check without blocking merges; enforcement waits until NFH 1.3.2 is done. This is separate from completing the approval-checker pilot.
 2. Use one real NFH PR for report-only calibration, using the caller step's existing `continue-on-error` mechanism, with no new scanner mode. Synthetic fixtures must catch each supported path form, allow relative paths/URLs, verify JSON escaping and exact exceptions, and detect a match in a configured submodule. Compare local and CI results, including a changed working directory; record scan time and resolve false positives.
-3. Subject to the owner's enforcement decision, make the step fail its existing CI job for unexcepted findings. Confirm a failing case and its correction on a real NFH PR, and merge one Dependabot update of the path-guard pin before NFU adopts it.
+3. After calibration and NFH 1.3.2 are complete, make the step fail its existing CI job for unexcepted findings, as the owner decided. Confirm a failing case and its correction on a real NFH PR, and merge one Dependabot update of the path-guard pin before NFU adopts it.
 4. NFU adopts next, then NFC between releases. Keep each repository's existing product tests and required checks. Roll back by reverting that repository's pin update; any temporary removal of enforcement needs owner approval.
 
-## Questions for the owner
+## Owner decisions (2026-10-05 20:0x)
 
-- **Initial scope:** include tracked tests, project/configuration files, text fixtures, and required public submodules? **Recommend yes**, with explicit repository-relative paths in the policy and documentation excluded from this new check.
-- **Exception format:** use file plus exact source-line fingerprint and reason, reviewed under existing governance? **Recommend yes**; omit broad exclusions and additional exception metadata for the first version.
-- **Enforcement and cost:** calibrate on one NFH PR, then fail an existing verification job and run the same check locally before push? **Recommend yes**; keep private-repository CI small and keep shared tests public.
+The owner chose 「全部照建議」 ("Follow all recommendations"), relayed by commander; time is Taipei time.
+
+- **Initial scope:** include tracked tests, project/configuration files, text fixtures, and required public submodules, with explicit repository-relative paths in the policy; exclude documentation from this new check.
+- **Exceptions:** permit concrete, exact source-line exceptions for deliberate invalid-path tests or retained text fixtures, with a reason and review under existing governance; no broad exclusions or additional exception metadata.
+- **Enforcement and cost:** calibrate on one NFH PR now, then enforce through the existing verification job after NFH 1.3.2 is done; run the same check locally before push, keep private-repository CI small, and keep shared tests public.
 
 ## Out of scope
 
