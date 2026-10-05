@@ -69,7 +69,7 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Avalonia.Tests.Inputs"
 ```
 
-採用時，NFH 設定 `ScrubHint="Drag or Alt + mouse wheel to adjust"`，並依上表對應自己的佈景主題 token；多個 NFH token 共用 Core 鍵值時，以主程式資源／樣式覆寫處理。執行 NFH 的 `HeadlessUiSmokeTests` 測試組，特別是 `RightWorkflowStep3View_TargetCapTooltipUsesCurrentNotchAndEmsCaps`、`SharedTooltipStyle_CanOpen_Headless`、`SharedTooltipStyle_StringTooltipUsesTooltipForegroundTextBlock_Headless` 及兩個 `FreeformHelperView` 版面測試。對凍結 NFH 控制項及採用後的 Core 控制項重現 Core 特徵測試案例。
+採用時，NFH 設定 `ScrubHint="Drag or Alt + mouse wheel to adjust"`，並採用 Core 的色彩。NFH 只保留自己的 `panelForm`、`panelFormField`、`settingsPage` 情境樣式，並附上前後對照圖片。執行 NFH 的 `HeadlessUiSmokeTests` 測試組，特別是 `RightWorkflowStep3View_TargetCapTooltipUsesCurrentNotchAndEmsCaps`、`SharedTooltipStyle_CanOpen_Headless`、`SharedTooltipStyle_StringTooltipUsesTooltipForegroundTextBlock_Headless` 及兩個 `FreeformHelperView` 版面測試。對凍結 NFH 控制項及採用後的 Core 控制項重現 Core 特徵測試案例。
 
 每次編輯及事件派送後，比較字面 `Value`、顯示文字與有序 `ValueProperty` 變更。包含步長 `0.5` 下的 `1.24`、`1.25`、`-1.25`、上下限 `-1.3..1.3`、格式 `0.###` 下的 `12.3456`、步長 `1`、`0.1`、`10` 下的 decimal 兩端點、無效分隔符號、混合值焦點、空輸入、Enter、Escape 及失焦。比較滾輪差值 `0`、`0.49`、`0.5`、`-0.5`、`1`、`-1`，含有／沒有 Alt 及兩種 Alt 政策；比較每步六像素下的 `±3`、`±6`、`±12` 像素拖曳、失去擷取、放開、唯讀及擷取期間變更唯讀。比較已處理旗標、焦點／類別、擷取目標、唯讀／命中測試狀態及保持不變的混合值旗標，包含保留的溢位例外。
 
@@ -96,4 +96,4 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 
 ## 保留於 NFH 的內容
 
-產品文字、產品專用工具提示、`panelForm`、`panelFormField` 與 `settingsPage` 情境樣式、佈景主題 token 覆寫、UI 快照基準、其他全部控制項及圖示、設定與 view-model 繫結皆保留於 NFH。本模組不新增設定抽象、圖示系統、其他可設定文字或採用變更。沒有未解決的 API 問題；NFH 採用證據仍需由其自己的 PR 提供。
+產品文字、產品專用工具提示、`panelForm`、`panelFormField` 與 `settingsPage` 情境樣式、UI 快照基準、其他全部控制項及圖示、設定與 view-model 繫結皆保留於 NFH。本模組不新增設定抽象、圖示系統、其他可設定文字或採用變更。沒有未解決的 API 問題；NFH 採用證據仍需由其自己的 PR 提供。
