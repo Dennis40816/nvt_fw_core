@@ -37,7 +37,7 @@ After acceptance, record the source ref and commit, Core version, and adopting t
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| Agent workflow: roles, questions, dispatch, handoff, and review | Commander; NVT Core | NVT CORE | Documents | `docs/agents/` | 1 → 2 | Planned; publish generic, sanitized rules. |
+| Agent workflow: roles, questions, dispatch, handoff, and review | Commander; NVT Core | NVT CORE | Documents | `docs/agents/` | 1 → 2 | Pull request open. |
 
 ### 2. Repository foundation documents
 
@@ -53,9 +53,9 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
 | Approval checker and NFH pilot | NVT Core; NFU | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Checker `v0.1.0` released; NFH pilot in progress. |
-| CI path guard | NVT Core | NVT CORE | Shared CI | `docs/shared-ci/`; `.github/workflows/` | 1 → 2 | Design in progress; implementation and NFH calibration pending. |
-| Approval carryover | NVT Core | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Implementation in progress; disabled by default. |
-| Headless and screenshot test support | NFC | NVT CORE | `Nvt.Core.Avalonia` test support | `tests/Nvt.Core.Avalonia.Tests/Support/` | 1 → 2 | Planned; tool baselines stay in each tool. |
+| CI path guard | NVT Core | NVT CORE | Shared action | `actions/path-guard/` | 1 → 2 | Pull request open; NFH calibration pending. |
+| Approval carryover | NVT Core | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Pull request open; disabled by default. |
+| Headless and screenshot test support | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Testing/` | 1 → 2 | Pull request open; tool baselines stay in each tool. |
 | Candidate, package, and smoke release stages | NFC; NFU | NVT CORE | Shared CI | `.github/workflows/` | 1 → 2 | Planned; tool manifests and release gates stay local to each repository. |
 
 ### 4. Automation scripts
@@ -64,17 +64,17 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 |---|---|---|---|---|---|---|
 | Codex dispatch queue | Commander; NVT Core | NVT CORE | Tool scripts | `tools/codex-queue/` | 1 → 2 | Import in progress; use Codex defaults for model and effort. |
 | Windows scheduler | Commander; NVT Core | NVT CORE | Tool scripts | `tools/nvt-sched/` | 1 → 2 | Import in progress; real-machine acceptance pending. |
-| Repository checker engines | NFC; NFH; NFU | NVT CORE | Checker scripts | `tools/checkers/` | 1 → 2 | Planned; share selected existing engines. |
+| Repository checker engines | NFC; NFH; NFU | NVT CORE | Checker scripts | `tools/repo-checks/` | 1 → 2 | Pull request open with NFC's engines; tools supply their own policy values. |
 
 ### 5. Shared UI classes
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| Theme tokens and button states | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Styles/` | 1 → 2 | First extraction tasks dispatched; NFC adopts first. |
-| Font set | NFC baseline; Core role table | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Fonts/` | 1 → 2 | Draft pending owner decision. |
-| Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Behaviors/` | 1 → 2 | First extraction tasks dispatched; NFC adopts first. |
+| Theme tokens and button states | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Merged into `main`; NFC adopts first. |
+| Font set | NFC baseline; Core role table | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Role table decided; NFC's legacy font resources in an open pull request. |
+| Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Focus/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Loading, progress, and cancellation surface | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Controls/` | 1 → 2 | Planned; NFC adopts first. |
-| Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Controls/` | 1 → 2 | Planned; NFH adoption follows its Avalonia 12 upgrade. |
+| Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `Inputs/`; `Panels/`; `Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |
 | Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/MessageCenter/` | 2 | Planned; separate presentation from product providers and reports. |
 | Report lists and history presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Reports/` | 1 → 2 | Planned; product schemas and export policy stay in NFC. |
 | Console | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Console/` | 2 | NFH trial first; full shared import planned by 10-18. |
@@ -91,13 +91,13 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | First extraction tasks dispatched; NFC adopts first. |
-| Atomic stream output | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | First extraction tasks dispatched; NFU adopts next 0.2.x patch. |
-| File path guard, bounded reads, and hashing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Planned; remove product admission models. |
+| JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | Pull request open; NFC adopts first. |
+| Atomic stream output | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Merged into `main`; NFU adopts in its next 0.2.x patch. |
+| File path guard, bounded reads, and hashing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Files/` | 1 → 2 | Bounded read in an open pull request; path guard and hashing planned. |
 | Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Planned; executable trust policy stays in each tool. |
-| UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Time/` | 1 → 2 | Planned; remove product-specific environment keys. |
+| UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/` | 1 → 2 | Startup trace in an open pull request; clock planned. |
 | Log entry and formatter | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/Diagnostics/` | 2 | Planned with the console trial. |
-| Coalesced refresh, undo, and UI dispatch | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Utilities/`; `src/Nvt.Core.Avalonia/Threading/` | 1 → 2 | Planned; keep undo payloads in NFH and separate UI dispatch. |
+| Coalesced refresh, undo, and UI dispatch | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Lifecycle/`; `src/Nvt.Core.Avalonia/Threading/` | 1 → 2 | Refresh and undo merged into `main`; UI dispatch in an open pull request. |
 | CSV quoting | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Reports/` | 1 → 2 | Planned; replay columns stay in NFU. |
 | Source-file navigation | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Planned; the tool supplies editor and operating-system policy. |
 | Universal result/validation framework | No shared source | NVT CORE | None | None | 0; excluded | No common implementation; retain product result types and built-in validation. |
@@ -107,7 +107,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
 | Background job lifecycle | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Jobs/` | 1 → 2 | Planned; share cancellation and stale-result handling without replay payloads. |
-| Runtime Query automation transport and envelope | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/Ipc/` | 1 → 2 | Planned; share automation transport and retain tool commands. |
+| Runtime Query automation transport and envelope | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/RuntimeQuery/` | 1 → 2 | Pull request open; tool commands stay in each tool. |
 
 ## Import acceptance criteria
 
