@@ -14,4 +14,9 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Theme\Baseline\*.xml" />
+    <EmbeddedResource Include="..\..\src\Nvt.Core.Avalonia\Theme\*.axaml"
+                      LogicalName="Nvt.Core.Avalonia.Tests.Theme.Source.%(Filename).xml" />
+  </ItemGroup>
 </Project>

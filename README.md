@@ -1,7 +1,7 @@
 # nvt_fw_core
 English | [中文](README.zh-TW.md)
 
-The shared core for the NVT firmware tool family. **The .NET project skeleton is in place; shared runtime modules have not yet been extracted.** This repository also contains planning documents and code for the first step, 「共用的 CI/CD 與治理框架」 ("shared CI/CD and governance framework"): the shared approval check [`actions/approval-check`](actions/approval-check/).
+The shared core for the NVT firmware tool family. **The .NET libraries are in place. Extracted modules are listed under [Nvt.Core libraries](#nvtcore-libraries).** This repository also contains planning documents and code for the first step, 「共用的 CI/CD 與治理框架」 ("shared CI/CD and governance framework"): the shared approval check [`actions/approval-check`](actions/approval-check/).
 
 ## What this repository is
 
@@ -21,7 +21,7 @@ The owner (Dennis)'s tentative goal, in his own words:
 
 ## Current status (2026-10-05)
 
-- Shared core: the `Nvt.Core` and `Nvt.Core.Avalonia` skeleton is in place; module extraction and tool adoption are pending.
+- Shared core: the first modules are extracted. No tool uses them yet.
 - Shared CI/CD and governance: the shared approval check `v0.1.0` has been released, and none of the three tool repositories has adopted it yet. NFH is the pilot, which will start after NFH's CI fixes and 1.3.2 are complete. See [docs/shared-ci/README.md](docs/shared-ci/README.md) for progress.
 
 ## Principles
@@ -61,6 +61,14 @@ dotnet test Nvt.Core.sln --no-build
 ```
 
 Task 0 has no behavior tests or tool adoption, so runtime zero-difference verification does not yet apply. Each later extraction must port the source module's existing tests and add characterization tests. When NFC switches to Core, run its original module tests before and after the switch, including `NvtFwCombiner.UiSmoke.Tests` for UI changes, and compare output bytes or UI snapshots against the frozen baseline with the same OS, fonts, DPI, and theme. Do not refresh baselines to accept a difference.
+
+### Modules
+
+Each module document records its frozen source baseline and how a tool verifies zero difference.
+
+- `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
+- `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
+- `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
 
 ## Who maintains this
 
