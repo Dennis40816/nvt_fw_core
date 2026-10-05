@@ -69,6 +69,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.Avalonia.Theme`：[Theme](docs/core/modules/Theme.zh-TW.md)
 - `Nvt.Core.Avalonia.Focus`：[Focus](docs/core/modules/Focus.zh-TW.md)
 - `Nvt.Core.IO`：[IO](docs/core/modules/IO.zh-TW.md)
+- `Nvt.Core.Avalonia.Testing`：[Testing](docs/core/modules/Testing.zh-TW.md)
 
 ## 誰維護
 
