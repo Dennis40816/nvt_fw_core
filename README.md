@@ -35,6 +35,7 @@ The owner (Dennis)'s tentative goal, in his own words:
 ## Documents
 
 - [src/](src/): Nvt.Core libraries (`Nvt.Core` and `Nvt.Core.Avalonia`)
+- [tools/](tools/): dispatch queue tools and nvt-sched
 - [docs/vision.md](docs/vision.md): goals, version cadence, stages
 - [docs/components.md](docs/components.md): component comparison table (each of the three projects' implementations and maturity)
 - [docs/decisions.md](docs/decisions.md): record of the owner's decisions
