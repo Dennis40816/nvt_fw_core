@@ -1,0 +1,20 @@
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Build output
+artifacts/
+release/
+dist/
+build/
+*.pdb
+
+# IDE and test output
+.vs/
+.idea/
+.dotnet/
+.packages/
+TestResults/
+*.trx
