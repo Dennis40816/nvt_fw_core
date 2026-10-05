@@ -112,8 +112,9 @@ public sealed class WarningDialogTests
             Assert.Equal(Stretch.Uniform, icon.Stretch);
             Assert.NotNull(icon.Data);
             Assert.True(icon.Data.Bounds.Width > 0);
-            Assert.True(Application.Current!.TryGetResource("NfcWarningAccentBrush", dialog.ActualThemeVariant, out object? warning));
+            Assert.True(Application.Current!.TryGetResource("NfcWarningAccentStrongBrush", dialog.ActualThemeVariant, out object? warning));
             Assert.Same(warning, icon.Stroke);
+            Assert.Equal(PenLineCap.Round, icon.StrokeLineCap);
             Assert.True(Application.Current!.TryGetResource("NfcSurfaceBrush", dialog.ActualThemeVariant, out object? surface));
             Assert.Same(surface, dialog.Background);
         }

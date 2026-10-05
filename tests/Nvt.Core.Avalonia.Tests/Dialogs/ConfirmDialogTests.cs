@@ -2,9 +2,11 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Nvt.Core.Avalonia.Dialogs;
@@ -16,6 +18,8 @@ namespace Nvt.Core.Avalonia.Tests.Dialogs;
 /// <summary>Characterizes NFH's frozen confirmation dialog behavior in the existing headless host.</summary>
 public sealed class ConfirmDialogTests
 {
+    private static readonly Uri ButtonStylesUri = new("avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
+
     /// <summary>Supplied text remains selectable, including empty and multiline Unicode content.</summary>
     [AvaloniaTheory]
     [InlineData("Confirm change", "Continue with this change?", "Continue", "Cancel")]
@@ -63,6 +67,75 @@ public sealed class ConfirmDialogTests
             owner.Close();
         }
     }
+
+    /// <summary>Closing without a button returns null to a nullable caller and false to a Boolean caller.</summary>
+    [AvaloniaFact]
+    public async Task ClosingWithoutAButtonReturnsDefaultResult()
+    {
+        var owner = new Window();
+        var nullableDialog = new ConfirmDialog("Unsaved", "Save first?", "Save", "Discard", emphasizeCancel: true);
+        var plainDialog = new ConfirmDialog("Confirm", "Proceed?", "Yes", "No");
+        try
+        {
+            owner.Show();
+            Task<bool?> nullableResult = nullableDialog.ShowDialog<bool?>(owner);
+            nullableDialog.Close();
+            Assert.Null(await nullableResult);
+
+            Task<bool> plainResult = plainDialog.ShowDialog<bool>(owner);
+            plainDialog.Close();
+            Assert.False(await plainResult);
+        }
+        finally
+        {
+            nullableDialog.Close();
+            plainDialog.Close();
+            owner.Close();
+        }
+    }
+
+    /// <summary>The emphasized cancel icon follows the label's effective foreground at rest, on hover and with a host value.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CancelIconFollowsButtonForeground(bool dark)
+    {
+        var dialog = new ConfirmDialog("Confirm", "Proceed?", "Yes", "No", emphasizeCancel: true)
+        {
+            RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
+        };
+        dialog.Styles.Add(new StyleInclude(ButtonStylesUri) { Source = ButtonStylesUri });
+        try
+        {
+            dialog.Show();
+            Button cancel = dialog.FindControl<Button>("CancelButton")!;
+            Path icon = dialog.FindControl<Path>("CancelIcon")!;
+            SelectableTextBlock label = dialog.FindControl<SelectableTextBlock>("CancelButtonText")!;
+            AssertColor(icon.Stroke, "NfcDangerTextBrush", dialog.ActualThemeVariant);
+            AssertSameColor(label.Foreground, icon.Stroke);
+
+            Point center = cancel.TranslatePoint(new Point(cancel.Bounds.Width / 2, cancel.Bounds.Height / 2), dialog)!.Value;
+            dialog.MouseMove(center);
+            AssertColor(icon.Stroke, "NfcDangerTextStrongBrush", dialog.ActualThemeVariant);
+            AssertSameColor(label.Foreground, icon.Stroke);
+
+            dialog.MouseMove(new Point(1, 1));
+            cancel.Foreground = Brushes.Green;
+            AssertSameColor(Brushes.Green, icon.Stroke);
+            AssertSameColor(label.Foreground, icon.Stroke);
+        }
+        finally { dialog.Close(); }
+    }
+
+    private static void AssertColor(IBrush? actual, string key, ThemeVariant variant)
+    {
+        Assert.True(Application.Current!.TryGetResource(key, variant, out object? expected));
+        AssertSameColor(Assert.IsAssignableFrom<IBrush>(expected), actual);
+    }
+
+    private static void AssertSameColor(IBrush? expected, IBrush? actual) =>
+        Assert.Equal(Assert.IsAssignableFrom<ISolidColorBrush>(expected).Color,
+            Assert.IsAssignableFrom<ISolidColorBrush>(actual).Color);
 
     /// <summary>Only an emphasized cancel button has the danger class and a visible vector icon.</summary>
     [AvaloniaTheory]
@@ -191,8 +264,6 @@ public sealed class ConfirmDialogTests
             Assert.Same(surface, dialog.Background);
             Assert.Same(title, dialog.FindControl<SelectableTextBlock>("TitleText")!.Foreground);
             Assert.Same(message, dialog.FindControl<SelectableTextBlock>("MessageText")!.Foreground);
-            Assert.True(Application.Current!.TryGetResource("NfcDangerTextBrush", dialog.ActualThemeVariant, out object? danger));
-            Assert.Same(danger, dialog.FindControl<Path>("CancelIcon")!.Stroke);
         }
     }
 }

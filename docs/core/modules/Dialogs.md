@@ -26,7 +26,7 @@ Frozen parent baseline: repository `Dennis40816/nvt-freeform-helper`, ref `1.3.x
 
 Existing evidence comes from `tests/FreeformHelper.Tests/UI/ViewModels/FreeformHelperViewModelTests.CommandsAndUndo.InputAndExport.cs`, method `ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog`. It captures a warning request rather than creating a dialog. Core ports only its warning title and message assertions using the frozen caller text from `src/FreeformHelper.UI/ViewModels/FreeformHelperViewModel.DxfEditing.Export.cs`; command, status, and view-model behavior stay in NFH. There are no direct dialog tests in the supplied source coverage.
 
-The callers were inspected for context only: `src/FreeformHelper.UI/Views/FreeformHelperView.Pickers.cs`, `LeftDxfPanel.axaml.cs`, `NotchExportSelectionWindow.axaml.cs`, and `SettingsWindow.axaml.cs`.
+The callers were inspected for context only: `src/FreeformHelper.UI/Views/FreeformHelperView.Pickers.cs`, `LeftDxfPanel.axaml.cs`, `NotchExportSelectionWindow.axaml.cs`, `SettingsWindow.axaml.cs`, and `src/FreeformHelper.UI/MainWindow.axaml.cs`. The last one is the "Unsaved project" prompt. It is the only caller that sets `emphasizeCancel: true` and the only one that awaits `ShowDialog<bool?>`. A window close without a button returns null, which keeps the application open. Cancel returns false, which exits without saving.
 
 ## Resource mappings
 
@@ -37,8 +37,8 @@ Every extracted NFH resource mapped to an existing Core resource is listed below
 | `BrushBgSurface` | `NfcSurfaceBrush` | Window background |
 | `BrushTextPrimary` | `NfcTextStrongBrush` | Selectable title |
 | `BrushTextSubtle` | `NfcTextBrush` | Selectable message |
-| `BrushWhite` | `NfcDangerTextBrush` | Cancel vector stroke |
-| `BrushWarning` | `NfcWarningAccentBrush` | Warning vector stroke |
+| `BrushWhite` | The button's effective foreground | Cancel vector stroke |
+| `BrushWarning` | `NfcWarningAccentStrongBrush` | Warning vector stroke |
 | `Space8` | `NfcSpace8` | Action/header spacing |
 | `ConfirmDialogDangerContentSpacing` | `NfcSpace8` | Cancel icon/text spacing |
 
@@ -59,9 +59,9 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 For NFH adoption:
 
 1. At the Embed DXF call site in `FreeformHelperView.Pickers.cs`, pass `confirmTip: "Embed DXF into the project file."` and `cancelTip: "Cancel and keep external DXF reference."`. Other callers choose their own tips or leave them null. The frozen dialog applies these product tips to every instance; Core deliberately makes them caller supplied.
-2. Adopt Core's colors. Do not override `Nfc*` keys with NFH values at application scope. The cancel icon uses Core's danger text color, which matches the `Button.danger` style in Core's `Theme/ButtonStyles.axaml`. NFH's own `Button.danger` rule paints a red surface, so the adoption images must show that the emphasized cancel icon stays visible.
+2. Adopt Core's colors. Do not override `Nfc*` keys with NFH values at application scope. The cancel icon takes the button's effective foreground, so it matches the cancel label in every host and button state. The adoption images show the emphasized cancel button at rest and on hover.
 3. Run the Core Dialogs group above and NFH's full existing test project with `dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build`. Specifically retain `FreeformHelper.Tests.FreeformHelperViewModelTests.ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog`, including its command/status assertions. Run it alone with `--filter "FullyQualifiedName~ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog"` when diagnosing adoption.
-4. Compare supplied title/message/button text, the two DXF tips, `danger` and icon visibility, 360 × 170 dimensions, resize/startup settings, Confirm = true, Cancel = false, and OK closure. Check the Embed DXF, reset-DXF-edits, reset-settings, and warning callers. These dialog results stay identical.
+4. Compare supplied title/message/button text, the two DXF tips, `danger` and icon visibility, 360 × 170 dimensions, resize/startup settings, Confirm = true, Cancel = false, and OK closure. Check the Embed DXF, reset-DXF-edits, reset-settings, unsaved-project and warning callers. For the unsaved-project prompt, also check that closing the dialog without a button still returns null and keeps the application open. These dialog results stay identical.
 5. Capture before-and-after images on the same OS, fonts, DPI, and theme, using the frozen baseline. NFH UI snapshots may change, including the icons and mapped colors. The adoption PR attaches both images and explains those known visual differences; it retains behavioral expectations rather than refreshing them to accept result changes.
 
 NFH adoption and product image comparisons are outside this extraction task.
@@ -70,8 +70,8 @@ NFH adoption and product image comparisons are outside this extraction task.
 
 - Namespaces, copyright headers, and XML API documentation follow Core conventions. No dialog runtime API adaptation was needed for Avalonia 11.3.12 → 12.0.5; XAML loading, `ShowDialog`, and `Close` retain their behavior. Tests use xUnit v3 and the existing Core headless application.
 - The two hard-coded DXF tips become optional constructor arguments, defaulting to null. The original four-string constructor call and optional emphasis argument remain source compatible.
-- The cancel font glyph becomes a stroked `Path` using `NfcCloseIconGeometry`, with a 24 × 24 box and a rounded 2-unit stroke instead of a bold font glyph. The warning font glyph becomes an outline `Path` with literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`, a 20 × 20 box, a 2-unit stroke, and `NfcWarningAccentBrush`. No icon font, `FontIcon`, or `IconGlyphs` is extracted.
-- Core's default palette differs from NFH's. In particular, `BrushWhite` maps to the theme-dependent `NfcDangerTextBrush` so the icon remains visible on Core's danger-button surface; its default color is no longer constant white. NFH adopts Core's colors and reviews the images. Scalar spacing uses dynamic resources instead of NFH's static resources.
+- The cancel font glyph becomes a stroked `Path` using `NfcCloseIconGeometry`, with a 24 × 24 box and a rounded 2-unit stroke instead of a bold font glyph. The warning font glyph becomes an outline `Path` with literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`, a 20 × 20 box, a 2-unit stroke with round caps, and `NfcWarningAccentStrongBrush`. No icon font, `FontIcon`, or `IconGlyphs` is extracted.
+- Core's default palette differs from NFH's. In particular, NFH paints the cancel glyph with the constant `BrushWhite`. Core binds the stroke to the icon's inherited `TextElement.Foreground`, which is the button's effective foreground, so the icon follows the label's color on any danger surface and in every button state. NFH adopts Core's colors and reviews the images. Scalar spacing uses dynamic resources instead of NFH's static resources.
 - The following NFH values have no matching typed/semantic Core key and remain exact literals. Core has scalar spacing keys, but no corresponding `Thickness` resources for the insets. No new theme keys are added.
 
 | NFH token | Retained literal |

@@ -21,7 +21,7 @@
     <Setter Property="TextAlignment" Value="Center"/>
   </Style>
   <Style Selector="Button.danger Path.confirmDialogDangerIcon">
-    <Setter Property="Stroke" Value="{DynamicResource NfcDangerTextBrush}"/>
+    <Setter Property="Stroke" Value="{Binding $self.(TextElement.Foreground)}"/>
     <Setter Property="Width" Value="24"/>
     <Setter Property="Height" Value="24"/>
     <Setter Property="Stretch" Value="Uniform"/>
@@ -30,10 +30,11 @@
     <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
   <Style Selector="Path.warningDialogIcon">
-    <Setter Property="Stroke" Value="{DynamicResource NfcWarningAccentBrush}"/>
+    <Setter Property="Stroke" Value="{DynamicResource NfcWarningAccentStrongBrush}"/>
     <Setter Property="Width" Value="20"/>
     <Setter Property="Height" Value="20"/>
     <Setter Property="Stretch" Value="Uniform"/>
     <Setter Property="StrokeThickness" Value="2"/>
+    <Setter Property="StrokeLineCap" Value="Round"/>
   </Style>
 </Styles>
