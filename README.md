@@ -1,7 +1,7 @@
 # nvt_fw_core
 English | [中文](README.zh-TW.md)
 
-The shared core for the NVT firmware tool family. **The shared core itself is still in the planning stage and has no code yet.** This repository currently contains planning documents and code for the first step, 「共用的 CI/CD 與治理框架」 ("shared CI/CD and governance framework"): the shared approval check [`actions/approval-check`](actions/approval-check/).
+The shared core for the NVT firmware tool family. **The .NET libraries are in place. Extracted modules are listed under [Nvt.Core libraries](#nvtcore-libraries).** This repository also contains planning documents and code for the first step, 「共用的 CI/CD 與治理框架」 ("shared CI/CD and governance framework"): the shared approval check [`actions/approval-check`](actions/approval-check/).
 
 ## What this repository is
 
@@ -21,7 +21,7 @@ The owner (Dennis)'s tentative goal, in his own words:
 
 ## Current status (2026-10-05)
 
-- Shared core: planning only; development has not started. Where the code will ultimately live (this repository, NFC's 2.0 mainline, or a shared package) has not been decided; see [docs/open-questions.md](docs/open-questions.md). Details will be discussed together after each project has its own prototype.
+- Shared core: the first modules are extracted. No tool uses them yet.
 - Shared CI/CD and governance: the shared approval check `v0.1.0` has been released, and none of the three tool repositories has adopted it yet. NFH is the pilot, which will start after NFH's CI fixes and 1.3.2 are complete. See [docs/shared-ci/README.md](docs/shared-ci/README.md) for progress.
 
 ## Principles
@@ -34,11 +34,41 @@ The owner (Dennis)'s tentative goal, in his own words:
 
 ## Documents
 
+- [src/](src/): Nvt.Core libraries (`Nvt.Core` and `Nvt.Core.Avalonia`)
 - [docs/vision.md](docs/vision.md): goals, version cadence, stages
 - [docs/components.md](docs/components.md): component comparison table (each of the three projects' implementations and maturity)
 - [docs/decisions.md](docs/decisions.md): record of the owner's decisions
 - [docs/open-questions.md](docs/open-questions.md): matters not yet decided
 - [docs/shared-ci/README.md](docs/shared-ci/README.md): shared CI/CD and governance framework (inventory, proposal, progress)
+
+## Nvt.Core libraries
+
+[Nvt.Core.sln](Nvt.Core.sln) contains the UI-independent `Nvt.Core` library (`net8.0`), `Nvt.Core.Avalonia` (`net10.0`, Avalonia 12.0.5), and their empty xUnit test projects. The Avalonia test project references `Avalonia.Headless.XUnit`; no application host or runtime code is extracted in Task 0.
+
+Frozen configuration baseline: NFC (`nvt_fw_combiner`), `origin/1.2.x`, commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Conventions are taken from:
+
+- `global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.gitignore`
+- `src/NvtFwCombiner.Presentation.Avalonia/NvtFwCombiner.Presentation.Avalonia.csproj`
+- `tests/NvtFwCombiner.Domain.Tests/NvtFwCombiner.Domain.Tests.csproj`
+- `tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj`
+
+Only shared compiler/build settings and the packages used here are retained. The SDK is `10.0.301`; package versions are centrally pinned to NFC's baseline. An external script restores packages and commits the generated `packages.lock.json` files. After restore, verify with:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build Nvt.Core.sln --no-restore
+dotnet test Nvt.Core.sln --no-build
+```
+
+Task 0 has no behavior tests or tool adoption, so runtime zero-difference verification does not yet apply. Each later extraction must port the source module's existing tests and add characterization tests. When NFC switches to Core, run its original module tests before and after the switch, including `NvtFwCombiner.UiSmoke.Tests` for UI changes, and compare output bytes or UI snapshots against the frozen baseline with the same OS, fonts, DPI, and theme. Do not refresh baselines to accept a difference.
+
+### Modules
+
+Each module document records its frozen source baseline and how a tool verifies zero difference.
+
+- `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
+- `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
+- `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
 
 ## Who maintains this
 
