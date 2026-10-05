@@ -1,66 +1,66 @@
-# 願景與版本節奏
+# Vision and version cadence
 
-## 目標
+## Goals
 
-owner 的暫定目標，原話（2026-10-02）：
+The owner's provisional goal, in the original words (2026-10-02):
 
-> 三個版本的 2.0.0 時都開始共用核心架構並在下一個重大版本更新推出整合型的 work station
+> 三個版本的 2.0.0 時都開始共用核心架構並在下一個重大版本更新推出整合型的 work station ("All three versions start using the shared core architecture at 2.0.0, and an integrated work station is introduced in the next major version update.")
 
-解讀：
+Interpretation:
 
-- 三個工具各自的 **2.0.0** 起，開始使用同一套共用核心。
-- **下一個主版本**（解讀為 3.0.0）推出整合型的 **NVT FW Workstation**。
-- **各工具永遠可以獨立使用與發佈。** owner 原話（2026-10-03 08:4x）：「我講清楚一點，就算有 workstation 每個功能還是可以獨立使用發布 其他部門可能只需要其中幾個 例如 NFC」。Workstation 是額外的整合發佈，不取代各工具的單獨版本；共用核心只能是隨工具一起打包的相依元件，不能變成要先安裝 Workstation 的平台，也不能依賴任何一個工具。
+- Starting with each tool's **2.0.0**, the three tools begin using the same shared core.
+- The **next major version** (interpreted as 3.0.0) introduces the integrated **NVT FW Workstation**.
+- **Each tool can always be used and released independently.** The owner's original words (2026-10-03 08:4x): 「我講清楚一點，就算有 workstation 每個功能還是可以獨立使用發布 其他部門可能只需要其中幾個 例如 NFC」 ("Let me make this clearer: even with a workstation, each function can still be used and released independently; other departments may only need a few of them, such as NFC."). Workstation is an additional integrated release and does not replace each tool's standalone versions; the shared core can only be a dependency bundled with the tool, cannot become a platform that requires Workstation to be installed first, and cannot depend on any of the tools.
 
-## 各工具到 2.0.0 的路徑
+## Each tool's path to 2.0.0
 
-| 工具 | 現在 | 路徑 | 備註 |
+| Tool | Current version | Path | Notes |
 |---|---|---|---|
-| NFC | 1.2.x | 1.x → 2.0.0 | launcher 由它開發 |
-| NFH | 1.3.x | 1.x → 2.0.0 | Avalonia 要從 11 升到 12 |
-| NFU | 0.x | 0.x → 1.0 → 2.0.0 | owner 原話：「照常 0.x → 1.0 → 2.0」，不跳號 |
+| NFC | 1.2.x | 1.x → 2.0.0 | Develops the launcher |
+| NFH | 1.3.x | 1.x → 2.0.0 | Avalonia needs to be upgraded from 11 to 12 |
+| NFU | 0.x | 0.x → 1.0 → 2.0.0 | The owner's original words: 「照常 0.x → 1.0 → 2.0」 ("As usual, 0.x → 1.0 → 2.0"), without skipping version numbers |
 
-發佈節奏：owner 原話「各自就緒就發，共用核心先到先採用」。三個 2.0.0 不要求同時發佈。
+Release cadence: the owner's original words, 「各自就緒就發，共用核心先到先採用」 ("Release each when ready; whichever reaches the shared core first adopts it first."). The three 2.0.0 releases do not have to happen at the same time.
 
-## 做法
+## Approach
 
-owner 原話（2026-10-03）：
+The owner's original words (2026-10-03):
 
-> 應該說 launcher 這塊會由 NFC 開發後就套用 => 其他套件也可以探討是否已成熟，誰最好最納入共用的概念
+> 應該說 launcher 這塊會由 NFC 開發後就套用 => 其他套件也可以探討是否已成熟，誰最好最納入共用的概念 ("More precisely, the launcher will be applied once NFC develops it => for other packages, we can also discuss whether they are mature, with the idea of bringing whichever is best into shared use.")
 
-- **launcher**：NFC 開發完成後，直接套用到 NFH、NFU。
-- **其他元件**：不預設由誰做。之後逐一評估三個專案的實作，最成熟、最好的那一份納入共用。見 [components.md](components.md)。
+- **launcher**: Once NFC completes development, apply it directly to NFH and NFU.
+- **Other components**: Do not predetermine who develops them. Later, evaluate the implementations in the three projects one by one and bring the most mature, best implementation into shared use. See [components.md](components.md).
 
-owner 較早的說法（2026-10-02）仍然有效的部分：
+The part of the owner's earlier statement (2026-10-02) that remains valid:
 
-> 基本上我覺得邏輯上是由 NFC 訂好開發 launcher 等共用核心骨架…也不能說 1.x.x 不能投入，我比較 prefer 平行開發之後直接取代
+> 基本上我覺得邏輯上是由 NFC 訂好開發 launcher 等共用核心骨架…也不能說 1.x.x 不能投入，我比較 prefer 平行開發之後直接取代 ("Basically, I think the logical approach is for NFC to define and develop the shared core skeleton, such as the launcher... Nor can we say that we cannot invest in 1.x.x; I prefer parallel development followed by direct replacement.")
 
-- 1.x 期間各工具可以照常投入。
-- 共用的部分與 1.x 平行發展，到 2.0.0 直接換上，不是在 1.x 上逐步抽取。2.0.0 是主版本，允許破壞性的重整（命名空間、套件邊界）。
+- Work on each tool can continue as usual during 1.x.
+- The shared parts develop in parallel with 1.x and are swapped in directly at 2.0.0, rather than being extracted gradually during 1.x. 2.0.0 is a major version and allows breaking restructuring (namespaces, package boundaries).
 
-## 共用核心的暫定範圍
+## Provisional scope of the shared core
 
-這是規劃時的假設，還沒有 owner 的決定：
+These are planning assumptions; the owner has not yet made a decision:
 
-- 包含：launcher 與版本管理／更新、UI 主框架（外殼、導覽、工具註冊）、主題與字型、設定儲存、診斷與日誌、關於與授權頁。
-- 不包含：韌體合併、Event Buffer 重播與分析、Freeform 的業務邏輯；NFC 裡決定輸出 bytes 的程式。
+- Includes: launcher and version management/updates, the main UI framework (shell, navigation, tool registration), themes and fonts, settings storage, diagnostics and logging, and About and license pages.
+- Excludes: firmware merging, Event Buffer replay and analysis, Freeform business logic; the code in NFC that determines output bytes.
 
-## 階段
+## Stages
 
-| 階段 | 內容 | 什麼時候 |
+| Stage | Content | When |
 |---|---|---|
-| 0 | 只有規劃；各專案照常開發，順手記下自己做了哪些通用的東西 | 現在 |
-| 0.5 | **第一步：共用的 CI/CD 與治理框架**（共用 ruleset 與部分 CI/CD 規則，做到改一次三邊生效）。先盤點與提方案，見 [shared-ci](shared-ci/) | 現在開始（owner 2026-10-03） |
-| 1 | 各專案有雛型後，一起盤點元件、評估成熟度、決定哪一份納入共用 | owner 說雛型到了 |
-| 2 | launcher 套用；選定的元件納入共用；各工具在 2.0.0 換上 | 各自就緒就發 |
-| 3 | 整合型 NVT FW Workstation | 下一個主版本 |
+| 0 | Planning only; each project continues development as usual and keeps a note of the general-purpose things it builds along the way | Now |
+| 0.5 | **First step: shared CI/CD and governance framework** (share the ruleset and some CI/CD rules so that one change takes effect in all three). Start with an inventory and a proposal; see [shared-ci](shared-ci/) | Starts now (owner 2026-10-03) |
+| 1 | Once each project has a prototype, jointly inventory the components, evaluate maturity, and decide which implementation to bring into shared use | When the owner says the prototypes are ready |
+| 2 | Apply the launcher; bring the selected components into shared use; each tool swaps them in at 2.0.0 | Release each when ready |
+| 3 | Integrated NVT FW Workstation | The next major version |
 
-owner 原話（2026-10-02）：「基本上是要先有專案各自雛型後再一起探討的」。
+The owner's original words (2026-10-02): 「基本上是要先有專案各自雛型後再一起探討的」 ("Basically, each project needs to have its own prototype first, and then we discuss them together.").
 
-## 開發優先順序
+## Development priorities
 
-owner 原話（2026-10-02）：
+The owner's original words (2026-10-02):
 
-> 我覺得這都很重要但目前開發優先級別是 NFC >= NFH > NVT Core (是否有分。lib ... 我還沒想清楚＞NFU
+> 我覺得這都很重要但目前開發優先級別是 NFC >= NFH > NVT Core (是否有分。lib ... 我還沒想清楚＞NFU ("I think all of this is important, but the current development priority is NFC >= NFH > NVT Core (whether to split into libs ... I have not thought it through yet) > NFU.")
 
-NFC ≥ NFH > NVT Core > NFU。共用核心排在 NFC、NFH 之後。
+NFC ≥ NFH > NVT Core > NFU. The shared core comes after NFC and NFH.

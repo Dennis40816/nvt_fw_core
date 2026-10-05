@@ -1,120 +1,120 @@
-# 方案：改一次，三邊生效
+# Proposal: change once, take effect in all three
 
-目標（owner 2026-10-03）：一條治理或 CI 規則只改一次，NFC、NFH、NFU 一起生效，不再人工逐一修改。現況見 [inventory.md](inventory.md)；作為例子的規則見 [approval-carryover.md](approval-carryover.md)。
+Goal (owner 2026-10-03): change a governance or CI rule once and have it take effect in NFC, NFH, and NFU together, without manually changing each one. See [inventory.md](inventory.md) for the current state; see [approval-carryover.md](approval-carryover.md) for the example rule.
 
-## 先講結論
+## Conclusion first
 
-1. 共用的 CI 與治理放在 **`nvt_fw_core`，並改成 public**（owner 2026-10-03 08:2x 的決定，下文稱「共用 repo」）。理由：NFC、NFU 是 public，GitHub 不允許 public repo 引用 private repo 的 action 或 reusable workflow。公開前已移除本機路徑與 NFH 的內部細節。
-2. **核准檢查器**做成共用 repo 裡的 composite action。各 repo 用完整 SHA 引用，升版由 Dependabot 自動在三個 repo 開 PR。
-3. **ruleset** 寫成 JSON 範本，各 repo 只提供參數（分支樣式、required check 名稱）。套用由一個管理用 GitHub App 執行，私鑰只存在共用 repo 的受保護 environment，每次套用都要 owner 在 GitHub 核准；共用 repo 每週產出唯讀的漂移報告。
-4. **各 repo 的差異留在各 repo 的 policy 檔**：哪些路徑高風險、R3 角色、沿用白名單。共用的是判定邏輯，不是路徑清單。
-5. **試點選 NFU**：先把它的檢查器原樣搬進共用 repo、行為不變，再上第一條新規則「改動不大時，已有的核准保留」。NFH 的 `S15.005c` 直接採用共用檢查器，不要做第三份實作（owner 已讓 NFH 暫停這兩項等方案）。NFC 最後遷移，選在發佈之間的空檔。
+1. Put shared CI and governance in **`nvt_fw_core`, and make it public** (owner's decision at 2026-10-03 08:2x, called 「共用 repo」 ("shared repository") below). Reason: NFC and NFU are public, and GitHub does not allow public repositories to reference actions or reusable workflows from private repositories. Local paths and NFH's internal details were removed before making it public.
+2. Package the **approval checker** as a composite action in the shared repository. Each repository references it using a full SHA, and Dependabot automatically opens upgrade PRs in all three repositories.
+3. Write **rulesets** as JSON templates, with each repository providing only parameters (branch patterns, required check names). An admin GitHub App applies them, with its private key stored only in the shared repository's protected environment and owner approval on GitHub required for every application; the shared repository produces a weekly read-only drift report.
+4. **Keep each repository's differences in its own policy file**: which paths are high risk, R3 roles, and the carryover allowlist. The evaluation logic is shared, not the path lists.
+5. **Change the pilot to NFH** (owner 2026-10-05 01:2x; originally NFU): NFH's `S15.005c` adopts the shared checker directly instead of creating a third implementation (the owner has already had NFH pause these two items pending the proposal); start after NFH's CI fixes and 1.3.2 are complete. Then introduce the first new rule, 「改動不大時，已有的核准保留」 ("Keep existing approvals for small changes"). NFU adopts it after NFH, and NFC migrates last, during a gap between releases.
 
-## 範圍精簡（owner 2026-10-03 10:4x）
+## Scope reduction (owner 2026-10-03 10:4x)
 
-owner 要求避免過度設計，只保留做到「改一次、三邊生效」所需的最小部分。「改一次」靠共用 action，「三邊生效」靠 Dependabot 的升版 PR；以下項目延後，本文其他段落提到它們時，以這一節為準：
+The owner asked to avoid overengineering and retain only the minimum needed to achieve 「改一次、三邊生效」 ("change once, take effect in all three"). 「改一次」 ("Change once") relies on the shared action, and 「三邊生效」 ("take effect in all three") relies on Dependabot's upgrade PRs; the following items are deferred, and this section takes precedence when other parts of this document mention them:
 
-| 項目 | 處理 |
+| Item | Handling |
 |---|---|
-| 漂移報告（每週比對 ruleset、引用的 SHA、共用文字段落） | 延後，三個 repo 都採用共用檢查器後再看要不要 |
-| 三個 repo 的契約測試 | 不另建；哪個 repo 採用，就在那個 PR 把它的 policy 與一兩個 fixture 加進共用測試 |
-| 從 policy 產生 CODEOWNERS 的腳本 | 不做；CODEOWNERS 照現在手動維護 |
-| 共用規則文字的同步 bot | 先不做；規則文字只寫在共用 action 的 README，各 repo 採用時在同一個 PR 手動改一次 `CONTRIBUTING.md` 並連到 README |
-| ruleset 範本與管理用 App 的套用 workflow | 延到階段 3，只做 NFH 需要的那一份；管理用 App 到時再建。NFC、NFU 的 ruleset 現在不動 |
+| Drift report (weekly comparison of rulesets, referenced SHAs, and shared text sections) | Deferred; reconsider whether it is needed after all three repositories adopt the shared checker |
+| Contract tests for the three repositories | Do not create a separate set; when a repository adopts it, add its policy and one or two fixtures to the shared tests in that PR |
+| Script to generate CODEOWNERS from policy | Do not implement; continue maintaining CODEOWNERS manually as now |
+| Synchronization bot for shared rule text | Do not implement for now; write rule text only in the shared action's README, and when each repository adopts it, manually update `CONTRIBUTING.md` once in the same PR and link to the README |
+| Ruleset templates and the admin App's application workflow | Defer until the NFH pilot (stage 1), creating only the one NFH needs; create the admin App then. Leave NFC's and NFU's rulesets as they are for now |
 
-## 會影響設計的 GitHub 限制
+## GitHub limitations that affect the design
 
-| 限制 | 出處 | 影響 |
+| Limitation | Source | Impact |
 |---|---|---|
-| public repo 只能引用 **public** repo 的 reusable workflow；private repo 可以引用 private 或 public 的 | [Reusable workflows 參考](https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows) | NFC、NFU 是 public，共用 repo 必須是 public |
-| private repo 的 action 與 reusable workflow 只能分享給**同一個使用者的其他 private repo**（Settings → Actions → General → Access） | [Repository 的 Actions 設定](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository) | `nvt_fw_core` 若維持 private，只有 NFH（private）能用；FreeformHelper 計畫推出 public 版，之後也不能用 |
-| `Dennis40816` 是個人帳號，沒有組織 | GitHub API `users/Dennis40816` 的 `type: User` | 沒有組織層級的 ruleset 或「required workflows」，只能每個 repo 各自套 ruleset，所以需要範本加腳本 |
-| 個人帳號的 private repo 要用 ruleset 需要 GitHub Pro | 未查到明確條文，**待 owner 確認方案** | NFH 的 ruleset（`S15.005d`）能不能設 |
-| GitHub App 修改 `.github/workflows/*` 需要 `workflows` 權限；NFU 的規則明文禁止 App 有這個權限 | NFU `CONTRIBUTING.md`；NFU 的 `setup-batch` 分支因含 `ci.yml` 改由 owner SSH push（commander 紀錄） | 升版 PR 若要改 workflow 檔，不能由 agent 的 App 開。Dependabot 可以 |
-| 呼叫 reusable workflow 時，caller workflow 的 `env` 不會傳過去；`GITHUB_TOKEN` 權限只能降不能升；最多 10 層、單檔最多 50 個 reusable workflow | 同第一列 | 共用 workflow 的輸入要用 `with:` 明確傳 |
-| 用 SHA 引用時，fork 上的 commit 也能透過原 repo 用 SHA 取得 | 一般已知的 GitHub fork network 行為 | 只能釘共用 repo 受保護 tag 所指的 SHA；漂移報告要檢查這一點 |
-| dismiss stale 只在 diff 改變或 merge base 帶進新變更時撤銷 Approve | [Rulesets 可用的規則](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) | 見 approval-carryover.md |
+| Public repositories can only reference reusable workflows from **public** repositories; private repositories can reference private or public ones | [Reusable workflows reference](https://docs.github.com/en/actions/reference/workflows-and-actions/reusable-workflows) | NFC and NFU are public, so the shared repository must be public |
+| A private repository's actions and reusable workflows can only be shared with **other private repositories owned by the same user** (Settings → Actions → General → Access) | [Repository Actions settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository) | If `nvt_fw_core` stays private, only NFH (private) can use it; FreeformHelper plans to launch a public version, which would also be unable to use it |
+| `Dennis40816` is a personal account, with no organization | GitHub API `users/Dennis40816` has `type: User` | There are no organization-level rulesets or 「required workflows」; rulesets can only be applied to each repository separately, hence the need for templates and scripts |
+| Using rulesets in a personal account's private repository requires GitHub Pro | No explicit provision found | Originally affected NFH's rulesets (`S15.005d`). NFH's main development moved to the public `Dennis40816/nvt-freeform-helper` on 2026-10-04, so this row no longer affects NFH |
+| A GitHub App needs `workflows` permission to modify `.github/workflows/*`; NFU's rules explicitly prohibit the App from having this permission | NFU `CONTRIBUTING.md`; NFU's `setup-batch` branch was pushed by the owner over SSH because it included `ci.yml` (commander record) | Upgrade PRs that change workflow files cannot be opened by the agent's App. Dependabot can open them |
+| When calling a reusable workflow, the caller workflow's `env` is not passed through; `GITHUB_TOKEN` permissions can only be reduced, not increased; up to 10 levels and at most 50 reusable workflows per file | Same as the first row | Shared workflow inputs must be passed explicitly using `with:` |
+| When referencing by SHA, commits on a fork can also be retrieved by SHA through the original repository | Generally known GitHub fork network behavior | Pin only SHAs pointed to by protected tags in the shared repository; the drift report must check this |
+| dismiss stale only revokes Approve when the diff changes or the merge base introduces new changes | [Available rules for rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) | See approval-carryover.md |
 
-## 四種做法的比較
+## Comparison of four approaches
 
-| | A. reusable workflow／composite action | B. 共用腳本做成套件或 submodule | C. ruleset 當成程式碼 | D. bot 自動開 PR 同步 |
+| | A. reusable workflow/composite action | B. Shared scripts as a package or submodule | C. Rulesets as code | D. Bot opens synchronization PRs automatically |
 |---|---|---|---|---|
-| 做什麼 | 各 repo 的 workflow 寫 `uses: <共用 repo>/...@<SHA>` | 各 repo 安裝或掛載共用腳本，版本寫在檔案裡 | JSON 範本加套用腳本 | 共用 repo 發版後，自動在各 repo 開 PR 複製檔案 |
-| 可見性 | 共用 repo 必須 public | 套件或 submodule 要 public，否則要在 CI 放讀取權杖 | 不受影響 | 不受影響，共用 repo 可以 private |
-| 版本怎麼釘 | 完整 SHA 加 `# vX.Y.Z` 註解 | 鎖定檔或 gitlink 的 SHA | 範本版本加各 repo 參數檔 | 複製進去的檔案就是那個版本 |
-| 更新怎麼傳到三邊 | **Dependabot**（github-actions 生態系）自動開 PR，三邊各一個 | 要自己寫 bot 或人工 | owner 對三個 repo 各執行一次腳本（同一個指令） | 自己寫的 bot 開 PR |
-| 需要的權限 | 改 workflow 檔要 `workflows` 權限，Dependabot 有，agent 的 App 沒有 | 鎖定檔不在 workflows 目錄時，App 就能開 PR | repo 管理權限，只有 owner | 複製到 workflows 目錄時也要 `workflows` 權限 |
-| 退回 | 在該 repo 的升版 PR 頁按 Revert | 改回鎖定檔 | 用套用前的備份還原 | 再開一個反向 PR |
-| 缺點 | caller workflow 本身還是各 repo 各一份（但很薄、很少變） | submodule 讓 agent 沙盒與本機開發變麻煩；自寫 bot 要維護 | 不涵蓋檔案內容 | 各 repo 仍是複本，可能被手改而漂移；要另外檢查漂移 |
-| 適合 | 檢查器、CI 步驟 | 不建議作為主要方式 | ruleset | 文件裡共用的規則段落 |
+| What it does | Each repository's workflow writes `uses: <共用 repo>/...@<SHA>` | Each repository installs or mounts the shared scripts, with the version recorded in a file | JSON templates plus an application script | After the shared repository releases a version, automatically open PRs in each repository to copy files |
+| Visibility | Shared repository must be public | Package or submodule must be public; otherwise CI needs a read token | Unaffected | Unaffected; shared repository can be private |
+| How versions are pinned | Full SHA plus `# vX.Y.Z` comment | Lockfile or gitlink SHA | Template version plus per-repository parameter files | The copied files are that version |
+| How updates reach all three | **Dependabot** (github-actions ecosystem) automatically opens one PR in each | Requires a custom bot or manual work | Owner runs the script once for each of the three repositories (the same command) | A custom bot opens PRs |
+| Required permissions | Changing workflow files requires `workflows` permission, which Dependabot has and the agent's App does not | The App can open PRs if the lockfile is outside the workflows directory | Repository admin permissions, owner only | Copying into the workflows directory also requires `workflows` permission |
+| Rollback | Click Revert on that repository's upgrade PR page | Revert the lockfile | Restore from the backup taken before application | Open another PR to reverse the change |
+| Drawbacks | Each repository still has its own caller workflow (but it is thin and rarely changes) | Submodules complicate agent sandboxes and local development; custom bots need maintenance | Does not cover file contents | Each repository still has a copy, which can drift through manual edits; drift needs a separate check |
+| Suitable for | Checkers, CI steps | Not recommended as the primary approach | Rulesets | Shared rule sections in documents |
 
-### 建議：A＋C＋D 混合
+### Recommendation: a mix of A+C+D
 
-| 共用的東西 | 做法 | 各 repo 保留的部分 |
+| Shared item | Approach | What each repository retains |
 |---|---|---|
-| 核准檢查器（review record 判定、owner 核准判定、accept 沿用、防偽規則） | 共用 repo 的 composite action，程式隨 action 一起被釘版（執行時在 `github.action_path` 底下）。各 repo 的 `approval.yml` 只剩觸發條件、權限與一行 `uses:` | `approval-policy.json`（路徑、分級、角色、沿用白名單），從 **base branch** 讀 |
-| CODEOWNERS | 共用腳本從 policy 產生，各 repo 的 CI 檢查是否一致（NFC 已有這種測試） | 產生出來的檔案 |
-| ruleset | 共用 repo 的 `rulesets/` 放範本與各 repo 參數檔。套用 workflow 由 agent 以 `workflow_dispatch` 觸發：先產出差異，owner 在 GitHub 核准 environment 後才用管理用 App 套用；套用前備份、套用後讀回（沿用 NFC G0 的程序）。agent 拿不到 App 私鑰 | 參數檔：分支樣式、required checks、strict |
-| 共用的規則文字（review record 格式、沿用規則、合併前確認步驟） | 共用 repo 的文件是正本；同步腳本用 App 在各 repo 開 PR，把它複製到 `CONTRIBUTING.md` 的標記段落；漂移報告會檢查（NFC `sync_derived.py` 的模式） | 標記段落以外的內容 |
-| 第三方 action 的釘版 | 各 repo 加 `dependabot.yml`（現在只有 NFC 有） | — |
+| Approval checker (review record evaluation, owner approval evaluation, accept carryover, anti-forgery rules) | Composite action in the shared repository, with the code pinned together with the action (under `github.action_path` at runtime). Each repository's `approval.yml` contains only triggers, permissions, and one `uses:` line | `approval-policy.json` (paths, classifications, roles, carryover allowlist), read from the **base branch** |
+| CODEOWNERS | A shared script generates it from policy, and each repository's CI checks consistency (NFC already has this kind of test) | The generated file |
+| Rulesets | The shared repository's `rulesets/` contains templates and per-repository parameter files. The agent triggers the application workflow using `workflow_dispatch`: it first produces the diff, and only uses the admin App to apply it after the owner approves the environment on GitHub; back up before application and read back afterward (following NFC G0's procedure). The agent cannot access the App's private key | Parameter files: branch patterns, required checks, strict |
+| Shared rule text (review record format, carryover rules, pre-merge confirmation steps) | The shared repository's documents are the source of truth; a synchronization script uses the App to open PRs in each repository, copying it into marked sections of `CONTRIBUTING.md`; the drift report checks it (NFC's `sync_derived.py` pattern) | Content outside the marked sections |
+| Third-party action pinning | Add `dependabot.yml` to each repository (currently only NFC has it) | — |
 
-各 repo 不共用、繼續各自維護的：build、test、shard、golden、C export、單檔行數門檻、覆蓋率、效能門檻、發佈包內容、韌體 parity 與發佈證據。這些和產品綁在一起，等 owner 說的「各專案有雛型後」再看要不要抽。
+What the repositories do not share and continue maintaining separately: build, test, shards, golden, C export, per-file line-count thresholds, coverage, performance thresholds, release package contents, firmware parity, and release evidence. These are tied to the products; wait until 「各專案有雛型後」 ("after each project has a prototype"), as the owner said, before reconsidering whether to extract them.
 
-## 版本、傳遞與退回
+## Versioning, propagation, and rollback
 
-1. 共用 repo 在 `main` 上發 tag `vX.Y.Z`，套用和三個 repo 相同的 tag ruleset（禁止更新與刪除 `v*`）。
-2. Dependabot 在每個 repo 開升版 PR，內容只有 `uses:` 的 SHA 與版本註解。這個 PR 屬於高風險路徑（`.github/**`），照各 repo 現行規則審查並由 owner 核准。
-3. 升版順序固定：NFU → NFH → NFC。前一個 repo 合併後跑過至少一個真實 PR 沒問題，才合併下一個。
-4. 退回：在出問題的 repo，到那個升版 PR 的頁面按 Revert，由 owner 合併，SHA 就回到上一版。這只影響該 repo。
-5. 共用 repo 出錯時發修正版（`vX.Y.Z+1`），不移動既有 tag。
-6. 漂移報告（共用 repo 的排程 workflow，每週一次，只讀）：比對三個 repo 的 ruleset 與範本、引用的 SHA 是不是受保護 tag、`CONTRIBUTING.md` 的共用段落是不是與正本一致。發現差異就在共用 repo 開 issue，不改任何 repo。NFH 是 private，讀它的 ruleset 需要唯讀權杖；在 FreeformHelper 公開前，可以先不納入。
+1. The shared repository creates `vX.Y.Z` tags on `main`, using the same tag ruleset as the three repositories (prohibit updating and deleting `v*`).
+2. Dependabot opens an upgrade PR in each repository, containing only the `uses:` SHA and version comment. This PR touches a high-risk path (`.github/**`), so it is reviewed under that repository's current rules and approved by the owner.
+3. The upgrade order is fixed: NFH → NFU → NFC. Merge the next repository's PR only after the previous repository has merged and successfully run at least one real PR.
+4. Rollback: in the affected repository, go to that upgrade PR's page and click Revert; the owner merges it, returning the SHA to the previous version. This affects only that repository.
+5. If the shared repository has a defect, release a fix (`vX.Y.Z+1`) without moving existing tags.
+6. Drift report (scheduled workflow in the shared repository, weekly, read-only): compare the three repositories' rulesets with the templates, check whether the referenced SHAs correspond to protected tags, and check whether the shared sections of `CONTRIBUTING.md` match the source of truth. If differences are found, open an issue in the shared repository without changing any repositories. NFH is private, so reading its rulesets requires a read-only token; it can be left out until FreeformHelper becomes public.
 
-## 治理變更由誰核准
+## Who approves governance changes
 
-共用規則一改就影響三個 repo，等同最高風險（NFC 的 R3 `governance-owner`）。
+A shared rule change affects all three repositories, equivalent to the highest risk (NFC's R3 `governance-owner`).
 
-- 共用 repo：所有路徑的 CODEOWNERS 是 owner；ruleset 要求 PR、1 個核准、code owner review、dismiss stale、last push approval，以及兩組 required checks：
-  - 檢查器的單元測試。
-  - **三個 repo 的契約測試**：用三個 repo 各自的 policy 與真實 PR 的 fixture，確認新版本對三邊的判定和預期相同。「改一次」在發版前就對三邊驗證過。
-- 各 repo：升版 PR 再由 owner 核准一次。兩道核准：共用 repo 核准規則本身，各 repo 核准採用時機。
-- 改變判定結果的版本（主版號變更）要在 `nvt_fw_core` 的 [decisions.md](../decisions.md) 記錄 owner 的決定。
-- agent 可以寫共用 repo 的 PR，但任何合併都要 owner 核准；共用 repo 不給 agent bypass。
+- Shared repository: CODEOWNERS assigns all paths to the owner; rulesets require a PR, 1 approval, code owner review, dismiss stale, last push approval, and two sets of required checks:
+  - Checker unit tests.
+  - **Contract tests for the three repositories**: use each repository's policy and real-PR fixtures to confirm that the new version's evaluations match expectations for all three. 「改一次」 ("Change once") is validated against all three before release.
+- Each repository: the owner approves the upgrade PR again. Two approvals: the shared repository approves the rule itself, and each repository approves when to adopt it.
+- Versions that change evaluation results (major version changes) must record the owner's decision in `nvt_fw_core`'s [decisions.md](../decisions.md).
+- Agents can write PRs for the shared repository, but every merge requires owner approval; agents have no bypass in the shared repository.
 
-## 導入順序
+## Adoption order
 
-| 階段 | 內容 | 動到哪裡 | owner 要做的事 |
+| Stage | Content | Where changes are made | What the owner needs to do |
 |---|---|---|---|
-| 0 | `nvt_fw_core` 以 public 建到 GitHub。檢查器 v0 是 NFU `approval_check.py` 原樣搬過去，做成 composite action，帶 NFU 的測試與 fixture（PR #1） | 只有共用 repo | 核准 PR；共用 repo 的 `main` 與 `v*` tag ruleset 手動設定 |
-| 1 | **試點 NFU，規則不變**：`approval.yml` 改成 `uses: <共用 repo>/approval-check@<SHA>`；commit status 名稱維持 `governance/approval-rule`，所以 ruleset 不用改；加 `dependabot.yml` | NFU 兩個檔案 | 核准；workflow 檔要由 owner push 或交給 Dependabot |
-| 2 | **試點第一條新規則：accept 沿用**。在共用 repo 實作（預設關閉），NFU 的 policy 打開並設白名單。走一次完整流程：共用 repo 改一次 → Dependabot 開 PR → NFU 生效 | 共用 repo；NFU 的 policy 與 `CONTRIBUTING.md` | 核准兩個 PR |
-| 3 | **NFH 採用**：`S15.005c` 用共用 action 加 NFH 自己的 policy（先用兩層，與現行文件一致），CODEOWNERS 手動維護；`S15.005d` 的 ruleset 用範本，由管理用 App 套用（範本與套用 workflow 在這一階段才做） | NFH | 確認 private repo 能用 ruleset；建管理用 App；在 GitHub 核准套用 |
-| 4 | **NFC 遷移**：檢查器 v1 支援 R0–R3 與角色（以 NFC `authority_check.py` 為底，加上 NFU 的防偽規則與從 base 執行）。選在兩次發佈之間；同步修訂 ADR 0080，並確認 `release_promotion_policy.py` 對 review 證據的要求 | NFC（全部是 R3） | 核准；調整 trunk 與 `main` 的 required check |
-| 5 | 之後再看：.NET SDK 安裝、action 釘版檢查、行數檢查等 CI 步驟做成共用 action；發佈流程做成 reusable workflow | 依情況 | 等各專案有雛型 |
+| 0 | Create `nvt_fw_core` on GitHub as public. Checker v0 copies NFU's `approval_check.py` unchanged, packages it as a composite action, and includes NFU's tests and fixtures (PR #1) | Shared repository only | Approve PR; manually configure the shared repository's `main` and `v*` tag rulesets |
+| 1 | **NFH pilot** (starts after NFH's CI fixes and 1.3.2 are complete): `S15.005c` uses the shared action plus NFH's own policy (initially two levels, consistent with current documents), with CODEOWNERS maintained manually; `S15.005d` rulesets use templates, applied by the admin App (templates and the application workflow are only created at this stage) | NFH (public) | Approve; create admin App; approve application on GitHub |
+| 2 | **Pilot the first new rule: accept carryover**. Implement it in the shared repository (disabled by default), enable it in one repository that has adopted the checker, and configure an allowlist. Run the complete flow once: change once in the shared repository → Dependabot opens a PR → takes effect in that repository. Ask the owner then whether to enable it in NFH or NFU first | Shared repository; that repository's policy and `CONTRIBUTING.md` | Approve two PRs |
+| 3 | **NFU adoption, rules unchanged**: change `approval.yml` to `uses: <共用 repo>/approval-check@<SHA>`; keep the commit status name `governance/approval-rule`, so rulesets do not need changes; add `dependabot.yml` | Two NFU files | Approve; workflow files must be pushed by the owner or handled by Dependabot |
+| 4 | **NFC migration**: checker v1 supports R0–R3 and roles (based on NFC's `authority_check.py`, with NFU's anti-forgery rules and execution from base added). Schedule it between two releases; revise ADR 0080 at the same time and confirm `release_promotion_policy.py`'s requirements for review evidence | NFC (all R3) | Approve; adjust required checks for trunk and `main` |
+| 5 | Reconsider later: package CI steps such as .NET SDK installation, action pinning checks, and line-count checks as shared actions; package the release process as a reusable workflow | As needed | Wait until each project has a prototype |
 
-為什麼試點選 NFU：檢查器最小（約 350 行、只用標準函式庫）、結果用 commit status（換實作不必改 ruleset 的 check 名稱）、repo 是 public、產品優先度最低，試點出問題不會拖到 NFC、NFH。owner 舉的例子也正好是 NFU。
+NFU was originally selected for the pilot: the smallest checker (about 350 lines, standard library only), commit status results, public repository, and lowest product priority. Shared checker v0 is still copied from NFU. On 2026-10-05, the owner changed the pilot to NFH: NFU has the lowest development priority, so waiting for its pilot would take too long; NFH's main development has moved to a public repository and it is undergoing refactoring, while governance items `S15.005c`/`d` were already paused pending the shared proposal.
 
-為什麼 NFC 最後：`authority_check.py` 超過 1,100 行，涵蓋 R3 韌體角色與發佈證據；NFC 是優先度最高的產品，治理改動全部是 R3，不適合當試點。
+Why NFC is last: `authority_check.py` exceeds 1,100 lines and covers R3 firmware roles and release evidence; NFC is the highest-priority product, and all governance changes are R3, making it unsuitable as a pilot.
 
-## owner 的決定
+## Owner decisions
 
-2026-10-03 08:2x，owner 在 NVT CORE 畫面以問答回答（第 6 題是 07:2x 在 commander 畫面回答、由 commander 轉述）。原本的選項與比較保留在本文件的歷史版本。
+At 2026-10-03 08:2x, the owner answered questions in the NVT CORE interface (question 6 was answered at 07:2x in the commander interface and relayed by commander). The original options and comparisons remain in this document's history.
 
-| # | 題目 | owner 的選擇 |
+| # | Question | Owner's choice |
 |---|---|---|
-| 1 | 改動不大時保留哪一種核准 | 只保留獨立審查的 accept；owner 的 GitHub Approve 照舊在 diff 改變後失效，ruleset 不改 |
-| 2 | 「改動不大」的定義 | 路徑加內容：白名單內的 `.md`／`.txt`，最多 5 個檔案、40 行，不得動 code fence、網址、HTML、不可見字元 |
-| 3 | 共用 CI 放在哪裡 | `nvt_fw_core` 改成 public，一起放 |
-| 4 | 共用方式 | 混合：檢查器用 composite action 加 Dependabot，ruleset 用範本，共用的規則文字用同步 PR 加漂移檢查 |
-| 5 | 試點 | NFU：先搬檢查器、行為不變，再上核准保留規則 |
-| 6 | NFH 的 `S15.005c`／`S15.005d` | 先暫停，等方案；定案後照階段 3 直接採用 |
-| 7 | 治理變更的核准 | 兩道：共用 repo 每個 PR 由 owner 核准，各 repo 的升版 PR 再由 owner 核准 |
-| 8 | 誰套用 ruleset | 另建管理用 App；私鑰只放在共用 repo 的受保護 environment，每次套用由 owner 在 GitHub 核准 |
-| 9 | review record 與檢查結果的格式 | NFC 遷移時統一成一種結構化紀錄，結果用 commit status |
-| 10 | trunk 命名 | 現有分支維持，後續要統一（統一成哪種形式待定，NFC、NFH 用 `X.Y.x`） |
+| 1 | Which approval to retain for a small change | Retain only the independent review's accept; the owner's GitHub Approve continues to expire when the diff changes, with no ruleset changes |
+| 2 | Definition of 「改動不大」 ("small change") | Paths plus content: allowlisted `.md`/`.txt`, at most 5 files and 40 lines, with no changes to code fences, URLs, HTML, or invisible characters |
+| 3 | Where to put shared CI | Make `nvt_fw_core` public and put it there together |
+| 4 | Sharing approach | A mix: composite action plus Dependabot for the checker, templates for rulesets, synchronization PRs plus drift checks for shared rule text |
+| 5 | Pilot | NFU: first move the checker without changing behavior, then introduce the approval carryover rule. **Changed to NFH at 2026-10-05 01:2x**, starting after NFH's CI fixes and 1.3.2 are complete (answered in the commander interface and relayed by commander) |
+| 6 | NFH's `S15.005c`/`S15.005d` | Pause for now pending the proposal; adopt directly once finalized (now the NFH pilot in stage 1) |
+| 7 | Approval for governance changes | Two approvals: the owner approves every PR in the shared repository, then approves each repository's upgrade PR |
+| 8 | Who applies rulesets | Create a separate admin App; store its private key only in the shared repository's protected environment, with the owner approving each application on GitHub |
+| 9 | review record and check result formats | Standardize on one structured record when NFC migrates, with results as commit statuses |
+| 10 | Trunk naming | Keep existing branches; standardize later (the standard form is undecided; NFC and NFH use `X.Y.x`) |
 
-另外有 4 件要 owner 在 GitHub 上確認的事實（NFH 的 ruleset 與帳號方案、bypass 名單、agent App 的 `workflows` 權限、各 repo 允許的 actions），連結在 [inventory.md](inventory.md) 文末。
+There are also 4 facts for the owner to confirm on GitHub (NFH's rulesets and account plan, bypass lists, the agent App's `workflows` permission, and each repository's allowed actions), with links at the end of [inventory.md](inventory.md).
 
-## 這一步沒有做的事
+## What this step did not do
 
-- 沒有建立共用 repo，沒有改三個 repo 的任何檔案、ruleset、workflow，沒有開 PR，沒有 push。
-- Dependabot 是否會更新 composite action 與 reusable workflow 的 SHA、GitHub 個人帳號在 private repo 使用 ruleset 的方案條件，都還沒實測或查到明確條文，要在階段 0 驗證。
+- Did not create a shared repository, change any files, rulesets, or workflows in the three repositories, open PRs, or push.
+- Whether Dependabot updates SHAs for composite actions and reusable workflows, and the plan requirements for using rulesets in a GitHub personal account's private repository, have not yet been tested or confirmed by explicit provisions; validate them in stage 0.

@@ -1,23 +1,23 @@
-# 共用核准檢查器 v0
+# Shared approval checker v0
 
-此 composite action 對 pull request 執行 NFU 已合併版的核准判定，並把結果寫成 head commit 的 status。檢查器會確認 base 與 head 未移動、head 已含最新 base、review record 有效；依 base branch 與變更路徑判定是否還需要 owner 核准。檢查結果也會附加到 job summary。
+This composite action runs the approval evaluation from NFU's merged version on a pull request and writes the result as a status on the head commit. The checker verifies that base and head have not moved, that head contains the latest base, and that the review record is valid; it determines whether owner approval is also required based on the base branch and changed paths. The check results are also appended to the job summary.
 
 ## Inputs
 
-| Input | 預設 | 說明 |
+| Input | Default | Description |
 | --- | --- | --- |
-| `policy-path` | `.github/approval-policy.json` | 相對於 base branch checkout 的 policy JSON 路徑。 |
-| `status-context` | `governance/approval-rule` | 寫入 head commit 的 status context。 |
-| `token` | `${{ github.token }}` | 讀取 PR 與寫入 commit status 的 token。 |
+| `policy-path` | `.github/approval-policy.json` | Path to the policy JSON relative to the base branch checkout. |
+| `status-context` | `governance/approval-rule` | Status context written to the head commit. |
+| `token` | `${{ github.token }}` | Token for reading the PR and writing commit status. |
 
-呼叫端 workflow 應使用 NFU 原有的 `pull_request` 事件（`opened`、`synchronize`、`reopened`、`ready_for_review`、`edited`、`converted_to_draft`）及 `pull_request_review` 事件（`submitted`、`edited`、`dismissed`）。權限須包含 `contents: read`、`pull-requests: read`、`statuses: write`。完整範例見 [NFU caller](../../examples/nfu-approval.yml)。
+The caller workflow should use NFU's existing `pull_request` events (`opened`, `synchronize`, `reopened`, `ready_for_review`, `edited`, `converted_to_draft`) and `pull_request_review` events (`submitted`, `edited`, `dismissed`). Permissions must include `contents: read`, `pull-requests: read`, and `statuses: write`. See [NFU caller](../../examples/nfu-approval.yml) for a complete example.
 
-## 信任模型
+## Trust model
 
-檢查器來自呼叫端以完整 SHA 釘住的共用 action；policy 來自 PR 的 base branch。GitHub 從 PR 的 merge ref 讀取 workflow 定義，因此可修改 workflow 的人可能改變呼叫方式；agent 的 GitHub App 不得有 `workflows` 權限。呼叫端須釘住共用 repo 受保護 tag 所指的 SHA。
+The checker comes from the shared action pinned by the caller to a full SHA; the policy comes from the PR's base branch. GitHub reads the workflow definition from the PR's merge ref, so someone who can modify the workflow may change how it is called; the agent's GitHub App must not have `workflows` permission. The caller must pin the SHA referenced by a protected tag in the shared repository.
 
-Ruleset 應 require commit status `governance/approval-rule`，來源選 **GitHub Actions**；不要 require 同名 check run。此 action 每次會先送 pending，最後送 success 或 failure commit status。
+The ruleset should require commit status `governance/approval-rule`, with **GitHub Actions** selected as the source; do not require a check run with the same name. Each time, this action first sends pending, then sends a success or failure commit status at the end.
 
-來源是 NFU（`Dennis40816/nvt-event-buffer-replay`）`0.1.2` 的 `1648c42`。PR #1 說明、commit `f4ce0d3` 與 tag `v0.1.0` 的訊息誤寫為 `ceef4ef`，以本段為準。
+The source is `1648c42` from NFU (`Dennis40816/nvt-event-buffer-replay`) `0.1.2`. The PR #1 description and the messages for commit `f4ce0d3` and tag `v0.1.0` incorrectly state `ceef4ef`; this paragraph is authoritative.
 
-與 NFU 原版相比，`approval_check.py` 唯一差異是新增 `--policy <path>`。未指定時仍讀 `ROOT / ".github/approval-policy.json"`；其他判定邏輯、輸出訊息及 User-Agent 不變。action 另外會先確認 policy 路徑解析後位於 base checkout 內，否則判定失敗。
+Compared with the original NFU version, the only difference in `approval_check.py` is the addition of `--policy <path>`. When it is not specified, it still reads `ROOT / ".github/approval-policy.json"`; all other evaluation logic, output messages, and the User-Agent remain unchanged. The action also first verifies that the resolved policy path is inside the base checkout, failing the check otherwise.

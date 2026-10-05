@@ -1,44 +1,45 @@
-# 元件對照表
+# Component comparison table
 
-用途：之後盤點時，用這張表決定每個元件由誰的實作納入共用。原則是 owner 說的「誰最好最納入共用」。
+Purpose: During the later inventory, use this table to decide whose implementation of each component to bring into shared use. The principle is what the owner said: 「誰最好最納入共用」 ("Bring whichever is best into shared use.").
 
-**這張表目前大多是空的。** 已填的內容來自 2026-10-02 讀三個 repo 的專案檔（`.csproj`、`Directory.Packages.props`），沒有讀 UI 程式碼，所以只能確定「有哪些專案」，不能判斷品質。標「未查」的是還沒看過，不代表沒有。
+**This table is currently mostly empty.** The filled-in content comes from reading the project files (`.csproj`, `Directory.Packages.props`) of the three repositories on 2026-10-02; the UI code was not read, so only 「有哪些專案」 ("which projects exist") can be confirmed, and quality cannot be judged. 「未查」 ("Not inspected") means it has not been examined yet, not that it does not exist.
 
-## 平台現況
+## Current platform status
 
 | | NFC | NFH | NFU |
 |---|---|---|---|
 | .NET SDK | 10.0.301 | 10.0.301 | 10.0.303 |
-| Avalonia | 12.0.5 | **11.3.12**（另用 AvaloniaEdit 11.4.1） | 12.1.1 |
-| 專案結構 | Domain／Application／Infrastructure／Contracts／Platform／Profiles／Presentation.Avalonia／Desktop／Cli／Bootstrap，另有 Launcher、LauncherBootstrap、DistributionLauncher、VersionManagement.Application／Infrastructure | FreeformHelper.Domain／Application／Infrastructure／UI | Nvt.Replay.Core／Sources／Formats／Analysis／Rendering／Avalonia／Cli |
-| UI 測試 | Avalonia.Headless.XUnit | 未查 | Avalonia.Headless.XUnit |
+| Avalonia | 12.0.5 | **11.3.12** (also uses AvaloniaEdit 11.4.1) | 12.1.1 |
+| Project structure | Domain／Application／Infrastructure／Contracts／Platform／Profiles／Presentation.Avalonia／Desktop／Cli／Bootstrap, plus Launcher, LauncherBootstrap, DistributionLauncher, VersionManagement.Application／Infrastructure | FreeformHelper.Domain／Application／Infrastructure／UI | Nvt.Replay.Core／Sources／Formats／Analysis／Rendering／Avalonia／Cli |
+| UI tests | Avalonia.Headless.XUnit | Not inspected | Avalonia.Headless.XUnit |
 
-Avalonia 主版本不一致：共用 UI 元件上線前，NFH 要從 11 升到 12。NFH 已把這件事排進計畫，不是現在升。
+The Avalonia major versions differ: before shared UI components go live, NFH needs to upgrade from 11 to 12. NFH has already included this in its plan; the upgrade is not happening now.
 
-## 元件
+## Components
 
-| 元件 | NFC | NFH | NFU | 成熟度評估 | 決定 |
+| Component | NFC | NFH | NFU | Maturity assessment | Decision |
 |---|---|---|---|---|---|
-| launcher（啟動、版本管理、更新） | 有：Launcher、LauncherBootstrap、DistributionLauncher、VersionManagement.* | 未查 | 未查 | 未評估 | **NFC 開發後直接套用**（owner 2026-10-03） |
-| UI 主框架（外殼、導覽、工具註冊） | Presentation.Avalonia、Desktop | FreeformHelper.UI | Nvt.Replay.Avalonia；正在做「工具首頁」shell。MainWindow 目前 19 個檔約 8,400 行 | 未評估 | 未定 |
-| 主題與字型 | Avalonia.Themes.Fluent、Fonts.Inter | 未查 | Avalonia.Themes.Fluent、Fonts.Inter | 未評估 | 未定 |
-| 設定儲存 | 未查 | 未查 | 未查 | 未評估 | 未定 |
-| 診斷與日誌 | 未查 | 有 AppLogStore（從 PR 說明得知，未讀程式碼） | 未查 | 未評估 | 未定 |
-| 關於與授權頁 | 未查 | 未查 | 未查 | 未評估 | 未定 |
-| CLI 慣例 | NvtFwCombiner.Cli | 未查 | Nvt.Replay.Cli | 未評估 | 未定 |
-| 發佈與打包 | 未查 | 未查 | 有 package 與 release 腳本（從 session 回報得知） | 未評估 | 未定 |
-| codex 派工工具（排隊、派工、審查、收尾） | 有：`lane.sh`、`dispatch.ps1`、`creview.sh`、`vq.sh` | 有（排隊與收尾腳本） | 有（未查） | 未評估 | **之後收進 nvt_fw_core**；不寫死模型與 effort，用 codex 預設（`~/.codex/config.toml`，定期調整），個別任務由派工者指定（owner 2026-10-03）。時程「之後」，不排進共用 CI 的階段 0～2 |
+| launcher (startup, version management, updates) | Present: Launcher, LauncherBootstrap, DistributionLauncher, VersionManagement.* | Not inspected | Not inspected | Not assessed | **Apply directly after NFC develops it** (owner 2026-10-03) |
+| Main UI framework (shell, navigation, tool registration) | Presentation.Avalonia, Desktop | FreeformHelper.UI | Nvt.Replay.Avalonia; a 「工具首頁」 ("tool home page") shell is being developed. MainWindow currently has 19 files and about 8,400 lines | Not assessed | Undecided |
+| Themes and fonts | Avalonia.Themes.Fluent, Fonts.Inter | Not inspected | Avalonia.Themes.Fluent, Fonts.Inter | Not assessed | Undecided |
+| Settings storage | Not inspected | Not inspected | Not inspected | Not assessed | Undecided |
+| Diagnostics and logging | Not inspected | Has AppLogStore (learned from the PR description; code not read) | Not inspected | Not assessed | Undecided |
+| About and license pages | Not inspected | Not inspected | Not inspected | Not assessed | Undecided |
+| CLI conventions | NvtFwCombiner.Cli | Not inspected | Nvt.Replay.Cli | Not assessed | Undecided |
+| Release and packaging | Not inspected | Not inspected | Has package and release scripts (learned from the session report) | Not assessed | Undecided |
+| console system | Not inspected | **Try out the new architecture here first** (owner 2026-10-04) | Not inspected | Not assessed | **After NFH's trial implementation matures, push it to nvt_fw_core as the shared baseline**; other modules will later follow the same pattern, abstracted into shared structures one by one and then integrated (owner 2026-10-04). Timing: 「之後」 ("later") |
+| codex task dispatch tools (queuing, dispatch, review, wrap-up) | Present: `lane.sh`, `dispatch.ps1`, `creview.sh`, `vq.sh` | Present (queuing and wrap-up scripts) | Present (not inspected) | Not assessed | **Bring into nvt_fw_core later**; do not hardcode the model or effort, use the codex defaults (`~/.codex/config.toml`, adjusted periodically), with the dispatcher specifying them for individual tasks (owner 2026-10-03). Timing: 「之後」 ("later"), not scheduled in stages 0–2 of shared CI |
 
-## 成熟度怎麼評
+## How to assess maturity
 
-以下是提案，還沒有 owner 的決定：
+The following is a proposal; the owner has not yet made a decision:
 
-1. 已經在發佈的版本裡使用。
-2. 有自動化測試。
-3. 與該工具的業務邏輯解耦，搬出去不用帶一串相依。
-4. 在 Avalonia 12 上可用。
-5. 檔案結構健康（例如沒有單一巨大類別）。
+1. Already used in released versions.
+2. Has automated tests.
+3. Decoupled from the tool's business logic, so moving it out does not require bringing along a chain of dependencies.
+4. Works on Avalonia 12.
+5. Has a healthy file structure (for example, no single huge class).
 
-## 重複清單
+## Duplication list
 
-三個 session 在開發時順手記下「自己又做了一份通用的東西」。目前放在 commander 的本機資料夾（`ledger\`），每個 session 一個檔；盤點時搬進這個 repo。截至 2026-10-03 還是空的。
+During development, the three sessions keep notes whenever 「自己又做了一份通用的東西」 ("we have built another copy of something general-purpose"). These are currently kept in commander's local folder (`ledger\`), one file per session; they will be moved into this repository during the inventory. As of 2026-10-03, it is still empty.
