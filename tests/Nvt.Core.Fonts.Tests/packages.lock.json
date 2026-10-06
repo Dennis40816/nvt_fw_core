@@ -282,14 +282,11 @@
           "xunit.v3.runner.common": "[3.2.2]"
         }
       },
-      "nvt.core": {
-        "type": "Project"
-      },
-      "nvt.core.avalonia": {
+      "nvt.core.fonts": {
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.1.1, )",
-          "Nvt.Core": "[0.1.0, )"
+          "Avalonia.Fonts.Inter": "[12.1.1, )"
         }
       },
       "Avalonia": {
