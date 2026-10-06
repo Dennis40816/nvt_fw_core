@@ -12,16 +12,20 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedLauncherEntry.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionActivationPolicy.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherMutationFence.cs`
-- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagerStateStore.cs`
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagerStateStore.cs` — 讀寫結果與介面，以及 writer result、精確存活 custody 合約與 state-store 介面。
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/UpdateSourceRegistry.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedInstallationLayout.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemVersionManagerWriteLease.cs` — exclusive writer acquisition、lock identity 與存活 custody。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs` — `ReadBoundedFileAsync` 的路徑 admission、開啟串流及長度檢查；完整內容讀取交由 Files。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonVersionManagerStateStore.cs` — 明確 raw path、有界位元組讀寫與 writer 委派；產品預設值與嚴格 codec 留在 NFC。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonLauncherBootstrapStateStore.cs` — injective 路徑推導、有界 raw byte access 與 typed write failure；suffix 設定與嚴格 codec 留在 NFC。
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。本模組不存取檔案系統或啟動 process；純路徑正規化遵循目前平台的規則。
+`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer；純路徑正規化遵循目前平台的規則。這些 API 不啟動 process。
 
-抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護及 repository/state-reader 介面。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值與介面，experience partial 留在 NFC。`VersionManagerStateStore.cs` 抽取讀寫結果值與 `IVersionManagerStateReader`；writer acquisition 與 live custody 屬於獨立 persistence 合約。原生結構、execution token、ZIP plan 及嚴格 wire DTO/codec 不在本模組內。
+抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護、repository/state 介面、raw state access 與 writer custody。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值與介面；experience partial 與嚴格 JSON projection adapter 留在 NFC。Runtime native custody 與嚴格 wire DTO/codec 由各自 owner 保留；ZIP plan 與測試 hook 為 internal。
 
 ## Contracts
 
@@ -75,7 +79,7 @@ Catalog admission identity 保留 `version|relative-package-path|invariant-packa
 
 NFC 保留嚴格 state/manifest/catalog DTO 與 codec、canonical wire schema、產品文字、精確 protocol 名稱、套件信任及 release authority、registry locator/replica、retention 與 notification policy、刪除同意、firmware 行為與 UI composition。
 
-NFC 在建置時透過 `core-packages.json` 下載版本化套件，使用精確 `[x]` pin、lock files 及 locked restore。source mapping 將 Core packages 限制於下載資料夾。清單記錄每個套件的 Release 標籤與 SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
+NFC 使用 `vendor/nuget/` 中已驗證且版本化的 nupkg，使用精確 `[x]` pin、lock files 及 locked restore。source mapping 將 Core packages 限制於該資料夾；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
 
 ## 有界封存讀取
 
@@ -98,7 +102,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 新增的合成測試涵蓋 512 MiB 少一位元組、剛好 512 MiB 及多一位元組；精確及最多讀取模式的相鄰項目長度；零長度項目；部分讀取跨越 65,536 位元組緩衝區的相鄰值；零與負值預算參數；long 計數器；參數及例外順序；溢位寫入邊界；確定性取消；有界故障；借用串流的生命週期；以及自有檔案串流的釋放。執行期檔案測試使用各自唯一的暫存目錄。
 
-NFC 保留嚴格的 manifest 與 admission schema、產品 payload 允許清單、發行信任、韌體中繼資料及安裝政策。NFC 在獨立 pull request 採用移轉機制。NFC 在建置時透過 `core-packages.json` 下載版本化套件，使用精確 `[x]` 套件版本、locked restore 及來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。只有呼叫端已使用 Core，且原有套件、安裝與產品相容性斷言以不變的值及輸出位元組通過後，NFC 才刪除其通用讀取器。Core 讀取器測試不能證明 NFC 的產品或像素一致性。
+NFC 保留嚴格的 manifest 與 admission schema、產品 payload 允許清單、發行信任、韌體中繼資料及安裝政策。NFC 在獨立 pull request 採用移轉機制，使用 `vendor/nuget/` 中已驗證且版本化的 nupkg、精確 `[x]` 套件版本、locked restore 及來源對應；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。只有呼叫端已使用 Core，且原有套件、安裝與產品相容性斷言以不變的值及輸出位元組通過後，NFC 才刪除其通用讀取器。Core 讀取器測試不能證明 NFC 的產品或像素一致性。
 
 ## 有界套件驗證
 
@@ -157,7 +161,7 @@ Checksum 使用嚴格 UTF-8、精確的 64 字元小寫 hash、兩個 ASCII 空�
 
 `PackageCeilingTests` 涵蓋凍結的成員、installed-file、目錄、文件、壓縮內容、已宣告的 launcher 與相對路徑上限及相鄰值，也檢查超過執行檔上限的應用程式仍可接受、不依賴中繼資料的實際展開、文件正值與 underreported documents。`PackageVerificationLimitsTests` 涵蓋零／負值、copied limits、原有參數順序、明確 NFC 值及既有 executable identity ceiling。`PackageIdentityAndChecksumTests` 涵蓋 forged normalized identity、launcher owner binding、嚴格 policy 拒絕與 checksum byte grammar。`PackageStreamAndPlanTests` 涵蓋公開介面、借用 custody、確定性取消、有界壓縮讀取故障、Files probe 順序、不可變 plan facts、Dispose、admission 後竄改與 destination write failure。前節 reader 案例直接涵蓋凍結的 512 MiB 實際預算與 overflow sentinel。
 
-NFC 保留嚴格 schema、產品 payload role 與 allowlist、wire grammar、release metadata、韌體資料、信任與發行權限。採用時在建置時透過 `core-packages.json` 下載獨立版本的套件，使用精確 `[x]` 版本、locked restore 與 source mapping。清單記錄每個套件的 Release 標籤與 SHA-256。原有 NFC schema、套件、安裝、完整值、trace 與輸出位元組斷言通過後，才能刪除已移轉的通用 verifier 與 reader。影響 UI 的採用也必須在同一 recorded environment 維持 decoded pixels。Core 合成測試不能證明 NFC 產品或像素一致性；此 API 也不授權 Bootstrap 套件接線。
+NFC 保留嚴格 schema、產品 payload role 與 allowlist、wire grammar、release metadata、韌體資料、信任與發行權限。採用時使用 `vendor/nuget/` 中獨立版本且已驗證的 nupkg、精確 `[x]` 版本、locked restore 與 source mapping；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。原有 NFC schema、套件、安裝、完整值、trace 與輸出位元組斷言通過後，才能刪除已移轉的通用 verifier 與 reader。影響 UI 的採用也必須在同一 recorded environment 維持 decoded pixels。Core 合成測試不能證明 NFC 產品或像素一致性；此 API 也不授權 Bootstrap 套件接線。
 
 ### 與凍結原始碼的刻意差異
 
@@ -166,3 +170,52 @@ Core 與凍結的 NFC verifier 有三處不同。每一處都是拒絕原始碼�
 - `VerifyAsync` 在讀取前先檢查套件 stream 可讀取且可 seek，並檢查候選套件大小不超過 `MaximumPackageBytes`。任一項不符時回傳 `PackageUnavailable`。
 - 讀取途中套件內容改變時，結果是 `PackageUnavailable`。原始碼回傳 `PackageMismatch`。
 - manifest 的檔案項目若名為 `RELEASE-MANIFEST.json` 或 `SHA256SUMS.txt`，會以 `InvalidPayload` 拒絕。
+
+## Raw state access 與精確 writer custody
+
+公開 API 位於 `Nvt.Core.Launcher.Persistence`。既有 read/load/save 類別與 `IVersionManagerStateReader` 仍位於 `Nvt.Core.Launcher.Activation`；`ILauncherBootstrapStateStore` 保留原有簽章，沒有 writer acquisition 成員。
+
+```csharp
+FileSystemVersionManagerWriteLease.TryAcquireAsync(
+    string statePath, TimeSpan waitTimeout, CancellationToken cancellationToken)
+    // ValueTask<VersionManagerWriteLeaseResult>
+VersionManagerStateFile(string path, int maximumBytes)
+LauncherBootstrapStateFile(string versionManagerStatePath, string pathSuffix, int maximumBytes)
+LauncherBootstrapStateFile.DerivePath(string versionManagerStatePath, string pathSuffix)
+    // string
+```
+
+兩個 raw file collaborator 都提供 `StatePathIdentity` 及 `ReadAsync(token) -> ValueTask<byte[]?>`。`VersionManagerStateFile` 另提供 `TryAcquireWriteLeaseAsync(waitTimeout, token)` 與 `WriteAsync(bytes, token) -> ValueTask`。`LauncherBootstrapStateFile` 提供 `TryWriteAsync(bytes, token) -> ValueTask<LauncherBootstrapStateSaveResult>`。NFC 明確提供凍結的 app-state 上限 **1,048,576 bytes**、launcher-state 上限 **65,536 bytes** 及 suffix `.launcher-bootstrap.v1.json`。Core 要求明確正值上限及非空白固定 suffix，不提供產品路徑或上限預設值。固定 suffix 會附加在完整正規化 app-state 路徑後，不同 canonical app-state path 保持 injective mapping。
+
+`IVersionManagerStateStore` 繼承原有 reader 介面，保留 `TryAcquireWriteLeaseAsync(TimeSpan waitTimeout, CancellationToken cancellationToken)`、`SaveAsync(VersionManagerState state, CancellationToken cancellationToken)` 與預設 `TrySaveAsync`。預設 save mapping 傳遞取消，將 `IOException`、`UnauthorizedAccessException`、`InvalidOperationException` 對應至 `VersionManagerStateSaveIssue.Unavailable`，其他錯誤仍向外傳遞。
+
+`VersionManagerWriteLeaseIssue` 保留 `None`、`Busy`、`Unavailable`。`VersionManagerWriteLeaseResult(issue, IDisposable? lease = null)` 保留成功結果必須擁有一個 disposable 的 invariant 與訊息 `A successful writer lease must own exactly one handle.` `Issue` 與 `IsAcquired` 描述取得結果；**authority 必須透過 `HoldsStatePath(statePath)` 檢查**。該方法驗證非空白參數，要求結果未 Dispose、custody 是 internal production 實作、handle 開啟且有效，並以 ordinal 比較正規化精確路徑。任意 disposable、其他路徑、已 Dispose 或 closed custody 都不授予 authority。`Dispose()` 只釋放一次；歷史 `IsAcquired` 在 Dispose 後仍為 true，與來源一致。
+
+Acquisition 先驗證非空白路徑，再拒絕負等待值；零仍立即嘗試。Identity 是去除尾端 separator 的完整路徑，Windows 再以 invariant 大寫正規化。Sibling key 為 `.{original-state-filename}.{first-24-lowercase-SHA256-characters}.writer.lock`，對 UTF-8 identity bytes 計算雜湊。Lock 使用 `OpenOrCreate`、`ReadWrite`、`FileShare.None`、buffer size 1 與 `WriteThrough`。Retry 保留 50 ms，每次 delay 不超過剩餘等待值。只有 native sharing code 32、33 在 elapsed 達到上限時回傳 `Busy`。原有路徑／目錄、存取及其他 I/O 錯誤保持 `Unavailable`，取消向外傳遞。最後一次 retry 先嘗試開啟，失敗時才判斷 deadline。Dispose 後可以留下 lock file；檔案存在本身不授予 authority。
+
+Raw read 保留來源的存在及檔案層級 reparse 檢查，再以 `Open`、`Read`、`FileShare.Read`、64 KiB buffer、`Asynchronous | SequentialScan` 開啟。長度小於 1 或超過明確上限時，在 capture 前拒絕。缺少、linked、空、過大或長度改變的檔案回傳 null；提前 EOF 保持 `EndOfStreamException`。完整 held stream 讀取只使用 Files 的 `BoundedFileReader.ReadAndHashAsync` capture 模式，包含單一 trailing-byte probe 及最後長度／位置檢查。讀取已 admitted 內容時會傳遞取消。NFC 的嚴格 adapter 在 raw read 前區分 Missing，並將 null 對應為 Invalid；raw bytes 本身沒有 canonical-state authority。這些 raw 檢查不提供獨立的 Files Windows stable-path custody。
+
+App write 超過上限時使用原有訊息 `Version-manager state exceeds its bounded size.` Launcher write 對 overflow 與原有 I/O／access／invalid-operation 類別回傳 `Unavailable`；取消向外傳遞。兩者皆使用 `IO.AtomicOutput.WriteBytesAsync(path, bytes, token)`，Launcher 沒有另一套 temp write、flush、move 或 cleanup engine。呼叫端從嚴格 decode、journal decision、encode、publication 到交易剩餘步驟，都持有同一 app-state writer；launcher collaborator 不取得第二個 writer。AtomicOutput 擁有 publication mechanics，啟用與復原 journal semantics 仍由 Launcher 擁有。
+
+NFC 保留嚴格 app-state／launcher-state codec、schema predicate、JSON depth 上限 **32** 與 **16**、root binding、預設 LOCALAPPDATA 路徑及產品檔名。Adapter 在 raw publication 前保留精確 parent-path 訊息 `Version-manager state has no parent directory.` 與 `Launcher state has no parent directory.`，並先完成 state validation 與 encoding，保留產品 load/result mapping。沒有使用 permissive `LocalJsonDocument` 或預設接受的 authority adapter。
+
+### Persistence 測試對照
+
+凍結測試位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`，Core 測試位於 `tests/Nvt.Core.Tests/Launcher/Persistence/`。
+
+| 凍結來源案例 | Core 案例與保留邊界 |
+| --- | --- |
+| `JsonVersionManagerStateStoreTests.SaveAndLoadRoundTrip` | `StateFileTests.SaveAndLoadRoundTrip`：精確合成文件 bytes、adapter 解碼值、沒有 temp residue 與存活 caller custody；canonical JSON 斷言留在 NFC。 |
+| `JsonVersionManagerStateStoreTests.CancelledSavePreservesPriorStateAndCleansTemporaryFile` | `StateFileTests` 同名方法涵蓋 app 與 launcher raw access，保留 prior complete bytes、合成值及 temp cleanup。 |
+| `JsonLauncherBootstrapStateStoreTests.StatePathMappingIsInjective` | `StateFileTests` 同名方法使用明確合成 suffix，保留 full-path append，並涵蓋相鄰 canonical paths。 |
+| `FileSystemVersionManagerWriteLeaseTests.RecoveryCapabilityIsLiveExactAndNotForgeable` | 同名 class/method，涵蓋等價路徑、其他路徑、任意 disposable 及 disposed capability。 |
+| `FileSystemVersionManagerWriteLeaseTests.WindowsAbandonedProcessReleasesWriterForRestartConvergence` | 同名 class/method 使用 `hold-lock`，保留 60 秒啟動預算、10 秒 readiness bound、`LOCK_HELD` 與 ready marker、hard stop、2 秒 reacquisition bound。測試自行寫入 abandoned residue，child 不寫 temp file；residue 不授予 authority，後續完整 publication 也不刪除它。 |
+| `JsonLauncherBootstrapStateStoreTests.NonCanonicalStateIsRejected` | `StateFileTests` 同名方法將精確 raw bytes 交給封閉的合成 codec 拒絕 malformed shape；原有 JSON schema 與 wire 案例留在 NFC。 |
+
+`StateFileTests` 涵蓋兩個產品上限的少一／精確／多一、最小正上限 1 配合長度 0/1/2、零與負參數、空白 path/suffix、empty/missing 順序、file link 與實際 Windows sharing denial。`FileSystemVersionManagerWriteLeaseTests` 涵蓋實際獨立 writer、Windows canonical case folding、精確 hash key、Dispose、closed handle、physical exclusivity、取消及原有 result invariant。每次呼叫的 internal timing operations 以確定性方式檢查零與一 tick 等待、49/50/51 ms 邊界、精確 deadline 成功及 native code 31/32/33/34，不改變 global state。
+
+`StatePublicationTests` 使用 IO 既有 per-call physical stream seam，實際寫入 prefix、使 async／disk flush 失敗，或在實際 disk flush 後、move 前取消，檢查 prior complete bytes、cleanup 與存活 writer custody。另涵蓋實際 native move denial、成功替換後的後續失敗、byte-identical replacement 的 native file identity 改變，以及 publication gate 前後的 writer contention。`StateStorePortTests` 只檢查 default-port exception mapping，不提供 physical write evidence。Native Windows 案例在其他系統明確 skip；無法建立 symbolic link 時也明確 skip。所有合成 fixture 使用唯一的系統 temp folder。
+
+### Persistence 採用規則
+
+NFC 透過 `vendor/nuget/` 中獨立版本且已驗證的 nupkg，使用精確 `[x]` 版本、lock、locked restore 及 package source mapping。`SOURCE.md` 記錄 reviewed source 與 package SHA-256；採用時使用套件，不以 ProjectReference 指向 Core checkout。嚴格 codec 與 state path 保持 narrow adapter；所有 launcher recovery／setup consumer 都共用這個存活 writer capability，檢查精確 app-state path，不建立第二個 lock owner。Caller 使用 Core owner，且原有產品 schema、完整值、trace、輸出 bytes 與 recovery evidence 通過後，NFC 才刪除已移轉的 writer／raw-read／atomic-publication 本體。影響 UI 的採用仍須在相同環境維持 decoded pixels 與既有 legacy font 值；這些 API 不授予 Bootstrap package wiring 或 release authority。
