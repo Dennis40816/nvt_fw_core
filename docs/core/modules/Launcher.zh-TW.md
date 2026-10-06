@@ -326,4 +326,4 @@ Install 保留 prepare-save、repository promotion、完整 inventory、retentio
 
 NFC 保留嚴格 state／manifest／catalog codec、product identity／payload policy、source／registry policy、discovery／session／UI composition、retention advice、consent、firmware、信任與發行權限。Adapter 提供 validated state／selected package、精確 state-store writer、product-bound process／repository 介面及 presentation path。完整 engine behavior 必須將 native process、physical repository implementation 與這些 owner 組合。
 
-採用時使用 `vendor/nuget/` 中獨立版本且已驗證的 nupkg、精確 `[x]` pin、lock、locked restore 與 package source mapping；`SOURCE.md` 記錄 source 與 package SHA-256。只有 adapter 使用 Core，且原有完整值、process／writer trace、durable bytes 與 recovery assertion 不變時，NFC 才刪除已移轉的 supervisor 及 journal／mutation 本體。影響 UI 的採用另須相同環境下 decoded pixels 不變，並保持八個 legacy font 值；此抽取不授予套件發布或 Bootstrap package-wiring 權限。
+NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並以精確 `[x]` 套件版本、locked restore 與限定至下載資料夾的來源對應使用 Core。清單記錄每個套件的 Release 標籤與 SHA-256。只有 adapter 使用 Core，且原有完整值、process／writer trace、durable bytes 與 recovery assertion 不變時，NFC 才刪除已移轉的 supervisor 及 journal／mutation 本體。影響 UI 的採用另須相同環境下 decoded pixels 不變，並保持八個 legacy font 值；此抽取不授予套件發布或 Bootstrap package-wiring 權限。
