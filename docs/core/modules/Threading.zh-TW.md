@@ -31,7 +31,7 @@ public static bool IsUiThreadThatRunsALoop(bool hasThreadAccess, bool dispatcher
 
 ## 驗證
 
-Core 使用 Avalonia 12.0.5 與 xUnit v3。`tests/Nvt.Core.Avalonia.Tests/Threading/` 的測試沿用既有 headless `ThemeTestApplication`，沒有新增應用程式 attribute 或 host。每個測試結束時保留目前 UI dispatcher 的登錄。Fallback 測試也會在 `finally` 還原 Avalonia 的全域欄位。
+Core 使用 Avalonia 12.1.1 與 xUnit v3。`tests/Nvt.Core.Avalonia.Tests/Threading/` 的測試沿用既有 headless `ThemeTestApplication`，沒有新增應用程式 attribute 或 host。每個測試結束時保留目前 UI dispatcher 的登錄。Fallback 測試也會在 `finally` 還原 Avalonia 的全域欄位。
 
 移植的測試暫時清空 `Dispatcher.s_uiThread`，確認仍可取得已登錄的 dispatcher，且不會重新填入該欄位。行為特徵測試涵蓋布林真值表的四種組合、null 登錄與參數名稱、headless UI 執行緒上的 dispatcher 參考一致性、UI 執行緒存取成功，以及背景執行緒失敗時保留 dispatcher out 值、不回傳應用程式。
 
@@ -48,7 +48,7 @@ NFH 採用時，先以上述父版本 SHA 凍結結果。切換至 Core 前後�
 ## 已知差異（Known differences）
 
 - Core 的 helper 為 public；NFH 的類別及成員為 internal。
-- Avalonia 12.0.5 仍有 `Dispatcher.s_uiThread`，因此保留原本以反射驗證 fallback 的情境。不檢查其他 dispatcher 私有成員，執行階段也不需要調整 Avalonia API。
+- Avalonia 12.1.1 仍有 `Dispatcher.s_uiThread`，因此保留原本以反射驗證 fallback 的情境。不檢查其他 dispatcher 私有成員，執行階段也不需要調整 Avalonia API。
 - 測試改用 xUnit v3 與 Core 既有的 headless 應用程式，取代 xUnit 2、NFH bootstrap 及其 `HeadlessUiSerial` collection。測試方法名稱不含底線，以符合 Core analyzer。
 
 ## 留在 NFH 的內容

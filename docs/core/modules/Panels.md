@@ -126,7 +126,7 @@ NFH adoption is outside this extraction. Its adoption PR verifies zero differenc
 | `NotchExportMainLeftColumnWidth` | `LeftColumnWidth`, default `2.2*` |
 | `NotchExportMainRightColumnWidth` | `RightColumnWidth`, default `*` |
 
-NFH uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.0.5 and xUnit v3. No control-code API adaptation was required. Core's headless key calls pass the physical key and key symbol required by Avalonia 12. Column layout assertions compare presenter bounds because `ColumnDefinition.ActualWidth` includes spacing in this version. The expansion logic is otherwise unchanged, and no behavior discrepancy with the task summary was found.
+NFH uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.1.1 and xUnit v3. No control-code API adaptation was required. Core's headless key calls pass the physical key and key symbol required by Avalonia 12. Column layout assertions compare presenter bounds because `ColumnDefinition.ActualWidth` includes spacing in this version. The expansion logic is otherwise unchanged, and no behavior discrepancy with the task summary was found.
 
 ## What stays in NFH
 

@@ -25,14 +25,16 @@ The Core tests retain the UI-thread assertion. NFC keeps its product resource ch
 | Renderer | `.UseSkia()` | `.UseSkia()` |
 | Platform | `.UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })` | `.UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })` |
 
-The Core lock file is [`tests/Nvt.Core.Avalonia.Tests/packages.lock.json`](../../../tests/Nvt.Core.Avalonia.Tests/packages.lock.json). Both lock files resolve the following versions. All four package content hashes also match.
+The Core lock file is [`tests/Nvt.Core.Avalonia.Tests/packages.lock.json`](../../../tests/Nvt.Core.Avalonia.Tests/packages.lock.json). The two lock files resolve the following versions.
 
 | Package | NFC frozen lock | Core lock |
 | --- | --- | --- |
-| Avalonia.Skia | 12.0.5 | 12.0.5 |
+| Avalonia.Skia | 12.0.5 | 12.1.1 |
 | SkiaSharp | 3.119.4 | 3.119.4 |
 | HarfBuzzSharp | 8.3.1.3 | 8.3.1.3 |
-| Avalonia.Fonts.Inter | 12.0.5 | 12.0.5 |
+| Avalonia.Fonts.Inter | 12.0.5 | 12.1.1 |
+
+Core moved from Avalonia 12.0.5 to 12.1.1 on 2026-10-06 by owner decision. SkiaSharp and HarfBuzzSharp did not change. The frozen text measurements and the frame hash below still match exactly on 12.1.1.
 
 ## Zero-difference evidence
 
