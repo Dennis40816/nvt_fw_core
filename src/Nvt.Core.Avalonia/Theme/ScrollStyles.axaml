@@ -1,0 +1,80 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Shared scrollbars: page, popup, templated and standalone; both orientations. -->
+  <Style Selector="ScrollViewer">
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector=":is(TemplatedControl)">
+    <Setter Property="ScrollViewer.AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector="ScrollBar:vertical">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="MinWidth" Value="14" />
+    <Setter Property="MaxWidth" Value="14" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar:vertical /template/ Thumb">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="MinWidth" Value="6" />
+    <Setter Property="MaxWidth" Value="6" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource NfcTextDisabledBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcPillCornerRadius}" />
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <Style Selector="ScrollBar:vertical /template/ Rectangle#TrackRect">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="ScrollBar:vertical /template/ RepeatButton">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="ScrollBar:vertical:pointerover /template/ Thumb">
+    <Setter Property="Width" Value="6" />
+    <Setter Property="MinWidth" Value="6" />
+    <Setter Property="MaxWidth" Value="6" />
+    <Setter Property="Background" Value="{DynamicResource NfcTextMutedBrush}" />
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <Style Selector="ScrollBar:vertical /template/ Thumb:pointerover /template/ Border">
+    <Setter Property="Background" Value="{DynamicResource NfcTextMutedBrush}" />
+  </Style>
+  <Style Selector="ScrollBar">
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal">
+    <Setter Property="Height" Value="14" />
+    <Setter Property="MinHeight" Value="14" />
+    <Setter Property="MaxHeight" Value="14" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal /template/ Thumb">
+    <Setter Property="Height" Value="6" />
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="MaxHeight" Value="6" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource NfcTextDisabledBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcPillCornerRadius}" />
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal /template/ Rectangle#TrackRect, ScrollBar:horizontal /template/ RepeatButton">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal:pointerover /template/ Thumb">
+    <Setter Property="Height" Value="6" />
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="MaxHeight" Value="6" />
+    <Setter Property="Background" Value="{DynamicResource NfcTextMutedBrush}" />
+    <Setter Property="RenderTransform" Value="none" />
+  </Style>
+  <Style Selector="ScrollBar:horizontal /template/ Thumb:pointerover /template/ Border">
+    <Setter Property="Background" Value="{DynamicResource NfcTextMutedBrush}" />
+  </Style>
+  <Style Selector="ScrollViewer.viewportBoundScroll">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Padding" Value="0"/>
+  </Style>
+
+  <Style Selector="Border.viewportBoundContent">
+    <Setter Property="Width" Value="{Binding $parent[ScrollViewer].Viewport.Width}"/>
+  </Style>
+</Styles>

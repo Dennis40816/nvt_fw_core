@@ -17,6 +17,7 @@ public sealed class ThemeContractTests
     [AvaloniaTheory]
     [InlineData("ThemeTokens")]
     [InlineData("ButtonStyles")]
+    [InlineData("ScrollStyles")]
     public void ExtractedXamlMatchesFrozenBaseline(string name)
     {
         Assert.Equal(ReadBaseline(name).Root!.ToString(), ReadExtracted(name).Root!.ToString());
