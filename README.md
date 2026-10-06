@@ -35,6 +35,7 @@ The owner (Dennis)'s tentative goal, in his own words:
 ## Documents
 
 - [src/](src/): Nvt.Core libraries (`Nvt.Core` and `Nvt.Core.Avalonia`)
+- [tools/](tools/): dispatch queue tools and nvt-sched
 - [docs/vision.md](docs/vision.md): goals, version cadence, stages
 - [docs/components.md](docs/components.md): component comparison table (each of the three projects' implementations and maturity)
 - [docs/decisions.md](docs/decisions.md): record of the owner's decisions
@@ -67,8 +68,11 @@ Task 0 has no behavior tests or tool adoption, so runtime zero-difference verifi
 Each module document records its frozen source baseline and how a tool verifies zero difference.
 
 - `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
+- `Nvt.Core.Lifecycle`: [Lifecycle](docs/core/modules/Lifecycle.md)
 - `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
+- `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)
 - `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
+- `Nvt.Core.Persistence`: [Persistence](docs/core/modules/Persistence.md)
 
 ## Who maintains this
 
