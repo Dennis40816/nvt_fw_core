@@ -5,6 +5,7 @@
 Theme preserves the generic NVT FW Combiner (NFC) theme and its eight legacy font values.
 The module provides `Theme/ThemeTokens.axaml` and `Theme/ButtonStyles.axaml`.
 Merge the resource dictionary into application resources.
+It also provides `UiResourceResolver` for controls that read theme resources in code. See [Resource resolver](#resource-resolver).
 Include the styles at the host's existing button-style scope:
 
 ```xml
@@ -117,3 +118,53 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 Adopters: none.
 NFC integration, product-suite verification, and desktop capture comparison remain pending outside this extraction.
 This extraction changes no packages or shared configuration.
+
+## Resource resolver
+
+`UiResourceResolver` reads one theme resource for a control that draws in code. Each method takes the owner control, the key and a fallback value.
+
+| Method | Accepted resource types |
+|---|---|
+| `GetBrush` | any `IBrush`, or a `Color` passed to the caller's brush factory |
+| `GetColor`, `TryGetColor` | `Color`, or the color of a `SolidColorBrush` |
+| `GetDouble` | `double`, `float` or `int` |
+| `GetCornerRadius` | `CornerRadius` |
+| `GetThickness` | `Thickness` |
+
+A lookup has three steps:
+
+1. It searches the owner and its styling parents with the owner's actual theme variant. A control outside any tree has a null variant, so the lookup uses `ThemeVariant.Default`.
+2. If that fails and `UiThread.IsCurrent` succeeds, it searches the current application with the same variant.
+3. Otherwise it returns the fallback.
+
+A wrong resource type also returns the fallback. With the Default variant, keys that exist only in Light and Dark dictionaries are not found.
+Call the resolver on the UI thread. It does not cache values or watch theme changes. A control that caches resolved values must refresh them when its theme variant changes.
+Register the UI dispatcher with `UiThread.RegisterRunningDispatcher` at startup. Without the registration, step 2 is skipped.
+
+### Frozen source and checks
+
+Frozen parent: NFH (`Dennis40816/nvt-freeform-helper`), ref `origin/1.3.x`, full commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
+Extracted source path: `src/FreeformHelper.UI/Services/UiResourceResolver.cs`.
+The Core version keeps the NFH signatures and behavior. It changes only the namespace, the visibility (public) and the documentation.
+
+`tests/Nvt.Core.Avalonia.Tests/Theme/FrozenNfhUiResourceResolver.cs` keeps a frozen copy of the NFH file. Only its namespace, class name and `UiThread` import differ. Core's `UiThread` is the unchanged port of NFH's.
+`UiResourceResolverTests` runs each of its 7 cases against both versions, and both must give the same results:
+
+- Light and Dark for a control in a window, for a window key and an application key.
+- Brush resources, brushes built from colors, and the factory call count.
+- Colors from `Color` and `SolidColorBrush` only. An `ImmutableSolidColorBrush` returns the fallback.
+- Number conversion and fallback for other types.
+- Corner radius and thickness types.
+- A control outside any tree: a null variant, application top-level keys found, Light and Dark keys not found.
+- No registered dispatcher: the application step is skipped.
+
+The test class runs in a collection without parallel tests, because one case clears the shared dispatcher registration.
+
+For zero-difference adoption in NFH:
+
+- Before NFH deletes its copy, the Core tests pass against both versions.
+- The full NFH test list and outcomes match the frozen parent.
+- NFH's `ui-visual-minimal-baseline.json` hashes and notch golden outputs stay unchanged.
+- NFH registers its UI dispatcher with Core's `UiThread`. If NFH keeps only its own registration, step 2 is skipped without an error.
+
+Adopters: none. NFH adoption is pending.
