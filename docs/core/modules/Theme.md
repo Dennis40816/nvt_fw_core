@@ -5,6 +5,7 @@
 Theme preserves the generic NVT FW Combiner (NFC) theme and its eight legacy font values.
 The module provides `Theme/ThemeTokens.axaml` and `Theme/ButtonStyles.axaml`.
 Merge the resource dictionary into application resources.
+It also provides `Theme/ScrollStyles.axaml`. See [Scroll styles](#scroll-styles).
 It also provides `UiResourceResolver` for controls that read theme resources in code. See [Resource resolver](#resource-resolver).
 Include the styles at the host's existing button-style scope:
 
@@ -118,6 +119,69 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 Adopters: none.
 NFC integration, product-suite verification, and desktop capture comparison remain pending outside this extraction.
 This extraction changes no packages or shared configuration.
+
+## Scroll styles
+
+`Theme/ScrollStyles.axaml` makes NFC's scroll bar look the shared Core look. It adds NFH's two opt-in classes that keep content inside the viewport width.
+The styles change parts of the Fluent `ScrollBar` template, so a tool that includes them must use the Fluent theme.
+NFC loads it in `src/NvtFwCombiner.Presentation.Avalonia/App.axaml` at `085f71c`. NFH loads it in `src/FreeformHelper.UI/App.axaml` at `847cc45`.
+Include the file at the position where the tool's own scroll styles were, so that the style order stays the same:
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
+```
+
+What the styles do:
+
+- Every `ScrollViewer`, and every templated control through the attached `ScrollViewer.AllowAutoHide`, keeps its scroll bars visible.
+- A vertical bar is 14 px wide, and a horizontal bar is 14 px high. The track is transparent.
+- The thumb is 6 px thick, centred in the bar, pill-shaped, and uses `NfcTextDisabledBrush`. It changes to `NfcTextMutedBrush` while the pointer is over the bar or the thumb.
+- The track rectangle and the line buttons are fully transparent. The line buttons still take space.
+- `ScrollViewer.viewportBoundScroll` stretches its content and removes its padding. Inside it, `Border.viewportBoundContent` takes the viewport width, so the vertical bar never covers or clips the content. Use both with `HorizontalScrollBarVisibility="Disabled"`.
+
+Which rules need the Fluent template:
+
+- The thumb, track rectangle, line button and thumb-border rules select Fluent template parts (`/template/ Thumb`, `/template/ Rectangle#TrackRect`, `/template/ RepeatButton` and the thumb's `Border`). Under another theme they match nothing.
+- The bar size, bar background and auto-hide rules set properties on the `ScrollBar` and `ScrollViewer` themselves. They apply under any theme.
+- The viewport-bound classes bind to `ScrollViewer.Viewport`. The 14 px lane they leave for the vertical bar comes from the Fluent `ScrollViewer` template.
+
+### Scroll frozen sources and checks
+
+The file is built from two frozen sources. The scroll bar look comes from NFC. Only the two viewport-bound classes come from NFH.
+In the lines taken from each source, every selector, setter, value and the order are unchanged:
+
+- NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`, `src/NvtFwCombiner.Presentation.Avalonia/Styles/MainWindowControlStyles.axaml`, lines 117-185. NFC's `ScrollViewer#SupportMatrixScroll` rule at line 186 is product-specific and stays in NFC.
+- NFH (`nvt-freeform-helper`), ref `origin/1.3.x`, full commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`, `src/FreeformHelper.UI/Styles/Controls.Scroll.axaml`, lines 12-19 (the two viewport-bound classes only).
+
+NFH's own scroll bar rules (lines 8-94 of the same NFH file) are not ported. Core uses NFC's look, and tools adopt Core's colors, as [conventions](../conventions.md) requires.
+
+Checks:
+
+- `ExtractedXamlMatchesFrozenBaseline` compares the file with `Baseline/ScrollStyles.xml`, which was built from the same source lines.
+- `ScrollStylesTests` checks that every resource key exists in both themes, that the viewport-bound classes come last, the bar size and auto-hide setters in both orientations, and auto-hide on scroll viewers and templated controls.
+- Under the Fluent template, `ScrollStylesTests` also checks both orientations in Light and Dark: the 14 px lane, the centred 6 px thumb, the hidden track and line buttons, the hover brush, dragging the thumb, and paging with a click on the hidden track. A `ListBox`'s inner scroll viewer also keeps its bars visible. It checks that viewport-bound content takes the viewport width. It also checks that the width settles in the same layout pass each time the vertical bar appears or disappears, and that it does not oscillate.
+- The test project references `Avalonia.Themes.Fluent` 12.1.1 for these checks. Only the scroll tests load `FluentTheme`, in their own windows. The packages gain no dependency.
+- The same seven runtime cases for NFC's rules passed against a temporary copy of the full frozen NFC file. The copy left out three styles that select an NFC view type, because Core cannot compile them. The copy is not retained.
+
+For zero-difference adoption:
+
+- NFC replaces lines 117-185 with the include at the same position. NFC must stay pixel-identical: run its UI smoke tests, and compare desktop captures before and after with the same OS, fonts, DPI and theme.
+- NFH will look and behave differently. The owner must approve the change in NFH's adoption PR, which attaches before and after screenshots. Its non-UI tests must keep the same list and outcomes.
+- NFH keeps `scrollV2`, `scrollDevCandidate`, `workspaceDataList`, `workspaceGroupStripScroll` and `DevScrollPreviewHeight`.
+
+What changes in NFH on adoption:
+
+| Item | NFH now (`847cc45`) | Core |
+|---|---|---|
+| Bar thickness | 2.5 px (`ScrollBarThickness`) | 14 px |
+| Bar background | `BrushScrollTrack` | Transparent |
+| Thumb | Fills the bar, `BrushScrollThumb` at rest, hover and pressed, `RadiusPill` | 6 px, centred, `NfcTextDisabledBrush`, `NfcTextMutedBrush` on hover, `NfcPillCornerRadius` |
+| Thumb minimum length | 36 (`ScrollBarThumbMinLength`) | Not set |
+| Line buttons | `IsVisible=False`, take no space | `Opacity=0`, still take space |
+| Track rectangle | Not changed | Hidden |
+| Pressed rules | Present | None |
+
+Adopters: none yet.
 
 ## Resource resolver
 
