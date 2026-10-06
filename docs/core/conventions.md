@@ -99,6 +99,8 @@ Use only Inter, Cascadia Mono, Noto Sans TC, and Material Symbols Outlined. Noto
 
 Strong roles change only the weight. Embed all fonts at fixed versions. Never package Windows fonts.
 
+The [Fonts module](modules/Fonts.md) has the full role table with weights and resource keys. Numbers uses Regular (400), because Cascadia Mono has no official static Medium (500) file (owner, 2026-10-06).
+
 NFC adopts the font set in two steps:
 
 1. Extract with zero difference first.
