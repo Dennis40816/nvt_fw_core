@@ -3,7 +3,7 @@
 # Theme (`Nvt.Core.Avalonia.Theme`)
 
 Theme preserves the generic NVT FW Combiner (NFC) theme and its eight legacy font values.
-The module provides `Theme/ThemeTokens.axaml` and `Theme/ButtonStyles.axaml`.
+The module provides `Theme/ThemeTokens.axaml`, `Theme/ButtonStyles.axaml` and `Theme/ActionRoleStyles.axaml`.
 Merge the resource dictionary into application resources.
 It also provides `UiResourceResolver` for controls that read theme resources in code. See [Resource resolver](#resource-resolver).
 Include the styles at the host's existing button-style scope:
@@ -168,3 +168,169 @@ For zero-difference adoption in NFH:
 - All NFH callers share one dispatcher registration. Either NFH's `UiThread` calls move to Core's `UiThread`, or NFH registers the dispatcher with both while both exist. About 20 NFH call sites read NFH's own `UiThread`, so registering only with Core's breaks them. Registering only with NFH's skips step 2 without an error.
 
 Adopters: none. NFH adoption is pending.
+
+## Action role styles
+
+`Theme/ActionRoleStyles.axaml` defines the shared button roles for NFC, NFH and NFU. Core owns one definition of their look and behavior, and every tool uses it. A tool does not override these styles locally. When a tool needs a variant, Core adds a role.
+The roles come from NFH's generic role classes, templates, states and layout. Their colors map to Core's existing Light and Dark palettes, so this is a token-mapped port with expected visible differences. A shared Core palette is being proposed separately. When the owner approves it, the mapped keys change in Core, and the tools change nothing.
+An adopting tool merges `ThemeTokens.axaml` into its resources and includes `ActionRoleStyles.axaml` in its styles:
+
+```xml
+<ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ActionRoleStyles.axaml" />
+```
+
+Use these two files without `ButtonStyles.axaml`, which sets a global `Button` theme. Each `Button` or `ToggleButton` combines one layout primitive (`actionTextButton`, `actionIconButton`, `actionChip`) with one color role (`actionNeutral`, `actionPrimary`, `actionDanger`, `actionGhost`), or uses `actionChip chipAction`. `chipAction.active` represents selection. Passive badges use `Border.chipStatus`, optionally with `.warning`, `.danger` or `.success`.
+
+The source order is retained. Buttons and toggles cover rest, `:pointerover`, `:pressed` and `:disabled`; toggles also cover `:checked`, `:checked:pointerover` and `:checked:pressed`. The primitives keep the Border plus unnamed ContentPresenter templates, centered content and clipping. Text/chip content keeps no wrapping, one line and character ellipsis. Status chips are passive: their modifiers change border/text colors, with no hover, pressed or checked rules.
+
+### Action frozen source
+
+Source repository: `Dennis40816/nvt-freeform-helper`, ref `origin/1.3.x`, full commit `6fe3c269ac86d7153f57466b56f959f36e86b9c4`. The full SHA pins the source independently of later ref changes. Read source paths:
+
+- `src/FreeformHelper.UI/Styles/Controls.Action.axaml`
+- `src/FreeformHelper.UI/Styles/Controls.Tab.axaml` (no additional rules for the retained role classes)
+- `src/FreeformHelper.UI/Styles/Tokens.axaml`
+- `docs/guides/ui-action-role-system.md`
+- `tests/FreeformHelper.Tests/UI/Snapshots/UiLayoutGuardTests.cs` (generic template/layout/state and 4.5:1 contrast checks)
+
+| Role / block | Source lines in `Controls.Action.axaml` at `6fe3c269` |
+|---|---|
+| `actionTextButton` layout | 5–13 (remove `actionButton` branches) |
+| `actionIconButton` layout and templates | 15–65 (retain only the four color-role branches) |
+| `actionChip` layout | 67–77 |
+| Text/chip templates and text rules | 79–125 (remove `actionButton` branches) |
+| `actionNeutral`, including text overrides | 144–210 |
+| `actionPrimary`, including text overrides | 212–260 |
+| `actionDanger`, including text overrides | 262–309 |
+| `actionGhost`, including text overrides | 312–359 |
+| Icon color-role overrides | 394–459 |
+| `chipAction` and `.active` | 615–650 |
+| `ToggleButton.chipAction` checked states | 697–701 |
+| `Border.chipStatus` and modifiers/text rules | 704–744 |
+
+The source's focus color setters inside these ranges are removed and replaced with the keyboard ring below. Product branches and `controls|FontIcon` rules are excluded.
+
+### Action color mapping
+
+The table lists every color token referenced by the retained rules, the two removed focus-only tokens, and the source's generic disabled contrast-check token. Several source tokens share a Core key. A source token may use different Core keys for rest, hover, pressed and disabled, following Core's existing state pairs.
+
+| NFH brush / color token | Core key or literal |
+|---|---|
+| `BrushActionChipBackground` / `ColorActionChipBackground` | `NfcSurfaceSubtleBrush` |
+| `BrushActionChipBorder` / `ColorActionChipBorder` | `NfcBorderBrush` |
+| `BrushActionChipForeground` / `ColorActionChipForeground` | `NfcTextBrush` (rest); `NfcAccentStrongBrush` (hover/pressed); `NfcTextDisabledBrush` (disabled) |
+| `BrushActionChipHover` / `ColorActionChipHover` | `NfcAccentSurfaceBrush` |
+| `BrushActionChipPressed` / `ColorActionChipPressed` | `NfcSecondaryActionPressedBrush` |
+| `BrushActionConsoleBackground` / `ColorActionConsoleBackground` | `Transparent` literal |
+| `BrushActionConsoleCheckedBackground` / `ColorActionConsoleCheckedBackground` | `NfcSelectionSurfaceBrush` |
+| `BrushActionConsoleForeground` / `ColorActionConsoleForeground` | `NfcTextBrush` |
+| `BrushActionDangerBackground` / `ColorActionDangerBackground` | `NfcDangerSurfaceBrush` |
+| `BrushActionDangerBorder` / `ColorActionDangerBorder` | `NfcDangerBorderBrush` |
+| `BrushActionDangerForeground` / `ColorActionDangerForeground` | `NfcDangerTextBrush` |
+| `BrushActionDangerHover` / `ColorActionDangerHover` | `NfcDangerSurfaceMutedBrush` |
+| `BrushActionDangerPressed` / `ColorActionDangerPressed` | `NfcCriticalSurfaceBrush` |
+| `BrushActionFocusBackground` / `ColorActionFocusBackground` | Removed focus color setter; no retained reference |
+| `BrushActionFocusBorder` / `ColorActionFocusBorder` | Removed focus color setter; no retained reference |
+| `BrushActionFocusForeground` / `ColorActionFocusForeground` | `NfcAccentStrongBrush` |
+| `BrushActionGhostBackground` / `ColorActionGhostBackground` | `Transparent` literal |
+| `BrushActionGhostBorder` / `ColorActionGhostBorder` | `Transparent` literal |
+| `BrushActionGhostForeground` / `ColorActionGhostForeground` | `NfcTextSecondaryBrush` |
+| `BrushActionGhostHover` / `ColorActionGhostHover` | `NfcAccentSurfaceBrush` |
+| `BrushActionGhostPressed` / `ColorActionGhostPressed` | `NfcSecondaryActionPressedBrush` |
+| `BrushActionInverseBackground` / `ColorActionInverseBackground` | `NfcAccentSurfaceBrush` |
+| `BrushActionInverseForeground` / `ColorActionInverseForeground` | `NfcAccentStrongBrush` |
+| `BrushActionInversePressedBackground` / `ColorActionInversePressedBackground` | `NfcSecondaryActionPressedBrush` |
+| `BrushActionNeutralBackground` / `ColorActionNeutralBackground` | `NfcSurfaceBrush` |
+| `BrushActionNeutralBorder` / `ColorActionNeutralBorder` | `NfcBorderBrush` |
+| `BrushActionNeutralForeground` / `ColorActionNeutralForeground` | `NfcTextBrush` (rest); `NfcAccentStrongBrush` (hover/pressed) |
+| `BrushActionNeutralHover` / `ColorActionNeutralHover` | `NfcAccentSurfaceBrush` |
+| `BrushActionNeutralPressed` / `ColorActionNeutralPressed` | `NfcSecondaryActionPressedBrush` |
+| `BrushActionPrimaryBackground` / `ColorActionPrimaryBackground` | `NfcAccentSurfaceBrush` |
+| `BrushActionPrimaryBorder` / `ColorActionPrimaryBorder` | `NfcAccentBorderLightBrush` |
+| `BrushActionPrimaryForeground` / `ColorActionPrimaryForeground` | `NfcAccentStrongBrush` |
+| `BrushActionPrimaryHover` / `ColorActionPrimaryHover` | `NfcAccentSurfaceSubtleBrush` |
+| `BrushActionPrimaryPressed` / `ColorActionPrimaryPressed` | `NfcAccentSurfaceBrush` |
+| `BrushActionSelectedBackground` / `ColorActionSelectedBackground` | `NfcSelectionSurfaceBrush` |
+| `BrushActionSelectedBorder` / `ColorActionSelectedBorder` | `NfcAccentBorderBrush` |
+| `BrushActionSelectedForeground` / `ColorActionSelectedForeground` | `NfcTextStrongBrush` |
+| `BrushActionTextHoverBackground` / `ColorActionTextHoverBackground` | `NfcAccentSurfaceBrush` |
+| `BrushActionTextHoverBorder` / `ColorActionTextHoverBorder` | `NfcAccentBorderBrush` (hover); `NfcAccentBorderStrongBrush` (pressed) |
+| `BrushActionTextHoverForeground` / `ColorActionTextHoverForeground` | `NfcAccentStrongBrush` |
+| `BrushActionTextPressedBackground` / `ColorActionTextPressedBackground` | `NfcSecondaryActionPressedBrush` |
+| `BrushBorderStrong` / `ColorBorderStrong` | `NfcAccentBorderBrush` (hover); `NfcAccentBorderStrongBrush` (pressed) |
+| `BrushButtonDisabledForeground` / `ColorButtonDisabledForeground` | `NfcTextDisabledBrush` (generic NFH contrast check only) |
+| `BrushButtonNeutralBackground` / `ColorButtonNeutralBackground` | `NfcSurfaceBrush` |
+| `BrushButtonNeutralBorder` / `ColorButtonNeutralBorder` | `NfcBorderBrush` (rest); `NfcAccentBorderBrush` (hover); `NfcAccentBorderStrongBrush` (pressed) |
+| `BrushButtonNeutralForeground` / `ColorButtonNeutralForeground` | `NfcTextBrush` (rest); `NfcAccentStrongBrush` (hover/pressed); `NfcTextDisabledBrush` (danger disabled setter) |
+| `BrushButtonNeutralHover` / `ColorButtonNeutralHover` | `NfcAccentSurfaceBrush` |
+| `BrushButtonNeutralPressed` / `ColorButtonNeutralPressed` | `NfcSecondaryActionPressedBrush` |
+| `BrushDanger` / `ColorDanger` | `NfcDangerTextBrush` |
+| `BrushStatusChipBackground` / `ColorStatusChipBackground` | `NfcSurfaceSubtleBrush` |
+| `BrushStatusChipBorder` / `ColorStatusChipBorder` | `NfcBorderBrush` |
+| `BrushStatusChipForeground` / `ColorStatusChipForeground` | `NfcTextBrush` |
+| `BrushSuccess` / `ColorSuccess` | `NfcSuccessTextBrush` |
+| `BrushTextMuted` / `ColorTextMuted` | `NfcTextDisabledBrush` |
+| `BrushTransparent` | `Transparent` literal |
+| `BrushWarning` / `ColorWarning` | `NfcWarningTextBrush` |
+
+No retained NFH color key is unmapped. `BrushActionFocusBackground` and `BrushActionFocusBorder` are intentionally removed with the focus color setters. `BrushActionFocusForeground` remains in ghost hover/pressed rules. The four transparent source keys use the `Transparent` literal; no new color or size token is added apart from the specified focus resources.
+
+### Action focus ring
+
+Each layout primitive and color role sets `FocusAdorner` to null, disabling the default focus rectangle. Only `:focus-visible` supplies a ring through `FocusAdorner`. Pointer focus has no ring. Keyboard focus preserves background, border and foreground, including checked or active colors.
+
+`Styles.Resources` in `ActionRoleStyles.axaml` owns these tokens:
+
+| Token | Light | Dark |
+|---|---|---|
+| `Nvt.Focus.RingBrush` | `#4DA3FF` | `#4DA3FF` |
+| `Nvt.Focus.DangerRingBrush` | `#FF6B6B` | `#FF6B6B` |
+| `Nvt.Focus.RingThickness` | `2` (shared Thickness) | `2` (shared Thickness) |
+
+Only `actionTextButton.actionDanger` and `actionIconButton.actionDanger` use the red ring, for both control types. All other combinations use blue, including `actionChip actionDanger`. The Border has `IsHitTestVisible="False"`, `AdornerLayer.IsClipEnabled="False"` and literal `Margin="-4"`: a 2 px border with a 2 px gap outside the button. Text buttons use Core's compact radius 6 and ring radius 8; icon buttons and chips keep the pill radius through `NfcPillCornerRadius`.
+
+Using sRGB relative luminance, against Core's window background (`NfcAppBackgroundBrush`):
+
+| Theme / background | Blue ring contrast | Red ring contrast |
+|---|---:|---:|
+| Light / `#F4F6FA` | 2.4266:1 | 2.5649:1 |
+| Dark / `#0B1220` | 7.1312:1 | 6.7469:1 |
+
+The Light contrast remains an owner question. It is part of the shared palette proposal. The selected colors are retained until then.
+
+### Action known differences and checks
+
+Literal source sizes are retained: `FormControlHeight` and `IconButtonSize` = 30; `Inset10_6` = `10,6`; `Inset8_4` = `8,4`; `InsetNone` and `BorderNone` = 0; `BorderControl` = 1.5; `OpacitySubtle` = 0.56; `WorkspaceSummaryChipMaxWidth` = 240. `RadiusPill` maps to `NfcPillCornerRadius` (999). The text primitive uses `NfcCompactCornerRadius` (6) rather than depending on a host radius; its ring adds the 2 px gap. Ring radius 8 and margin -4 are focus geometry literals. No retained rule sets a font family or size, so the port adds no Fonts project reference; source font weights remain unchanged.
+
+The source cascade is preserved even where it differs from the general role guide:
+
+- The later text-neutral rest rule overrides the earlier disabled foreground setter, so `actionTextButton actionNeutral` keeps `NfcTextBrush` when disabled.
+- `.active` chip colors override earlier hover/pressed/disabled colors; disabled opacity is still 0.56.
+- Checked text primary/danger/ghost buttons use the later text hover/pressed rules during interaction. Text-neutral checked buttons keep selected colors. Checked icon hover and pressed both use the mapped inverse hover pair.
+
+`Baseline/ActionRoleStyles.xml` freezes the mapped projection and ring. `ExtractedXamlMatchesFrozenBaseline` compares the complete XML tree; the existing ThemeTokens and ButtonStyles baselines are unchanged. `ThemeContractTests` resolves references against Light and Dark, including the style-local focus dictionaries.
+
+`ActionRoleStylesTests` loads only ThemeTokens and ActionRoleStyles. Headless checks cover both palettes and control types, state colors on controls/templates/text, active and checked cascades, dimensions/radii/clipping, passive status modifiers, real Tab traversal versus pointer focus, the live ring's brush/geometry/hit testing, the disabled default focus rectangle, and unchanged colors on focus. Every opened window closes in `finally`; there are no sleeps or network calls.
+
+The generic NFH interactive text-pair check meets 4.5:1 in Light and Dark. The separate source disabled-neutral token-pair check fails for `NfcSurfaceBrush` / `NfcTextDisabledBrush`: Light **2.5640:1**, Dark **3.7277:1**. `DisabledNeutralTextContrastIsDocumentedException` pins these two values as a documented exception; colors and the 4.5:1 threshold for interactive text are unchanged.
+
+Run with restored packages:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+Build: zero warnings and errors. Avalonia suite: 350 passed, 0 failed, 0 skipped, 350 total.
+
+### Action adoption in NFC, NFH and NFU
+
+Adoption is outside this port. Each tool adopts the roles in its own PR, includes the two files above, and removes its local button-role styles. A tool must not override the Core keys to recover its old palette. Each adoption PR attaches before/after images of the tool's main surfaces, with one image showing Tab focus, for the owner to approve the changed look.
+
+NFH: Dark neutral text buttons visibly change from NFH's light surface (`#F4F7FC`) to Core's dark surface (`#111827`), and the keyboard focus ring appears. Other role colors follow the table, including icon inverse hover mapped to Core's secondary state pair.
+
+These stay in NFH for now, because they are product-specific: `consoleHeaderAction`, `viewportOverlayAction`, `panelChromeToggle`, `dxfEditMiniAction`, `dangerTextButton`, the CAD-specific `chipAction` modifiers (`direct`, `transfer`, `linked`, `hidden`, `geometry`, `combined`, `duplicate`, `layer`, `incoming`, `outgoing`, `nocad`, `legacy`), tab styles, the unused `actionButton`, and the `controls|FontIcon` rules at source lines 127–141. Core adds no FontIcon control.
+
+NFH's images cover its three rendered surfaces and the Dev page role matrix. NFH's non-UI test list and outcomes remain the same. Adoption, desktop images and owner approval are still pending.

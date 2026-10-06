@@ -17,6 +17,7 @@ public sealed class ThemeContractTests
     [AvaloniaTheory]
     [InlineData("ThemeTokens")]
     [InlineData("ButtonStyles")]
+    [InlineData("ActionRoleStyles")]
     public void ExtractedXamlMatchesFrozenBaseline(string name)
     {
         Assert.Equal(ReadBaseline(name).Root!.ToString(), ReadExtracted(name).Root!.ToString());
@@ -46,13 +47,24 @@ public sealed class ThemeContractTests
         Assert.Equal(2, common.Count(element => element.Name.LocalName == "FontFamily"));
         Assert.Equal(3, common.Count(element => element.Name.LocalName == "CornerRadius"));
 
-        string styles = ReadExtracted("ButtonStyles").ToString();
-        string[] references = [.. Regex.Matches(styles, @"\{DynamicResource (?<key>[^}]+)\}", RegexOptions.CultureInvariant)
-            .Select(match => match.Groups["key"].Value).Distinct(StringComparer.Ordinal)];
-        Assert.NotEmpty(references);
-        foreach (XElement[] resources in themes.Values)
+        foreach (string name in new[] { "ButtonStyles", "ActionRoleStyles" })
         {
-            Assert.Empty(references.Except(Keys(common).Concat(Keys(resources)), StringComparer.Ordinal));
+            XDocument styles = ReadExtracted(name);
+            XElement? local = styles.Root!.Element(Presentation + "Styles.Resources")?
+                .Element(Presentation + "ResourceDictionary");
+            XElement[] localCommon = [.. local?.Elements().Where(element => element.Attribute(Xaml + "Key") != null) ?? []];
+            string[] references = [.. Regex.Matches(styles.ToString(), @"\{(?:DynamicResource|StaticResource) (?<key>[^}]+)\}", RegexOptions.CultureInvariant)
+                .Select(match => match.Groups["key"].Value).Distinct(StringComparer.Ordinal)];
+            Assert.NotEmpty(references);
+            foreach ((string variant, XElement[] resources) in themes)
+            {
+                XElement[] localTheme = [.. local?.Element(Presentation + "ResourceDictionary.ThemeDictionaries")?
+                    .Elements().Single(element => element.Attribute(Xaml + "Key")!.Value == variant).Elements() ?? []];
+                string[] styleKeys = [.. styles.Descendants().Where(element => element.Attribute(Xaml + "Key") != null &&
+                    element.Name.LocalName == "ControlTheme").Select(element => element.Attribute(Xaml + "Key")!.Value)];
+                Assert.Empty(references.Except(Keys(common).Concat(Keys(resources)).Concat(Keys(localCommon))
+                    .Concat(Keys(localTheme)).Concat(styleKeys), StringComparer.Ordinal));
+            }
         }
     }
 

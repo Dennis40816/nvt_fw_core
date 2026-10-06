@@ -1,0 +1,523 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="Nvt.Focus.RingBrush" Color="#4DA3FF"/>
+          <SolidColorBrush x:Key="Nvt.Focus.DangerRingBrush" Color="#FF6B6B"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="Nvt.Focus.RingBrush" Color="#4DA3FF"/>
+          <SolidColorBrush x:Key="Nvt.Focus.DangerRingBrush" Color="#FF6B6B"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <Thickness x:Key="Nvt.Focus.RingThickness">2</Thickness>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <Style Selector="Button.actionTextButton, ToggleButton.actionTextButton">
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton, ToggleButton.actionIconButton">
+    <Setter Property="Width" Value="30"/>
+    <Setter Property="MinWidth" Value="30"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcPillCornerRadius}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionNeutral, Button.actionIconButton.actionPrimary, Button.actionIconButton.actionDanger, Button.actionIconButton.actionGhost">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style Selector="ToggleButton.actionIconButton.actionNeutral, ToggleButton.actionIconButton.actionPrimary, ToggleButton.actionIconButton.actionDanger, ToggleButton.actionIconButton.actionGhost">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.actionChip, ToggleButton.actionChip">
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcPillCornerRadius}"/>
+    <Setter Property="BorderThickness" Value="1.5"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton, Button.actionChip">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style Selector="ToggleButton.actionTextButton, ToggleButton.actionChip">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.actionTextButton TextBlock, Button.actionTextButton SelectableTextBlock, ToggleButton.actionTextButton TextBlock, ToggleButton.actionTextButton SelectableTextBlock, Button.actionChip TextBlock, Button.actionChip SelectableTextBlock, ToggleButton.actionChip TextBlock, ToggleButton.actionChip SelectableTextBlock">
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+    <Setter Property="TextWrapping" Value="NoWrap"/>
+    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    <Setter Property="MaxLines" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionTextButton TextBlock, ToggleButton.actionTextButton SelectableTextBlock, ToggleButton.actionChip TextBlock, ToggleButton.actionChip SelectableTextBlock">
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+  </Style>
+
+  <Style Selector="Button.actionNeutral, ToggleButton.actionNeutral">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionNeutral:pointerover, ToggleButton.actionNeutral:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionNeutral:pressed, ToggleButton.actionNeutral:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionNeutral:disabled, ToggleButton.actionNeutral:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionNeutral:checked">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionNeutral:checked:pointerover, ToggleButton.actionNeutral:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionNeutral, ToggleButton.actionTextButton.actionNeutral">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionNeutral:pointerover, ToggleButton.actionTextButton.actionNeutral:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionNeutral:pressed, ToggleButton.actionTextButton.actionNeutral:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionTextButton.actionNeutral:checked, ToggleButton.actionTextButton.actionNeutral:checked:pointerover, ToggleButton.actionTextButton.actionNeutral:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionPrimary, ToggleButton.actionPrimary">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderLightBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionPrimary:pointerover, ToggleButton.actionPrimary:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderLightBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionPrimary:pressed, ToggleButton.actionPrimary:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderLightBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionPrimary:disabled, ToggleButton.actionPrimary:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionPrimary:checked, ToggleButton.actionPrimary:checked:pointerover, ToggleButton.actionPrimary:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderLightBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionPrimary:pointerover, ToggleButton.actionTextButton.actionPrimary:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionPrimary:pressed, ToggleButton.actionTextButton.actionPrimary:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionDanger, ToggleButton.actionDanger">
+    <Setter Property="Background" Value="{DynamicResource NfcDangerSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionDanger:pointerover, ToggleButton.actionDanger:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcDangerSurfaceMutedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionDanger:pressed, ToggleButton.actionDanger:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcCriticalSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionDanger:disabled, ToggleButton.actionDanger:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcDangerSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionDanger:checked, ToggleButton.actionDanger:checked:pointerover, ToggleButton.actionDanger:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcCriticalSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionDanger:pointerover, ToggleButton.actionTextButton.actionDanger:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionDanger:pressed, ToggleButton.actionTextButton.actionDanger:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost, ToggleButton.actionGhost">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost:pointerover, ToggleButton.actionGhost:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost:pressed, ToggleButton.actionGhost:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost:disabled, ToggleButton.actionGhost:disabled">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionGhost:checked, ToggleButton.actionGhost:checked:pointerover, ToggleButton.actionGhost:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionGhost:pointerover, ToggleButton.actionTextButton.actionGhost:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionGhost:pressed, ToggleButton.actionTextButton.actionGhost:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionNeutral, Button.actionIconButton.actionPrimary, Button.actionIconButton.actionDanger, Button.actionIconButton.actionGhost, ToggleButton.actionIconButton.actionNeutral, ToggleButton.actionIconButton.actionPrimary, ToggleButton.actionIconButton.actionDanger, ToggleButton.actionIconButton.actionGhost">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionNeutral:pointerover, Button.actionIconButton.actionPrimary:pointerover, Button.actionIconButton.actionGhost:pointerover, ToggleButton.actionIconButton.actionNeutral:pointerover, ToggleButton.actionIconButton.actionPrimary:pointerover, ToggleButton.actionIconButton.actionGhost:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionDanger:pointerover, ToggleButton.actionIconButton.actionDanger:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionNeutral:pressed, Button.actionIconButton.actionPrimary:pressed, Button.actionIconButton.actionGhost:pressed, ToggleButton.actionIconButton.actionNeutral:pressed, ToggleButton.actionIconButton.actionPrimary:pressed, ToggleButton.actionIconButton.actionGhost:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionDanger:pressed, ToggleButton.actionIconButton.actionDanger:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionNeutral:disabled, Button.actionIconButton.actionPrimary:disabled, Button.actionIconButton.actionDanger:disabled, Button.actionIconButton.actionGhost:disabled, ToggleButton.actionIconButton.actionNeutral:disabled, ToggleButton.actionIconButton.actionPrimary:disabled, ToggleButton.actionIconButton.actionDanger:disabled, ToggleButton.actionIconButton.actionGhost:disabled">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="1"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionIconButton.actionNeutral:checked, ToggleButton.actionIconButton.actionPrimary:checked, ToggleButton.actionIconButton.actionDanger:checked, ToggleButton.actionIconButton.actionGhost:checked">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionIconButton.actionNeutral:checked:pointerover, ToggleButton.actionIconButton.actionPrimary:checked:pointerover, ToggleButton.actionIconButton.actionGhost:checked:pointerover, ToggleButton.actionIconButton.actionNeutral:checked:pressed, ToggleButton.actionIconButton.actionPrimary:checked:pressed, ToggleButton.actionIconButton.actionGhost:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="ToggleButton.actionIconButton.actionDanger:checked:pointerover, ToggleButton.actionIconButton.actionDanger:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.chipAction, ToggleButton.chipAction">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+
+  <Style Selector="Button.chipAction:pointerover, ToggleButton.chipAction:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.chipAction:pressed, ToggleButton.chipAction:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.chipAction:disabled, ToggleButton.chipAction:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Opacity" Value="0.56"/>
+  </Style>
+
+  <Style Selector="Button.chipAction.active, ToggleButton.chipAction.active">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="ToggleButton.chipAction:checked, ToggleButton.chipAction:checked:pointerover, ToggleButton.chipAction:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1.5"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcPillCornerRadius}"/>
+    <Setter Property="Padding" Value="8,4"/>
+    <Setter Property="MaxWidth" Value="240"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.warning">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcWarningTextBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.danger">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.success">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcSuccessTextBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus TextBlock, Border.chipStatus SelectableTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="TextWrapping" Value="NoWrap"/>
+    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    <Setter Property="MaxLines" Value="1"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.warning TextBlock, Border.chipStatus.warning SelectableTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource NfcWarningTextBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.danger TextBlock, Border.chipStatus.danger SelectableTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/>
+  </Style>
+
+  <Style Selector="Border.chipStatus.success TextBlock, Border.chipStatus.success SelectableTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource NfcSuccessTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionTextButton:focus-visible, ToggleButton.actionTextButton:focus-visible, Button.actionIconButton:focus-visible, ToggleButton.actionIconButton:focus-visible, Button.actionChip:focus-visible, ToggleButton.actionChip:focus-visible, Button.actionNeutral:focus-visible, ToggleButton.actionNeutral:focus-visible, Button.actionPrimary:focus-visible, ToggleButton.actionPrimary:focus-visible, Button.actionDanger:focus-visible, ToggleButton.actionDanger:focus-visible, Button.actionGhost:focus-visible, ToggleButton.actionGhost:focus-visible, Button.chipAction:focus-visible, ToggleButton.chipAction:focus-visible">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}"
+                BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                Margin="-4"
+                CornerRadius="8"
+                AdornerLayer.IsClipEnabled="False"
+                IsHitTestVisible="False"/>
+      </Template>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.actionIconButton:focus-visible, ToggleButton.actionIconButton:focus-visible, Button.actionChip:focus-visible, ToggleButton.actionChip:focus-visible">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}"
+                BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                Margin="-4"
+                CornerRadius="{DynamicResource NfcPillCornerRadius}"
+                AdornerLayer.IsClipEnabled="False"
+                IsHitTestVisible="False"/>
+      </Template>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.actionTextButton.actionDanger:focus-visible, ToggleButton.actionTextButton.actionDanger:focus-visible">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Border BorderBrush="{DynamicResource Nvt.Focus.DangerRingBrush}"
+                BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                Margin="-4"
+                CornerRadius="8"
+                AdornerLayer.IsClipEnabled="False"
+                IsHitTestVisible="False"/>
+      </Template>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.actionIconButton.actionDanger:focus-visible, ToggleButton.actionIconButton.actionDanger:focus-visible">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Border BorderBrush="{DynamicResource Nvt.Focus.DangerRingBrush}"
+                BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                Margin="-4"
+                CornerRadius="{DynamicResource NfcPillCornerRadius}"
+                AdornerLayer.IsClipEnabled="False"
+                IsHitTestVisible="False"/>
+      </Template>
+    </Setter>
+  </Style>
+</Styles>
