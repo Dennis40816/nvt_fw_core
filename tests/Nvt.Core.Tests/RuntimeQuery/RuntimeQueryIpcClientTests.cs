@@ -67,7 +67,11 @@ public sealed class RuntimeQueryIpcClientTests
         await serverTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
 
-    /// <summary>Connection time is deducted from the later request/response budget.</summary>
+    /// <summary>
+    /// Connection time is deducted from the later request/response budget. The source used a 1500 ms budget and a
+    /// 900 ms connection delay. This port doubles both, so the request write keeps a wide margin under load. Without
+    /// the deduction the call would take about 4500 ms, above the asserted range.
+    /// </summary>
     [Fact]
     public async Task SendRequestUsesOneTotalTimeoutBudget()
     {
@@ -75,11 +79,11 @@ public sealed class RuntimeQueryIpcClientTests
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var connected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var serverTask = Task.Run(async () =>
         {
             await started.Task;
-            await Task.Delay(900, timeout.Token);
+            await Task.Delay(1800, timeout.Token);
             await using var peer = RuntimeQueryTestValues.CreatePeer(pipeName);
             await peer.WaitForConnectionAsync(timeout.Token);
             connected.SetResult();
@@ -91,7 +95,7 @@ public sealed class RuntimeQueryIpcClientTests
             started.SetResult();
             var watch = Stopwatch.StartNew();
             var response = RuntimeQueryIpcClient.SendRequest(pipeName,
-                new RuntimeQueryRequest("1", "probe", null), 1500, RuntimeQueryTestValues.NfhError);
+                new RuntimeQueryRequest("1", "probe", null), 3000, RuntimeQueryTestValues.NfhError);
             return (Response: response, Elapsed: watch.Elapsed);
         });
         try
@@ -99,7 +103,7 @@ public sealed class RuntimeQueryIpcClientTests
             await connected.Task.WaitAsync(timeout.Token);
             var result = await clientTask.WaitAsync(timeout.Token);
             Assert.Equal(RuntimeQueryResponseEnvelope.Failure("IPC_TIMEOUT", "Runtime query did not complete within timeout."), result.Response);
-            Assert.InRange(result.Elapsed.TotalMilliseconds, 1300, 2100);
+            Assert.InRange(result.Elapsed.TotalMilliseconds, 2600, 4000);
         }
         finally
         {
@@ -161,27 +165,44 @@ public sealed class RuntimeQueryIpcClientTests
         Assert.Contains("Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope", error.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>An open connection with an unterminated response cannot complete before the timeout.</summary>
+    /// <summary>
+    /// An open connection with an unterminated response cannot complete before the timeout. The source used a
+    /// 100 ms budget and a 500 ms peer delay, which raced the request write under load. This port uses a 1000 ms
+    /// budget, and the peer keeps the connection open until the client returns.
+    /// </summary>
     [Fact]
     public async Task ResponseWithoutFinalNewlineTimesOutWhileConnectionRemainsOpen()
     {
         var pipeName = RuntimeQueryTestValues.NewPipeName();
         await using var peer = RuntimeQueryTestValues.CreatePeer(pipeName);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var clientReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var serverTask = Task.Run(async () =>
         {
             await peer.WaitForConnectionAsync(timeout.Token);
             _ = await RuntimeQueryTestValues.ReadFrameAsync(peer, timeout.Token);
             await peer.WriteAsync(Encoding.UTF8.GetBytes("{\"ok\":true,\"data\":null,\"error\":null}"), timeout.Token);
-            await Task.Delay(500, timeout.Token);
+            await clientReturned.Task.WaitAsync(timeout.Token);
         }, TestContext.Current.CancellationToken);
-        var response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName,
-            new RuntimeQueryRequest("1", "probe", null), 100, RuntimeQueryTestValues.NfhError));
+        RuntimeQueryResponseEnvelope response;
+        try
+        {
+            response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName,
+                new RuntimeQueryRequest("1", "probe", null), 1000, RuntimeQueryTestValues.NfhError));
+        }
+        finally
+        {
+            clientReturned.TrySetResult();
+        }
+
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("IPC_TIMEOUT", "Runtime query did not complete within timeout."), response);
         await serverTask.WaitAsync(timeout.Token);
     }
 
-    /// <summary>Broken-pipe IO messages are forwarded unchanged to the caller's error mapping.</summary>
+    /// <summary>
+    /// Broken-pipe IO messages are forwarded unchanged to the caller's error mapping. The test ends at the IO error;
+    /// the 5000 ms budget, 1500 ms in the source, only bounds a slow runner.
+    /// </summary>
     [Fact]
     public async Task DisconnectedPeerReturnsCallerIoErrorAndExceptionMessage()
     {
@@ -195,7 +216,7 @@ public sealed class RuntimeQueryIpcClientTests
         }, TestContext.Current.CancellationToken);
         string? exceptionMessage = null;
         var request = new RuntimeQueryRequest("1", "probe", new Dictionary<string, string> { ["payload"] = new string('x', 1024 * 1024) });
-        var response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName, request, 1500, (failure, detail) =>
+        var response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName, request, 5000, (failure, detail) =>
         {
             Assert.Equal(RuntimeQueryFailure.IoError, failure);
             exceptionMessage = detail;
