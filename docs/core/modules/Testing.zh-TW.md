@@ -25,14 +25,16 @@ Core 測試保留 UI 執行緒斷言。產品資源檢查留在 NFC。來源沒�
 | Renderer | `.UseSkia()` | `.UseSkia()` |
 | 平台 | `.UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })` | `.UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })` |
 
-Core lock 檔為 [`tests/Nvt.Core.Avalonia.Tests/packages.lock.json`](../../../tests/Nvt.Core.Avalonia.Tests/packages.lock.json)。兩份 lock 檔的解析版本如下。這四個套件的 content hash 也完全相同。
+Core lock 檔為 [`tests/Nvt.Core.Avalonia.Tests/packages.lock.json`](../../../tests/Nvt.Core.Avalonia.Tests/packages.lock.json)。兩份 lock 檔的解析版本如下。
 
 | 套件 | NFC 凍結 lock | Core lock |
 | --- | --- | --- |
-| Avalonia.Skia | 12.0.5 | 12.0.5 |
+| Avalonia.Skia | 12.0.5 | 12.1.1 |
 | SkiaSharp | 3.119.4 | 3.119.4 |
 | HarfBuzzSharp | 8.3.1.3 | 8.3.1.3 |
-| Avalonia.Fonts.Inter | 12.0.5 | 12.0.5 |
+| Avalonia.Fonts.Inter | 12.0.5 | 12.1.1 |
+
+owner 於 2026-10-06 決定 Core 從 Avalonia 12.0.5 升到 12.1.1。SkiaSharp 與 HarfBuzzSharp 沒有變。下方凍結的文字量測值與畫面雜湊在 12.1.1 上仍完全相同。
 
 ## 零差異證據
 

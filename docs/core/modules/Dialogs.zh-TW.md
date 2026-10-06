@@ -46,7 +46,7 @@
 
 ## 驗證
 
-Core 使用 Avalonia 12.0.5、xUnit v3 及未變更的 `ThemeTestApplication` 無介面測試宿主。`tests/Nvt.Core.Avalonia.Tests/Dialogs/` 覆蓋可選取的傳入文字（一般、空字串、Unicode、多行）、兩種實際 `ShowDialog<bool>` 結果、擁有者、強調與一般取消狀態、無參數載入、獨立的選用／null／空字串提示、凍結的視窗／操作列版面、畫刷隨佈景切換、警告內容，以及實際模態工作的 OK 關閉行為。警告內容案例是限縮範圍的既有 NFH 證據移植；其他案例刻畫凍結對話框的行為。
+Core 使用 Avalonia 12.1.1、xUnit v3 及未變更的 `ThemeTestApplication` 無介面測試宿主。`tests/Nvt.Core.Avalonia.Tests/Dialogs/` 覆蓋可選取的傳入文字（一般、空字串、Unicode、多行）、兩種實際 `ShowDialog<bool>` 結果、擁有者、強調與一般取消狀態、無參數載入、獨立的選用／null／空字串提示、凍結的視窗／操作列版面、畫刷隨佈景切換、警告內容，以及實際模態工作的 OK 關閉行為。警告內容案例是限縮範圍的既有 NFH 證據移植；其他案例刻畫凍結對話框的行為。
 
 使用既有套件還原結果執行：
 
@@ -68,7 +68,7 @@ NFH 採用與產品圖片比對不在本次抽取範圍內。
 
 ## 已知差異
 
-- 命名空間、版權標頭及 XML API 文件遵循 Core 慣例。Avalonia 11.3.12 → 12.0.5 無須調整對話框執行期 API；XAML 載入、`ShowDialog` 及 `Close` 維持原有行為。測試使用 xUnit v3 與既有 Core 無介面應用程式。
+- 命名空間、版權標頭及 XML API 文件遵循 Core 慣例。Avalonia 11.3.12 → 12.1.1 無須調整對話框執行期 API；XAML 載入、`ShowDialog` 及 `Close` 維持原有行為。測試使用 xUnit v3 與既有 Core 無介面應用程式。
 - 兩個寫死的 DXF 提示改為選用建構函式參數，預設 null。原本四個字串的建構函式呼叫及選用的強調參數仍保持原始碼相容。
 - 取消字型圖示改為描邊 `Path`，使用 `NfcCloseIconGeometry`、24 × 24 方框與 2 單位圓頭描邊，取代粗體字型圖示。警告字型圖示改為外框 `Path`，使用 literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`、20 × 20 方框、2 單位圓頭描邊及 `NfcWarningAccentStrongBrush`。未抽取圖示字型、`FontIcon` 或 `IconGlyphs`。
 - Core 預設色盤與 NFH 不同。尤其 NFH 以固定的 `BrushWhite` 繪製取消圖示。Core 將描邊繫結到圖示繼承的 `TextElement.Foreground`，也就是按鈕的實際前景色，因此圖示在任何 danger 底色與按鈕狀態下都跟隨文字顏色。NFH 採用 Core 的色彩並檢視圖片。純量間距改用動態資源，取代 NFH 的靜態資源。

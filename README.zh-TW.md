@@ -44,7 +44,7 @@ owner（Dennis）的暫定目標，原話：
 
 ## Nvt.Core 程式庫
 
-[Nvt.Core.sln](Nvt.Core.sln) 包含不依賴 UI 的 `Nvt.Core`（`net8.0`）、`Nvt.Core.Avalonia`（`net10.0`、Avalonia 12.0.5），以及各自的空白 xUnit 測試專案。Avalonia 測試專案參照 `Avalonia.Headless.XUnit`；Task 0 不抽取應用程式主機或執行階段程式碼。
+[Nvt.Core.sln](Nvt.Core.sln) 包含不依賴 UI 的 `Nvt.Core`（`net8.0`）、`Nvt.Core.Avalonia`（`net10.0`、Avalonia 12.1.1），以及各自的空白 xUnit 測試專案。Avalonia 測試專案參照 `Avalonia.Headless.XUnit`；Task 0 不抽取應用程式主機或執行階段程式碼。
 
 凍結的設定基準：NFC（`nvt_fw_combiner`）、`origin/1.2.x`、commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。慣例取自：
 
