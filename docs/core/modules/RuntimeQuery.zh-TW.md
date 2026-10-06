@@ -77,6 +77,59 @@ NFH 切換至 Core 時：
 命令列處理與 UI 執行緒步驟由後續任務加入。
 本次擷取不在來源工具採用 Core。
 
+## Command risk and confirmation
+
+呼叫端啟用之前，確認防護保持關閉。
+此行為於 2026-10-06 核准，沒有來源工具基準。
+
+| 公開 API | 契約 |
+| --- | --- |
+| `RuntimeQueryCommandRisk` | 定義 `ReadOnly`、`ChangesState` 與 `WritesData`。 |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | sealed record，包含命令名稱、風險與現有的處理委派型別。 |
+| `RuntimeQueryCommandRouter(commands, requireConfirmation)` | 由命令清單建立 ordinal 處理委派表。`RegisteredCommands` 保留登錄順序。 |
+
+- `ReadOnly` 命令只讀取狀態。
+- `ChangesState` 命令更改 UI 狀態，例如頁面或選取項目。不寫入檔案，也不更改資料。
+- `WritesData` 命令寫入檔案或更改工具的資料。
+
+清單建構子遇到 null 清單、命令、名稱或處理委派時，擲回 `ArgumentNullException`。
+名稱重複時擲回 `ArgumentException`。
+名稱若不同於去除前後空白並以 invariant culture 轉為小寫的結果，也會遭到拒絕。
+字典建構子保留現有行為，永遠不要求確認。
+
+使用 `requireConfirmation: false` 時，處理委派接收原始引數，包含任何 `confirm` 鍵。
+NFH（FreeformHelper 工具）先以 false 切換至 Core。
+啟用防護是另一項可見的獨立變更。
+
+使用 `requireConfirmation: true` 時，`RouteAsync` 先尋找處理委派。
+未知命令仍先回傳 `UNKNOWN_COMMAND`，再考慮確認檢查。
+`ExecuteAsync` 仍先檢查 null 請求，再檢查版本，最後進行路由。
+
+對 `WritesData`，路由器以 `RuntimeQueryArgumentParser.TryGetBoolArg` 讀取 `confirm`。
+此方法接受 true/false、1/0、on/off 與 yes/no。
+無效值會原樣回傳此方法的 `INVALID_ARGUMENTS` 錯誤。
+缺少值、空白值或 false 會回傳 `CONFIRMATION_REQUIRED`，完整訊息如下：
+
+```text
+Command '{name}' writes files or changes data. Add --confirm to run it.
+```
+
+訊息使用正規化後的命令名稱。發生上述任一錯誤時，處理委派不會執行。
+對每個風險等級，啟用的防護會先以 ordinal 規則移除 `confirm` 鍵，再呼叫處理委派。
+其他鍵與值保持原樣，複製至新的 ordinal 字典。
+沒有剩餘鍵時，處理委派接收 null。null 引數保持 null。
+啟用防護後，處理委派不再接收 `confirm` 鍵。
+現有命令列語法已將 `--confirm` 轉為 `"confirm": "true"`。
+
+`RuntimeQueryConfirmationCases` 集中保存新增輸入與字面預期值。
+`RuntimeQueryCommandConfirmationTests` 在防護關閉時，透過兩個建構子比較 `RuntimeQueryCommandCases` 的每一列。
+測試驗證完整回應、處理委派呼叫、引數傳遞、登錄檢查與錯誤順序。
+執行下方 RuntimeQuery 測試命令，驗證兩個建構子及啟用的防護。
+
+要達成零差異，NFH 必須保持防護關閉，並執行下方現有的 NFH 切換檢查。
+比較測試結果、stdout 與 stderr 位元組、管道框架、錯誤代碼與訊息，以及程序結束代碼。
+獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`，且處理委派引數不含 `confirm`。
+
 ## 公開 API
 
 | API | 契約 |
@@ -193,3 +246,119 @@ dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "Full
 ## 留在 NFH 的內容
 
 NFH 保留 `freeformhelper.runtime.v1`、協定版本值、靜態 host 擁有權、`ShellViewModel`、`RuntimeQueryUseCase` 與 `Dispatcher.InvokeAsync` 整合。NFH 也保留處理委派表、產品解析器、選項解析、CLI 使用說明與輸出、結束代碼及逾時預設值。NFH 保留關閉政策、NLog、產品錯誤文字與診斷文字。產品資料與應用程式流程不屬於本模組。
+
+## UI thread and host
+
+Core 現在於 `Nvt.Core.Avalonia.RuntimeQuery` 提供 UI 派送與實例 host。
+工具保留命令處理委派、錯誤文字、啟動排程及結束事件。
+新增的公開型別為 `RuntimeQueryUiThread` 與 `RuntimeQueryHost`。
+
+| API | 契約 |
+| --- | --- |
+| `RuntimeQueryUiThread.Wrap(handler, error)` | 回傳相同委派簽章的伺服器處理委派。 |
+| `RuntimeQueryHost(factory)` | 由 `Func<RuntimeQueryIpcServer>` 建立 sealed 實例 host。 |
+| `RuntimeQueryHost.Start()` | 在鎖內建立並啟動一個伺服器。host 已持有伺服器時，重複啟動不產生額外作用。 |
+| `RuntimeQueryHost.StopAsync()` | 在鎖內取出目前伺服器，再釋放它。沒有伺服器時立即完成。 |
+| `RuntimeQueryFailure.DispatcherUnavailable` | 在 `Nvt.Core.RuntimeQuery` 的失敗列舉末端新增一個值。既有失敗值與診斷值皆不變。 |
+
+`Wrap` 透過 `UiThread.TryGetRunningDispatcher` 取得 dispatcher。
+它使用回傳 Task 的 `Dispatcher.InvokeAsync` 多載，保留來源的預設優先序。
+請求、版本與取消 token 皆原樣傳遞，包含 null 請求與已取消的 token。
+它回傳內部處理委派的回應，並讓例外向外傳遞。伺服器負責對應這些例外。
+工具透過 `UiThread.RegisterRunningDispatcher` 登錄執行中的 dispatcher。
+
+沒有執行中的 dispatcher 時，`Wrap` 以 null detail 對應 `DispatcherUnavailable`，並回傳失敗封套。
+NFH 將此失敗對應為 `IPC_ERROR`，訊息為 `The UI dispatcher is unavailable.`。
+NFH 將處理委派失敗對應為 `IPC_ERROR`，保留原始例外訊息。
+這些對應由工具持有。Core 不提供這些失敗的產品錯誤文字。
+
+`StopAsync` 在釋放前清除 host 持有的伺服器。後續 `Start` 會建立新伺服器，與凍結來源一致。
+host 不加入排程、視窗事件、應用程式生命週期事件、靜態實例或選項。
+工具決定啟動時機，並在結束時呼叫 `StopAsync`。
+
+### 工具啟動與結束
+
+NFH 是 FreeformHelper。NFC 是 NVT FW Combiner。
+NFH 在主視窗 `Opened` 事件後，以 Background 優先序排入 host 啟動。
+ApplicationIdle 備援路徑先檢查視窗可見性，再以 Background 優先序排入相同啟動流程。
+NFH 在桌面 `Exit` 事件呼叫停止，不等待完成。
+既有 `StartRuntimeIpcIfNeeded` 函式保留 shell 檢查及啟動防重複判斷。
+以下簡短生命週期範例留在 NFH：
+
+```csharp
+mainWindow.Opened += (_, _) => Dispatcher.UIThread.Post(
+    StartRuntimeIpcIfNeeded, DispatcherPriority.Background);
+Dispatcher.UIThread.Post(() =>
+{
+    if (mainWindow.IsVisible)
+    {
+        Dispatcher.UIThread.Post(StartRuntimeIpcIfNeeded, DispatcherPriority.Background);
+    }
+}, DispatcherPriority.ApplicationIdle);
+desktop.Exit += (_, _) => { _ = RuntimeQueryIpcHost.StopAsync(); };
+```
+
+NFC 只在寫出 READY 後啟動 host，維持原本的 READY 時間。
+截圖模式、`--help` 及內部 probe 執行皆不啟動 host。
+NFC 也在結束時呼叫 `StopAsync`。以下簡短範例表示啟動順序：
+
+```csharp
+WriteReady();
+if (!screenshotMode && !helpRequested && !internalProbe)
+{
+    host.Start();
+}
+```
+
+### 凍結 UI 與 host 基準
+
+- 來源儲存庫：`nvt-freeform-helper`。
+- 來源 ref：`origin/1.3.x`。
+- 完整凍結 commit：`847cc4530ed098ceb56aa1bd8beda77bcd1ec227`。
+- 擷取路徑：`src/FreeformHelper.UI/Services/RuntimeQueryIpc.cs`，第 11–48 行為 host，第 205–214 行為 UI 派送。
+- 文件參考：`src/FreeformHelper.UI/App.axaml.cs`，第 82–137 行提供 NFH 啟動及結束時機。
+- 測試來源：`tests/FreeformHelper.Tests/UI/Services/RuntimeQueryIpcTests.cs`，全部五個測試。
+
+由 host 建立的 commit 訊息須記錄此儲存庫、ref、完整 commit 及全部三個檔案路徑。
+本次擷取不修改 NFH 或 NFC。
+
+### 測試與零差異切換
+
+Core 移植三個 host 關閉測試，並透過真正的 UI 派送移植處理委派擲回例外的管道測試。
+關閉測試保留 1500 毫秒完成上限。
+已接受但未回應的案例已存在於 `Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.SendRequestWhenServerAcceptsButDoesNotRespondReturnsTimeout`。
+此處不重複加入該傳輸測試。
+
+新增測試也驗證 UI 存取權、原樣傳入的輸入、dispatcher 不可用、例外實例、重複啟動、重新啟動及並行啟動。
+每個新管道測試皆使用自己的合成管道名稱。
+全部新測試使用停用平行執行的 `RuntimeQuery` collection。
+測試在 `finally` 還原靜態 `UiThread` dispatcher 登錄狀態，且只使用有時間上限的等待。
+
+NFH 依下列步驟切換：
+
+1. 保留靜態 host，讓它包裝一個 `RuntimeQueryHost` 實例。
+2. 以既有設定及處理委派建立每個伺服器。使用 `RuntimeQueryUiThread.Wrap` 與 NFH 的錯誤對應包裝處理委派。
+3. 保留既有啟動排程及桌面結束呼叫。
+4. 替換前後皆執行全部五個 `RuntimeQueryIpcTests`。
+5. 替換前後皆執行 NFH 完整測試套件，並保存完整測試清單。
+6. 測試名稱、數量、通過／失敗結果及略過結果皆須相等。保留每個既有測試名稱。
+
+五個凍結管道測試為：
+
+- `StopAsync_WhenHostNotStarted_Completes`
+- `StopAsync_WhenHostStarted_CompletesWithinTimeout`
+- `StopAsync_WhenClientConnectedWithoutRequest_CompletesWithinTimeout`
+- `SendRequest_WhenServerAcceptsButDoesNotRespond_ReturnsTimeout`
+- `SendRequest_WhenRuntimeQueryThrows_ReturnsIpcErrorEnvelope`
+
+Core 測試確立擷取的契約。NFH 採用 Core 時，由替換前後的執行結果確立零差異。
+這些採用驗證留在 NFH 執行。
+
+Core 驗證使用已還原的套件：
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
