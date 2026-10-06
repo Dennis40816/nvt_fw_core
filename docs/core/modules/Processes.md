@@ -146,6 +146,6 @@ NFC deletes its generic reader and synchronous cancellation copies only after ev
 
 The UI comparisons use the shared environment manifest and require zero changed decoded pixels. Where they apply, the comparisons also cover the complete output bytes and the event traces and record each artifact's SHA-256. The eight legacy font values stay unchanged.
 
-NFC consumes verified, versioned nupkg files from its `vendor/nuget/` folder with exact `[x]` versions, source mapping, lock files, and locked restore. `SOURCE.md` records the reviewed source commit and the package SHA-256. NFC owns its package references, version pins, source mapping, and lock files. NFC never adds a ProjectReference to a Core checkout.
+NFC downloads verified, versioned nupkg files at build time through its `core-packages.json` and uses exact `[x]` versions, source mapping, lock files, and locked restore. The manifest records each package's Release tag and SHA-256. NFC owns its package references, version pins, source mapping, and lock files. NFC never adds a ProjectReference to a Core checkout.
 
 Core and NFC keep independent versioned releases. Both independent review stages cover the exact heads of the extraction pull request and the adoption pull request.

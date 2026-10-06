@@ -112,7 +112,7 @@ public sealed class PackageStreamAndPlanTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         await using var package = new ObservedPackageStream(fixture.PackageBytes) { Gate = true };
         Task<ManagedPackageVerificationResult> verification = fixture.Verifier().VerifyAsync(package, fixture.Candidate, cancellation.Token).AsTask();
-        await package.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await package.ReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
         Assert.False(verification.IsCompleted);
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => { await verification; });

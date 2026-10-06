@@ -411,7 +411,7 @@ public sealed class BoundedArchiveReaderTests
         var budget = new ExpandedByteBudget(8);
         Task<BoundedArchiveReadResult> pending = BoundedArchiveReader.ReadAndHashAsync(
             source, 8, budget, cancellation.Token).AsTask();
-        await source.ReadStarted.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await source.ReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         cancellation.Cancel();
         OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);

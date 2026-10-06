@@ -75,7 +75,7 @@ All test paths below are under `tests/NvtFwCombiner.Application.Tests/VersionMan
 
 NFC keeps strict state/manifest/catalog DTOs and codecs, canonical wire schemas, product wording, exact protocol names, package trust and release authority, registry locators/replicas, retention and notification policy, deletion consent, firmware behavior and UI composition.
 
-NFC consumes versioned packages from `vendor/nuget/` with exact `[x]` pins, lock files and locked restore. Source mapping restricts Core packages to that folder. `SOURCE.md` binds source and package SHA-256 hashes. Core and NFC release independently. Duplicate executable bodies are deleted only when the corresponding NFC adapter uses Core and preserves complete values, event traces and output bytes. UI-affecting adoption requires zero changed decoded pixels under the same recorded environment. The eight legacy font values remain unchanged. Bootstrap package wiring requires separate launcher-adoption authorization.
+NFC downloads versioned packages at build time through `core-packages.json` and uses exact `[x]` pins, lock files and locked restore. Source mapping restricts Core packages to the download folder. The manifest records each package's Release tag and SHA-256. Core and NFC release independently. Duplicate executable bodies are deleted only when the corresponding NFC adapter uses Core and preserves complete values, event traces and output bytes. UI-affecting adoption requires zero changed decoded pixels under the same recorded environment. The eight legacy font values remain unchanged. Bootstrap package wiring requires separate launcher-adoption authorization.
 
 ## Bounded archive reads
 
@@ -158,3 +158,11 @@ The source test filenames above are `FileSystemManagedVersionRepositoryTests.Sec
 `PackageCeilingTests` covers frozen member, installed-file, directory, document, compressed, declared-launcher and relative-path boundaries, their neighboring values, application acceptance above the executable ceiling, actual expansion independently of metadata, document positivity and underreported documents. `PackageVerificationLimitsTests` covers zero/negative arguments, copied limits, unchanged argument order, explicit NFC values and the existing executable identity ceiling. `PackageIdentityAndChecksumTests` covers forged normalized identities, launcher owner binding, strict-policy rejection and checksum byte grammar. `PackageStreamAndPlanTests` covers public surface, borrowed custody, deterministic cancellation, bounded compressed faults, Files probe ordering, immutable plan facts, disposal, post-admission tamper and destination write failures. The reader cases above cover the frozen 512 MiB actual budget and overflow sentinel directly.
 
 NFC retains strict schemas, product payload roles and allowlists, wire grammar, release metadata, firmware data, trust and release authority. Adoption downloads independently versioned packages at build time through `core-packages.json` and uses exact `[x]` versions, locked restore and source mapping. The manifest records each package's Release tag and SHA-256. Original NFC schema, package, installation, values, traces and output-byte assertions must pass before deleting its relocated generic verifier and reader. UI-affecting adoption also preserves decoded pixels in the same recorded environment. Core synthetic tests do not establish NFC product or pixel parity, and this API provides no Bootstrap package wiring authority.
+
+### Intentional differences from the frozen source
+
+Core differs from the frozen NFC verifier in three places. Each one rejects input that the source handled differently. None accepts input that the source rejected.
+
+- `VerifyAsync` checks that the package stream can read and seek, and that the candidate package size is within `MaximumPackageBytes`, before it reads. Either failure returns `PackageUnavailable`.
+- When the package changes while it is read, the result is `PackageUnavailable`. The source returned `PackageMismatch`.
+- A manifest file entry named `RELEASE-MANIFEST.json` or `SHA256SUMS.txt` is rejected as `InvalidPayload`.
