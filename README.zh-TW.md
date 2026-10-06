@@ -35,6 +35,7 @@ owner（Dennis）的暫定目標，原話：
 ## 文件
 
 - [src/](src/)：Nvt.Core 程式庫（`Nvt.Core` 與 `Nvt.Core.Avalonia`）
+- [tools/](tools/)：派工佇列工具與 nvt-sched
 - [docs/vision.md](docs/vision.md)：目標、版本節奏、階段
 - [docs/components.md](docs/components.md)：元件對照表（三個專案各自的實作與成熟度）
 - [docs/decisions.md](docs/decisions.md)：owner 的決定紀錄
