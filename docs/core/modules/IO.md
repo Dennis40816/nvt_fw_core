@@ -30,3 +30,52 @@ dotnet test tests/Nvt.Replay.Tests/Nvt.Replay.Tests.csproj --no-build --filter "
 ```
 
 Use the same frozen synthetic documents, reports and render inputs, including fixed serialized metadata. Preserve the baseline outputs, regenerate at the same destinations with Core, and compare final file sets and every JSON/CSV/JSONL/PNG byte or SHA-256. Retain NFU's deterministic heatmap golden hash, cancellation assertions, prior-output preservation and temporary-file cleanup checks. Do not refresh a baseline to accept differences. NFU adoption and its packaging acceptance remain pending.
+
+## WriteBytesAsync
+
+```csharp
+public static Task WriteBytesAsync(string path, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken = default)
+```
+
+[`AtomicOutput.WriteBytesAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) publishes bytes for NFC launcher state files.
+NFC validates its state path before the call.
+NFC encodes its bytes before the call.
+Tool adoption is a separate task.
+This method must not replace NFC's firmware output writer.
+
+The method uses the same path validation and normalization as `WriteAsync`.
+It creates missing parent directories.
+It writes a sibling temporary file with the same name pattern and stream arguments as `WriteAsync`.
+It writes the bytes without a cancellation check before `FlushAsync(token)`.
+It then calls `Flush(flushToDisk: true)`.
+It closes the stream before checking cancellation and moving the temporary file over the destination.
+The write and `FlushAsync` awaits use `ConfigureAwait(false)`, as in the NFC loop.
+Temporary-file cleanup suppresses `IOException` and `UnauthorizedAccessException`.
+Other cleanup exceptions propagate.
+`WriteAsync` retains its cancellation check between the writer and `FlushAsync`.
+`WriteAsync` retains its captured-context awaits.
+`WriteAsync` retains cleanup errors that can replace the original error.
+Both methods share one private publication engine.
+
+Frozen NFC source: `Dennis40816/nvt_fw_combiner`, `origin/1.2.x`, commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`.
+The private `WriteAtomicallyAsync(string destination, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)` has identical copies in:
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonVersionManagerStateStore.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonLauncherBootstrapStateStore.cs`
+
+[`AtomicOutputWriteBytesTests`](../../../tests/Nvt.Core.Tests/IO/AtomicOutputWriteBytesTests.cs) contains a private copy of that frozen loop.
+Each comparable scenario runs the loop and Core in separate fresh folders.
+The tests compare exception types and messages, destination bytes and temporary-file counts.
+Message comparison normalizes the fresh folder and generated temporary-file identifier.
+The tests use synthetic names and bytes.
+They cover payload sizes, replacement, missing folders, cancellation, flush failures, move failure and cleanup failure.
+An abandoned temporary file remains untouched by the next successful write.
+A characterization test preserves `WriteAsync`'s cleanup-error behavior.
+NFC's launcher tasks L04 and L11 test a real process kill with the shared test probe.
+
+Verification uses the restored packages:
+
+```powershell
+dotnet build Nvt.Core.sln --no-restore
+dotnet test Nvt.Core.sln --no-build
+```
