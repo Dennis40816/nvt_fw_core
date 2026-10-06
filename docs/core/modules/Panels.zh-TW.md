@@ -126,7 +126,7 @@ NFH 導入不在本次抽出範圍內。導入 PR 依下列方式驗證展開／
 | `NotchExportMainLeftColumnWidth` | `LeftColumnWidth`，預設 `2.2*` |
 | `NotchExportMainRightColumnWidth` | `RightColumnWidth`，預設 `*` |
 
-NFH 使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.0.5 與 xUnit v3。控制項程式碼不需要 API 調整。Core 無視窗按鍵呼叫傳入 Avalonia 12 要求的實體按鍵與按鍵字串。欄位版面斷言比較 presenter 範圍，因為此版本的 `ColumnDefinition.ActualWidth` 包含間距。其餘展開邏輯未變更，也未發現與任務摘要不同的行為。
+NFH 使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.1.1 與 xUnit v3。控制項程式碼不需要 API 調整。Core 無視窗按鍵呼叫傳入 Avalonia 12 要求的實體按鍵與按鍵字串。欄位版面斷言比較 presenter 範圍，因為此版本的 `ColumnDefinition.ActualWidth` 包含間距。其餘展開邏輯未變更，也未發現與任務摘要不同的行為。
 
 ## 留在 NFH 的內容
 

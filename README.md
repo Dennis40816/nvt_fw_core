@@ -44,7 +44,7 @@ The owner (Dennis)'s tentative goal, in his own words:
 
 ## Nvt.Core libraries
 
-[Nvt.Core.sln](Nvt.Core.sln) contains the UI-independent `Nvt.Core` library (`net8.0`), `Nvt.Core.Avalonia` (`net10.0`, Avalonia 12.0.5), and their empty xUnit test projects. The Avalonia test project references `Avalonia.Headless.XUnit`; no application host or runtime code is extracted in Task 0.
+[Nvt.Core.sln](Nvt.Core.sln) contains the UI-independent `Nvt.Core` library (`net8.0`), `Nvt.Core.Avalonia` (`net10.0`, Avalonia 12.1.1), and their empty xUnit test projects. The Avalonia test project references `Avalonia.Headless.XUnit`; no application host or runtime code is extracted in Task 0.
 
 Frozen configuration baseline: NFC (`nvt_fw_combiner`), `origin/1.2.x`, commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Conventions are taken from:
 

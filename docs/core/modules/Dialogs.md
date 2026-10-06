@@ -46,7 +46,7 @@ The font-based `IconGlyphs.Close` is replaced by `NfcCloseIconGeometry` through 
 
 ## Verification
 
-Core uses Avalonia 12.0.5, xUnit v3, and the unchanged `ThemeTestApplication` headless host. `tests/Nvt.Core.Avalonia.Tests/Dialogs/` covers selectable supplied text (ordinary, empty, Unicode, multiline), both actual `ShowDialog<bool>` results, ownership, emphasized and ordinary cancel states, parameterless loading, independent optional/null/empty tips, frozen window/action layout, dynamic brush changes, warning content, and OK closure through the actual modal task. The warning-content case is the scoped port of existing NFH evidence; the remaining cases characterize the frozen dialogs.
+Core uses Avalonia 12.1.1, xUnit v3, and the unchanged `ThemeTestApplication` headless host. `tests/Nvt.Core.Avalonia.Tests/Dialogs/` covers selectable supplied text (ordinary, empty, Unicode, multiline), both actual `ShowDialog<bool>` results, ownership, emphasized and ordinary cancel states, parameterless loading, independent optional/null/empty tips, frozen window/action layout, dynamic brush changes, warning content, and OK closure through the actual modal task. The warning-content case is the scoped port of existing NFH evidence; the remaining cases characterize the frozen dialogs.
 
 After the existing package restore, run:
 
@@ -68,7 +68,7 @@ NFH adoption and product image comparisons are outside this extraction task.
 
 ## Known differences
 
-- Namespaces, copyright headers, and XML API documentation follow Core conventions. No dialog runtime API adaptation was needed for Avalonia 11.3.12 → 12.0.5; XAML loading, `ShowDialog`, and `Close` retain their behavior. Tests use xUnit v3 and the existing Core headless application.
+- Namespaces, copyright headers, and XML API documentation follow Core conventions. No dialog runtime API adaptation was needed for Avalonia 11.3.12 → 12.1.1; XAML loading, `ShowDialog`, and `Close` retain their behavior. Tests use xUnit v3 and the existing Core headless application.
 - The two hard-coded DXF tips become optional constructor arguments, defaulting to null. The original four-string constructor call and optional emphasis argument remain source compatible.
 - The cancel font glyph becomes a stroked `Path` using `NfcCloseIconGeometry`, with a 24 × 24 box and a rounded 2-unit stroke instead of a bold font glyph. The warning font glyph becomes an outline `Path` with literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`, a 20 × 20 box, a 2-unit stroke with round caps, and `NfcWarningAccentStrongBrush`. No icon font, `FontIcon`, or `IconGlyphs` is extracted.
 - Core's default palette differs from NFH's. In particular, NFH paints the cancel glyph with the constant `BrushWhite`. Core binds the stroke to the icon's inherited `TextElement.Foreground`, which is the button's effective foreground, so the icon follows the label's color on any danger surface and in every button state. NFH adopts Core's colors and reviews the images. Scalar spacing uses dynamic resources instead of NFH's static resources.

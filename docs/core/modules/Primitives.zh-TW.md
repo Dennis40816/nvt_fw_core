@@ -24,7 +24,7 @@
 
 ## 來源
 
-凍結的父專案基準：儲存庫 `Dennis40816/nvt-freeform-helper`、ref `1.3.x`、完整 commit `e01e07a361b8dc264a06b3741f40274feeeace2d`。來源使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.0.5 與 xUnit v3。
+凍結的父專案基準：儲存庫 `Dennis40816/nvt-freeform-helper`、ref `1.3.x`、完整 commit `e01e07a361b8dc264a06b3741f40274feeeace2d`。來源使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.1.1 與 xUnit v3。
 
 從該 commit 擷取的檔案路徑：
 
@@ -99,7 +99,7 @@ NFH UI 快照可能因文件記錄的資源對應與 Avalonia 版本而改變。
 - 祖先工具提示傳遞改為透過 `TipTargetClass` 明確啟用，預設 null。NFH 設定 `settingsFieldTile` 即可恢復原始類別搜尋。
 - NFH 色彩對應至 Core 的既有色盤。`BrushWhite` 與半透明 `BrushPadInfoPanelBackground` 都對應至 `NfcSurfaceBrush`，因此深色分隔線色彩與標題背景透明度會改變。單一共用資源 key 無法同時保留來源的兩個不同筆刷。主要文字色彩也不同。
 - 分隔線高度 `1` 與標題內距 `8,4` 因沒有相符的 Nfc key，保留凍結值作為字面值。來源的靜態間距查找改為動態查找 `NfcSpace8`。
-- 程式針對 Avalonia 12.0.5 編譯，而非 11.3.12；不需要其他控制項 API 調整。Headless 測試使用 xUnit v3，而非 xUnit 2。產品層級的呈現相容性仍須 NFH 採用證據。
+- 程式針對 Avalonia 12.1.1 編譯，而非 11.3.12；不需要其他控制項 API 調整。Headless 測試使用 xUnit v3，而非 xUnit 2。產品層級的呈現相容性仍須 NFH 採用證據。
 
 ## 留在 NFH 的內容與待確認事項
 
