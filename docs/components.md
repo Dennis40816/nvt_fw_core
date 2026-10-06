@@ -107,7 +107,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
 | Background job lifecycle | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Progress/` | 1 → 2 | Part of the Progress module (owner, 2026-10-06); extraction in progress. |
-| Runtime Query automation transport and envelope | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/RuntimeQuery/` | 1 → 2 | Pull request open; tool commands stay in each tool. |
+| Runtime Query automation transport and envelope | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/RuntimeQuery/`; `src/Nvt.Core.Avalonia/RuntimeQuery/` | 1 → 2 | Transport, pipe security, command router, `--confirm` guard, command line and startup entry merged into `main`; the UI-thread step and server host are in `Nvt.Core.Avalonia`. Tool commands stay in each tool. |
 
 ## NFH candidates (extract when a second tool needs them)
 
