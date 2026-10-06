@@ -86,6 +86,11 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.SourceFileNavigation`：[SourceFileNavigation](docs/core/modules/SourceFileNavigation.zh-TW.md)
 - `Nvt.Core.Progress`：[Progress](docs/core/modules/Progress.zh-TW.md)
 - `Nvt.Core.Launcher.Contracts`：[Launcher](docs/core/modules/Launcher.zh-TW.md)
+- `Nvt.Core.Processes`：[Processes](docs/core/modules/Processes.zh-TW.md)
+- `Nvt.Core.Locale`：[Locale](docs/core/modules/Locale.zh-TW.md)
+- `Nvt.Core.ReportList`：[ReportList](docs/core/modules/ReportList.zh-TW.md)
+- `Nvt.Core.Shell`：[Shell](docs/core/modules/Shell.zh-TW.md)
+- `Nvt.Core.MessageCenter`：[MessageCenter](docs/core/modules/MessageCenter.zh-TW.md)
 
 ## 誰維護
 

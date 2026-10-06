@@ -119,9 +119,9 @@ MessageCenter facade. `MainWindowViewModel.Context.cs` retains product page
 activation and successful `Navigation.UpdateState()` refresh;
 `MainWindowViewModel.Construction.cs` retains product composition.
 
-NFC adopts this module in its own pull request. That pull request consumes a verified, versioned `Nvt.Core`
-nupkg from `vendor/nuget/` with an exact `[x]` version, locked restore, package source mapping, and the source
-and package SHA-256 in `SOURCE.md`. NFC owns its package references and lock files. NFC deletes only its local
+NFC adopts this module in its own pull request. That pull request downloads a verified, versioned `Nvt.Core`
+nupkg at build time through `core-packages.json`, with an exact `[x]` version, locked restore, package source mapping,
+and the Release tag and package SHA-256 in the manifest. NFC owns its package references and lock files. NFC deletes only its local
 generic history storage and the completion rollback body, after the package and the executable behavior match
 the frozen parent. NFC keeps its product adapter and proves identical UI snapshots in the same recorded
 environment.

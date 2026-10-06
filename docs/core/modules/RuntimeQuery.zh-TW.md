@@ -291,6 +291,87 @@ Windows 上的 .NET 8.0.31 測試確認此組合遭拒，並驗證連續兩個�
 同一位使用者的呼叫端不會看到請求或回應位元組的改變。其他使用者的程序無法再連線。
 名稱衝突現在會產生一次診斷事件。管道名稱、實例探索、選項及封套格式不變。
 
+## Command line
+
+Core 現在提供 query 命令列前端，保留凍結來源的行為。
+工具保留管道名稱、協定版本、依原順序排列的命令清單，以及用戶端錯誤文字。
+Core 負責解析、JSON 輸出、結束代碼，以及預設用戶端逾時。
+
+新增的公開型別是 `RuntimeQueryCommandLine`。
+唯一入口方法是 `TryHandleQueryCommand(args, pipeName, protocolVersion, supportedCommands, error, output, out exitCode)`。
+錯誤對應使用既有的 `Func<RuntimeQueryFailure, string?, RuntimeQueryError>` 契約。
+工具將 `Console.Out` 傳入輸出 writer。
+
+- 只有第一個引數等於 `query` 時才處理，忽略大小寫。
+- 未處理的引數不產生輸出，結束代碼為 0。
+- 解析器去除命令前後空白，再使用 invariant culture 轉成小寫。
+- 使用說明與不支援命令的錯誤，依提供的原順序列出命令。
+- 預設輸出格式化 JSON。最後一個 `--json-pretty` 或 `--json-compact` 決定回應格式。
+- 解析錯誤一律輸出格式化的 `INVALID_ARGUMENTS` JSON，結束代碼為 2。
+- 回應的 `ok` 為 true 時結束代碼為 0，否則為 1。
+- 前端只呼叫一次 `WriteLine`，寫入序列化的 JSON。
+
+只有第一個 `=` 的位置大於 2 時，選項才在該處分割。
+否則 `--` 後的完整 token 就是鍵。
+缺少值時使用 `"true"`，包含下一個 token 以 `--` 開頭的情況。
+鍵不區分大小寫。重複鍵保留第一次的拼法與最後一次的值。
+`--timeout-ms` 只供用戶端使用，預設為 1500，接受 1 到 120000 的整數。
+沒有剩餘命令引數時，請求的引數為 null。
+
+### 命令列基準
+
+- 來源儲存庫：`nvt-freeform-helper`（NFH）。
+- 正式程式碼 ref：`origin/1.3.x`。
+- 凍結正式程式碼 commit：`847cc4530ed098ceb56aa1bd8beda77bcd1ec227`。
+- 擷取路徑：`src/FreeformHelper.UI/Services/RuntimeQueryIpc.cs`，第 239–289 與 376–463 行。
+- 呼叫端參考：相同 commit 的 `src/FreeformHelper.UI/Program.cs`，約第 37 行。
+- 特徵測試 ref：`test/1.3.x/runtimequery-characterization`，NFH pull request 47。
+- 凍結特徵測試 commit：`464ecf4d98095ac26b195046bfb50ef66679286f`。
+- 特徵測試路徑：
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationCommandLineTests.cs`
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationSubject.cs`
+
+### 命令列驗證
+
+`RuntimeQueryCommandLineCases` 將全部 40 個凍結輸入與預期輸出放在同一個可共用的測試表。
+另外四列涵蓋 `--=x`、`--a=b=c`、空命令，以及前後有空白的命令。
+凍結的 query 單獨一列涵蓋 `query` 後沒有引數的情況。
+測試使用 `Environment.NewLine` 建立精確的 stdout 字串與請求框架，逐字比較。
+三個逾時案例依來源測試方式檢查私有解析器。
+Program 案例重現呼叫端指定結束代碼的流程，不啟動 UI。
+全部管道測試共用一個停用平行執行的 collection。
+連線測試使用唯一管道名稱，所有等待都有時間上限。
+產品管道名稱只用於不會連線的測試資料。
+
+設定 `AVALONIA_TELEMETRY_OPTOUT=1`，使用已還原的套件：
+
+```text
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.RuntimeQuery"
+```
+
+### 零差異切換
+
+NFH 保留凍結順序的命令清單，以及既有的用戶端錯誤文字。
+在 `Program.cs` 將前端呼叫換成 Core 入口：
+
+```csharp
+if (RuntimeQueryCommandLine.TryHandleQueryCommand(
+    args, PipeName, ProtocolVersion, SupportedCommands, ClientError, Console.Out, out var cliExitCode))
+{
+    Environment.ExitCode = cliExitCode;
+    return;
+}
+```
+
+範例中的設定名稱代表工具既有的設定值與用戶端錯誤對應。
+切換前後都執行全部 40 個 `RuntimeQueryCharacterizationCommandLineTests` 案例。
+使用 `RuntimeQueryCommandLineCases`，讓兩個前端執行相同資料列。
+比較 stdout 位元組與結束代碼，兩者都必須相等。
+工具的 `INSTANCE_NOT_RUNNING` 文字繼續由其用戶端錯誤對應提供。
+Core 繼續使用既有的用戶端傳輸與 JSON 選項。
+本次工作不變更來源工具。
+
 ## 凍結來源
 
 - 來源儲存庫：`Dennis40816/nvt-freeform-helper`。

@@ -11,6 +11,7 @@ using Xunit;
 namespace Nvt.Core.Tests.RuntimeQuery;
 
 /// <summary>Pipe access rules, client access denial and server name conflicts.</summary>
+[Collection(RuntimeQueryPipeTestGroup.Name)]
 public sealed class RuntimeQueryIpcSecurityTests
 {
     /// <summary>Each live Windows pipe allows only the user SID and denies network logons.</summary>
