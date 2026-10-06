@@ -69,6 +69,7 @@ Each module document records its frozen source baseline and how a tool verifies 
 
 - `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
 - `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
+- `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)
 - `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
 - `Nvt.Core.Persistence`: [Persistence](docs/core/modules/Persistence.md)
 
