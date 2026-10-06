@@ -34,6 +34,52 @@ public sealed class FileSystemManagedVersionRepositoryTests
         fixture.AssertEmptyStaging();
     }
 
+    /// <summary>Installation keeps the frozen category for each package read failure kind, with no partial target.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task InstallationKeepsFrozenReadFailureCategories(int kind)
+    {
+        RepositoryFixture.RequireWindows();
+        var package = kind == 1
+            ? PackageFixture.Create(mutatePackage: bytes =>
+            {
+                Array.Clear(bytes);
+                return bytes;
+            })
+            : PackageFixture.Create();
+        using var fixture = new RepositoryFixture(package);
+        string packagePath = Path.Combine(fixture.SourceRoot,
+            package.Candidate.PackagePath.Value.Replace('/', Path.DirectorySeparatorChar));
+        if (kind == 0)
+        {
+            // A package whose length differs from the admitted catalog entry is unavailable.
+            await File.AppendAllTextAsync(packagePath, "x", TestContext.Current.CancellationToken);
+        }
+        FileStream? held = kind == 2
+            ? new FileStream(packagePath, FileMode.Open, FileAccess.Read, FileShare.None)
+            : null;
+        try
+        {
+            var installed = await fixture.InstallAsync();
+
+            Assert.False(installed.IsSuccess);
+            Assert.Equal(kind switch
+            {
+                0 => ManagedVersionInstallIssue.PackageUnavailable,
+                1 => ManagedVersionInstallIssue.InvalidPayload,
+                _ => ManagedVersionInstallIssue.PromotionFailed,
+            }, installed.Issue);
+            Assert.False(Directory.Exists(fixture.VersionRoot));
+            fixture.AssertEmptyStaging();
+        }
+        finally
+        {
+            held?.Dispose();
+        }
+    }
+
     /// <summary>A complete installation promotes and later physical content tamper is damaged.</summary>
     [Fact]
     public async Task InstallPromotesClosedPayloadAndInventoryDetectsTamper()
