@@ -86,6 +86,11 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.SourceFileNavigation`: [SourceFileNavigation](docs/core/modules/SourceFileNavigation.md)
 - `Nvt.Core.Progress`: [Progress](docs/core/modules/Progress.md)
 - `Nvt.Core.Launcher.Contracts`: [Launcher](docs/core/modules/Launcher.md)
+- `Nvt.Core.Processes`: [Processes](docs/core/modules/Processes.md)
+- `Nvt.Core.Locale`: [Locale](docs/core/modules/Locale.md)
+- `Nvt.Core.ReportList`: [ReportList](docs/core/modules/ReportList.md)
+- `Nvt.Core.Shell`: [Shell](docs/core/modules/Shell.md)
+- `Nvt.Core.MessageCenter`: [MessageCenter](docs/core/modules/MessageCenter.md)
 
 ## Who maintains this
 

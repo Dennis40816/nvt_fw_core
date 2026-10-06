@@ -189,7 +189,7 @@ Near-`Array.MaxLength` successful capture tests allocate about 2 GiB each and ex
 
 Files owns this rooted mechanism, the regular-file guard, and the single complete-content stream hashing loop. No duplicate read loop or native custody owner was introduced. NFC retains `ProtectedPathGuard`, `LocalFileIdentity`, hardened output writers, product ceilings and package-path policy, stamps, selected-file models, display hints, schemas, trust, and release authority.
 
-NFC adopts this module in its own pull request. That pull request consumes verified, versioned nupkg files under `vendor/nuget/` using exact `[x]` versions, locked dependencies, source mapping, and `SOURCE.md` source/package SHA-256 receipts. Shared references and locks stay with their owner in NFC. NFC deletes only the relocated NFC generic mechanisms after callers use Core, NFC mode/exception mapping is preserved, all 40 path and 12 file cases pass, and required product output and pixel evidence passes. Core tests alone do not prove NFC product or pixel parity.
+NFC adopts this module in its own pull request. That pull request downloads verified, versioned nupkg files at build time through `core-packages.json` and uses exact `[x]` versions, locked dependencies and source mapping. The manifest records each package's Release tag and SHA-256. Shared references and locks stay with their owner in NFC. NFC deletes only the relocated NFC generic mechanisms after callers use Core, NFC mode/exception mapping is preserved, all 40 path and 12 file cases pass, and required product output and pixel evidence passes. Core tests alone do not prove NFC product or pixel parity.
 
 A later Files extension adds held Windows read custody. This version does not provide it.
 
