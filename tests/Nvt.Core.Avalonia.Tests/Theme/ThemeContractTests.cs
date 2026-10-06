@@ -109,11 +109,26 @@ public sealed class ThemeContractTests
         return XDocument.Load(stream);
     }
 
-    private static XDocument ReadExtracted(string name)
+    internal static XDocument ReadExtracted(string name)
     {
         using Stream stream = typeof(ThemeContractTests).Assembly.GetManifestResourceStream(
             $"Nvt.Core.Avalonia.Tests.Theme.Source.{name}.xml")!;
-        return XDocument.Load(stream);
+        XDocument document = XDocument.Load(stream);
+        if (name == "ThemeTokens")
+        {
+            // Expand the eight font aliases before comparing the unchanged NFC projection.
+            XElement fonts = ReadExtracted("NfcLegacyFontTokens").Root!;
+            document.Root!.Element(Presentation + "ResourceDictionary.MergedDictionaries")!.Remove();
+            foreach (XElement alias in document.Root.Elements(Presentation + "StaticResource").ToArray())
+            {
+                XElement token = new(Assert.Single(fonts.Elements(), element =>
+                    element.Attribute(Xaml + "Key")!.Value == alias.Attribute("ResourceKey")!.Value));
+                token.SetAttributeValue(Xaml + "Key", alias.Attribute(Xaml + "Key")!.Value);
+                alias.ReplaceWith(token);
+            }
+        }
+
+        return document;
     }
 
     private static string[] Keys(IEnumerable<XElement> elements) =>

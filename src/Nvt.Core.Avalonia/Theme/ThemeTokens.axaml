@@ -1,5 +1,8 @@
 <!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/NfcLegacyFontTokens.axaml" />
+  </ResourceDictionary.MergedDictionaries>
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="NfcAppBackgroundBrush" Color="#F4F6FA" />
@@ -122,12 +125,12 @@
   <x:Double x:Key="NfcSpace16">16</x:Double>
   <x:Double x:Key="NfcSpace24">24</x:Double>
   <x:Double x:Key="NfcFieldSpacing">3</x:Double>
-  <x:Double x:Key="NfcFontSize10">10</x:Double>
-  <x:Double x:Key="NfcFontSize11">11</x:Double>
-  <x:Double x:Key="NfcFontSize12">12</x:Double>
-  <x:Double x:Key="NfcFontSize13">13</x:Double>
-  <x:Double x:Key="NfcFontSize14">14</x:Double>
-  <x:Double x:Key="NfcFontSize16">16</x:Double>
-  <FontFamily x:Key="NfcUiFontFamily">fonts:Inter#Inter, Microsoft JhengHei UI, Noto Sans CJK TC, Noto Sans TC, Segoe UI</FontFamily>
-  <FontFamily x:Key="NfcTechnicalFontFamily">Cascadia Mono, Consolas</FontFamily>
+  <StaticResource x:Key="NfcFontSize10" ResourceKey="Nvt.Font.NfcLegacy.Size10" />
+  <StaticResource x:Key="NfcFontSize11" ResourceKey="Nvt.Font.NfcLegacy.Size11" />
+  <StaticResource x:Key="NfcFontSize12" ResourceKey="Nvt.Font.NfcLegacy.Size12" />
+  <StaticResource x:Key="NfcFontSize13" ResourceKey="Nvt.Font.NfcLegacy.Size13" />
+  <StaticResource x:Key="NfcFontSize14" ResourceKey="Nvt.Font.NfcLegacy.Size14" />
+  <StaticResource x:Key="NfcFontSize16" ResourceKey="Nvt.Font.NfcLegacy.Size16" />
+  <StaticResource x:Key="NfcUiFontFamily" ResourceKey="Nvt.Font.NfcLegacy.Ui.Family" />
+  <StaticResource x:Key="NfcTechnicalFontFamily" ResourceKey="Nvt.Font.NfcLegacy.Technical.Family" />
 </ResourceDictionary>
