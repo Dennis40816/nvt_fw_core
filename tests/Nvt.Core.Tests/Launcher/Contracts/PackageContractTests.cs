@@ -108,7 +108,7 @@ public sealed class PackageContractTests
         // The parsed declaration receives the exact owner admission and manifest digest only here.
         UpdateCatalogVersionSnapshot package = ContractFixture.CreateSnapshot();
         var owner = new ManagedVersionAdmission(package.Version, package.Identity, package.ReleaseManifestSha256);
-        var limits = new PackageVerificationLimits(4, 1024, 2048, 512, 256, 123);
+        var limits = new PackageVerificationLimits(4, 1024, 2048, 512, 256, 123, 4);
         ManagedLauncherIdentity identity = ManagedLauncherIdentity.Create(ContractFixture.Descriptor,
             limits.MaximumExecutableBytes, owner.Version, owner.AdmissionIdentity, owner.ReleaseManifestSha256,
             launcher.LauncherVersion, launcher.ProtocolVersion, launcher.ExecutableRelativePath, launcher.Size, launcher.Sha256);
