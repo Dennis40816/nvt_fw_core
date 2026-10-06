@@ -8,4 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Testing\AvaloniaTestHost.cs" />
+  </ItemGroup>
 </Project>
