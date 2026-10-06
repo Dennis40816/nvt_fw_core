@@ -121,3 +121,131 @@ Do not update baselines to accept differences.
 NFC adoption and workflow changes remain separate tasks.
 
 The host commit should record the repository, ref, full commit, and four source paths listed above.
+
+
+## Documentation sync
+
+`doc_sync.py` checks a selected Git diff against a repository-owned JSON policy.
+It is also an importable module.
+It uses Git and committed file contents.
+It never calls a model or the network.
+It never changes a file.
+
+Run this command from the repository root:
+
+```text
+python tools/repo-checks/doc_sync.py --repo . --config tools/repo-checks/doc-sync.core.json --base <ref> [--head <ref>] [--pr-body-file <path>] [--mode warn|enforce] [--all-links]
+```
+
+`--head` defaults to `HEAD`.
+The diff uses `<base>...<head>` with rename detection.
+Both paths of a rename count as changed.
+Uncommitted changes do not enter the checks.
+
+`load_config(path)` validates the version-one JSON schema.
+It accepts UTF-8 with or without a BOM.
+It rejects unknown keys and wrong types.
+`check_repository(repo, config, base, ...)` returns findings and an accepted exemption reason.
+
+The config has `version`, `mappings`, `bilingual`, and `moduleLists` fields.
+Each mapping has a name, source path patterns, and required document templates.
+`*` matches one path segment.
+`**` matches any number of path segments.
+`{name}` captures a whole path segment.
+Document templates substitute those captures.
+Required documents must appear in the same changed set.
+
+A PR body line `Docs: none — <reason>` exempts only the mapping check.
+The separator can also be an en dash or a hyphen.
+`Docs: none` ignores case.
+The reason must contain a non-space character.
+An empty reason produces a finding and leaves mapping active.
+The report prints the accepted reason.
+
+The bilingual check pairs `X.md` with `X.zh-TW.md`.
+A companion at either selected commit must also change.
+`bilingual.exclude` uses the same path patterns.
+
+Module lists run on every invocation.
+Modules are immediate source-root folders with a tracked file at the head.
+List patterns substitute `{lib}` and `{module}`.
+A missing list document produces a finding.
+`reverse` defaults to false.
+A reverse list also reports references to missing module folders.
+The Core config checks both README lists and `docs/components.md`.
+The translated README may link either module document.
+It maps source changes to both module documents.
+The pattern `src/{lib}/{module}/*/**` needs a file inside a module folder.
+Files directly under a library folder, such as lock files, map to nothing.
+Core conventions do not require a mapping for test-only changes.
+The components list permits planned modules.
+
+The links check reads relative Markdown links, images, and reference definitions.
+It skips fenced code and inline code.
+It skips HTTP, HTTPS, mail, and anchor-only targets.
+It removes fragments and queries before decoding percent escapes.
+A leading `/` starts at the repository root.
+Targets must exist in the head tree.
+Changed Markdown files receive the normal link check.
+`--all-links` extends that check to all tracked Markdown files.
+Every tracked Markdown file is checked for links to deleted or renamed paths.
+
+Each finding is one GitHub Actions annotation line, for example `::warning file=README.md,line=3::doc-sync links: ...`.
+The line stays readable outside CI.
+Every finding names a file and a line; a file-wide finding uses line 1.
+A missing exemption reason has no location, because the PR body is not a repository file.
+An accepted exemption prints a `::notice::` line.
+Warn mode prints `::warning` findings and exits 0.
+Enforce mode prints `::error` findings and exits 1 when findings exist.
+Both modes exit 2 for usage, config, file, or Git errors.
+The final summary counts mapping, bilingual, module-list, and links findings.
+The owner chose one week of warnings before enforcement.
+Core integration owns rollout timing and CI wiring.
+This tool is new code with no frozen source baseline.
+
+## Handoff report
+
+`handoff_check.py` reports stale or incomplete WIP summaries.
+It is report-only.
+It is not wired into CI.
+It never changes a file.
+It never calls `gh` or the network.
+
+```text
+python tools/repo-checks/handoff_check.py --wip <file> --repo . [--branch <ref>] [--open-prs <file>] [--utc-offset +HH:MM]
+```
+
+`--branch` defaults to `HEAD`.
+The current section starts at the first heading containing `以本節為準`.
+It ends at the next heading of the same or a higher level.
+Child headings remain in the section.
+Headings inside fenced code do not count.
+The summary reports the number of marked headings.
+A missing marked heading produces a finding.
+
+The section time is its latest valid timestamp.
+The accepted forms are `YYYY-MM-DD HH:MM` and `MM-DD HH:MM`.
+A minute written as `Mx`, such as `11:2x`, is not a time and is ignored.
+The short form uses the head commit's year.
+WIP times are clock times, so they use `--utc-offset`, which defaults to this computer's zone.
+The head commit's zone is not used, because a GitHub merge commit records UTC.
+Other forms do not supply a section time.
+A missing timestamp produces a finding.
+A newer head commit produces a finding.
+A section time more than 10 minutes after the current time produces a finding.
+A head SHA mention accepts any 7 to 40 character hex prefix.
+The prefix ignores case.
+A missing head SHA produces a finding.
+
+`--open-prs` reads the JSON array produced by `gh pr list --json number,url`.
+The caller supplies that file.
+Each entry needs an integer number and a nonempty URL.
+Each missing full URL produces a finding.
+A URL followed by a letter, digit, `/`, `_` or `-` does not count, so `pull/3` never matches `pull/30`.
+Only the current section supplies evidence.
+
+The command prints one line per finding and a final summary.
+A completed report exits 0 even when findings exist.
+Usage, file, and Git errors exit 2.
+`check_handoff(wip, repo, ...)` returns findings and the marked-heading count.
+This tool is new code with no frozen source baseline.
