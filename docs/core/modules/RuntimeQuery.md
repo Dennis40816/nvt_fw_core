@@ -6,6 +6,77 @@
 
 `Nvt.Core.RuntimeQuery` provides the JSON envelopes and local named-pipe transport extracted from FreeformHelper (NFH). It serves one request per connection, sequentially, using byte-mode asynchronous pipes. It has no Avalonia or NLog dependency and does not interpret product commands.
 
+## Commands and arguments
+
+Core now provides command routing, request checks, and five generic argument helpers.
+
+| API | Contract |
+| --- | --- |
+| `RuntimeQueryCommandRouter(handlers)` | Uses the caller's delegate dictionary without adding commands or changing its key comparer. |
+| `RegisteredCommands` | Read-only names in dictionary enumeration order at construction. Build the dictionary in registration order first. |
+| `RouteAsync(commandText, args)` | Trims and lowercases the command with invariant culture. Passes the original argument dictionary to the handler. |
+| `ExecuteAsync(request, expectedVersion)` | Checks null first, compares versions with ordinal equality second, then routes. The tool supplies its version. |
+| `RuntimeQueryArgumentParser.TryGetIntArg` | Parses invariant integers and checks an inclusive range. |
+| `TryGetIntListArg` | Splits on commas, trims items, removes empty items, and checks each integer in order. |
+| `TryGetDoubleArg` | Parses invariant floats with thousands separators. Rejects NaN, infinity, and values outside the inclusive range. |
+| `TryGetStringArg` | Reads a nonblank value and trims surrounding whitespace. |
+| `TryGetBoolArg` | Accepts true/false, 1/0, on/off, and yes/no with ordinal case-insensitive matching. |
+
+The handler type remains `Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>`.
+The router returns the handler's response and lets handler exceptions escape.
+Core has no version constant.
+
+Unknown names return `UNKNOWN_COMMAND` with `Unknown query command '{commandText}'.`.
+The message retains the original command text, including whitespace. Null text appears as an empty string.
+Null requests return `INVALID_REQUEST` with `Request is null.`.
+Version mismatches return `UNSUPPORTED_VERSION` with `Unsupported request version '{request.Version}'. Expected '{expectedVersion}'.`.
+
+Missing, null, or blank argument values return false with default outputs and no error.
+Invalid supplied values return `INVALID_ARGUMENTS` with the frozen message.
+Integer lists keep order and duplicates. A failed item clears the output list.
+Double parsing uses invariant culture, but range messages format limits with the current culture.
+For example, French culture still parses `1,5` as 15 and formats a 1.5 limit as `1,5`.
+
+### Frozen command baseline
+
+This command baseline is separate from the transport baseline below.
+
+- Source repository: `Dennis40816/nvt-freeform-helper`.
+- Source ref: `1.3.x`.
+- Full frozen commit: `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
+- Extracted paths:
+  - `src/FreeformHelper.UI/Services/RuntimeQueryCommandRouter.cs`: all 25 lines.
+  - `src/FreeformHelper.UI/Services/RuntimeQueryUseCase.cs`: lines 51–92, for registration context and request checks.
+  - `src/FreeformHelper.UI/Services/RuntimeQueryArgumentParser.cs`: generic helpers at lines 161–350.
+- Envelope and version reference: `src/FreeformHelper.UI/Services/RuntimeQueryProtocol.cs` at the same commit.
+- Test references: every `RuntimeQueryUseCaseTests*.cs` file and `RuntimeQueryIpcTests.cs` listed under NFH switch-over evidence.
+
+The host commit message must include this repository, ref, full SHA, and extracted paths.
+
+### Verification and switch-over
+
+`RuntimeQueryCommandCases.cs` holds reusable inputs and literal expected outputs without Core envelope types.
+`RuntimeQueryCommandRouterTests` and `RuntimeQueryArgumentParserTests` run those cases against Core.
+`RuntimeQuerySourceContractTests` ports the routing boundaries of source request tests and their handler-exception contract.
+Synthetic handlers replace product fixtures. Product output assertions stay in NFH.
+The source has no direct tests for the router, request checks, or generic helpers.
+
+To switch NFH to Core:
+
+1. Replace its router with `RuntimeQueryCommandRouter`. Keep its handler table and each handler's check order.
+2. Replace its request checks with `router.ExecuteAsync(request, RuntimeQueryProtocol.Version)` at the existing call position.
+3. Replace its five generic helpers with `RuntimeQueryArgumentParser`. Keep product selection parsers from lines 7–159.
+4. Reuse the case tables with adapters for the source types and Core types. Compare outcomes, output values, codes, and exact messages.
+5. Run the full test list under NFH switch-over evidence before and after replacement.
+6. Require equal test names, counts, pass/fail results, and skipped results.
+
+The frozen files define 24 tests: 19 use-case tests and five IPC tests.
+Record the complete test list in each adoption run. Do not remove or rename tests to accept a difference.
+The source request-check adapter uses its protocol version. Other expected-version cases verify Core's caller-supplied version contract.
+
+Command-line handling and the UI-thread step follow in later tasks.
+This extraction does not adopt Core in the source tool.
+
 ## Public API
 
 | API | Contract |
@@ -19,7 +90,7 @@
 | `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal closes the active pipe, cancels transport and handler waits, and bounds the wait for cancellation callbacks and the run loop. |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | Synchronously sends one request with a positive total connection/write/read budget. Connection elapsed time is deducted before the write/read timer, retaining the source's integer millisecond rounding and minimum remaining budget of one millisecond. |
 
-The server handler is `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`. It receives the deserialized request, configured protocol version and shutdown token. Empty lines and malformed JSON are rejected by the transport; a JSON null literal and version mismatches reach the handler, exactly as in the frozen transport. Null/version and command validation remain in NFH's `RuntimeQueryUseCase`, after its UI dispatch. The synthetic test handler reproduces those existing validation envelopes without moving product validation into Core.
+The server handler is `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`. It receives the deserialized request, configured protocol version and shutdown token. Empty lines and malformed JSON are rejected by the transport; a JSON null literal and version mismatches reach the handler, exactly as in the frozen transport. Core now provides null/version checks and command routing. The tool keeps its handler table, product parsers, command line, and UI dispatch. Transport tests also pin the original null and version error envelopes.
 
 The error callback is `Func<RuntimeQueryFailure, string?, RuntimeQueryError>`. The detail is the unchanged exception message for `InvalidJson`, `HandlerError`, `IoError` and `ClientError`, and null otherwise. Core wraps the resulting error in a failed envelope. `RuntimeQueryFailure` identifies these failures plus `RequestTimeout`, `EmptyRequest`, `EmptyResponse`, `InvalidResponse`, `ConnectionTimeout` and `ClientTimeout`; its enum names are not wire error codes.
 
@@ -81,4 +152,4 @@ Passing Core characterization tests establishes the extracted transport contract
 
 ## What stays in NFH
 
-NFH retains `freeformhelper.runtime.v1`, its protocol version value, static host ownership, `ShellViewModel`, `RuntimeQueryUseCase`, `Dispatcher.InvokeAsync` integration, null/version validation, command registry and command validation, option parsing, CLI usage and output, exit codes, timeout defaults, shutdown policy, NLog and all product error/diagnostic text. Product data and application workflows are not part of this module.
+NFH retains `freeformhelper.runtime.v1`, its protocol version value, static host ownership, `ShellViewModel`, `RuntimeQueryUseCase`, and `Dispatcher.InvokeAsync` integration. NFH also retains its handler table, product parsers, option parsing, CLI usage and output, exit codes, and timeout defaults. NFH keeps shutdown policy, NLog, product error text, and diagnostic text. Product data and application workflows are not part of this module.
