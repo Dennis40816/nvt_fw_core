@@ -4,9 +4,55 @@ using System.Security.Cryptography;
 
 namespace Nvt.Core.Files;
 
-/// <summary>Reads a measured stream length and probes at most one trailing byte.</summary>
+/// <summary>Reads bounded files or a measured stream length and probes at most one trailing byte.</summary>
 public static class BoundedFileReader
 {
+    /// <summary>Opens, bounds, and hashes an existing regular file under the supplied roots.</summary>
+    /// <param name="path">The path of the file to read.</param>
+    /// <param name="allowedRoots">Roots resolved once by the caller with <see cref="RootedPathGuard.ResolveExistingRoot"/>, or null to use the file's existing parent directory.</param>
+    /// <param name="maximumBytes">The positive inclusive size ceiling supplied by the host application.</param>
+    /// <param name="mode">Whether to keep the content bytes as well as their hash.</param>
+    /// <param name="cancellationToken">The token used to cancel admission and reading.</param>
+    /// <returns>The measured length, raw SHA-256 hash, and optional captured bytes.</returns>
+    /// <remarks>Disposes its file stream. Rooted checks do not hold filesystem custody and cannot detect every same-length rewrite during a read.</remarks>
+    /// <exception cref="ArgumentOutOfRangeException">The maximum is not positive or the mode is undefined.</exception>
+    /// <exception cref="OperationCanceledException">Cancellation was requested.</exception>
+    /// <exception cref="FileSizeLimitExceededException">The measured length exceeds the caller or capture storage limit.</exception>
+    /// <exception cref="FileChangedDuringReadException">The stream changed while reading its measured content.</exception>
+    public static async ValueTask<BoundedReadResult> ReadFileAsync(
+        string path,
+        IReadOnlyList<string>? allowedRoots,
+        long maximumBytes,
+        FileCaptureMode mode,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumBytes);
+        ValidateMode(mode);
+        cancellationToken.ThrowIfCancellationRequested();
+        string fullPath = Path.GetFullPath(path);
+        string resolved = RootedPathGuard.ResolveExistingFileUnderRoots(
+            fullPath,
+            allowedRoots ?? [RootedPathGuard.ResolveExistingRoot(Path.GetDirectoryName(fullPath)!)]);
+        await using var stream = new FileStream(
+            resolved,
+            new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                BufferSize = 64 * 1024,
+            });
+        long observedLength = stream.Length;
+        if (observedLength > maximumBytes)
+        {
+            throw new FileSizeLimitExceededException(observedLength, maximumBytes);
+        }
+
+        return await ReadAndHashAsync(stream, observedLength, mode, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     /// <summary>Reads and hashes the complete measured content, optionally keeping its bytes.</summary>
     /// <param name="stream">The readable stream at the beginning of its content.</param>
     /// <param name="observedLength">The nonnegative complete length measured before reading.</param>
