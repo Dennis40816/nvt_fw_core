@@ -33,23 +33,38 @@ public sealed class RuntimeQueryIpcClientTests
             "{\"version\":\"1\",\"command\":\"probe\",\"args\":null}" + Environment.NewLine), result.RequestBytes);
     }
 
-    /// <summary>Ports an accepted request for which the peer sends no response.</summary>
+    /// <summary>
+    /// Ports an accepted request for which the peer sends no response. The source used a 100 ms budget and a
+    /// 500 ms peer delay. On a slow runner the connection could use up that budget before the request write
+    /// finished, which reported a client error instead of the timeout. This port uses a 1000 ms budget, and the
+    /// peer stays silent until the client returns.
+    /// </summary>
     [Fact]
     public async Task SendRequestWhenServerAcceptsButDoesNotRespondReturnsTimeout()
     {
         var pipeName = RuntimeQueryTestValues.NewPipeName();
         await using var peer = RuntimeQueryTestValues.CreatePeer(pipeName);
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        var clientReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         var serverTask = Task.Run(async () =>
         {
             await peer.WaitForConnectionAsync(timeout.Token);
             _ = await RuntimeQueryTestValues.ReadFrameAsync(peer, timeout.Token);
-            await Task.Delay(500, timeout.Token);
+            await clientReturned.Task.WaitAsync(timeout.Token);
         }, TestContext.Current.CancellationToken);
-        var response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName,
-            new RuntimeQueryRequest("1", "probe", null), 100, RuntimeQueryTestValues.NfhError));
+        RuntimeQueryResponseEnvelope response;
+        try
+        {
+            response = await Task.Run(() => RuntimeQueryIpcClient.SendRequest(pipeName,
+                new RuntimeQueryRequest("1", "probe", null), 1000, RuntimeQueryTestValues.NfhError));
+        }
+        finally
+        {
+            clientReturned.TrySetResult();
+        }
+
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("IPC_TIMEOUT", "Runtime query did not complete within timeout."), response);
-        await serverTask.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
+        await serverTask.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
     }
 
     /// <summary>Connection time is deducted from the later request/response budget.</summary>
