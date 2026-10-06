@@ -28,7 +28,7 @@
                   Spacing="{DynamicResource NfcSpace8}"
                   Margin="0,14,0,0">
         <Button x:Name="CancelButton"
-                Classes="confirmDialogActionButton confirmDialogDangerButton"
+                Classes="actionNeutral confirmDialogDangerButton"
                 Click="CancelButtonClick">
           <StackPanel Classes="confirmDialogDangerContent"
                       Orientation="Horizontal"
@@ -43,7 +43,7 @@
           </StackPanel>
         </Button>
         <Button x:Name="ConfirmButton"
-                Classes="confirmDialogActionButton"
+                Classes="actionPrimary"
                 Click="ConfirmButtonClick">
           <SelectableTextBlock x:Name="ConfirmButtonText"/>
         </Button>

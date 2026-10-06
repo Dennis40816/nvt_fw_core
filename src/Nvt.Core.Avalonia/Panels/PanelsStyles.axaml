@@ -8,14 +8,13 @@
       <ControlTemplate TargetType="panels:CollapsiblePanel">
         <Border Classes="panelBlockRoot" HorizontalAlignment="Stretch">
           <StackPanel>
-            <ToggleButton Classes="panelBlockHeader"
+            <ToggleButton Classes="panelBlockHeader actionGhost"
                           IsEnabled="{TemplateBinding IsCollapsible}"
                           IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                           HorizontalAlignment="Stretch">
               <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Text="{TemplateBinding Title}"
                            FontWeight="SemiBold"
-                           Foreground="{DynamicResource NfcTextStrongBrush}"
                            VerticalAlignment="Center" />
                 <ContentPresenter Grid.Column="1"
                                   Content="{TemplateBinding HeaderRight}"
@@ -44,35 +43,10 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}" />
       <Setter Property="Padding" Value="0" />
-      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="ClipToBounds" Value="False" />
     </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
-      <Setter Property="CornerRadius" Value="10,10,0,0" />
-      <Setter Property="Padding" Value="12,10" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Template">
-        <ControlTemplate TargetType="ToggleButton">
-          <ContentPresenter Name="PART_ContentPresenter"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            Padding="{TemplateBinding Padding}"
-                            Content="{TemplateBinding Content}"
-                            ContentTemplate="{TemplateBinding ContentTemplate}"
-                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-        </ControlTemplate>
-      </Setter>
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader TextBlock, ^ /template/ ToggleButton.panelBlockHeader SelectableTextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}" />
-      <Setter Property="TextWrapping" Value="NoWrap" />
-      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader SelectableTextBlock">
       <Setter Property="IsHitTestVisible" Value="False" />
@@ -80,7 +54,7 @@
     </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader Path.panelBlockChevron">
       <Setter Property="Data" Value="M0 0 L6 6 L12 0" />
-      <Setter Property="Stroke" Value="{DynamicResource NfcTextSecondaryBrush}" />
+      <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
       <Setter Property="StrokeThickness" Value="1.5" />
       <Setter Property="Width" Value="12" />
       <Setter Property="Height" Value="6" />
@@ -88,31 +62,8 @@
       <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
-      <Setter Property="CornerRadius" Value="10,10,0,0" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked TextBlock, ^ /template/ ToggleButton.panelBlockHeader:checked SelectableTextBlock">
-      <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}" />
-    </Style>
     <Style Selector="^ /template/ ToggleButton.panelBlockHeader:checked Path.panelBlockChevron">
-      <Setter Property="Stroke" Value="{DynamicResource NfcTextStrongBrush}" />
       <Setter Property="Data" Value="M0 6 L6 0 L12 6" />
-    </Style>
-    <Style Selector="^ /template/ ToggleButton.panelBlockHeader:disabled">
-      <Setter Property="Opacity" Value="1" />
     </Style>
     <Style Selector="^ /template/ Border.panelBlockChevronHost">
       <Setter Property="Background" Value="Transparent" />
