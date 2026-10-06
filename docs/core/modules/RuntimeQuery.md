@@ -130,6 +130,110 @@ For zero difference, NFH must keep the guard off and run the existing NFH switch
 Compare test results, stdout and stderr bytes, pipe frames, error codes and messages, and process exit codes.
 The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands and remove `confirm` from handler arguments.
 
+## Startup entry
+
+A tool defines each command once for startup arguments and RuntimeQuery requests.
+The owner approved this new behavior on 2026-10-06.
+It has no source tool baseline or extracted source paths.
+
+| Public API | Contract |
+| --- | --- |
+| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. |
+| `RuntimeQueryCommand.StartupPhase` | Optional metadata. The default is `None`, so existing registrations keep their behavior. |
+| `RuntimeQueryCommand.StartupValueKey` | Optional argument key for one startup value. The default is null, which defines a flag with null handler arguments. |
+| `RuntimeQueryCommand.StartupValidator` | Optional validator with type `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`. Returns null for valid arguments or a failure. |
+| `RuntimeQueryStartupCall(Command, Args)` | One recognized occurrence. `Phase` comes from its command definition. Calls retain command-line order, including occurrences with issues. |
+| `RuntimeQueryStartupIssue(Option, Message)` | The option name and exact issue message. |
+| `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | All calls, remaining tool arguments, and issues from one parse. |
+| `RuntimeQueryStartupCallResult(Call, Response)` | The executed call and its unchanged response. |
+| `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | Parses raw arguments against the router's registered commands and confirmation setting. Runs no handlers. |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | Runs one phase through the router in command-line order. Includes the first failed response, then stops. |
+
+For example, register `theme` with phase `AfterStartup` and value key `value`:
+
+```csharp
+var command = new RuntimeQueryCommand(
+    "theme",
+    RuntimeQueryCommandRisk.ChangesState,
+    ApplyThemeAsync,
+    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    StartupValueKey: "value",
+    StartupValidator: ValidateTheme);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+```
+
+The tool can call `ValidateTheme` from `ApplyThemeAsync` to keep value rules in one function.
+The validator must have no side effects and must not run the command.
+
+Both entry points pass `"dark"` under the ordinal key `"value"` to the same handler:
+
+```text
+--theme dark
+query theme --value dark
+```
+
+Core accepts these startup forms:
+
+- `--name value` and `--name=value` for value options.
+- `--name` for flags.
+- Values containing `=`, with their text unchanged.
+
+Core takes only `--` followed by a registered command name whose phase differs from `None`.
+It compares names with ordinal equality and does not change case.
+A tool keeps its own parser for its existing options.
+Core passes every other argument through unchanged, in its original order.
+For example, `--page home --theme dark --load-report a.json` leaves `--page home --load-report a.json` for the tool.
+Core adds no startup phases to generic commands such as `page` or `help`.
+A tool that registers no startup phase sees no change.
+The parser passes every argument through, including `--confirm`.
+
+The parser reports these exact grammar messages:
+
+- `--{name} requires a value.` for missing, empty, or blank values in either form.
+- `--{name} does not take a value.` for flags with an equals sign.
+- `--{name} is given more than once.` for repeated options.
+
+A next token starting with `--` is not a value and remains available for parsing.
+For each call without a grammar issue, Core calls its startup validator once.
+A validator failure becomes an issue with its message unchanged.
+The parser returns all calls and issues together for tool checks across options.
+
+With startup commands registered, the enabled confirmation guard reserves `--confirm` as a startup flag.
+It confirms every `WritesData` call, including calls before the flag.
+Without confirmation, each such call adds `--{name} writes files or changes data. Add --confirm to use it.`.
+With the guard off, `--confirm` passes through to the tool.
+Handlers never receive the reserved startup confirmation flag.
+
+The tool runs `BeforeFirstFrame` before the main window shows.
+Use this phase for settings that affect the first frame.
+The tool runs `AfterStartup` after its startup flow ends.
+Core supplies no window events or UI dispatch.
+Phase execution bypasses the runtime startup-only check and retains the enabled confirmation guard.
+The tool checks parse issues and rules across options before it calls either phase.
+
+Runtime requests check null, version, unknown command, startup-only status, then confirmation.
+Both `RouteAsync` and `ExecuteAsync` reject `BeforeFirstFrame` with `STARTUP_ONLY` and this exact message:
+
+```text
+Command '{name}' can be used only at startup.
+```
+
+Strict mode stays with the tool.
+An automation run rejects startup issues with exit code 64 and opens no UI.
+Startup validators let the tool reject invalid values before any window opens.
+An interactive run shows issues through the tool's own UI.
+Core returns issues and responses and defines no exit-code constant.
+
+`RuntimeQueryStartupCases` holds the input and literal expected-output rows.
+`RuntimeQueryStartupParserTests` and `RuntimeQueryStartupTests` check parsing, runtime error order, equal handler arguments, and phase execution.
+Run the RuntimeQuery test command below with the already-restored packages.
+For zero difference, register no startup phase and compare every passed-through argument with the original list.
+Run the tool's existing startup parser tests on both lists.
+Compare parse results and exact error messages, including existing `page`, `help`, and report options.
+Registering startup phases adds behavior and requires separate tool tests before adoption.
+This task changes no tool repository.
+
 ## Public API
 
 | API | Contract |
