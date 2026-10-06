@@ -68,6 +68,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 每份模組文件記錄凍結的來源基準，以及工具改用時如何驗證零差異。
 
 - `Nvt.Core.Avalonia.Theme`：[Theme](docs/core/modules/Theme.zh-TW.md)
+- `Nvt.Core.Lifecycle`：[Lifecycle](docs/core/modules/Lifecycle.zh-TW.md)
 - `Nvt.Core.Avalonia.Focus`：[Focus](docs/core/modules/Focus.zh-TW.md)
 - `Nvt.Core.Avalonia.Testing`：[Testing](docs/core/modules/Testing.zh-TW.md)
 - `Nvt.Core.IO`：[IO](docs/core/modules/IO.zh-TW.md)
