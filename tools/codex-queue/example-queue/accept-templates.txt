@@ -1,0 +1,3 @@
+# Optional exact argv templates. Replace placeholders only in a reviewed runtime copy.
+# The helper already supplies its default forms. Comments grant no extra commands.
+# python -I <CHECK_SCRIPT> --input {path}
