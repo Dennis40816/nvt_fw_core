@@ -24,7 +24,9 @@ public enum RuntimeQueryFailure
     /// <summary>Client pipe IO failed; detail is the exception message.</summary>
     IoError,
     /// <summary>Another client failure occurred; detail is the exception message.</summary>
-    ClientError
+    ClientError,
+    /// <summary>No running UI dispatcher is available; detail is null.</summary>
+    DispatcherUnavailable
 }
 
 /// <summary>Diagnostic events delivered without a logging dependency.</summary>
@@ -43,5 +45,7 @@ public enum RuntimeQueryDiagnostic
     /// <summary>The run loop failed during shutdown.</summary>
     ShutdownFailed,
     /// <summary>The run loop exceeded the caller's shutdown bound.</summary>
-    ShutdownTimedOut
+    ShutdownTimedOut,
+    /// <summary>Creating a server pipe failed; the run loop ends.</summary>
+    PipeCreationFailed
 }
