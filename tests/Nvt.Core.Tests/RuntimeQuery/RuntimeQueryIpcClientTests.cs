@@ -9,6 +9,7 @@ using Xunit;
 namespace Nvt.Core.Tests.RuntimeQuery;
 
 /// <summary>Frozen client framing, timeout budget and failure envelopes.</summary>
+[Collection(RuntimeQueryPipeTestGroup.Name)]
 public sealed class RuntimeQueryIpcClientTests
 {
     /// <summary>The client emits exact compact UTF-8 bytes and accepts the frozen UTF-8 preamble behavior.</summary>

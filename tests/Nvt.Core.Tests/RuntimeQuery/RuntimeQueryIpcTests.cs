@@ -10,6 +10,7 @@ using Xunit;
 namespace Nvt.Core.Tests.RuntimeQuery;
 
 /// <summary>Transport cases ported from NFH and additional wire characterizations.</summary>
+[Collection(RuntimeQueryPipeTestGroup.Name)]
 public sealed class RuntimeQueryIpcTests
 {
     /// <summary>Ports stopping a host that has not started.</summary>
