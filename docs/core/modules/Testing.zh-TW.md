@@ -112,7 +112,7 @@ NFC 的 adapter 呼叫 `AvaloniaTestHost.Build<App>()`，保留產品 applicatio
 
 ## headless 測試的 setup 失敗（Avalonia 12.1.1 探針）
 
-Core 不提供 headless session guard，NFH 與 NFC 各自保留自己的 guard。本節記錄一次探針結果，供這個決定參考。
+Core 目前不提供 headless session guard，NFH 與 NFC 各自保留自己的 guard。Core 是否出貨測試輔助程式，owner 尚未決定。本節記錄一次探針結果，供這個決定參考。
 
 NFC 的 `HeadlessSessionLoopGuard` 記載：在 Avalonia.Headless 12.0.5，測試建立應用程式的 setup 若丟出例外，會結束 headless session 迴圈，之後所有 headless 測試都會卡住。
 來源：NFC（`nvt_fw_combiner`），commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`，`tests/NvtFwCombiner.UiSmoke.Tests/HeadlessSessionLoopGuard.cs`。

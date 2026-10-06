@@ -112,7 +112,7 @@ Include `AvaloniaApplicationResourceTests`, `StartupFocusTests`, `NavigationFocu
 
 ## Setup failures in headless tests (probe on Avalonia 12.1.1)
 
-Core ships no headless session guard. NFH and NFC keep their own guards. This section records a probe that informs that choice.
+Core currently ships no headless session guard. NFH and NFC keep their own guards. The owner has not yet decided whether Core ships test helpers. This section records a probe for that decision.
 
 NFC's `HeadlessSessionLoopGuard` states that on Avalonia.Headless 12.0.5 an exception during a test's application setup ends the headless session loop. Every later headless test then blocks.
 Source: NFC (`nvt_fw_combiner`), commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`, `tests/NvtFwCombiner.UiSmoke.Tests/HeadlessSessionLoopGuard.cs`.
