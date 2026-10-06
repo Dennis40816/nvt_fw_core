@@ -52,15 +52,20 @@ Do not substitute a local rebuild for a Release asset.
 Packing twice gives different `.nupkg` bytes because package archives record timestamps, so the Release asset and its `SHA256SUMS` entry are a version's only valid copy.
 If release creation fails after a draft exists, preserve its assets and resolve the failure without rebuilding that version.
 
-To add Core to a designated tool's local feed:
+Every tool uses the same local feed folder: `vendor/nuget/` at the repository root.
+A tool takes only the Core packages it references. Add `Nvt.Core.Avalonia` when the tool adopts shared UI. Both packages always use the same version.
 
-1. Download both packages, `SHA256SUMS`, and `SOURCE.md` from the same Core Release into `<download-directory>`.
+To add or upgrade Core in a designated tool:
+
+1. Download the packages the tool references, `SHA256SUMS`, and `SOURCE.md` from the same Core Release into `<download-directory>`.
 2. Compare each package's SHA-256 checksum with `SHA256SUMS`.
-3. Copy the unchanged packages and source record into `<tool-repository>/<local-feed>`.
-4. Add `<local-feed>` to the tool's NuGet sources and map both Core package IDs to that source.
-5. Pin both package references to the exact version, update the tool's lock files, and commit the feed files.
-6. Run the tool's locked restore, existing behavior tests, and release smoke tests before shipping.
+3. Remove the previous Core version's files from `vendor/nuget/`. The folder keeps only the version in use.
+4. Copy the unchanged packages and source record into `vendor/nuget/`.
+5. Add `vendor/nuget` to the tool's NuGet sources and map the Core package IDs to that source. If the tool's `.gitignore` ignores `*.nupkg`, add `!vendor/nuget/*.nupkg`.
+6. Pin each package reference to the exact version, update the tool's lock files, and commit the feed files.
+7. Run the tool's locked restore, existing behavior tests, and release smoke tests before shipping.
 
-Keep earlier packages for rollback and select the earlier exact version when needed.
+To roll back, restore the earlier version's files from the tool's Git history or from that version's Core Release, then pin that version.
 Deliver Core only under its proprietary `LICENSE`, including inside designated tools' releases.
+Each tool release ships that file as `licenses/Nvt.Core/LICENSE`. It covers both Core packages.
 Each tool's own license does not relicense Core.
