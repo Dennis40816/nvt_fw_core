@@ -75,4 +75,4 @@ Catalog admission identity 保留 `version|relative-package-path|invariant-packa
 
 NFC 保留嚴格 state/manifest/catalog DTO 與 codec、canonical wire schema、產品文字、精確 protocol 名稱、套件信任及 release authority、registry locator/replica、retention 與 notification policy、刪除同意、firmware 行為與 UI composition。
 
-NFC 從 `vendor/nuget/` 消費版本化套件，使用精確 `[x]` pin、lock files 及 locked restore；source mapping 將 Core packages 限制於該資料夾。`SOURCE.md` 綁定來源與 package SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
+NFC 在建置時透過 `core-packages.json` 下載版本化套件，使用精確 `[x]` pin、lock files 及 locked restore。source mapping 將 Core packages 限制於下載資料夾。清單記錄每個套件的 Release 標籤與 SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
