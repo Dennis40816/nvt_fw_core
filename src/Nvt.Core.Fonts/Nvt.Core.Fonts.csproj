@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**\*.ttf;Assets\**\*.otf" />
+  </ItemGroup>
+</Project>

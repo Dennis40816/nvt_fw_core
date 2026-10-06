@@ -7,10 +7,24 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nvt.Core\Nvt.Core.csproj" />
+    <ProjectReference Include="..\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
+  <!-- Process tests start the probe from probe/ next to the test assembly. -->
+  <Target Name="CopyTestProbe" AfterTargets="Build">
+    <MSBuild Projects="..\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" ItemName="_TestProbeTargetPath" />
+    </MSBuild>
+    <PropertyGroup>
+      <_TestProbeDir>@(_TestProbeTargetPath->'%(RootDir)%(Directory)')</_TestProbeDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_TestProbeFile Include="$(_TestProbeDir)*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_TestProbeFile)" DestinationFolder="$(OutDir)probe" SkipUnchangedFiles="true" />
+  </Target>
 </Project>
