@@ -5,12 +5,17 @@
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：第 15 行的歷史初始化、第 47 行的 `CanGoBack`、第 115 行的上一頁目標，以及第 171–203 行的完成導覽與回復機制。第 74–85 與 107–119 行的命令流程界定轉接邊界；其中的防護條件與捷徑保留在 NFC。
+- `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：僅擷取第 758–764 行的 `LoadContent`，改名為 `EnsureContent`。頁面註冊與 `ApplyDeferredShellContent` 呼叫端保留在 NFC。
+- `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.StartupWarmup.cs`：僅擷取第 42–59 行的 `MaterializeContent`。暖機清單、排程、執行閒置檢查、進度及追蹤包裝保留在 NFC。
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
 `Nvt.Core.Shell` 提供同步、僅依賴 BCL 的導覽歷史輔助類別，頁面識別由宿主定義。
-它不依賴產品、Toolkit 或 Avalonia，也不公開可變動的歷史集合。本次擷取涵蓋
-歷史與啟用失敗回復。頁面承載、工作區組合及預載排程屬於其他機制。
+它不依賴產品、Toolkit 或 Avalonia，也不公開可變動的歷史集合。
+`Nvt.Core.Avalonia.Shell` 的 `PageHost` 提供兩個同步 `ContentControl` 輔助方法。
+Shell 邊界涵蓋導覽歷史、啟用失敗回復及此頁面承載介面。呼叫端註冊自己的頁面，
+並提供識別、承載控制項、範本與順序；API 不假定任何產品頁面清單。
+工作區組合與預載排程由宿主應用程式負責。
 
 ## 公開 API
 
@@ -27,6 +32,21 @@ public sealed class NavigationHistory<TPage> where TPage : notnull
         Action? afterActivation = null);
 }
 ```
+
+```csharp
+namespace Nvt.Core.Avalonia.Shell;
+
+public static class PageHost
+{
+    public static void EnsureContent(ContentControl host, bool shouldLoad,
+        object content);
+    public static void MaterializeContent(ContentControl host, object dataContext);
+}
+```
+
+`ContentControl` 是 Avalonia 既有的控制項。PageHost 不新增控制項、註冊表、
+dispatcher 或排程器。呼叫端負責 UI 執行緒存取，並決定執行狀態是否已閒置，
+適合進行實體化。
 
 建構時只存入一筆注入的首頁項目，不讀取選取狀態，也不呼叫回呼。
 空回呼依 `selectedPage`、`activate`、`stateChanged` 的順序拒絕。
@@ -60,6 +80,36 @@ public sealed class NavigationHistory<TPage> where TPage : notnull
 返回條件移除最後一筆。回復來源為呼叫完成時讀取的選取狀態；宿主可另外保留
 較早的來源，供清除動作使用。呼叫不具同步保護，應由宿主的導覽執行緒執行。
 
+## 保留的頁面承載行為
+
+`EnsureContent` 先檢查 `shouldLoad`。若為 false，不存取宿主；若為 true，
+唯一操作是 `host.Content ??= content`。既有非 null 內容保留原識別；Core
+不明確建構範本、不改動 `ContentTemplate`，也不指派控制項的 `DataContext`。
+Avalonia 仍處理屬性正常的通知與呈現。
+
+`MaterializeContent` 在進入時若 `host.Content` 非 null，立即返回。
+否則直接呼叫 `host.ContentTemplate?.Build(dataContext)`，不檢查 `Match`。
+缺少範本或建構結果為 null 時，呼叫 `EnsureContent(host, true, dataContext)`，
+並保留範本。備援路徑的 null 合併指派也會保留重入建構所載入的內容。
+
+建構出非 null 控制項時，先指派完全相同的 `dataContext`，接著清除宿主的
+`ContentTemplate`，最後指派 `Content`。宿主自己的 `DataContext` 不變。
+後續一般呼叫保留已發布的內容，不再建構；先延遲載入或先暖機皆如此。
+
+建構與屬性通知同步執行。沒有重入防護，也不會在成功建構後再次檢查內容：
+內容仍為 null 時，巢狀實體化可以再次建構，外層成功呼叫最後發布。
+清除範本的通知同樣可在最後指派前載入暫時內容。這些行為保留凍結來源的指派語意。
+
+建構及指派例外原樣傳出，不包裝，也不回復。指派失敗會停止後續步驟，
+保留已完成的變動。API 不新增參數驗證：執行時 null 宿主在 false 延遲載入時
+不被存取，其他情況擲出 `NullReferenceException`。執行時 null 內容或內容物件
+可被接受；null 備援結果讓內容維持 null，允許再次實體化。
+成功建構的控制項依傳入值接收 null 內容物件。
+
+凍結的 PageHost 方法沒有數值限制、正數限制參數、產品上限或訊息常值。
+其邊界為兩種載入許可值、null／非 null 內容，以及缺少／null／非 null 建構結果。
+沒有 NFC 上限被移轉、放寬或新增。
+
 ## 來源與 Core 測試對照
 
 所有 Core 測試均使用合成識別、回呼及確定性的同步控制點。
@@ -81,6 +131,27 @@ public sealed class NavigationHistory<TPage> where TPage : notnull
 `NavigationClear.cs`、`NavigationClearModal.cs` 及 `SettingsNavigation.cs`
 中的產品斷言仍是 NFC 證據。Core 不重製韌體、目錄、模態、焦點、麵包屑或像素測試資料。
 
+PageHost 測試透過既有連結來源的 `AvaloniaTestHost` 及測試組件的單一註冊，
+使用合成物件、控制項與範本。屬性回呼提供確定性的順序及重入控制點，不使用計時等待。
+
+| 凍結來源證據或邊界 | `tests/Nvt.Core.Avalonia.Tests/Shell/PageHostTests*.cs` 中的 Core 測試 |
+| --- | --- |
+| `MainWindow.axaml.cs:758–764`，true／false 許可與既有內容邊界 | `EnsureContentUsesOnlyLazyAdmission`、`EnsureContentRetainsExistingContent`、`HelpersRetainNonNullEdgeValues`、`EnsureContentDoesNotAssignControlDataContext`、`EnsureContentAcceptsNullContentWithoutSealingTheHost`。 |
+| `MainWindow.StartupWarmup.cs:44–54`，既有內容及兩種備援路徑 | `MaterializeContentRetainsExistingContent`、`MaterializeContentPreservesFallbackIdentities`。 |
+| `MainWindow.StartupWarmup.cs:49,56–58`，完全相同的內容物件、一次建構及指派順序 | `MaterializeContentBuildsOnceAndAssignsInFrozenOrder`、`MaterializeContentDoesNotConsultTemplateMatch`。 |
+| 先延遲載入與先暖機；拒絕延遲載入 | `LazyFirstAndWarmupFirstRetainTheirFirstContent`、`DeniedLazyAdmissionStillAllowsWarmup`。 |
+| 執行時 null 宿主、內容及內容物件邊緣輸入 | `NullHostFollowsTheFrozenPredicateOrder`、`EnsureContentAcceptsNullContentWithoutSealingTheHost`、`MaterializeContentNullFallbackRemainsRetryable`、`MaterializeContentAssignsNullDataContextToBuiltControl`。 |
+| 建構失敗與三個指派失敗邊界 | `BuildFailurePropagatesUnchangedAndAllowsRetry`、`AssignmentFailurePreservesPartialStateAndOrder`、`EnsureContentAssignmentFailurePropagatesUnchanged`、`FallbackAssignmentFailurePropagatesUnchanged`。 |
+| 延遲載入及實體化發布時重入 | `LazyAssignmentReentryRetainsPublishedContent`、`MaterializedContentReentrySeesCompletedAssignments`。 |
+| 成功／null Build 重入、巢狀建構、內容物件／範本通知重入與重入建構失敗 | `BuildReentryPreservesSuccessfulAndFallbackAssignmentRules`、`BuildReentryCanMaterializeAgainBeforeOuterPublication`、`DataContextReentryRetainsTheNestedContextChange`、`TemplateClearReentryRunsBeforeOuterContentAssignment`、`BuildFailureRetainsReentrantHostChanges`。 |
+| `XamlControlStyleContractTests.Startup.cs` 的 `MainWindowDefersInactivePageAndModalContent` 與 `MainWindowWarmsCommonPagesAfterFirstFrameWithoutLoadingModals` | 方法本體的來源檢查對應至上述延遲載入及直接範本建構／發布測試。NFC 保留頁面承載註冊、延遲資源位置、暖機頁面順序、首幀時機、執行閒置控制及追蹤斷言。 |
+
+`ShellPreloadSessionTests.Presentation.cs`、`ShellPreloadSessionTests.Cancellation.cs`、
+`WindowLifetimeTests.Ready.cs` 及 `ShellScreenInventoryTests.cs` 的產品預載、取消、
+視窗生命週期、頁面組合、版面、焦點及像素斷言保留在 NFC。
+其中門檻與排程預算不屬於 PageHost。Core 新增已擷取方法的可執行特性測試，
+不移轉這些產品測試套件。
+
 ## 驗證
 
 完成鎖定還原後，從方案根目錄執行：
@@ -90,7 +161,7 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build
 ```
 
-Core 測試涵蓋歷史機制。NFC 在採用時對凍結父版本證明產品與像素一致。
+Core 測試涵蓋歷史與 PageHost 機制。NFC 在採用時對凍結父版本證明產品與像素一致。
 
 ## NFC 所有權與採用
 
@@ -99,7 +170,26 @@ NFC 保留 `ShellPage`、頁面識別與工廠、韌體防護、首頁返回不�
 `MainWindowViewModel.Context.cs` 保留產品頁面啟用與成功時的
 `Navigation.UpdateState()` 更新；`MainWindowViewModel.Construction.cs` 保留產品組合。
 
-NFC 以自己的獨立 PR 採用本模組。該 PR 在建置時透過 `core-packages.json` 下載已驗證且具版本的 `Nvt.Core` nupkg，
-搭配精確 `[x]` 版本、鎖定還原、套件來源對應，以及清單中的 Release 標籤與套件 SHA-256。
-套件參照與鎖定檔由 NFC 擁有。套件與可執行行為都符合凍結父版本後，NFC 只刪除本地泛型歷史儲存與
-完成回復方法本體。NFC 保留自己的產品轉接層，並在相同的已記錄環境下證明 UI 快照完全一致。
+`MainWindow.axaml` 保留視覺承載控制項、頁面範本、版面及資源位置。
+`MainWindow.axaml.cs` 保留頁面註冊與載入許可政策。
+`DeferredShellState.cs` 保留設定及編輯器工廠與快取的產品狀態。
+`MainWindow.StartupWarmup.cs` 保留暖機頁面清單、執行閒置與世代檢查、進度、
+排程及啟動追蹤包裝。`ShellPreloadSession.cs` 保留預載許可、重試、取消與工作預算。
+NFC 也保留 App、DesktopApplication 及 MainWindow 啟動包裝、報告組合與持續化
+轉接層、韌體、文字、schema、信任與發行權限，包括 MessageCenter facade 及範本。
+
+剩餘工作區的所有權清冊是獨立的採用門檻。任何更廣的工作區移轉都需要明確範圍
+與來源清冊；歷史／PageHost 證據只涵蓋此介面。既有 Panels 元件必須有獨立的
+採用範圍及 NFC 像素證據，才能取代 NFC 工作區標記。
+
+NFC 以自己的獨立 PR 採用本模組。建置時透過 `core-packages.json` 下載已驗證且具
+版本的 `Nvt.Core` 與 `Nvt.Core.Avalonia` nupkg，使用精確 `[x]` 版本、鎖定還原
+及限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256；
+Release 的 `SOURCE.md` 識別其 Core 來源。Core 與 NFC 維持各自的版本化發行。
+共用套件參照、版本、來源對應及鎖定檔由 NFC 擁有，不加入指向 Core checkout 的 ProjectReference。
+
+NFC 改接兩個方法的呼叫端；只有套件來源及完整可執行值、物件識別與事件軌跡符合
+凍結父版本後，才刪除本地兩個方法本體、泛型歷史儲存及完成回復方法本體。
+NFC 保留產品轉接層，並在相同記錄的 OS、解析字型、DPI、主題、renderer、viewport、
+motion、輸入、時間及 IDs 下證明解碼 UI 像素零差異，記錄比較產物的 SHA-256。
+八個舊字型值保持不變；新的 Core 字型角色不屬於此次採用。
