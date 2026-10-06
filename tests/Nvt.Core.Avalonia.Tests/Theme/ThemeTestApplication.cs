@@ -2,8 +2,8 @@
 
 using Avalonia;
 using Avalonia.Headless;
-using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
+using Nvt.Core.Avalonia.Testing;
 
 [assembly: AvaloniaTestApplication(typeof(Nvt.Core.Avalonia.Tests.Theme.ThemeTestApplication))]
 
@@ -13,8 +13,7 @@ namespace Nvt.Core.Avalonia.Tests.Theme;
 public sealed class ThemeTestApplication : Application
 {
     /// <summary>Builds the isolated headless application.</summary>
-    public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<ThemeTestApplication>()
-        .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+    public static AppBuilder BuildAvaloniaApp() => AvaloniaTestHost.Build<ThemeTestApplication>();
 
     /// <inheritdoc />
     public override void Initialize()
