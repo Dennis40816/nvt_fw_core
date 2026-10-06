@@ -52,20 +52,37 @@ Do not substitute a local rebuild for a Release asset.
 Packing twice gives different `.nupkg` bytes because package archives record timestamps, so the Release asset and its `SHA256SUMS` entry are a version's only valid copy.
 If release creation fails after a draft exists, preserve its assets and resolve the failure without rebuilding that version.
 
-Every tool uses the same local feed folder: `vendor/nuget/` at the repository root.
-A tool takes only the Core packages it references. Add `Nvt.Core.Avalonia` when the tool adopts shared UI. Both packages always use the same version.
+Every tool downloads Core packages into `artifacts/core-packages/` at the repository root before restore.
+The tool ignores that folder in git and commits only `core-packages.json` as its package record.
+The manifest pins each package's Release tag, asset name, and SHA-256 from that Release's `SHA256SUMS`.
+Core Releases are immutable.
+The public Core repository needs no download token.
 
-To add or upgrade Core in a designated tool:
+A tool takes only the Core packages it references.
+Add `Nvt.Core.Avalonia` when the tool adopts shared UI.
+Both Core packages always use the same version.
+A font package with its own version and tag uses the same manifest with its own `release` value.
 
-1. Download the packages the tool references, `SHA256SUMS`, and `SOURCE.md` from the same Core Release into `<download-directory>`.
-2. Compare each package's SHA-256 checksum with `SHA256SUMS`.
-3. Remove the previous Core version's files from `vendor/nuget/`. The folder keeps only the version in use.
-4. Copy the unchanged packages and source record into `vendor/nuget/`.
-5. Add `vendor/nuget` to the tool's NuGet sources and map the Core package IDs to that source. If the tool's `.gitignore` ignores `*.nupkg`, add `!vendor/nuget/*.nupkg`.
-6. Pin each package reference to the exact version, update the tool's lock files, and commit the feed files.
-7. Run the tool's locked restore, existing behavior tests, and release smoke tests before shipping.
+Follow the [Core package download guide](../../tools/core-packages/README.md) to add or upgrade Core in a designated tool:
 
-To roll back, restore the earlier version's files from the tool's Git history or from that version's Core Release, then pin that version.
+1. Copy the fetch script unchanged into the tool and record its Core commit in the tool's pull request.
+2. Commit the manifest with the Release's asset names and SHA-256 values, then ignore the download folder.
+3. Configure NuGet source mapping so `Nvt.Core` and `Nvt.Core.*` use only that local folder.
+4. Run the script before every restore in build scripts, verify scripts, and CI.
+   Add a download step when a workflow calls `dotnet restore` directly.
+   The owner pushes workflow changes.
+5. Pin each package reference to the exact version and update the tool's lock files.
+   Lock files still pin each package's version and content hash.
+6. Run the tool's locked restore, existing behavior tests, and release smoke tests before shipping.
+
+The script verifies cached files and checks each download's SHA-256 before it replaces a package file.
+It fails on a checksum mismatch and never falls back to another source.
+For a sandbox without network, download on the host first, then run the script with `--offline` inside the sandbox.
+
+To upgrade, use the new Release's asset names and `SHA256SUMS` values in the manifest, then update the lock files.
+To roll back, put the earlier Release's values back in the manifest and restore its package references and lock files.
+
 Deliver Core only under its proprietary `LICENSE`, including inside designated tools' releases.
-Each tool release ships that file as `licenses/Nvt.Core/LICENSE`. It covers both Core packages.
+Each tool release takes `LICENSE` from a verified downloaded package and ships it as `licenses/Nvt.Core/LICENSE`.
+It covers both Core packages.
 Each tool's own license does not relicense Core.
