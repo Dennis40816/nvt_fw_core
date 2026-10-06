@@ -307,3 +307,173 @@ dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --
 Core 使用 `TimeProvider` 時間戳記。
 在實機上，接近 120 ms 邊界的回報可能產生不同的通過或捨棄結果。
 零差異比較應使用精確的假時鐘時間序列。
+
+## Progress UI
+
+UI 控制項保留 NVT FW Combiner 的載入結構，以及由工具決定的動畫政策。
+擁有者於 2026-10-06 核准此邊界。
+程式庫使用 net10.0 與 Avalonia 12.0.5。
+命名空間為 `Nvt.Core.Avalonia.Progress`。
+
+### 凍結 UI 基準
+
+使用 `git show <sha>:<path>` 讀取以下檔案。
+這些基準也供主機撰寫提交訊息時記錄來源。
+
+| 工具 | 儲存庫 | Ref | 提交 |
+| --- | --- | --- | --- |
+| NVT FW Combiner（NFC） | `nvt_fw_combiner` | `origin/1.2.x` | `a67eaee35b1d7eda9157a82e880e98a70407e913` |
+| NVT FW UTIL（NFU） | `nvt-event-buffer-replay` | `origin/0.2.0` | `26d66bd377a4ad051392bd7cc7e9d1c2e6287dba` |
+| Freeform Helper（NFH） | `nvt-freeform-helper` | `origin/1.3.x` | `4df72911867ad047b3217195d12223038a5781b7` |
+
+NFC 提供外層結構、Padding 繫結、動畫政策與送達順序：
+
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml`。
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml.cs`。
+- `src/NvtFwCombiner.Presentation.Avalonia/Resources/MainWindowSharedTemplates.axaml` 的 `ForegroundLoadingStatusTemplate`。
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ForegroundLoadingState.cs`。
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowInspectionLifecycle.cs` 的進度送達程式。
+
+其他 UI 來源確認呈現政策由工具持有：
+
+- NFU：`src/Nvt.Replay.Avalonia/MainWindow.Output.cs`，第 600–638 行。
+- NFH：`src/FreeformHelper.UI/Views/WorkflowSteps/RightWorkflowStep5View.axaml` 的進度條。
+
+已檢視的 NFC 測試來源：
+
+- `tests/NvtFwCombiner.UiSmoke.Tests/ForegroundLoadingStateTests.cs`。
+- `tests/NvtFwCombiner.UiSmoke.Tests/WorkflowInspectionLifecycleTests.cs`。
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.Startup.cs`。
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.StandardFeedback.cs`。
+- `tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.Presentation.cs`。
+- `tests/NvtFwCombiner.UiSmoke.Tests/StartupFocusTests.cs`。
+
+### UI 送達規則
+
+[`UiProgress<T>`](../../../src/Nvt.Core.Avalonia/Progress/UiProgress.cs) 接收 `Action<T> publish`。
+回呼為 null 時，建構子擲出 `ArgumentNullException`。
+`Dispatcher.UIThread.CheckAccess()` 為 true 時，`Report` 立即執行 `publish(value)`。
+否則，它以預設優先序將回呼 Post 至 `Dispatcher.UIThread`。
+
+NFC 在擷取的呈現內容為 null，或等於目前同步內容時，立即執行 `Deliver`。
+其他情況則 Post 至該同步內容。
+Core 保留 NFC 的 UI 同步內容送達順序，並要求所有回呼在 UI 執行緒執行。
+Core 不保留 NFC 未擷取同步內容時直接從背景執行緒送達的路徑。
+
+Post 的回報依入列順序送達。
+UI 執行緒的立即回報可能先於尚待派送的背景回報送達。
+此配接器不加入佇列或節流。
+
+NFU 建立 `Progress<ExportJobSnapshot>`，透過擷取的同步內容 Post 回呼。
+NFU 在啟動或取消後，也會直接呈現目前快照。
+回呼重新讀取權威快照，並拒絕不同工作 ID。
+這些快照檢查與直接呈現仍由 NFU 持有。
+若立即送達會改變既有順序，NFU 必須保留一律 Post 的觀察者。
+
+### 進度條
+
+[`ProgressIndicator`](../../../src/Nvt.Core.Avalonia/Progress/ProgressIndicator.cs) 繼承 `ProgressBar`。
+唯一新增屬性為 `ProgressUpdate? Progress`。
+已知比例會將 `Value` 設為該比例。
+null 更新或 null 比例不改變 `Value`。
+
+控制項不設定 `IsIndeterminate`。
+NFC 執行中且未啟用減少動態效果時，`ShouldAnimate` 保持 true。
+已知比例時也使用相同規則。
+保留 NFC 的 `IsIndeterminate="{Binding ShouldAnimate}"` 繫結。
+
+樣式鍵保持 `typeof(ProgressBar)`。
+既有 `ProgressBar` 選取器與控制項佈景主題仍適用。
+預設 `Maximum` 保持 Avalonia 的預設值。
+NFC 與 NFH 必須保留明確的 `Maximum="1"`。
+
+NFC 使用 `ProgressIndicator` 時，可以保留既有 `Value` 繫結。
+工具提供 `ProgressUpdate` 時，再繫結 `Progress`。
+NFU 保留自己的未知總數判斷與範圍。
+
+### 載入表面
+
+[`LoadingSurface`](../../../src/Nvt.Core.Avalonia/Progress/LoadingSurface.cs) 繼承 `ContentControl`，不新增屬性。
+透過 `StyleInclude` 載入 `avares://Nvt.Core.Avalonia/Progress/ProgressStyles.axaml`。
+
+樣式讓表面可取得焦點，並啟用 Core 既有的 `FocusOnRevealBehavior`。
+範本包含遮罩 `Grid`，以及一個置中的內層 `ContentControl`。
+遮罩使用 `{DynamicResource NfcModalScrimBrush}`，並阻擋指標輸入。
+內層控制項接收表面的 `Content` 與 `ContentTemplate`。
+
+內層範本元件名稱為 `PART_Content`。
+工具以範本元件樣式提供寬度與 Padding。
+NFC 保留以下值：
+
+```xml
+<Style Selector="progress|LoadingSurface /template/ ContentControl#PART_Content">
+  <Setter Property="Width" Value="430" />
+  <Setter Property="Padding" Value="28,26" />
+</Style>
+```
+
+`progress` 前綴對應 `Nvt.Core.Avalonia.Progress`。
+此方式不在 Core 新增尺寸或 Padding 屬性。
+表面繼承的 `Padding` 不會轉送至內層元件。
+
+NFC 資料範本保留 `Padding="{Binding $parent[ContentControl].Padding}"`。
+最近的 `ContentControl` 仍為置中的內層元件。
+因此，此繫結讀取的元素與 `28,26` 值都與凍結外層結構相同。
+
+工具在表面設定 `AutomationProperties.Name`。
+工具也持有可見性、文字、按鈕、命令、宣告、尺寸、陰影與產品樣式。
+Core 不提供這些內容。
+
+### UI 驗證
+
+使用既有還原套件：
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Avalonia.Tests.Progress"
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+測試保留 NFC 可適用的動畫與外層結構斷言。
+產品生命週期、文字與命令斷言仍留在 NFC。
+
+[`UiProgressTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/UiProgressTests.cs) 檢查 UI 執行緒送達、Post 順序與立即回報超前。
+[`ProgressIndicatorTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/ProgressIndicatorTests.cs) 檢查值、null 更新、動畫、預設值與繼承樣式。
+[`LoadingSurfaceTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/LoadingSurfaceTests.cs) 檢查樹、動態遮罩、指標阻擋、Padding、內容與顯示時焦點。
+
+測試組件使用 `AvaloniaTestHost` 與真實 Skia 繪製。
+`FrozenNfcLoadingSurface.axaml` 以測試命名空間與合成資料保留凍結外層結構。
+成對的合成範本在基準使用 `ProgressBar`，在 Core 使用 `ProgressIndicator`。
+兩者使用相同合成佈景主題，不使用動畫時鐘。
+十四個比對以 640 × 360 像素與 96 DPI，逐一比較每個 RGBA 位元組。
+
+2026-10-06 的驗證通過，建置沒有警告或錯誤。
+全部 25 個 Progress UI 案例與全部 285 個 Avalonia 測試通過。
+沒有失敗或略過的測試。
+
+### NFC 採用時的零差異驗證
+
+將 `ForegroundLoadingSurface` 替換為 `LoadingSurface`。
+保留 NFC 的資料內容、Content、可見性繫結、自動化名稱與狀態範本。
+以 `Content="{Binding}"` 傳入狀態，並保留既有 `ContentTemplate`。
+載入 Core 樣式，並套用上述 NFC 內層寬度與 Padding。
+保留所有狀態範本樣式、動作、宣告，以及 `ShouldAnimate` 繫結。
+
+NFC 採用前後執行以下測試：
+
+- `ForegroundLoadingStateTests`。
+- `WorkflowInspectionLifecycleTests`。
+- `ShellPreloadSessionTests` 與 `BuiltInBundlePreloadTests`。
+- `XamlControlStyleContractTests`，包含 `CatalogWarmupUsesAccessibleRetryableForegroundLoadingSurface`。
+- `StartupFocusTests` 與 `NavigationFocusIndicatorTests`。
+
+逐像素比較未知進度、已知比例、失敗、重試、收合與完成。
+也比較啟用減少動態效果時的已知比例。
+使用相同 OS、字型、DPI、佈景主題、輸入與動畫擷取位置。
+確認焦點目標、Padding、自動化名稱與過期進度拒絕都保持相同。
+不得為了接受差異而更新核准快照。
+
+Core 的合成比對不取代 NFC 產品快照檢查。
+本次工作不包含採用或產品測試執行。
+NFH 與 NFU 可以改變外觀，但其採用 PR 必須附上前後圖片。
