@@ -2,7 +2,7 @@
 
 # Theme (`Nvt.Core.Avalonia.Theme`)
 
-Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the two style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file; do not load draft PR #71's `ActionRoleStyles.axaml`. The eight legacy font values and resource resolver remain unchanged.
+Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the two style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file. The eight legacy font values and resource resolver remain unchanged.
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
@@ -74,7 +74,12 @@ No informative text sits directly on the scrim; dialogs use opaque surfaces. Com
 
 ### Tool accents
 
-Core defaults to NFC. In application-scope Light/Dark resources, a tool overrides only the seven `NfcAccent*` keys below. Tools override no other Core key and do not override basic control styles locally. Core adds a role when a tool needs a variant. Focus colors are independent of accents.
+Core defaults to NFC. An accent is one color expressed as seven `NfcAccent*` keys; a tool sets all seven below in application-scope Light/Dark resources. Adoption follows two steps:
+
+1. In the adoption PR, a tool may override any `Nfc*` color, size and radius key and the `Nvt.Button.*` and `Nvt.Focus.*` keys at application scope with its current values, including `Nvt.Button.PrimaryLabelBrush`, to prove the screens do not change.
+2. In a later color PR approved by the owner, the tool removes those overrides and keeps only the seven `NfcAccent*` keys for its accent.
+
+Tools do not override basic control styles locally. Core adds a role when a tool needs a variant. Focus colors are independent of accents.
 
 | Tool / 工具 | Token | Light | Dark |
 |---|---|---|---|
@@ -100,7 +105,7 @@ Core defaults to NFC. In application-scope Light/Dark resources, a tool override
 | NFU | `NfcAccentBorderStrongBrush` | `#3D5B00` | `#97CD1E` |
 | NFU | `NfcAccentBorderLightBrush` | `#4A6F00` | `#82B11A` |
 
-Filled buttons use `NfcSurfaceBrush` labels in Light and `NfcAppBackgroundBrush` in Dark. The style-local `PrimaryLabelBrush` is a theme alias to those existing tokens, not a tool override token.
+Filled buttons use `Nvt.Button.PrimaryLabelBrush` from `ThemeTokens.axaml`, referenced through `DynamicResource`: `#FFFFFF` in Light and `#0B1220` in Dark. A tool may override it at application scope during the adoption step.
 
 ## Sizes and radii
 
@@ -124,9 +129,9 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 
 | Role | State | Background | Border | Foreground |
 |---|---|---|---|---|
-| `actionPrimary` | rest | `NfcAccentBrush` | `NfcAccentBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
-| `actionPrimary` | hover | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
-| `actionPrimary` | pressed | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
+| `actionPrimary` | rest | `NfcAccentBrush` | `NfcAccentBrush` | `Nvt.Button.PrimaryLabelBrush` |
+| `actionPrimary` | hover | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `Nvt.Button.PrimaryLabelBrush` |
+| `actionPrimary` | pressed | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `Nvt.Button.PrimaryLabelBrush` |
 | `actionPrimary` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
 | `actionPrimary` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionPrimary` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
@@ -159,7 +164,7 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 
 `actionIconButton` defaults to `actionNeutral` and composes with any of the four color roles, inheriting every state. `chipAction` follows neutral colors; `chipAction.active` and a ToggleButton's checked state follow the same selected rules. Selected hover uses the subtle accent surface; selected press uses the neutral pressed surface, retaining strong accent text and border. Ordinary Button has no checked state. Status warning/danger/success modifiers use the semantic surfaces, text and borders above. Statuses have no interactive, selected or focus state and retain informative colors and opacity 1 when disabled.
 
-Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrush`, `NfcBorderMutedBrush`, `NfcTextDisabledBrush` and opacity 1 over hover, press, checked and active. The task brief gives disabled ghost buttons the subtle surface, superseding the proposal's transparent surface. No double dimming remains.
+Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrush`, `NfcBorderMutedBrush`, `NfcTextDisabledBrush` and opacity 1 over hover, press, checked and active. Disabled ghost buttons use the same subtle surface. No double dimming remains.
 
 Background, border and foreground transitions last 120 ms. Pressing disables transitions; the primary pressed inner 2 px edge is an overlay that does not move content. Focus appears immediately. `.reducedMotion` on the control or any ancestor disables transitions.
 
@@ -170,9 +175,50 @@ Background, border and foreground transitions last 120 ms. Pressing disables tra
 | `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
 | `Nvt.Focus.DangerRingBrush` | `#C62828` | `#FF6B6B` |
 
-`Nvt.Focus.RingThickness` is Thickness 2; all three focus tokens live in `ThemeTokens.axaml`. Every interactive role defaults to `FocusAdorner=null`, disabling the default rectangle. Only `:focus-visible` shows the Border adorner: real Tab traversal shows it, pointer focus does not. `Margin=-4` gives a 2 px ring and 2 px exterior gap; `IsHitTestVisible=False` and `AdornerLayer.IsClipEnabled=False`. Corners follow live control radius changes: pills retain 999; each rectangular corner adds 4. `actionDanger`, including icon-danger combinations, uses the red ring; all other roles use blue. Focus changes no background, border or foreground at rest, hover, checked or active.
+`Nvt.Focus.RingThickness` is Thickness 2; all three focus tokens live in `ThemeTokens.axaml`. Every interactive role defaults to `FocusAdorner=null`, disabling the default rectangle. Only `:focus-visible` shows the Border adorner: real Tab traversal shows it, pointer focus does not. `Margin=-4` gives a 2 px ring and 2 px exterior gap; `IsHitTestVisible=False` and `AdornerLayer.IsClipEnabled=False`. Corners follow live control radius changes: pills retain 999; each rectangular corner adds 4. `actionDanger` text buttons and `actionIconButton.actionDanger` use the red ring; chips, including `chipAction.actionDanger`, and all other roles use blue. The style resource `Nvt.Focus.RingRadiusConverter` computes the ring corners. Focus changes no background, border or foreground at rest, hover, checked or active.
 
-Owner question: keep the keyboard-only `:focus-visible` ring? This implements approved choice B.
+## Breaking changes since core-v0.1.0
+
+Core 0.2.0 introduces the shared palette and button roles. This section is its release note. The following classes, selectors and resources shipped in `core-v0.1.0` are removed or replaced; no compatibility aliases are provided.
+
+| Removed or replaced item in 0.1.0 | Replacement in 0.2.0 |
+|---|---|
+| `Button.semanticAction` | `actionNeutral` |
+| `Button.semanticAction.command` | `actionGhost` |
+| `Button.secondary` | `actionNeutral` |
+| `Button.primary` | `actionPrimary` |
+| `Button.action` | `actionPrimary` |
+| `Button.danger` | `actionDanger` |
+| `Button.command` | `actionGhost` |
+| `Button.breadcrumb` | `actionGhost` |
+| `Button.browseAction` | `actionNeutral` |
+| `Button.iconButton` | `actionIconButton` |
+| `Button.iconButton.codeBlockCopy` | `actionIconButton` |
+| `Button.inlineEdit` | `actionIconButton` plus `actionGhost` |
+| `Button.summaryChip` | `chipAction` |
+| `Button.closeButton` | No Core replacement; define in the tool |
+| `Button.fileRevealAction` | No Core replacement; define in the tool |
+| `Button.railAction` (and `.reducedMotion`) | No Core rail role; define in the tool. `.reducedMotion` remains for every shared role |
+| `Button.primaryRailAction` | No Core replacement; define in the tool |
+| `railActionIcon`, `railActionLabel`, `railActionIconSlot` | No Core replacement; define in the tool |
+| Resource `NfcSemanticButtonTheme` (ControlTheme) | No replacement resource; use a shared role class |
+| Global `Button` rule (theme and null `FocusAdorner`) | Removed; add a role class. Without a role, a button falls back to Fluent, including its focus visual |
+| Dialog class `confirmDialogActionButton` (`DialogsStyles.axaml`) | `actionNeutral` or `actionPrimary` |
+| `Button.danger Path.confirmDialogDangerIcon` selector | `Button.actionDanger Path.confirmDialogDangerIcon` |
+| Panel header's own template, `PART_ContentPresenter`, 12,10 padding, 10,10,0,0 radius and panel root clip | `actionGhost` role; load `ButtonStyles.axaml` before `PanelsStyles.axaml`. The shared template uses 14,0 padding and pill corners; the panel root no longer clips the exterior ring |
+
+Product roles such as `railAction`, `primaryRailAction`, `closeButton` and `fileRevealAction`, including rail icon/label/slot layout, must be defined by each tool. The global `Button` rule is gone: a button without a role class falls back to Fluent, including Fluent's focus visual.
+
+No existing `ThemeTokens.axaml` key or type is removed or renamed. Token and behavior changes are summarized below; the palette, accent and size tables above give the current values.
+
+| Area | Change from 0.1.0 |
+|---|---|
+| Palette | Light/Dark neutral surfaces, state colors, text, borders, semantic colors and NFC's seven accent values now use the shared palette. Existing names are retained, including caution, critical and success-emphasis aliases |
+| Sizes and spacing | Role buttons are 32 px high with 14,0 padding; icon buttons are 32 × 32 with zero padding. Dialog actions previously used 36/40 px. `NfcFieldSpacing` changes from 3 to 4; `NfcSpace2/4/8/12/16/24` values are retained |
+| Radii | Token values remain `NfcCompactCornerRadius` = 6, `NfcSurfaceCornerRadius` = 8 and `NfcPillCornerRadius` = 999. Shared buttons and panel headers use pill corners; rectangular ring corners follow the control radius plus 4 |
+| Focus | Shared roles replace the suppressed default adorner with a keyboard-only 2 px ring and 2 px gap. Blue is `#1F6FD1` / `#4DA3FF` and danger red is `#C62828` / `#FF6B6B` in Light/Dark; danger chips keep blue. Unclassified buttons keep Fluent's focus visual |
+| New token keys | `NfcControlHeight` = 32; `Nvt.Focus.RingBrush`, `Nvt.Focus.DangerRingBrush`, `Nvt.Focus.RingThickness` = Thickness 2; `Nvt.Button.PrimaryLabelBrush` = `#FFFFFF` / `#0B1220` in Light/Dark |
+| New style resource | `Nvt.Focus.RingRadiusConverter` follows each control corner; color, size and radius tokens are referenced through `DynamicResource` |
 
 ## Role migration
 
@@ -421,7 +467,7 @@ This replaces the NFC-derived palette and button roles, reusing PR #71 templates
 
 The earlier NFC extraction and unchanged fonts came from `origin/1.2.x`, commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. PR #71 role work is pinned at `0f29143712cc18127df8e00636b1bfb3552d3aef`; its baselines are superseded. The shared proposal and NFH role naming approved on 2026-10-06 specify this change.
 
-- `ButtonThemeTests`: ThemeTokens/ButtonStyles only; both themes and control types, every role/state, geometry, single-line/ellipsis/clipping, unclassed controls, real Tab/pointer focus, ring brushes/geometry/hit testing, no color change on focus in four states, disabled priority and reduced motion.
+- `ButtonThemeTests`: ThemeTokens/ButtonStyles only; both themes and control types, every role/state, geometry, single-line/ellipsis/clipping, unclassed controls, real Tab/pointer focus, ring brushes/geometry/hit testing, no color change on focus in four states, disabled priority, reduced motion, application-scope adoption overrides and all-seven-key accent overrides.
 - `PaletteContrastTests`: compiled tokens, all three accents in one data-driven test; body, placeholder, semantic and accent text and filled labels at 4.5:1; disabled text, input borders, rings and scroll thumbs at 3:1. All opaque neutral/semantic/accent-tint surfaces are checked, with no documented exceptions. Decorative boundaries and translucent scrims do not carry text.
 - `ThemeContractTests`: every Theme static/dynamic resource resolves in both variants; button selectors require roles; all three XML baseline comparisons remain.
 - `NfcLegacyFontTests` and resource resolver tests are unchanged; Dialogs/Panels tests now use shared roles and preserve the other behavior contracts.
@@ -432,11 +478,16 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build
 ```
 
-After tests pass, a temporary headless helper loads Fluent, ThemeTokens, ButtonStyles and ScrollStyles and writes `artifacts/palette-gallery/roles-dark.png`, `roles-light.png`, `controls-dark.png` and `controls-light.png`. Outputs are git-ignored; the helper is then deleted. The gallery compares fixed states side by side and does not replace real input tests.
+The gallery uses Fluent, ThemeTokens, ButtonStyles and ScrollStyles to compare fixed states side by side in `artifacts/palette-gallery/roles-dark.png`, `roles-light.png`, `controls-dark.png` and `controls-light.png`. These images complement the real input tests.
 
 ### Adoption
 
-Each tool adopts in its own PR, applying its listed accent and removing local basic-control overrides. Every adoption PR attaches before and after images for owner approval, covering Light/Dark, English/Traditional Chinese, states, DPI and long labels. Product behavior and data colors stay in tools. This task adopts no tool and makes no commit.
+Each tool follows two separate PRs:
+
+1. Adoption PR: use application-scope overrides for any `Nfc*` color, size and radius key and the `Nvt.Button.*` and `Nvt.Focus.*` keys, including `Nvt.Button.PrimaryLabelBrush`, with the tool's current values. Before-and-after images prove the screens do not change.
+2. Later color PR, approved by the owner: remove those overrides and keep only the seven `NfcAccent*` keys for the tool's accent. An accent is one color expressed as seven keys; set all seven.
+
+Images cover Light/Dark, English/Traditional Chinese, states, DPI and long labels. Product behavior and data colors stay in tools.
 
 ## Scroll styles
 

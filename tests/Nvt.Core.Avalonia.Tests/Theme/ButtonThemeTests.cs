@@ -189,6 +189,7 @@ public sealed class ButtonThemeTests
     [InlineData("actionIconButton", "actionGhost", "Nvt.Focus.RingBrush", 999)]
     [InlineData("", "chipAction", "Nvt.Focus.RingBrush", 999)]
     [InlineData("", "chipAction active", "Nvt.Focus.RingBrush", 999)]
+    [InlineData("", "chipAction actionDanger", "Nvt.Focus.RingBrush", 999)]
     public void KeyboardFocusShowsOnlyTheRoleRing(string primitive, string role, string ringKey, double radius)
     {
         foreach (bool dark in new[] { false, true })
@@ -392,6 +393,155 @@ public sealed class ButtonThemeTests
                 Assert.Equal(new CornerRadius(12), ring.CornerRadius);
             }
             finally { host.Close(); }
+        }
+    }
+
+    /// <summary>Adoption overrides update existing role colors, geometry and keyboard rings at application scope.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ApplicationAdoptionOverridesUpdateButtonsAndFocus(bool dark)
+    {
+        var overrides = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["NfcSurfaceBrush"] = new SolidColorBrush(Color.Parse("#3C4D5E")),
+            ["NfcAccentBrush"] = new SolidColorBrush(Color.Parse("#7F3FBF")),
+            ["NfcBorderBrush"] = new SolidColorBrush(Color.Parse("#AD7C31")),
+            ["NfcTextBrush"] = new SolidColorBrush(Color.Parse("#BCD1E2")),
+            ["NfcDangerSurfaceBrush"] = new SolidColorBrush(Color.Parse("#563D42")),
+            ["NfcDangerBorderBrush"] = new SolidColorBrush(Color.Parse("#DE8E91")),
+            ["NfcDangerTextBrush"] = new SolidColorBrush(Color.Parse("#FFE8EB")),
+            ["NfcControlHeight"] = 44d,
+            ["NfcPillCornerRadius"] = new CornerRadius(7, 9, 11, 13),
+            ["Nvt.Button.PrimaryLabelBrush"] = new SolidColorBrush(Color.Parse("#FFE7C0")),
+            ["Nvt.Focus.RingBrush"] = new SolidColorBrush(Color.Parse("#24BABA")),
+            ["Nvt.Focus.DangerRingBrush"] = new SolidColorBrush(Color.Parse("#FF9078")),
+            ["Nvt.Focus.RingThickness"] = new Thickness(3),
+        };
+        IResourceDictionary resources = Application.Current!.Resources;
+        var previous = overrides.Keys.Where(resources.ContainsKey).ToDictionary(key => key, key => resources[key], StringComparer.Ordinal);
+        foreach (bool toggle in new[] { false, true })
+        {
+            var before = new Grid { Focusable = true, Height = 20 };
+            Button primary = CreateButton("", "actionPrimary", toggle, new TextBlock { Text = "Primary" });
+            Button neutral = CreateButton("", "actionNeutral", toggle, new TextBlock { Text = "Neutral" });
+            Button danger = CreateButton("", "actionDanger", toggle, new TextBlock { Text = "Danger" });
+            Window host = CreateHost(new StackPanel { Children = { before, primary, neutral, danger } }, dark);
+            host.Resources.MergedDictionaries.Clear();
+            try
+            {
+                Show(host);
+                Assert.Equal(32, primary.Height);
+                Assert.NotEqual(((SolidColorBrush)overrides["Nvt.Button.PrimaryLabelBrush"]).Color,
+                    Assert.IsAssignableFrom<ISolidColorBrush>(primary.Foreground).Color);
+                foreach ((string key, object value) in overrides)
+                    resources[key] = value;
+                Dispatcher.UIThread.RunJobs();
+                host.UpdateLayout();
+
+                Assert.True(before.Focus());
+                var roles = new[]
+                {
+                    (primary, "NfcAccentBrush", "NfcAccentBrush", "Nvt.Button.PrimaryLabelBrush", "Nvt.Focus.RingBrush"),
+                    (neutral, "NfcSurfaceBrush", "NfcBorderBrush", "NfcTextBrush", "Nvt.Focus.RingBrush"),
+                    (danger, "NfcDangerSurfaceBrush", "NfcDangerBorderBrush", "NfcDangerTextBrush", "Nvt.Focus.DangerRingBrush"),
+                };
+                foreach ((Button button, string background, string border, string foreground, string ringKey) in roles)
+                {
+                    Assert.Equal(((SolidColorBrush)overrides[background]).Color, Assert.IsAssignableFrom<ISolidColorBrush>(button.Background).Color);
+                    Assert.Equal(((SolidColorBrush)overrides[border]).Color, Assert.IsAssignableFrom<ISolidColorBrush>(button.BorderBrush).Color);
+                    Assert.Equal(((SolidColorBrush)overrides[foreground]).Color, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
+                    Assert.Equal(44, button.Height);
+                    Assert.Equal(44, button.MinHeight);
+                    Assert.Equal(new CornerRadius(7, 9, 11, 13), button.CornerRadius);
+
+                    host.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    host.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    Dispatcher.UIThread.RunJobs();
+                    host.UpdateLayout();
+                    Assert.Same(button, host.FocusManager!.GetFocusedElement());
+                    Border ring = Assert.Single(Rings(button));
+                    Assert.Equal(((SolidColorBrush)overrides[ringKey]).Color, Assert.IsAssignableFrom<ISolidColorBrush>(ring.BorderBrush).Color);
+                    Assert.Equal(new Thickness(3), ring.BorderThickness);
+                    Assert.Equal(new CornerRadius(11, 13, 15, 17), ring.CornerRadius);
+                }
+            }
+            finally
+            {
+                host.Close();
+                foreach (string key in overrides.Keys)
+                {
+                    if (previous.TryGetValue(key, out object? value)) resources[key] = value;
+                    else resources.Remove(key);
+                }
+            }
+        }
+    }
+
+    /// <summary>Application resources replace all seven accent keys and update existing buttons in both themes.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, "#2967A9", "#225489", "#F0F4F9", "#F8FAFC")]
+    [InlineData(true, "#53A6FF", "#86C0FF", "#192941", "#152134")]
+    public void ApplicationAccentOverridesUpdateButtonColors(bool dark, string accent, string strong, string surface, string subtle)
+    {
+        var overrides = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["NfcAccentBrush"] = Color.Parse(accent),
+            ["NfcAccentStrongBrush"] = Color.Parse(strong),
+            ["NfcAccentSurfaceBrush"] = Color.Parse(surface),
+            ["NfcAccentSurfaceSubtleBrush"] = Color.Parse(subtle),
+            ["NfcAccentBorderBrush"] = Color.Parse(accent),
+            ["NfcAccentBorderStrongBrush"] = Color.Parse(strong),
+            ["NfcAccentBorderLightBrush"] = Color.Parse(accent),
+        };
+        IResourceDictionary resources = Application.Current!.Resources;
+        var previous = overrides.Keys.Where(resources.ContainsKey).ToDictionary(key => key, key => resources[key], StringComparer.Ordinal);
+        foreach (bool toggle in new[] { false, true })
+        {
+            Button primary = CreateButton("", "actionPrimary", toggle, new TextBlock { Text = "Primary" });
+            Button selected = CreateButton("", "chipAction active", toggle, new TextBlock { Text = "Selected" });
+            Window host = CreateHost(new StackPanel { Children = { primary, selected } }, dark);
+            host.Resources.MergedDictionaries.Clear();
+            try
+            {
+                Show(host);
+                Color originalAccent = Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color;
+                IBrush? originalLabel = primary.Foreground;
+                Color originalFocus = BrushColor(primary, "Nvt.Focus.RingBrush");
+                foreach ((string key, Color color) in overrides)
+                    resources[key] = new SolidColorBrush(color);
+                Dispatcher.UIThread.RunJobs();
+
+                Assert.NotEqual(originalAccent, Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color);
+                foreach ((string key, Color color) in overrides)
+                    Assert.Equal(color, BrushColor(primary, key));
+                foreach (string state in new[] { "rest", "hover", "pressed" })
+                {
+                    SetState(primary, state);
+                    SetState(selected, state);
+                    Dispatcher.UIThread.RunJobs();
+                    Color filled = overrides[state == "rest" ? "NfcAccentBrush" : "NfcAccentStrongBrush"];
+                    Assert.Equal(filled, Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color);
+                    Assert.Equal(filled, Assert.IsAssignableFrom<ISolidColorBrush>(primary.BorderBrush).Color);
+                    Assert.Same(originalLabel, primary.Foreground);
+                    Color selectedBackground = state == "pressed" ? BrushColor(selected, "NfcSecondaryActionPressedBrush")
+                        : overrides[state == "rest" ? "NfcAccentSurfaceBrush" : "NfcAccentSurfaceSubtleBrush"];
+                    Assert.Equal(selectedBackground, Assert.IsAssignableFrom<ISolidColorBrush>(selected.Background).Color);
+                    Assert.Equal(overrides[state == "rest" ? "NfcAccentBorderBrush" : "NfcAccentBorderStrongBrush"],
+                        Assert.IsAssignableFrom<ISolidColorBrush>(selected.BorderBrush).Color);
+                    Assert.Equal(overrides["NfcAccentStrongBrush"], Assert.IsAssignableFrom<ISolidColorBrush>(selected.Foreground).Color);
+                }
+                Assert.Equal(originalFocus, BrushColor(primary, "Nvt.Focus.RingBrush"));
+            }
+            finally
+            {
+                host.Close();
+                foreach (string key in overrides.Keys)
+                {
+                    if (previous.TryGetValue(key, out object? value)) resources[key] = value;
+                    else resources.Remove(key);
+                }
+            }
         }
     }
 

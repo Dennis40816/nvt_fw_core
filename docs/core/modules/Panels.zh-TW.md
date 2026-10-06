@@ -12,6 +12,8 @@
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Panels/PanelsStyles.axaml" />
 ```
 
+`ButtonStyles.axaml` 必須在 `PanelsStyles.axaml` 之前載入，讓面板標頭保留 stretch 內容對齊。
+
 ## 公開 API
 
 `CollapsiblePanel` 繼承 `ContentControl`；繼承的 `Content` 是內文區域。

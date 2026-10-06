@@ -4,15 +4,7 @@
         xmlns:theme="clr-namespace:Nvt.Core.Avalonia.Theme">
   <Styles.Resources>
     <ResourceDictionary>
-      <theme:FocusRingRadiusConverter x:Key="FocusRingRadiusConverter"/>
-      <ResourceDictionary.ThemeDictionaries>
-        <ResourceDictionary x:Key="Light">
-          <StaticResource x:Key="PrimaryLabelBrush" ResourceKey="NfcSurfaceBrush"/>
-        </ResourceDictionary>
-        <ResourceDictionary x:Key="Dark">
-          <StaticResource x:Key="PrimaryLabelBrush" ResourceKey="NfcAppBackgroundBrush"/>
-        </ResourceDictionary>
-      </ResourceDictionary.ThemeDictionaries>
+      <theme:FocusRingRadiusConverter x:Key="Nvt.Focus.RingRadiusConverter"/>
     </ResourceDictionary>
   </Styles.Resources>
 
@@ -133,19 +125,19 @@
   <Style Selector="Button.actionPrimary, ToggleButton.actionPrimary">
     <Setter Property="Background" Value="{DynamicResource NfcAccentBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryLabelBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Button.PrimaryLabelBrush}"/>
   </Style>
 
   <Style Selector="Button.actionPrimary:pointerover:not(:disabled), ToggleButton.actionPrimary:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcAccentStrongBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentStrongBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryLabelBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Button.PrimaryLabelBrush}"/>
   </Style>
 
   <Style Selector="Button.actionPrimary:pressed:not(:disabled), ToggleButton.actionPrimary:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcAccentStrongBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentStrongBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource PrimaryLabelBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Button.PrimaryLabelBrush}"/>
   </Style>
 
   <Style Selector="Button.actionDanger, ToggleButton.actionDanger">
@@ -280,17 +272,17 @@
       <Template>
         <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                 Margin="-4" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
-                CornerRadius="{ReflectionBinding (AdornerLayer.AdornedElement).CornerRadius, RelativeSource={RelativeSource Self}, Converter={StaticResource FocusRingRadiusConverter}}"/>
+                CornerRadius="{ReflectionBinding (AdornerLayer.AdornedElement).CornerRadius, RelativeSource={RelativeSource Self}, Converter={StaticResource Nvt.Focus.RingRadiusConverter}}"/>
       </Template>
     </Setter>
   </Style>
 
-  <Style Selector="Button.actionDanger:focus-visible, ToggleButton.actionDanger:focus-visible">
+  <Style Selector="Button.actionDanger:not(.chipAction):focus-visible, ToggleButton.actionDanger:not(.chipAction):focus-visible">
     <Setter Property="FocusAdorner">
       <Template>
         <Border BorderBrush="{DynamicResource Nvt.Focus.DangerRingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                 Margin="-4" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
-                CornerRadius="{ReflectionBinding (AdornerLayer.AdornedElement).CornerRadius, RelativeSource={RelativeSource Self}, Converter={StaticResource FocusRingRadiusConverter}}"/>
+                CornerRadius="{ReflectionBinding (AdornerLayer.AdornedElement).CornerRadius, RelativeSource={RelativeSource Self}, Converter={StaticResource Nvt.Focus.RingRadiusConverter}}"/>
       </Template>
     </Setter>
   </Style>

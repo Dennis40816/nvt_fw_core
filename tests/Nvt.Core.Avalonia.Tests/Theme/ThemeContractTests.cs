@@ -50,7 +50,14 @@ public sealed class ThemeContractTests
         Assert.Equal(2, common.Count(element => element.Name.LocalName == "FontFamily"));
         Assert.Equal(3, common.Count(element => element.Name.LocalName == "CornerRadius"));
 
-        string styles = ReadExtracted("ButtonStyles").ToString();
+        XDocument styleDocument = ReadExtracted("ButtonStyles");
+        Assert.Empty(styleDocument.Descendants(Presentation + "StaticResource"));
+        Assert.Equal("Nvt.Focus.RingRadiusConverter", Assert.Single(styleDocument.Descendants(),
+            element => element.Name.LocalName == "FocusRingRadiusConverter").Attribute(Xaml + "Key")!.Value);
+        string styles = styleDocument.ToString();
+        string[] staticReferences = [.. Regex.Matches(styles, @"\{StaticResource (?<key>[^}]+)\}", RegexOptions.CultureInvariant)
+            .Select(match => match.Groups["key"].Value).Distinct(StringComparer.Ordinal)];
+        Assert.Equal(["Nvt.Focus.RingRadiusConverter"], staticReferences);
         string[] references = [.. Regex.Matches(styles, @"\{DynamicResource (?<key>N(?:fc|vt)[^}]+)\}", RegexOptions.CultureInvariant)
             .Select(match => match.Groups["key"].Value).Distinct(StringComparer.Ordinal)];
         Assert.NotEmpty(references);

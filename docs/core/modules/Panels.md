@@ -12,6 +12,8 @@ Merge `avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml` into the host's resou
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Panels/PanelsStyles.axaml" />
 ```
 
+`ButtonStyles.axaml` must be included before `PanelsStyles.axaml` so the panel header keeps its stretched content alignment.
+
 ## Public API
 
 `CollapsiblePanel` inherits `ContentControl`; inherited `Content` is its body.

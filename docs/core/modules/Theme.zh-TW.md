@@ -2,7 +2,7 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入兩個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔；不載入草稿 PR #71 的 `ActionRoleStyles.axaml`。八個舊有字型值與資源解析器保持不變。
+Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入兩個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
@@ -74,7 +74,12 @@ Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸
 
 ### 工具主色
 
-Core 預設採 NFC 值。工具在應用程式資源範圍的 Light／Dark 字典只覆寫下表七個 `NfcAccent*` 鍵。不得覆寫任何其他 Core 鍵；不得局部覆寫基本控制項樣式。需要變體時由 Core 增加角色。焦點色不跟隨主色。
+Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具在應用程式資源範圍的 Light／Dark 字典設定下表全部七個鍵。採用分為兩步：
+
+1. 採用 PR 可在應用程式範圍，以工具目前數值覆寫任何 `Nfc*` 色彩、尺寸與圓角鍵，以及 `Nvt.Button.*`、`Nvt.Focus.*` 鍵（含 `Nvt.Button.PrimaryLabelBrush`），證明畫面沒有變化。
+2. 後續經擁有者核准的色彩 PR 移除上述覆寫，只保留工具主色的七個 `NfcAccent*` 鍵。
+
+不得局部覆寫基本控制項樣式。需要變體時由 Core 增加角色。焦點色不跟隨主色。
 
 | Tool / 工具 | Token | Light | Dark |
 |---|---|---|---|
@@ -100,7 +105,7 @@ Core 預設採 NFC 值。工具在應用程式資源範圍的 Light／Dark 字�
 | NFU | `NfcAccentBorderStrongBrush` | `#3D5B00` | `#97CD1E` |
 | NFU | `NfcAccentBorderLightBrush` | `#4A6F00` | `#82B11A` |
 
-Light 填色按鈕的標籤採 `NfcSurfaceBrush`；Dark 採 `NfcAppBackgroundBrush`。樣式內的 `PrimaryLabelBrush` 只是這兩個既有 token 的主題別名，並非可供工具覆寫的 token。
+填色按鈕透過 `DynamicResource` 使用 `ThemeTokens.axaml` 的 `Nvt.Button.PrimaryLabelBrush`：Light 為 `#FFFFFF`，Dark 為 `#0B1220`。工具可在採用步驟於應用程式範圍覆寫此鍵。
 
 ## 尺寸與圓角
 
@@ -124,9 +129,9 @@ Light 填色按鈕的標籤採 `NfcSurfaceBrush`；Dark 採 `NfcAppBackgroundBru
 
 | 角色 | 狀態 | 底色 | 邊界 | 文字 |
 |---|---|---|---|---|
-| `actionPrimary` | rest | `NfcAccentBrush` | `NfcAccentBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
-| `actionPrimary` | hover | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
-| `actionPrimary` | pressed | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
+| `actionPrimary` | rest | `NfcAccentBrush` | `NfcAccentBrush` | `Nvt.Button.PrimaryLabelBrush` |
+| `actionPrimary` | hover | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `Nvt.Button.PrimaryLabelBrush` |
+| `actionPrimary` | pressed | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `Nvt.Button.PrimaryLabelBrush` |
 | `actionPrimary` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
 | `actionPrimary` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionPrimary` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
@@ -159,7 +164,7 @@ Light 填色按鈕的標籤採 `NfcSurfaceBrush`；Dark 採 `NfcAppBackgroundBru
 
 `actionIconButton` 預設採 `actionNeutral`；可與四種色彩角色組合，採其所有狀態。`chipAction` 採中性色角色；`chipAction.active` 與 ToggleButton 的 checked 使用相同選取規則。active／checked 滑入採淡主色底色，按下採中性按下底色，保留強主色文字與強邊界。一般 Button 沒有 checked。`chipStatus` 的 warning／danger／success 使用上表語意底色、文字與邊界；無互動、選取或焦點狀態，停用仍保留資訊顏色與 opacity 1。
 
-停用最優先：所有互動角色採 `NfcSurfaceSubtleBrush`、`NfcBorderMutedBrush`、`NfcTextDisabledBrush`、opacity 1，覆蓋滑入、按下、checked 與 active。依工作簡述，ghost 停用也採次表面，取代提案的透明底色。沒有雙重淡化。
+停用最優先：所有互動角色採 `NfcSurfaceSubtleBrush`、`NfcBorderMutedBrush`、`NfcTextDisabledBrush`、opacity 1，覆蓋滑入、按下、checked 與 active。ghost 停用也採相同次表面。沒有雙重淡化。
 
 背景、邊界、文字轉場為 120 ms。按下時關閉轉場；primary 按下的內側 2 px 邊線由不占版面的覆蓋層繪製。焦點立即顯示。控制項或任何祖先加 `.reducedMotion` 會關閉轉場。
 
@@ -170,9 +175,50 @@ Light 填色按鈕的標籤採 `NfcSurfaceBrush`；Dark 採 `NfcAppBackgroundBru
 | `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
 | `Nvt.Focus.DangerRingBrush` | `#C62828` | `#FF6B6B` |
 
-`Nvt.Focus.RingThickness` 為 Thickness 2，三個焦點 token 全在 `ThemeTokens.axaml`。每個互動角色預設 `FocusAdorner=null`，取消預設矩形。只有 `:focus-visible` 顯示 Border adorner；真實 Tab 顯示，指標焦點不顯示。`Margin=-4` 形成 2 px 線與 2 px 外側間隙；`IsHitTestVisible=False`、`AdornerLayer.IsClipEnabled=False`。圓角隨控制項動態變化：膠囊保留 999，矩形每個角加 4。`actionDanger`（含圖示危險組合）採紅框，其餘採藍框。焦點在靜止、滑入、checked、active 均不改底色、邊界或文字。
+`Nvt.Focus.RingThickness` 為 Thickness 2，三個焦點 token 全在 `ThemeTokens.axaml`。每個互動角色預設 `FocusAdorner=null`，取消預設矩形。只有 `:focus-visible` 顯示 Border adorner；真實 Tab 顯示，指標焦點不顯示。`Margin=-4` 形成 2 px 線與 2 px 外側間隙；`IsHitTestVisible=False`、`AdornerLayer.IsClipEnabled=False`。圓角隨控制項動態變化：膠囊保留 999，矩形每個角加 4。`actionDanger` 文字按鈕及 `actionIconButton.actionDanger` 採紅框；chip（含 `chipAction.actionDanger`）與其餘角色採藍框。樣式資源 `Nvt.Focus.RingRadiusConverter` 計算焦點框圓角。焦點在靜止、滑入、checked、active 均不改底色、邊界或文字。
 
-擁有者待確認：是否維持僅鍵盤的 `:focus-visible` 焦點框？本次依核准選擇 B 實作。
+## 相較 core-v0.1.0 的重大變更
+
+Core 0.2.0 引入共用色票與按鈕角色；本節為其版本發布說明。下列 class、selector 與資源曾隨 `core-v0.1.0` 發布，現在移除或取代，不提供相容別名。
+
+| 0.1.0 移除或取代的項目 | 0.2.0 替代方式 |
+|---|---|
+| `Button.semanticAction` | `actionNeutral` |
+| `Button.semanticAction.command` | `actionGhost` |
+| `Button.secondary` | `actionNeutral` |
+| `Button.primary` | `actionPrimary` |
+| `Button.action` | `actionPrimary` |
+| `Button.danger` | `actionDanger` |
+| `Button.command` | `actionGhost` |
+| `Button.breadcrumb` | `actionGhost` |
+| `Button.browseAction` | `actionNeutral` |
+| `Button.iconButton` | `actionIconButton` |
+| `Button.iconButton.codeBlockCopy` | `actionIconButton` |
+| `Button.inlineEdit` | `actionIconButton` 加 `actionGhost` |
+| `Button.summaryChip` | `chipAction` |
+| `Button.closeButton` | Core 無替代項；須由工具定義 |
+| `Button.fileRevealAction` | Core 無替代項；須由工具定義 |
+| `Button.railAction`（含 `.reducedMotion`） | Core 無 rail 角色；須由工具定義。`.reducedMotion` 仍適用於所有共用角色 |
+| `Button.primaryRailAction` | Core 無替代項；須由工具定義 |
+| `railActionIcon`, `railActionLabel`, `railActionIconSlot` | Core 無替代項；須由工具定義 |
+| 資源 `NfcSemanticButtonTheme` (ControlTheme) | 無替代資源；改用共用角色 class |
+| 全域 `Button` rule (theme and null `FocusAdorner`) | 已移除；加上角色 class。未指定角色的按鈕回到 Fluent，包含 Fluent 焦點視覺 |
+| 對話框 class `confirmDialogActionButton` (`DialogsStyles.axaml`) | `actionNeutral` 或 `actionPrimary` |
+| `Button.danger Path.confirmDialogDangerIcon` selector | `Button.actionDanger Path.confirmDialogDangerIcon` |
+| 面板標頭專用範本、`PART_ContentPresenter`、12,10 內距、10,10,0,0 圓角及面板根部裁切 | `actionGhost` 角色；先載入 `ButtonStyles.axaml`，再載入 `PanelsStyles.axaml`。共用範本採 14,0 內距與膠囊圓角；面板根部不再裁切外側焦點框 |
+
+`railAction`、`primaryRailAction`、`closeButton`、`fileRevealAction` 等產品角色及 rail 圖示／標籤／插槽版面必須由各工具自行定義。全域 `Button` 規則已移除：未指定角色 class 的按鈕回到 Fluent，包含 Fluent 自己的焦點視覺。
+
+既有 `ThemeTokens.axaml` 鍵及型別均未移除或改名。下表摘要 token 與行為變更；目前數值詳見前面的色票、主色與尺寸表。
+
+| 區域 | 相較 0.1.0 的變更 |
+|---|---|
+| 色票 | Light／Dark 的中性表面、狀態色、文字、邊界、語意色與 NFC 七個主色值改採共用色票。保留既有名稱，包括 caution、critical 與 success-emphasis 別名 |
+| 尺寸與間距 | 角色按鈕高 32 px，內距 14,0；圖示按鈕 32 × 32，內距為零。對話框動作原為 36/40 px。`NfcFieldSpacing` 由 3 改為 4；`NfcSpace2/4/8/12/16/24` 數值保留 |
+| 圓角 | Token 數值維持 `NfcCompactCornerRadius` = 6、`NfcSurfaceCornerRadius` = 8、`NfcPillCornerRadius` = 999。共用按鈕及面板標頭採膠囊圓角；矩形焦點框各角為控制項圓角加 4 |
+| 焦點 | 共用角色以僅鍵盤顯示的 2 px 線與 2 px 間隙取代停用的預設 adorner。Light／Dark 藍色為 `#1F6FD1` / `#4DA3FF`，危險紅色為 `#C62828` / `#FF6B6B`；危險 chip 保留藍框。未指定角色的按鈕保留 Fluent 焦點視覺 |
+| 新 token 鍵 | `NfcControlHeight` = 32；`Nvt.Focus.RingBrush`、`Nvt.Focus.DangerRingBrush`、`Nvt.Focus.RingThickness` = Thickness 2；Light／Dark 的 `Nvt.Button.PrimaryLabelBrush` = `#FFFFFF` / `#0B1220` |
+| 新樣式資源 | `Nvt.Focus.RingRadiusConverter` 跟隨控制項各角；色彩、尺寸與圓角 token 均透過 `DynamicResource` 參照 |
 
 ## 角色遷移
 
@@ -421,7 +467,7 @@ NFC 也須保留：
 
 舊 NFC 抽取與字型的凍結來源為 `origin/1.2.x`、commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。PR #71 的角色來源固定於 `0f29143712cc18127df8e00636b1bfb3552d3aef`；其基準不沿用。2026-10-06 核准的共用提案與 NFH 命名決策是本次規格。
 
-- `ButtonThemeTests`：僅載入 ThemeTokens／ButtonStyles；Light／Dark、兩種控制項、每個角色與狀態、幾何、單行／省略／裁切、未指定角色、真實 Tab 與指標焦點、焦點 brush／幾何／命中測試、四種狀態焦點不改色、停用優先與減少動態。
+- `ButtonThemeTests`：僅載入 ThemeTokens／ButtonStyles；Light／Dark、兩種控制項、每個角色與狀態、幾何、單行／省略／裁切、未指定角色、真實 Tab 與指標焦點、焦點 brush／幾何／命中測試、四種狀態焦點不改色、停用優先、減少動態、應用程式範圍採用覆寫，以及全部七鍵的主色覆寫。
 - `PaletteContrastTests`：編譯後 token，三工具主色同一資料驅動測試；內文、提示、語意文字、主色文字與填色標籤 4.5:1；停用文字、輸入邊界、焦點、捲軸拇指 3:1。檢查全部不透明中性／語意／主色底色，無例外測試。裝飾邊界與半透明 scrim 不承載文字。
 - `ThemeContractTests`：所有 Theme 檔的 StaticResource／DynamicResource 在兩個主題均解析；只允許有角色的按鈕 selector；保留三份 XML baseline 比對。
 - `NfcLegacyFontTests` 與資源解析器測試不變；Dialogs／Panels 的測試改為共用角色，其他行為合約不變。
@@ -432,11 +478,16 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build
 ```
 
-暫存 headless helper 在測試通過後載入 Fluent、ThemeTokens、ButtonStyles、ScrollStyles，產生 `artifacts/palette-gallery/roles-dark.png`、`roles-light.png`、`controls-dark.png`、`controls-light.png`。輸出受 git ignore；helper 隨後刪除。圖庫以固定狀態並排比較，不取代真實輸入測試。
+圖庫使用 Fluent、ThemeTokens、ButtonStyles、ScrollStyles，於 `artifacts/palette-gallery/roles-dark.png`、`roles-light.png`、`controls-dark.png`、`controls-light.png` 並排比較固定狀態。這些圖片補充真實輸入測試。
 
 ### 採用
 
-每套工具各自提出採用 PR，套用表中主色並移除局部基本控制項覆寫。每個 PR 附採用前後影像供 owner 核准，涵蓋 Light／Dark、英文／繁中、各互動狀態、DPI 與長文字；產品行為與資料色留在工具。本次不採用到任何工具、不提交變更。
+每套工具分成兩個獨立 PR：
+
+1. 採用 PR：在應用程式範圍，以工具目前數值覆寫任何 `Nfc*` 色彩、尺寸與圓角鍵，以及 `Nvt.Button.*`、`Nvt.Focus.*` 鍵（含 `Nvt.Button.PrimaryLabelBrush`）。前後對照影像證明畫面沒有變化。
+2. 後續經擁有者核准的色彩 PR：移除上述覆寫，只保留工具主色的七個 `NfcAccent*` 鍵。一個主色以七個鍵表達，必須設定全部七個。
+
+影像涵蓋 Light／Dark、英文／繁中、各互動狀態、DPI 與長文字。產品行為與資料色留在工具。
 
 ## 捲軸樣式
 

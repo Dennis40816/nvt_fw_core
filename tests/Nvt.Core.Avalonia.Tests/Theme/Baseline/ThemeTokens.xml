@@ -54,6 +54,7 @@
       <SolidColorBrush x:Key="NfcModalScrimBrush" Color="#660F172A" />
       <SolidColorBrush x:Key="Nvt.Focus.RingBrush" Color="#1F6FD1" />
       <SolidColorBrush x:Key="Nvt.Focus.DangerRingBrush" Color="#C62828" />
+      <SolidColorBrush x:Key="Nvt.Button.PrimaryLabelBrush" Color="#FFFFFF" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="NfcAppBackgroundBrush" Color="#0B1220" />
@@ -109,6 +110,7 @@
       <SolidColorBrush x:Key="NfcModalScrimBrush" Color="#B30B1220" />
       <SolidColorBrush x:Key="Nvt.Focus.RingBrush" Color="#4DA3FF" />
       <SolidColorBrush x:Key="Nvt.Focus.DangerRingBrush" Color="#FF6B6B" />
+      <SolidColorBrush x:Key="Nvt.Button.PrimaryLabelBrush" Color="#0B1220" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
   <Thickness x:Key="Nvt.Focus.RingThickness">2</Thickness>
