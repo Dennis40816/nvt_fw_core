@@ -61,7 +61,8 @@ public sealed partial class ConfirmDialog : Window
 
             if (emphasizeCancel)
             {
-                _cancelButton.Classes.Add("danger");
+                _cancelButton.Classes.Remove("actionNeutral");
+                _cancelButton.Classes.Add("actionDanger");
                 if (_cancelIcon is not null) _cancelIcon.IsVisible = true;
             }
         }

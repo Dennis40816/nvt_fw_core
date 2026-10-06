@@ -104,6 +104,7 @@ public sealed class ConfirmDialogTests
         {
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
         };
+        dialog.Classes.Add("reducedMotion");
         dialog.Styles.Add(new StyleInclude(ButtonStylesUri) { Source = ButtonStylesUri });
         try
         {
@@ -116,7 +117,7 @@ public sealed class ConfirmDialogTests
 
             Point center = cancel.TranslatePoint(new Point(cancel.Bounds.Width / 2, cancel.Bounds.Height / 2), dialog)!.Value;
             dialog.MouseMove(center);
-            AssertColor(icon.Stroke, "NfcDangerTextStrongBrush", dialog.ActualThemeVariant);
+            AssertColor(icon.Stroke, "NfcDangerTextBrush", dialog.ActualThemeVariant);
             AssertSameColor(label.Foreground, icon.Stroke);
 
             dialog.MouseMove(new Point(1, 1));
@@ -149,9 +150,11 @@ public sealed class ConfirmDialogTests
             dialog.Show();
             Button cancel = dialog.FindControl<Button>("CancelButton")!;
             Path icon = dialog.FindControl<Path>("CancelIcon")!;
-            Assert.Equal(emphasizeCancel, cancel.Classes.Contains("danger"));
+            Assert.Equal(emphasizeCancel, cancel.Classes.Contains("actionDanger"));
+            Assert.Equal(!emphasizeCancel, cancel.Classes.Contains("actionNeutral"));
+            Assert.Contains("actionPrimary", dialog.FindControl<Button>("ConfirmButton")!.Classes);
             Assert.Equal(emphasizeCancel, icon.IsVisible);
-            Assert.DoesNotContain("danger", dialog.FindControl<Button>("ConfirmButton")!.Classes);
+            Assert.DoesNotContain("actionDanger", dialog.FindControl<Button>("ConfirmButton")!.Classes);
             Assert.True(dialog.TryFindResource("NfcCloseIconGeometry", out object? geometry));
             Assert.Same(geometry, icon.Data);
             if (emphasizeCancel)
@@ -175,8 +178,12 @@ public sealed class ConfirmDialogTests
     {
         var dialog = new ConfirmDialog("Confirm", "Proceed?", "Yes", "No",
             confirmTip: confirmTip, cancelTip: cancelTip);
-        Assert.Equal(confirmTip, ToolTip.GetTip(dialog.FindControl<Button>("ConfirmButton")!));
-        Assert.Equal(cancelTip, ToolTip.GetTip(dialog.FindControl<Button>("CancelButton")!));
+        try
+        {
+            Assert.Equal(confirmTip, ToolTip.GetTip(dialog.FindControl<Button>("ConfirmButton")!));
+            Assert.Equal(cancelTip, ToolTip.GetTip(dialog.FindControl<Button>("CancelButton")!));
+        }
+        finally { dialog.Close(); }
     }
 
     /// <summary>The XAML-loader constructor retains empty text, no tips, and no cancel emphasis.</summary>
@@ -184,23 +191,29 @@ public sealed class ConfirmDialogTests
     public void ParameterlessConstructorLoadsUnconfiguredContent()
     {
         var dialog = new ConfirmDialog();
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("TitleText")!.Text));
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("MessageText")!.Text));
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("ConfirmButtonText")!.Text));
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("CancelButtonText")!.Text));
-        Assert.Null(ToolTip.GetTip(dialog.FindControl<Button>("ConfirmButton")!));
-        Assert.Null(ToolTip.GetTip(dialog.FindControl<Button>("CancelButton")!));
-        Assert.DoesNotContain("danger", dialog.FindControl<Button>("CancelButton")!.Classes);
-        Assert.False(dialog.FindControl<Path>("CancelIcon")!.IsVisible);
+        try
+        {
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("TitleText")!.Text));
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("MessageText")!.Text));
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("ConfirmButtonText")!.Text));
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("CancelButtonText")!.Text));
+            Assert.Null(ToolTip.GetTip(dialog.FindControl<Button>("ConfirmButton")!));
+            Assert.Null(ToolTip.GetTip(dialog.FindControl<Button>("CancelButton")!));
+            Assert.DoesNotContain("actionDanger", dialog.FindControl<Button>("CancelButton")!.Classes);
+            Assert.False(dialog.FindControl<Path>("CancelIcon")!.IsVisible);
+        }
+        finally { dialog.Close(); }
     }
 
-    /// <summary>Window and action layout retain every relevant frozen NFH size and spacing value.</summary>
+    /// <summary>Window layout keeps NFH's values while action geometry uses the shared roles.</summary>
     [AvaloniaFact]
-    public void WindowAndActionLayoutMatchFrozenSource()
+    public void WindowAndActionLayoutUseSharedRoles()
     {
         var dialog = new ConfirmDialog("Confirm", "Proceed?", "Yes", "No");
         try
         {
+            dialog.Classes.Add("reducedMotion");
+            dialog.Styles.Add(new StyleInclude(ButtonStylesUri) { Source = ButtonStylesUri });
             dialog.Show();
             Assert.Equal(360, dialog.Width);
             Assert.Equal(170, dialog.Height);
@@ -223,9 +236,9 @@ public sealed class ConfirmDialogTests
             Assert.All(actions.Children, child =>
             {
                 Button button = Assert.IsType<Button>(child);
-                Assert.Equal(36, button.MinHeight);
-                Assert.Equal(40, button.Height);
-                Assert.Equal(new Thickness(14, 8), button.Padding);
+                Assert.Equal(32, button.MinHeight);
+                Assert.Equal(32, button.Height);
+                Assert.Equal(new Thickness(14, 0), button.Padding);
                 Assert.Equal(HorizontalAlignment.Center, button.HorizontalContentAlignment);
                 Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
             });
