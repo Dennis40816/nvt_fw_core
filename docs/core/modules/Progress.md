@@ -4,13 +4,14 @@
 
 ## Summary
 
-Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and the progress interval gate from Freeform Helper (NFH).
+Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and two Freeform Helper (NFH) parts: the progress interval gate and the loading scope coordinator.
 The module uses only the .NET base class libraries and targets net8.0.
 Its namespace is `Nvt.Core.Progress`.
 
 Each tool keeps its update rate, progress payloads, result payloads, and presentation policy.
 The owner approved this boundary on 2026-10-06.
-The module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
+The loading scope waits for its minimum visible time with `Task.Delay` on its `TimeProvider`.
+Apart from that wait, the module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
 
 ## Frozen baselines
 
@@ -53,6 +54,11 @@ Related caller tests provide final-delivery and stale-result assertions:
 
 Core adapts these generic assertions to synthetic final values and an external validity check.
 NFH retains the domain assertions, progress text, revision checks, and UI dispatch.
+
+NFH also supplies the loading scope coordinator in `src/FreeformHelper.UI/Services/LoadingScopeCoordinator.cs`.
+Its two source tests are in `tests/FreeformHelper.Tests/UI/Services/LoadingScopeCoordinatorTests.cs`.
+The callers, for context only, are `src/FreeformHelper.UI/ViewModels/FreeformHelperViewModel.CadLoadOverlay.cs` and `FreeformHelperViewModel.ModalLoading.cs`.
+Both callers use a 120 ms minimum visible time.
 
 ## Progress data
 
@@ -307,3 +313,281 @@ The source uses `Environment.TickCount64`, which has millisecond resolution.
 Core uses `TimeProvider` timestamps.
 On a real machine, a report near the 120 ms boundary can pass or drop differently.
 Use exact fake-clock timelines for the zero-difference comparison.
+
+## Loading scope
+
+[`LoadingScopeCoordinator`](../../../src/Nvt.Core/Progress/LoadingScopeCoordinator.cs) decides when a loading surface, such as an overlay or a spinner, shows and hides.
+It holds no Avalonia, dispatcher, or NFH types.
+A surface plugs in through a callback.
+For an Avalonia control, pass `visible => surface.IsVisible = visible`.
+
+```csharp
+public LoadingScopeCoordinator(
+    Func<Task> yieldFrameAsync,
+    TimeSpan minimumVisibleDuration,
+    TimeProvider? timeProvider = null);
+```
+
+- `yieldFrameAsync` yields to the UI so that a visibility change can render.
+- A null `yieldFrameAsync` throws `ArgumentNullException`.
+- A negative `minimumVisibleDuration` counts as zero.
+- `timeProvider` supplies the clock and the wait timer, and null means `TimeProvider.System`.
+
+`Begin(setVisible)` opens a scope.
+The first open scope records the start time and calls `setVisible(true)`.
+Nested scopes do not call it again.
+
+`EndAsync(setVisible)` closes a scope:
+
+- Without an open scope, it returns at once and does nothing.
+- While other scopes stay open, it returns at once.
+- When the last scope closes, it waits for the rest of the minimum visible time and then yields a frame.
+- Unless a scope is open at that moment, it then calls `setVisible(false)` and yields one more frame.
+
+The check after the wait looks only at the current scope count.
+A scope that begins during the wait and is still open keeps the surface visible.
+That `Begin` calls `setVisible(true)` again and restarts the minimum visible time.
+If the newer scope also ends during the wait, the earlier call still hides the surface at its own time.
+The surface then hides before the newer scope's minimum visible time has passed.
+The newer call hides it again when its own wait ends.
+Core keeps this source behavior.
+
+`RunAsync(action, setVisible)` begins a scope, yields a frame, runs the action, and ends the scope.
+The scope also ends when the action throws, and the exception reaches the caller.
+Null `action` or `setVisible` arguments throw `ArgumentNullException` with their parameter names.
+
+A lock guards only the scope count.
+The callbacks run outside the lock, and the coordinator does not marshal calls.
+Callers must serialize `Begin` and `EndAsync`, for example by calling them on the UI thread.
+Unserialized calls on two threads can hide the surface before a concurrent `Begin` shows it.
+The surface then stays visible with no open scope.
+The awaits keep the caller's synchronization context, so calls made on the UI thread continue there.
+
+### Verification for the loading scope
+
+Run these commands after packages have been restored:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Progress.LoadingScopeCoordinatorTests"
+```
+
+The two ported source tests check the show-and-hide order and the minimum visible time.
+The source measured the minimum time with a `Stopwatch` against the wall clock.
+The port runs that test on a manual `TimeProvider`, because a system clock change could skip the wait.
+A separate smoke test runs on the system clock without a time threshold.
+The manual clock is `tests/Nvt.Core.Tests/Progress/ManualTimeProvider.cs`.
+
+Characterization tests cover these cases:
+
+- The remaining wait, and no timer once the minimum has passed.
+- A negative minimum.
+- Nested scopes, and an end without an open scope.
+- A new scope that is still open when the wait ends.
+- An earlier end that hides the surface although a newer scope began and ended during its wait.
+- Unserialized calls that leave the surface visible with no open scope.
+- The frame-yield order, a failing action, and null arguments.
+
+### Zero-difference verification for the NFH loading scope
+
+NFH adoption is a separate change.
+NFH passes no time provider, so it keeps the system clock.
+Before and after replacing NFH's class, run these tests from the NFH repository root with the same environment:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build FreeformHelper.sln --no-restore
+dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --filter "FullyQualifiedName~FreeformHelper.Tests.LoadingScopeCoordinatorTests|FullyQualifiedName~FreeformHelper.Tests.FreeformHelperViewModelTests|FullyQualifiedName~FreeformHelper.Tests.OpenDxfSinglePassTests|FullyQualifiedName~FreeformHelper.Tests.HeadlessUiSmokeTests"
+```
+
+The view-model filter includes the load-overlay and modal-spinner scope tests in `FreeformHelperViewModelTests.Basics.LoadOverlay.cs`.
+Compare test names, counts, and results with the frozen baseline.
+Keep the frozen expected values instead of updating them to accept a difference.
+
+### Loading scope differences
+
+The class is public.
+It has a Core namespace, a copyright header, and API documentation.
+The source read `DateTimeOffset.UtcNow` and waited with `Task.Delay(remaining)`.
+Core reads `TimeProvider.GetUtcNow()` and waits with `Task.Delay(remaining, timeProvider)`.
+With the default `TimeProvider.System`, both calls behave as before.
+`GetUtcNow()` is still the wall clock, so a system clock change during a scope affects the wait as it did in NFH.
+A source comparison that excludes comments and whitespace shows no other change in the method bodies.
+
+NFH keeps these parts:
+
+- The overlay and spinner view-model properties.
+- The 120 ms minimum visible time.
+- The frame-yield implementation, which uses the dispatcher.
+- The separate scope counters behind `BeginCadLoadCanvasOverlayScope` and `BeginModalLoadingSpinnerScope`.
+
+## Progress UI
+
+The UI controls preserve NVT FW Combiner's loading structure and caller-owned animation.
+The owner approved this boundary on 2026-10-06.
+The library targets net10.0 with Avalonia 12.1.1.
+Its namespace is `Nvt.Core.Avalonia.Progress`.
+
+### Frozen UI baselines
+
+Read these files with `git show <sha>:<path>`.
+These baselines also supply the provenance for the host's commit message.
+
+| Tool | Repository | Ref | Commit |
+| --- | --- | --- | --- |
+| NVT FW Combiner (NFC) | `nvt_fw_combiner` | `origin/1.2.x` | `a67eaee35b1d7eda9157a82e880e98a70407e913` |
+| NVT FW UTIL (NFU) | `nvt-event-buffer-replay` | `origin/0.2.0` | `26d66bd377a4ad051392bd7cc7e9d1c2e6287dba` |
+| Freeform Helper (NFH) | `nvt-freeform-helper` | `origin/1.3.x` | `4df72911867ad047b3217195d12223038a5781b7` |
+
+NFC supplies the wrapper, padding binding, animation policy, and delivery ordering:
+
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml`.
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml.cs`.
+- `src/NvtFwCombiner.Presentation.Avalonia/Resources/MainWindowSharedTemplates.axaml`, specifically `ForegroundLoadingStatusTemplate`.
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ForegroundLoadingState.cs`.
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowInspectionLifecycle.cs`, specifically its progress delivery.
+
+The other UI sources establish caller-owned policies:
+
+- NFU: `src/Nvt.Replay.Avalonia/MainWindow.Output.cs`, lines 600–638.
+- NFH: `src/FreeformHelper.UI/Views/WorkflowSteps/RightWorkflowStep5View.axaml`, specifically its progress bar.
+
+Reviewed NFC test sources:
+
+- `tests/NvtFwCombiner.UiSmoke.Tests/ForegroundLoadingStateTests.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/WorkflowInspectionLifecycleTests.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.Startup.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.StandardFeedback.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.Presentation.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/StartupFocusTests.cs`.
+
+### UI delivery rule
+
+[`UiProgress<T>`](../../../src/Nvt.Core.Avalonia/Progress/UiProgress.cs) takes `Action<T> publish`.
+A null callback throws `ArgumentNullException`.
+`Report` runs `publish(value)` inline when `Dispatcher.UIThread.CheckAccess()` returns true.
+Otherwise, it posts the callback to `Dispatcher.UIThread` at the default priority.
+
+NFC calls `Deliver` inline when its captured presentation context is null or equals the current context.
+Otherwise, NFC posts `Deliver` to that context.
+Core preserves NFC's UI-context ordering while requiring every callback to run on the UI thread.
+Core does not retain NFC's context-free background delivery path.
+
+Posted reports keep their enqueue order.
+An inline UI report can overtake an earlier background report that still awaits dispatch.
+The adapter adds no queue or throttle.
+
+NFU constructs `Progress<ExportJobSnapshot>`, which posts through its captured synchronization context.
+NFU then presents the current snapshot directly after start or cancellation.
+Its callback rereads the authoritative snapshot and rejects a different job ID.
+These snapshot checks and direct presentations remain with NFU.
+NFU must retain its always-post observer if inline delivery would change its existing ordering.
+
+### Progress bar
+
+[`ProgressIndicator`](../../../src/Nvt.Core.Avalonia/Progress/ProgressIndicator.cs) inherits `ProgressBar`.
+Its only new property is `ProgressUpdate? Progress`.
+A known fraction sets `Value` to that fraction.
+A null update or null fraction leaves `Value` unchanged.
+
+The control never sets `IsIndeterminate`.
+NFC's `ShouldAnimate` stays true during running progress unless reduced motion is enabled.
+This rule also applies when NFC knows the fraction.
+Keep NFC's `IsIndeterminate="{Binding ShouldAnimate}"` binding.
+
+The style key remains `typeof(ProgressBar)`.
+Existing `ProgressBar` selectors and control themes therefore apply.
+The default `Maximum` remains Avalonia's default.
+NFC and NFH must retain their explicit `Maximum="1"`.
+
+NFC can retain its existing `Value` binding when it uses `ProgressIndicator`.
+Bind `Progress` when the tool supplies a `ProgressUpdate`.
+NFU retains its own unknown-total rule and range.
+
+### Loading surface
+
+[`LoadingSurface`](../../../src/Nvt.Core.Avalonia/Progress/LoadingSurface.cs) inherits `ContentControl` and adds no properties.
+Load `avares://Nvt.Core.Avalonia/Progress/ProgressStyles.axaml` through `StyleInclude`.
+
+The style makes the surface focusable and enables Core's existing `FocusOnRevealBehavior`.
+The template contains a scrim `Grid` and one centered inner `ContentControl`.
+The scrim uses `{DynamicResource NfcModalScrimBrush}` and blocks pointer input.
+The inner control receives the surface's `Content` and `ContentTemplate`.
+
+The named inner part is `PART_Content`.
+The tool supplies width and padding through a template-part style.
+NFC retains these values:
+
+```xml
+<Style Selector="progress|LoadingSurface /template/ ContentControl#PART_Content">
+  <Setter Property="Width" Value="430" />
+  <Setter Property="Padding" Value="28,26" />
+</Style>
+```
+
+The `progress` prefix names `Nvt.Core.Avalonia.Progress`.
+This method adds no size or padding property to Core.
+The surface's inherited `Padding` is not forwarded to the inner part.
+
+NFC's data template retains `Padding="{Binding $parent[ContentControl].Padding}"`.
+Its nearest `ContentControl` remains the centered inner part.
+The binding therefore reads the same element and `28,26` value as the frozen wrapper.
+
+The tool sets `AutomationProperties.Name` on the surface.
+The tool also owns visibility, text, buttons, commands, announcements, sizes, shadows, and product styles.
+Core supplies none of these.
+
+### UI verification
+
+Use the existing restored packages:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Avalonia.Tests.Progress"
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+The tests preserve NFC's applicable animation and wrapper assertions.
+Product lifecycle, text, and command assertions remain in NFC.
+
+[`UiProgressTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/UiProgressTests.cs) check UI-thread delivery, posted ordering, and inline overtaking.
+[`ProgressIndicatorTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/ProgressIndicatorTests.cs) check values, null updates, animation, defaults, and inherited styles.
+[`LoadingSurfaceTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/LoadingSurfaceTests.cs) check the tree, dynamic scrim, pointer blocking, padding, content, and reveal focus.
+
+The test assembly uses `AvaloniaTestHost` with real Skia rendering.
+`FrozenNfcLoadingSurface.axaml` preserves the frozen wrapper with test namespaces and synthetic data.
+Paired synthetic templates use `ProgressBar` for the baseline and `ProgressIndicator` for Core.
+Both versions use the same synthetic themes without an animation clock.
+Fourteen comparisons check every RGBA byte at 640 × 360 pixels and 96 DPI.
+
+Verification on 2026-10-06 passed with zero build warnings and errors.
+All 25 Progress UI cases and all 285 Avalonia tests passed.
+No tests failed or were skipped.
+
+### Zero-difference adoption in NFC
+
+Replace `ForegroundLoadingSurface` with `LoadingSurface`.
+Keep NFC's data context, content, visibility binding, automation name, and status template.
+Pass the state through `Content="{Binding}"` and keep its existing `ContentTemplate`.
+Load the Core styles and apply NFC's inner width and padding above.
+Keep all status-template styles, actions, announcements, and the `ShouldAnimate` binding.
+
+Run these NFC suites before and after adoption:
+
+- `ForegroundLoadingStateTests`.
+- `WorkflowInspectionLifecycleTests`.
+- `ShellPreloadSessionTests` and `BuiltInBundlePreloadTests`.
+- `XamlControlStyleContractTests`, including `CatalogWarmupUsesAccessibleRetryableForegroundLoadingSurface`.
+- `StartupFocusTests` and `NavigationFocusIndicatorTests`.
+
+Compare unknown progress, a known fraction, failure, retry, collapse, and completion pixel for pixel.
+Also compare known progress with reduced motion enabled.
+Keep the same OS, fonts, DPI, theme, inputs, and animation capture position.
+Confirm the same focus target, padding, automation names, and stale-progress rejection.
+Do not update approved snapshots to accept a difference.
+
+The synthetic Core comparisons do not replace NFC's product snapshot checks.
+Adoption and product test execution remain outside this task.
+NFH and NFU may change appearance, but their adoption pull requests must include before and after images.
