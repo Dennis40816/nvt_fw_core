@@ -31,13 +31,49 @@ public interface IProductPackagePolicy
 /// <param name="MaximumManifestBytes">Maximum exact manifest byte count.</param>
 /// <param name="MaximumAdmissionBytes">Maximum exact admission-document byte count.</param>
 /// <param name="MaximumExecutableBytes">Maximum admitted executable byte count.</param>
+/// <param name="MaximumInstalledDirectories">Maximum implicit installed-directory count.</param>
 public sealed record PackageVerificationLimits(
     int MaximumArchiveEntries,
     long MaximumPackageBytes,
     long MaximumExpandedBytes,
     int MaximumManifestBytes,
     int MaximumAdmissionBytes,
-    long MaximumExecutableBytes);
+    long MaximumExecutableBytes,
+    int MaximumInstalledDirectories)
+{
+    /// <summary>Gets the positive archive member ceiling.</summary>
+    public int MaximumArchiveEntries { get; init; } = Positive(MaximumArchiveEntries, nameof(MaximumArchiveEntries));
+
+    /// <summary>Gets the positive complete compressed-package ceiling.</summary>
+    public long MaximumPackageBytes { get; init; } = Positive(MaximumPackageBytes, nameof(MaximumPackageBytes));
+
+    /// <summary>Gets the positive actual expanded-byte ceiling.</summary>
+    public long MaximumExpandedBytes { get; init; } = Positive(MaximumExpandedBytes, nameof(MaximumExpandedBytes));
+
+    /// <summary>Gets the positive shared manifest and checksum document ceiling.</summary>
+    public int MaximumManifestBytes { get; init; } = Positive(MaximumManifestBytes, nameof(MaximumManifestBytes));
+
+    /// <summary>Gets the positive reserved admission-document ceiling.</summary>
+    public int MaximumAdmissionBytes { get; init; } = Positive(MaximumAdmissionBytes, nameof(MaximumAdmissionBytes));
+
+    /// <summary>Gets the positive admitted executable ceiling.</summary>
+    public long MaximumExecutableBytes { get; init; } = Positive(MaximumExecutableBytes, nameof(MaximumExecutableBytes));
+
+    /// <summary>Gets the positive implicit installed-directory ceiling.</summary>
+    public int MaximumInstalledDirectories { get; init; } = Positive(MaximumInstalledDirectories, nameof(MaximumInstalledDirectories));
+
+    private static int Positive(int value, string parameterName)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, parameterName);
+        return value;
+    }
+
+    private static long Positive(long value, string parameterName)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value, parameterName);
+        return value;
+    }
+}
 
 /// <summary>Normalized declared file content, validated by the product manifest adapter.</summary>
 /// <param name="Path">Exact canonical relative path.</param>
