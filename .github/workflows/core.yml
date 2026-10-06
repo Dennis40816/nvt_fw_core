@@ -1,0 +1,92 @@
+# Copyright (c) 2026 Dennis Liu. All rights reserved.
+
+name: Core
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['core-v*']
+
+permissions:
+  contents: read
+
+env:
+  AVALONIA_TELEMETRY_OPTOUT: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  verify:
+    name: Core / build and test
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out Core
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          dotnet-version: '8.0.x'
+      - name: Restore locked dependencies
+        run: dotnet restore Nvt.Core.sln --locked-mode
+      - name: Build Core
+        run: dotnet build Nvt.Core.sln --configuration Release --no-restore
+      - name: Test Core
+        run: dotnet test Nvt.Core.sln --configuration Release --no-build --no-restore
+      - name: Test the pack script offline
+        run: pwsh -File ./scripts/tests/test-pack.ps1
+
+  release:
+    name: Core / release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/core-v')
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: core-release-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          dotnet-version: '8.0.x'
+      - name: Check the tag and pack Core
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$properties = Get-Content -LiteralPath 'Directory.Build.props' -Raw
+          $version = [string]$properties.Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_NAME -cne "core-v$version") {
+              throw "The tag must match package version $version."
+          }
+          ./scripts/pack.ps1
+      - name: Create the Core release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+              'artifacts/packages/*.nupkg' `
+              artifacts/packages/SHA256SUMS `
+              artifacts/packages/SOURCE.md `
+              --repo $env:GITHUB_REPOSITORY `
+              --verify-tag `
+              --title "Core $env:GITHUB_REF_NAME" `
+              --notes-file artifacts/packages/SOURCE.md
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Core release creation failed.'
+          }

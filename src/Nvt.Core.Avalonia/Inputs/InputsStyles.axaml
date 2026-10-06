@@ -1,0 +1,41 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:inputs="clr-namespace:Nvt.Core.Avalonia.Inputs">
+  <Style Selector="inputs|NumberScrubber">
+    <Setter Property="MinHeight" Value="30"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+  <Style Selector="Border.numberScrubber">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="10"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+  </Style>
+  <Style Selector="Border.numberScrubber.focused">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBrush}"/>
+  </Style>
+  <Style Selector="TextBox.numberScrubberInput">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="6,2"/>
+    <Setter Property="Margin" Value="0"/>
+    <Setter Property="CornerRadius" Value="0"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+  <Style Selector="TextBox.numberScrubberInput:focus">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+  <Style Selector="Border.numberScrubberSpin">
+    <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}"/>
+    <Setter Property="BorderThickness" Value="1,0,0,0"/>
+    <Setter Property="Width" Value="6"/>
+    <Setter Property="CornerRadius" Value="0,10,10,0"/>
+    <Setter Property="Padding" Value="0"/>
+  </Style>
+</Styles>
