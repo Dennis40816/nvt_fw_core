@@ -73,6 +73,18 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.Avalonia.Testing`：[Testing](docs/core/modules/Testing.zh-TW.md)
 - `Nvt.Core.IO`：[IO](docs/core/modules/IO.zh-TW.md)
 - `Nvt.Core.Persistence`：[Persistence](docs/core/modules/Persistence.zh-TW.md)
+- `Nvt.Core.Startup`：[Startup](docs/core/modules/Startup.zh-TW.md)
+- `Nvt.Core.RuntimeQuery`：[RuntimeQuery](docs/core/modules/RuntimeQuery.zh-TW.md)
+- `Nvt.Core.Files`：[Files](docs/core/modules/Files.zh-TW.md)
+- `Nvt.Core.Avalonia.Threading`：[Threading](docs/core/modules/Threading.zh-TW.md)
+- `Nvt.Core.Avalonia.Primitives`：[Primitives](docs/core/modules/Primitives.zh-TW.md)
+- `Nvt.Core.Avalonia.Inputs`：[Inputs](docs/core/modules/Inputs.zh-TW.md)
+- `Nvt.Core.Avalonia.Panels`：[Panels](docs/core/modules/Panels.zh-TW.md)
+- `Nvt.Core.Avalonia.Dialogs`：[Dialogs](docs/core/modules/Dialogs.zh-TW.md)
+- `Nvt.Core.Time`：[Time](docs/core/modules/Time.zh-TW.md)
+- `Nvt.Core.Csv`：[Csv](docs/core/modules/Csv.zh-TW.md)
+- `Nvt.Core.SourceFileNavigation`：[SourceFileNavigation](docs/core/modules/SourceFileNavigation.zh-TW.md)
+- `Nvt.Core.Progress`：[Progress](docs/core/modules/Progress.zh-TW.md)
 
 ## 誰維護
 

@@ -73,6 +73,18 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)
 - `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
 - `Nvt.Core.Persistence`: [Persistence](docs/core/modules/Persistence.md)
+- `Nvt.Core.Startup`: [Startup](docs/core/modules/Startup.md)
+- `Nvt.Core.RuntimeQuery`: [RuntimeQuery](docs/core/modules/RuntimeQuery.md)
+- `Nvt.Core.Files`: [Files](docs/core/modules/Files.md)
+- `Nvt.Core.Avalonia.Threading`: [Threading](docs/core/modules/Threading.md)
+- `Nvt.Core.Avalonia.Primitives`: [Primitives](docs/core/modules/Primitives.md)
+- `Nvt.Core.Avalonia.Inputs`: [Inputs](docs/core/modules/Inputs.md)
+- `Nvt.Core.Avalonia.Panels`: [Panels](docs/core/modules/Panels.md)
+- `Nvt.Core.Avalonia.Dialogs`: [Dialogs](docs/core/modules/Dialogs.md)
+- `Nvt.Core.Time`: [Time](docs/core/modules/Time.md)
+- `Nvt.Core.Csv`: [Csv](docs/core/modules/Csv.md)
+- `Nvt.Core.SourceFileNavigation`: [SourceFileNavigation](docs/core/modules/SourceFileNavigation.md)
+- `Nvt.Core.Progress`: [Progress](docs/core/modules/Progress.md)
 
 ## Who maintains this
 
