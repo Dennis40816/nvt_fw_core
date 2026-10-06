@@ -31,7 +31,7 @@ Wheel input uses the actual vertical delta, with optional Alt gating; zero verti
 
 ## Frozen provenance
 
-Parent repository: `Dennis40816/nvt-freeform-helper`; ref: `1.3.x`; full commit: `e01e07a361b8dc264a06b3741f40274feeeace2d`. The source uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.0.5 and xUnit v3. All source reads were from this commit.
+Parent repository: `Dennis40816/nvt-freeform-helper`; ref: `1.3.x`; full commit: `e01e07a361b8dc264a06b3741f40274feeeace2d`. The source uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.1.1 and xUnit v3. All source reads were from this commit.
 
 Extracted files:
 

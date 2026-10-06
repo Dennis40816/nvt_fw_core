@@ -31,7 +31,7 @@ The helper and its existing fallback test were ported to Core. Changes consist o
 
 ## Verification
 
-Core uses Avalonia 12.0.5 and xUnit v3. Tests in `tests/Nvt.Core.Avalonia.Tests/Threading/` reuse the existing headless `ThemeTestApplication`; no additional application attribute or host is introduced. Each test leaves the current UI dispatcher registered. The fallback test also restores Avalonia's global slot in `finally`.
+Core uses Avalonia 12.1.1 and xUnit v3. Tests in `tests/Nvt.Core.Avalonia.Tests/Threading/` reuse the existing headless `ThemeTestApplication`; no additional application attribute or host is introduced. Each test leaves the current UI dispatcher registered. The fallback test also restores Avalonia's global slot in `finally`.
 
 The ported test clears `Dispatcher.s_uiThread` temporarily and checks that the registered dispatcher is returned without repopulating that slot. Characterization covers the four-case Boolean truth table, null registration and its parameter name, dispatcher identity on the headless UI thread, successful UI-thread access, and background-thread failure that keeps the dispatcher out value and returns no application.
 
@@ -48,7 +48,7 @@ For NFH adoption, first freeze results at the parent SHA above. Before and after
 ## Known differences
 
 - The helper is public in Core; NFH's class and members were internal.
-- Avalonia 12.0.5 still has `Dispatcher.s_uiThread`, so the original reflection-based fallback scenario is retained. No other private dispatcher members are inspected, and no runtime Avalonia API adaptation is needed.
+- Avalonia 12.1.1 still has `Dispatcher.s_uiThread`, so the original reflection-based fallback scenario is retained. No other private dispatcher members are inspected, and no runtime Avalonia API adaptation is needed.
 - Tests use xUnit v3 and Core's existing headless application instead of xUnit 2, NFH's bootstrap, and its `HeadlessUiSerial` collection. Test method names omit underscores to satisfy Core analyzers.
 
 ## What stays in NFH

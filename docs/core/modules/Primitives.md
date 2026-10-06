@@ -24,7 +24,7 @@ Load `Theme/ThemeTokens.axaml` into the application's resources and add the defa
 
 ## Provenance
 
-Frozen parent baseline: repository `Dennis40816/nvt-freeform-helper`, ref `1.3.x`, full commit `e01e07a361b8dc264a06b3741f40274feeeace2d`. Source uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.0.5 and xUnit v3.
+Frozen parent baseline: repository `Dennis40816/nvt-freeform-helper`, ref `1.3.x`, full commit `e01e07a361b8dc264a06b3741f40274feeeace2d`. Source uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.1.1 and xUnit v3.
 
 Extracted file paths at that commit:
 
@@ -99,7 +99,7 @@ NFH UI snapshots may change because of the documented resource mappings and Aval
 - Ancestor tooltip propagation is opt-in through `TipTargetClass`, default null. NFH restores its original class search by setting `settingsFieldTile`.
 - NFH colors map to Core's existing palette. `BrushWhite` and the translucent `BrushPadInfoPanelBackground` both map to `NfcSurfaceBrush`; this changes dark divider color and title-background opacity. A single shared resource key cannot preserve those two distinct source brushes simultaneously. Primary text colors also differ.
 - Divider height `1` and title padding `8,4` retain frozen values as literals because no matching Nfc keys exist. The source's static spacing lookup becomes a dynamic lookup of `NfcSpace8`.
-- The code compiles against Avalonia 12.0.5 instead of 11.3.12; no other control API adaptation was required. Headless tests use xUnit v3 instead of xUnit 2. Product-level rendering compatibility still needs NFH adoption evidence.
+- The code compiles against Avalonia 12.1.1 instead of 11.3.12; no other control API adaptation was required. Headless tests use xUnit v3 instead of xUnit 2. Product-level rendering compatibility still needs NFH adoption evidence.
 
 ## What stays in NFH and open questions
 

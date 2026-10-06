@@ -29,7 +29,7 @@ For the tentative assumption, see [vision.md](vision.md): only the shell and inf
 
 ## 5. Avalonia major version alignment
 
-NFC 12.0.5, NFU 12.1.1, NFH 11.3.12. There is no confirmed timeline yet for when NFH will upgrade to 12 or whether AvaloniaEdit has a corresponding version.
+NFC 12.0.5, NFU 12.1.1, NFH 11.3.12. Core moves to 12.1.1 (owner, 2026-10-06), so NFC moves to 12.1.1 when it adopts Core UI, and NFH targets 12.1.1. There is no confirmed timeline yet for when NFH will upgrade to 12 or whether AvaloniaEdit has a corresponding version.
 
 ## 6. Naming
 

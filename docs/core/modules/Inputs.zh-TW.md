@@ -31,7 +31,7 @@
 
 ## 凍結來源
 
-父儲存庫：`Dennis40816/nvt-freeform-helper`；參照：`1.3.x`；完整提交：`e01e07a361b8dc264a06b3741f40274feeeace2d`。來源使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.0.5 與 xUnit v3。所有來源讀取都取自此提交。
+父儲存庫：`Dennis40816/nvt-freeform-helper`；參照：`1.3.x`；完整提交：`e01e07a361b8dc264a06b3741f40274feeeace2d`。來源使用 Avalonia 11.3.12 與 xUnit 2；Core 使用 Avalonia 12.1.1 與 xUnit v3。所有來源讀取都取自此提交。
 
 擷取檔案：
 
