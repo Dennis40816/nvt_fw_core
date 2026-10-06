@@ -12,16 +12,20 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedLauncherEntry.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionActivationPolicy.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherMutationFence.cs`
-- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagerStateStore.cs`
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagerStateStore.cs` — read/save results and ports; writer result, exact live custody contract and state-store port.
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/UpdateSourceRegistry.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedInstallationLayout.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemVersionManagerWriteLease.cs` — exclusive writer acquisition, lock identity and live custody.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs` — `ReadBoundedFileAsync` path admission, stream opening and length checks; complete-content reading delegates to Files.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonVersionManagerStateStore.cs` — explicit raw path, bounded byte read/write and writer delegation; product defaults and strict codecs remain in NFC.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonLauncherBootstrapStateStore.cs` — injective path derivation, bounded raw byte access and typed write failures; suffix configuration and strict codecs remain in NFC.
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` and `Nvt.Core.Launcher.Activation` provide BCL-only `net8.0` values and ports for managed application and launcher activation. The module performs no filesystem or process access. Pure path normalization uses the current platform's path rules.
+`Nvt.Core.Launcher.Contracts` and `Nvt.Core.Launcher.Activation` provide BCL-only `net8.0` values and ports for managed application and launcher activation. `Nvt.Core.Launcher.Persistence` supplies bounded raw state access and the exact application-state writer. Pure path normalization uses the current platform's path rules. Launcher starts no process through these APIs.
 
-The extracted slices are version and content identities, descriptor and package-policy declarations, normalized package results, immutable application and launcher state, transition helpers, durable snapshot comparison, generic inventory, delete-owner protection, and repository/state-reader ports. `UpdateSourceRegistry.cs` contributes only `VersionSourceRegistryState`. `VersionManagementPolicy.cs` contributes inventory and generic delete decisions; its retention threshold, automatic deletion policy and discovery notifications remain in NFC. `LauncherMutationFence.cs` contributes protection values and its port; the experience partial remains in NFC. `VersionManagerStateStore.cs` contributes load/save result values and `IVersionManagerStateReader`; writer acquisition and live custody are separate persistence contracts. Native structures, execution tokens, ZIP plans and strict wire DTOs/codecs are outside this module.
+The extracted slices are version and content identities, descriptor and package-policy declarations, normalized package results, immutable application and launcher state, transition helpers, durable snapshot comparison, generic inventory, delete-owner protection, repository/state ports, raw state access and writer custody. `UpdateSourceRegistry.cs` contributes only `VersionSourceRegistryState`. `VersionManagementPolicy.cs` contributes inventory and generic delete decisions; its retention threshold, automatic deletion policy and discovery notifications remain in NFC. `LauncherMutationFence.cs` contributes protection values and its port; its experience partial and strict JSON projection adapter remain in NFC. Runtime native custody and strict wire DTOs/codecs stay with their respective owners; ZIP plans and test hooks remain internal.
 
 ## Contracts
 
@@ -75,7 +79,7 @@ All test paths below are under `tests/NvtFwCombiner.Application.Tests/VersionMan
 
 NFC keeps strict state/manifest/catalog DTOs and codecs, canonical wire schemas, product wording, exact protocol names, package trust and release authority, registry locators/replicas, retention and notification policy, deletion consent, firmware behavior and UI composition.
 
-NFC downloads versioned packages at build time through `core-packages.json` and uses exact `[x]` pins, lock files and locked restore. Source mapping restricts Core packages to the download folder. The manifest records each package's Release tag and SHA-256. Core and NFC release independently. Duplicate executable bodies are deleted only when the corresponding NFC adapter uses Core and preserves complete values, event traces and output bytes. UI-affecting adoption requires zero changed decoded pixels under the same recorded environment. The eight legacy font values remain unchanged. Bootstrap package wiring requires separate launcher-adoption authorization.
+NFC consumes verified, versioned nupkg files under `vendor/nuget/` and uses exact `[x]` pins, lock files and locked restore. Source mapping restricts Core packages to that folder; `SOURCE.md` records the reviewed source and package SHA-256 hashes. Core and NFC release independently. Duplicate executable bodies are deleted only when the corresponding NFC adapter uses Core and preserves complete values, event traces and output bytes. UI-affecting adoption requires zero changed decoded pixels under the same recorded environment. The eight legacy font values remain unchanged. Bootstrap package wiring requires separate launcher-adoption authorization.
 
 ## Bounded archive reads
 
@@ -98,7 +102,7 @@ The source-to-Core reader test map is:
 
 Additional synthetic tests exercise 512 MiB minus one, exactly 512 MiB and one byte over; neighboring exact and at-most entry lengths; zero-length entries; 65,536-byte buffer neighbors with partial reads; zero and negative budget arguments; long counters; argument and exception order; overflow materialization; deterministic cancellation; bounded faults; borrowed stream lifetime; and owned-file disposal. Runtime file fixtures use unique temporary directories.
 
-NFC retains strict manifest and admission schemas, product payload allowlists, release trust, firmware metadata and installation policy. NFC adopts relocated mechanisms in a separate pull request. It downloads versioned packages at build time through `core-packages.json` and uses exact `[x]` package versions, locked restore and source mapping. The manifest records each package's Release tag and SHA-256. NFC removes its generic reader only after callers consume Core and its original package, installation and product compatibility assertions pass with unchanged values and output bytes. Core reader tests do not establish NFC product or pixel parity.
+NFC retains strict manifest and admission schemas, product payload allowlists, release trust, firmware metadata and installation policy. NFC adopts relocated mechanisms in a separate pull request. It consumes verified, versioned nupkg files under `vendor/nuget/` with exact `[x]` package versions, locked restore and source mapping; `SOURCE.md` records the reviewed source and package SHA-256 hashes. NFC removes its generic reader only after callers consume Core and its original package, installation and product compatibility assertions pass with unchanged values and output bytes. Core reader tests do not establish NFC product or pixel parity.
 
 ## Bounded package verification
 
@@ -124,7 +128,7 @@ Checksums use strict UTF-8 and exact lowercase 64-character hashes, two ASCII sp
 
 All product limits are mandatory positive parameters in the existing order; `MaximumInstalledDirectories` follows `MaximumExecutableBytes`. The verifier also rechecks copied records. NFC supplies these frozen values; Core supplies no product defaults:
 
-| Bound | NFC value | Core receipt |
+| Bound | NFC value | Core contract |
 | --- | ---: | --- |
 | Archive members | 4,096 | `MaximumArchiveEntries` |
 | Complete compressed bytes | 134,217,728 | `MaximumPackageBytes` |
@@ -157,7 +161,7 @@ The source test filenames above are `FileSystemManagedVersionRepositoryTests.Sec
 
 `PackageCeilingTests` covers frozen member, installed-file, directory, document, compressed, declared-launcher and relative-path boundaries, their neighboring values, application acceptance above the executable ceiling, actual expansion independently of metadata, document positivity and underreported documents. `PackageVerificationLimitsTests` covers zero/negative arguments, copied limits, unchanged argument order, explicit NFC values and the existing executable identity ceiling. `PackageIdentityAndChecksumTests` covers forged normalized identities, launcher owner binding, strict-policy rejection and checksum byte grammar. `PackageStreamAndPlanTests` covers public surface, borrowed custody, deterministic cancellation, bounded compressed faults, Files probe ordering, immutable plan facts, disposal, post-admission tamper and destination write failures. The reader cases above cover the frozen 512 MiB actual budget and overflow sentinel directly.
 
-NFC retains strict schemas, product payload roles and allowlists, wire grammar, release metadata, firmware data, trust and release authority. Adoption downloads independently versioned packages at build time through `core-packages.json` and uses exact `[x]` versions, locked restore and source mapping. The manifest records each package's Release tag and SHA-256. Original NFC schema, package, installation, values, traces and output-byte assertions must pass before deleting its relocated generic verifier and reader. UI-affecting adoption also preserves decoded pixels in the same recorded environment. Core synthetic tests do not establish NFC product or pixel parity, and this API provides no Bootstrap package wiring authority.
+NFC retains strict schemas, product payload roles and allowlists, wire grammar, release metadata, firmware data, trust and release authority. Adoption consumes independently versioned, verified nupkg files under `vendor/nuget/` with exact `[x]` versions, locked restore and source mapping; `SOURCE.md` records the reviewed source and package SHA-256 hashes. Original NFC schema, package, installation, values, traces and output-byte assertions must pass before deleting its relocated generic verifier and reader. UI-affecting adoption also preserves decoded pixels in the same recorded environment. Core synthetic tests do not establish NFC product or pixel parity, and this API provides no Bootstrap package wiring authority.
 
 ### Intentional differences from the frozen source
 
@@ -166,3 +170,52 @@ Core differs from the frozen NFC verifier in three places. Each one rejects inpu
 - `VerifyAsync` checks that the package stream can read and seek, and that the candidate package size is within `MaximumPackageBytes`, before it reads. Either failure returns `PackageUnavailable`.
 - When the package changes while it is read, the result is `PackageUnavailable`. The source returned `PackageMismatch`.
 - A manifest file entry named `RELEASE-MANIFEST.json` or `SHA256SUMS.txt` is rejected as `InvalidPayload`.
+
+## Raw state access and exact writer custody
+
+The public API is in `Nvt.Core.Launcher.Persistence`. Existing read/load/save categories and `IVersionManagerStateReader` remain in `Nvt.Core.Launcher.Activation`; `ILauncherBootstrapStateStore` retains its original signatures and has no writer-acquisition member.
+
+```csharp
+FileSystemVersionManagerWriteLease.TryAcquireAsync(
+    string statePath, TimeSpan waitTimeout, CancellationToken cancellationToken)
+    // ValueTask<VersionManagerWriteLeaseResult>
+VersionManagerStateFile(string path, int maximumBytes)
+LauncherBootstrapStateFile(string versionManagerStatePath, string pathSuffix, int maximumBytes)
+LauncherBootstrapStateFile.DerivePath(string versionManagerStatePath, string pathSuffix)
+    // string
+```
+
+Both raw file collaborators expose `StatePathIdentity` and `ReadAsync(token) -> ValueTask<byte[]?>`. `VersionManagerStateFile` additionally exposes `TryAcquireWriteLeaseAsync(waitTimeout, token)` and `WriteAsync(bytes, token) -> ValueTask`. `LauncherBootstrapStateFile` exposes `TryWriteAsync(bytes, token) -> ValueTask<LauncherBootstrapStateSaveResult>`. NFC supplies its frozen app-state ceiling of **1,048,576 bytes**, launcher-state ceiling of **65,536 bytes**, and suffix `.launcher-bootstrap.v1.json`. Core requires explicit positive ceilings and a nonblank fixed suffix; it supplies no product path or ceiling defaults. For a fixed suffix, derivation appends it to the entire full app-state path, preserving injectivity across distinct canonical app-state paths.
+
+`IVersionManagerStateStore` extends the unchanged reader port. It retains `TryAcquireWriteLeaseAsync(TimeSpan waitTimeout, CancellationToken cancellationToken)`, `SaveAsync(VersionManagerState state, CancellationToken cancellationToken)` and the default `TrySaveAsync` implementation. Default save mapping propagates cancellation, converts `IOException`, `UnauthorizedAccessException` and `InvalidOperationException` to `VersionManagerStateSaveIssue.Unavailable`, and propagates other failures.
+
+`VersionManagerWriteLeaseIssue` retains `None`, `Busy` and `Unavailable`. `VersionManagerWriteLeaseResult(issue, IDisposable? lease = null)` preserves the successful-result/one-disposable invariant and message `A successful writer lease must own exactly one handle.` `Issue` and `IsAcquired` describe acquisition. **Authority requires `HoldsStatePath(statePath)`**, which validates a nonblank argument and requires an undisposed result backed by the internal production custody, an open valid handle and ordinal equality of normalized exact state paths. Arbitrary disposables, foreign paths and disposed or closed custody grant no authority. `Dispose()` releases ownership once; historical `IsAcquired` remains true after disposal, as in the source.
+
+Acquisition validates the nonblank path before rejecting negative waits. Zero makes an immediate attempt. Identity is the full path with its ending separator trimmed, then uppercased invariantly on Windows. The sibling key is `.{original-state-filename}.{first-24-lowercase-SHA256-characters}.writer.lock`, hashing UTF-8 identity bytes. The lock uses `OpenOrCreate`, `ReadWrite`, `FileShare.None`, buffer size 1 and `WriteThrough`. Retries remain 50 ms, each delay capped by the remaining wait. Only native sharing codes 32 and 33 yield `Busy` once elapsed time reaches the bound. Original path/directory, access and other I/O failures retain `Unavailable`; cancellation propagates. The final retry attempts opening before classifying a sharing violation at the deadline. Lock files may remain after disposal; their existence grants no authority.
+
+Raw reads retain the source's existence and file-level reparse checks before opening with `Open`, `Read`, `FileShare.Read`, a 64 KiB buffer and `Asynchronous | SequentialScan`. They reject lengths below 1 or above the supplied ceiling before capture. Missing, linked, empty, oversized or changed-length files yield null; premature EOF remains `EndOfStreamException`. Complete held-stream reading uses only `Files.BoundedFileReader.ReadAndHashAsync` in capture mode, including its trailing-byte probe and final length/position checks. Cancellation propagates when reading admitted content. The strict NFC adapter distinguishes Missing before the raw read and maps null to Invalid; raw bytes alone confer no canonical-state authority. These raw checks do not supply the separate Files Windows stable-path custody mechanism.
+
+App writes reject bytes above the explicit ceiling with `Version-manager state exceeds its bounded size.` Launcher writes return `Unavailable` for overflow and the original I/O/access/invalid-operation failure categories. Cancellation propagates. Both publish through `IO.AtomicOutput.WriteBytesAsync(path, bytes, token)`; Launcher contains no temporary-file write, flush, move or cleanup engine. The caller holds the same app-state writer across strict decoding, journal decisions, encoding, publication and the rest of its transaction. The launcher collaborator creates no second writer. AtomicOutput supplies publication mechanics, while activation and recovery journal semantics remain in Launcher.
+
+NFC keeps strict app-state and launcher-state codecs, schema predicates, JSON depth ceilings **32** and **16**, root binding, default LOCALAPPDATA paths and product filenames. Before calling raw publication, its adapters retain the exact parent-path errors `Version-manager state has no parent directory.` and `Launcher state has no parent directory.` They validate and encode state before publishing it and preserve product-specific load/result mapping. No permissive `LocalJsonDocument` or default-accept authority adapter is used.
+
+### Persistence test mapping
+
+Frozen test paths are under `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`; Core tests are under `tests/Nvt.Core.Tests/Launcher/Persistence/`.
+
+| Frozen source case | Core case and retained boundary |
+| --- | --- |
+| `JsonVersionManagerStateStoreTests.SaveAndLoadRoundTrip` | `StateFileTests.SaveAndLoadRoundTrip`: exact synthetic document bytes, adapter-decoded values, no temporary residue and live caller custody; canonical JSON assertions remain in NFC. |
+| `JsonVersionManagerStateStoreTests.CancelledSavePreservesPriorStateAndCleansTemporaryFile` | Same method in `StateFileTests`, for app and launcher raw access; prior complete bytes and synthetic values remain, temporary files are cleaned. |
+| `JsonLauncherBootstrapStateStoreTests.StatePathMappingIsInjective` | Same method in `StateFileTests`, with explicit synthetic suffix, exact full-path append and neighboring canonical paths. |
+| `FileSystemVersionManagerWriteLeaseTests.RecoveryCapabilityIsLiveExactAndNotForgeable` | Same class/method: equivalent spelling, foreign path, arbitrary disposable and disposed capability. |
+| `FileSystemVersionManagerWriteLeaseTests.WindowsAbandonedProcessReleasesWriterForRestartConvergence` | Same class/method using `hold-lock`: 60-second startup budget, 10-second readiness bound, `LOCK_HELD` and ready marker, hard stop and 2-second reacquisition bound. The test writes its own abandoned residue; the child writes none. Residue grants no authority and survives later complete publication. |
+| `JsonLauncherBootstrapStateStoreTests.NonCanonicalStateIsRejected` | Same method in `StateFileTests`: exact raw bytes reach a closed synthetic codec that rejects malformed shape; original JSON schema and wire cases remain in NFC. |
+
+`StateFileTests` covers each product ceiling below/exact/above, smallest positive ceiling 1 with lengths 0/1/2, zero and negative parameters, blank paths/suffixes, empty/missing order, file links and real Windows sharing denial. `FileSystemVersionManagerWriteLeaseTests` covers real independent writers, canonical Windows case folding, exact hash keys, disposal, closed handles, physical exclusivity, cancellation and original result invariants. Per-call internal timing operations characterize zero and one-tick waits, 49/50/51 ms boundaries, exact deadline success and native codes 31/32/33/34 without changing global state.
+
+`StatePublicationTests` uses the existing IO per-call physical stream seam to write an actual prefix, fail asynchronous or disk flush, and cancel after actual disk flush before move. It verifies prior complete bytes, cleanup and live writer custody. Other cases exercise real native move denial, failure after a successful replacement, native file-identity change during byte-identical replacement, and a deterministic publication gate with writer contention before and after publication. `StateStorePortTests` covers only default-port exception mapping; it supplies no physical write evidence. Native Windows cases explicitly skip elsewhere; unavailable symbolic-link creation explicitly skips. Synthetic fixtures live in unique system temporary folders.
+
+### Persistence adoption rules
+
+NFC consumes independently versioned, verified nupkg files under `vendor/nuget/` with exact `[x]` versions, locks, locked restore and package source mapping. `SOURCE.md` records the reviewed source and package SHA-256 hashes. Adoption uses packages without a ProjectReference to a Core checkout. Its strict codecs and state paths remain narrow adapters. Every launcher recovery or setup consumer shares this same live writer capability and checks its exact app-state path; it creates no second lock owner. NFC deletes relocated writer/raw-read/atomic-publication bodies only after callers use these Core owners and unchanged product schema, values, traces, byte outputs and recovery evidence pass. UI-affecting adoption also requires unchanged decoded pixels under the same environment and unchanged legacy font values. These APIs grant no Bootstrap package wiring or release authority.
