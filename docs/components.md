@@ -53,8 +53,8 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
 | Approval checker and NFH pilot | NVT Core; NFU | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Checker `v0.1.0` released; NFH pilot in progress. |
-| CI path guard | NVT Core | NVT CORE | Shared action | `actions/path-guard/` | 1 → 2 | Pull request open; NFH calibration pending. |
-| Approval carryover | NVT Core | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Pull request open; disabled by default. |
+| CI path guard | NVT Core | NVT CORE | Shared action | `actions/path-guard/` | 1 → 2 | Merged into `main`; NFH calibration pending. |
+| Approval carryover | NVT Core | NVT CORE | Shared action | `actions/approval-check/` | 1 → 2 | Merged into `main`; disabled by default. |
 | Headless and screenshot test support | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Testing/` | 1 → 2 | Pull request open; tool baselines stay in each tool. |
 | Candidate, package, and smoke release stages | NFC; NFU | NVT CORE | Shared CI | `.github/workflows/` | 1 → 2 | Planned; tool manifests and release gates stay local to each repository. |
 
@@ -62,9 +62,9 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| Codex dispatch queue | Commander; NVT Core | NVT CORE | Tool scripts | `tools/codex-queue/` | 1 → 2 | Import in progress; use Codex defaults for model and effort. |
-| Windows scheduler | Commander; NVT Core | NVT CORE | Tool scripts | `tools/nvt-sched/` | 1 → 2 | Import in progress; real-machine acceptance pending. |
-| Repository checker engines | NFC; NFH; NFU | NVT CORE | Checker scripts | `tools/repo-checks/` | 1 → 2 | Pull request open with NFC's engines; tools supply their own policy values. |
+| Codex dispatch queue | Commander; NVT Core | NVT CORE | Tool scripts | `tools/codex-queue/` | 1 → 2 | Merged into `main`; uses Codex defaults for model and effort. |
+| Windows scheduler | Commander; NVT Core | NVT CORE | Tool scripts | `tools/nvt-sched/` | 1 → 2 | Merged into `main`; the owner registered the task on a real machine. |
+| Repository checker engines | NFC; NFH; NFU | NVT CORE | Checker scripts | `tools/repo-checks/` | 1 → 2 | Merged into `main` with NFC's engines; tools supply their own policy values. |
 
 ### 5. Shared UI classes
 
@@ -73,7 +73,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Theme tokens and button states | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Font set | NFC baseline; Core role table | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Role table decided; NFC's legacy font resources in an open pull request. |
 | Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Focus/` | 1 → 2 | Merged into `main`; NFC adopts first. |
-| Loading, progress, and cancellation surface | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Controls/` | 1 → 2 | Planned; NFC adopts first. |
+| Loading, progress, and cancellation surface | NFC; NFH; NFU | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Progress/` | 1 → 2 | Part of the Progress module; UI controls follow the data and job tasks. NFC adopts first. |
 | Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `Inputs/`; `Panels/`; `Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |
 | Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/MessageCenter/` | 2 | Planned; separate presentation from product providers and reports. |
 | Report lists and history presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Reports/` | 1 → 2 | Planned; product schemas and export policy stay in NFC. |
@@ -91,23 +91,40 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | Pull request open; NFC adopts first. |
+| JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Atomic stream output | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Merged into `main`; NFU adopts in its next 0.2.x patch. |
 | File path guard, bounded reads, and hashing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Files/` | 1 → 2 | Bounded read in an open pull request; path guard and hashing planned. |
 | Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Planned; executable trust policy stays in each tool. |
-| UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/` | 1 → 2 | Startup trace in an open pull request; clock planned. |
+| UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/`; `src/Nvt.Core/Time/` | 1 → 2 | Startup trace merged into `main`; clock in an open pull request. |
 | Log entry and formatter | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/Diagnostics/` | 2 | Planned with the console trial. |
 | Coalesced refresh, undo, and UI dispatch | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Lifecycle/`; `src/Nvt.Core.Avalonia/Threading/` | 1 → 2 | Refresh and undo merged into `main`; UI dispatch in an open pull request. |
-| CSV quoting | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Reports/` | 1 → 2 | Planned; replay columns stay in NFU. |
-| Source-file navigation | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Planned; the tool supplies editor and operating-system policy. |
+| CSV quoting | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Csv/` | 1 → 2 | Pull request open; replay columns stay in NFU. |
+| Source-file navigation | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/SourceFileNavigation/` | 1 → 2 | Pull request open; the tool supplies editor and operating-system policy. |
 | Universal result/validation framework | No shared source | NVT CORE | None | None | 0; excluded | No common implementation; retain product result types and built-in validation. |
 
 ### 8. Other shared candidates
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| Background job lifecycle | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Jobs/` | 1 → 2 | Planned; share cancellation and stale-result handling without replay payloads. |
+| Background job lifecycle | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Progress/` | 1 → 2 | Part of the Progress module (owner, 2026-10-06); extraction in progress. |
 | Runtime Query automation transport and envelope | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/RuntimeQuery/` | 1 → 2 | Pull request open; tool commands stay in each tool. |
+
+## NFH candidates (extract when a second tool needs them)
+
+The owner decided on 2026-10-06 to record these NFH UI parts and to extract one only when a second tool needs it.
+Source: `Dennis40816/nvt-freeform-helper` at `4df72911867ad047b3217195d12223038a5781b7`. Paths are relative to that repository.
+
+| # | Component | NFH source (lines) | Dependencies | Before extraction |
+|---|---|---|---|---|
+| 1 | Tooltip text wrapping: string tooltips become a wrapping, themed TextBlock | `src/FreeformHelper.UI/Services/SharedToolTipStyleService.cs` (48); ToolTip rules in `src/FreeformHelper.UI/Styles/Controls.Overlay.axaml` (55) | `UiResourceResolver`; hard-coded keys `BrushTooltipBackground`, `BrushTooltipBorder`, `BrushTooltipForeground` | Extract `UiResourceResolver` first, after the NFH Avalonia 12 upgrade. Map the three keys to Core tokens. Core Focus already has `FocusToolTipBehavior` for opening, so add wrapping next to it. Port the NFH static style check in `UiLayoutGuardTests` and the headless tooltip-open smoke test. |
+| 2 | Out-of-process loading spinner: a second process animates a topmost window while the UI thread is blocked | `src/FreeformHelper.UI/Services/CadLoadSpinnerProcessHost.cs` (632), `CadLoadSpinnerDebugState.cs` (174), `CadLoadSpinnerStartupContext.cs` (88), `CadLoadSpinnerHostService.cs` (44), `CadLoadSpinnerIpc.cs` (28); `src/FreeformHelper.UI/Views/CadLoadSpinnerWindow.axaml` (37) and `.axaml.cs` (307); `tests/FreeformHelper.Tests/UI/Services/CadLoadSpinnerProcessHostTests.cs` (137) | Hooks in `Program.cs` and `App.axaml.cs`; the `--cad-load-spinner` argument; the pipe name `freeformhelper.cadloadspinner.{pid}`; three `user32` imports (Windows only); `LoadingSpinner` | First decide whether the second tool should stop blocking its UI thread instead. If not, make the argument and pipe names parameters, drop the CAD wording and keep it Windows-only. |
+| 3 | Hover-open, click-to-pin menu: closes on an outside click or window deactivation, and stays inside the window | `src/FreeformHelper.UI/Controls/WorkspaceHeader.axaml.cs` (about 180 of 303 lines); `src/FreeformHelper.UI/ViewModels/WorkspaceHeaderItem.cs` (96) | `WorkspaceHeader.axaml` binds NFH values (`CadSelectionText`, `PadInspector*`); CommunityToolkit.Mvvm in the item view model | Move the popup logic out of `WorkspaceHeader` into a behavior. The item view model already has no NFH types. Extract from the Avalonia 12 version, which replaces the ToggleButton `Checked` and `Unchecked` events with `IsCheckedChanged`. |
+| 4 | Text-entry focus guard: global shortcuts are skipped while a text-entry control has focus | `src/FreeformHelper.UI/Views/FreeformHelperView.InputAndShortcuts.cs` lines 192-239 of 355 (`ShouldClearFocus`, `IsTextEntryControlSource`) | Hard-coded types: `TextBox`, AvaloniaEdit `TextEditor`, `ComboBox`, `NumberScrubber`, `ConsolePanel`, `PadCanvas` | Take the extra control types as a parameter. Compare with NFC's view-model flag `IsTextEntryFocused` and pick one approach. |
+| 5 | Top-right toast: `WindowNotificationManager`, at most 3 items, 2.5 s | `src/FreeformHelper.UI/MainWindow.axaml.cs` (`ShowTopToast`, about 15 of 111 lines) | The title "Freeform Helper" is hard-coded; `UiLayoutGuardTests` checks the method signature as text | Make the title a parameter. Wait for a second consumer, because NFC does not use `WindowNotificationManager`. |
+| 6 | Style gallery page and UI rule documents | `src/FreeformHelper.UI/Views/DevView.axaml` (868), `DevView.axaml.cs` (93); `src/FreeformHelper.UI/ViewModels/DevViewModel.cs` (77); `docs/guides/ui-action-role-system.md` (284), `ui-density-token-rules.md` (76), `ui-action-role-visual-qa.md` (45) | NFH class names, NFH sample data, NFH-internal codes in the documents | Rebuild the gallery from Core styles instead of moving the NFH page. Rewrite the documents in tool-neutral terms. This depends on the action-role button styles, which follow the NFH Avalonia 12 upgrade. |
+| 7 | Form and tab styles: TextBox, ComboBox, CheckBox, ToggleSwitch, NumericUpDown, TabItem and toggle tabs | `src/FreeformHelper.UI/Styles/Controls.Form.axaml` (213), `Controls.Tab.axaml` (205) | NFH-specific classes mixed in (`boundLayerSelector`, `regularLayerSelector`, `rightPanelTab`, `numberScrubber`, `settingsPage`); NFH tokens; Fluent template parts | Split the NFH-specific classes out first. Compare with NFC's `MainWindowControlStyles.axaml`, which overlaps. |
+| 8 | Rendered snapshot comparison: render to BGRA, 16x16 average hash, Hamming distance; modes Check, DryRun and Apply | `tests/FreeformHelper.Tests/UI/Snapshots/UiRenderedVisualSnapshotTests.cs` (271, about 110 generic), `UiBaselineUpdateMode.cs` (29) | NFH baseline JSON, NFH views, the `FH_UI_BASELINE_MODE` variable, `TestPaths.RepoRoot` | Apply mode refreshes baselines, which Core adoption evidence forbids, so remove or lock it. Compare with NFC's exact pixel capture (`DesktopScreenshotCapture`). |
+| 9 | XAML hard-coded color check: a tree scan for inline hex colors outside the token file, and for `Width` bound to `Bounds.Width` | `tests/FreeformHelper.Tests/UI/Snapshots/UiLayoutGuardTests.cs` (1,245 lines; about 90 lines in the generic tests `ViewsAndControls_DoNotUseInlineHexColors`, `StylesOutsideTokens_DoNotUseInlineHexColors`, `Xaml_DoesNotBindScrollContentToBoundsWidth`) | Hard-coded paths `src/FreeformHelper.UI` and `Tokens.axaml`; `TestPaths` | Make the scanned folders and the token file parameters. Compare with NFC's `XamlControlStyleContractTests`, which checks hex colors per file. |
 
 ## Import acceptance criteria
 
