@@ -187,6 +187,87 @@ The first server continues to answer requests. Disposal retains the configured s
 Callers of the same user see no change to request or response bytes. Another user's process can no longer connect.
 A name conflict now produces one diagnostic event. Pipe names, discovery, options and envelope formats do not change.
 
+## Command line
+
+Core now provides the query command-line front end with the frozen source behavior.
+The tool keeps its pipe name, protocol version, ordered command list, and client error texts.
+Core handles parsing, JSON output, exit codes, and the default client timeout.
+
+The new public type is `RuntimeQueryCommandLine`.
+Its only entry method is `TryHandleQueryCommand(args, pipeName, protocolVersion, supportedCommands, error, output, out exitCode)`.
+The error mapping uses the existing `Func<RuntimeQueryFailure, string?, RuntimeQueryError>` contract.
+Tools pass `Console.Out` as the output writer.
+
+- Only a first argument equal to `query`, ignoring case, returns handled.
+- Unhandled arguments produce no output and return exit code 0.
+- The parser trims the command and converts it to lowercase with the invariant culture.
+- Usage and unsupported-command errors list the supplied commands in their original order.
+- Pretty JSON is the default. The last `--json-pretty` or `--json-compact` switch selects the response format.
+- Parse errors always print pretty `INVALID_ARGUMENTS` JSON and return exit code 2.
+- Responses return exit code 0 when `ok` is true and 1 when it is false.
+- The front end calls `WriteLine` once with the serialized JSON.
+
+Options split at the first `=` only when its position is greater than 2.
+Otherwise, the complete token after `--` becomes the key.
+A missing value becomes `"true"`, including when the next token starts with `--`.
+Keys ignore case. Repeated keys keep their first spelling and their last value.
+The client-only `--timeout-ms` defaults to 1500 and accepts integers from 1 through 120000.
+The request carries null arguments when no command arguments remain.
+
+### Command-line baseline
+
+- Source repository: `nvt-freeform-helper` (NFH).
+- Production ref: `origin/1.3.x`.
+- Frozen production commit: `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
+- Extracted path: `src/FreeformHelper.UI/Services/RuntimeQueryIpc.cs`, lines 239–289 and 376–463.
+- Caller reference: `src/FreeformHelper.UI/Program.cs`, near line 37, at the same commit.
+- Characterization ref: `test/1.3.x/runtimequery-characterization`, NFH pull request 47.
+- Frozen characterization commit: `464ecf4d98095ac26b195046bfb50ef66679286f`.
+- Characterization paths:
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationCommandLineTests.cs`
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationSubject.cs`
+
+### Command-line verification
+
+`RuntimeQueryCommandLineCases` holds all 40 frozen input and expected-output rows in one reusable test table.
+Four added rows cover `--=x`, `--a=b=c`, an empty command, and a command with surrounding spaces.
+The frozen query-only row covers an empty argument list after `query`.
+Tests compare exact stdout strings and request frames with `Environment.NewLine`.
+The three timeout rows inspect the private parser, as the source tests do.
+The Program row reproduces the caller's exit-code assignment without starting a UI.
+All pipe tests share one collection with parallel execution disabled.
+Tests use unique pipe names for connections and bounded waits.
+The product pipe name remains test data only for cases that cannot connect.
+
+Set `AVALONIA_TELEMETRY_OPTOUT=1` and use the restored packages:
+
+```text
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.RuntimeQuery"
+```
+
+### Zero-difference switch
+
+NFH keeps its command list in the frozen order and keeps its existing client error texts.
+In `Program.cs`, replace the front-end call with the Core entry method:
+
+```csharp
+if (RuntimeQueryCommandLine.TryHandleQueryCommand(
+    args, PipeName, ProtocolVersion, SupportedCommands, ClientError, Console.Out, out var cliExitCode))
+{
+    Environment.ExitCode = cliExitCode;
+    return;
+}
+```
+
+The setting names in this example represent the tool's existing values and client error mapping.
+Run all 40 `RuntimeQueryCharacterizationCommandLineTests` cases before and after the switch.
+Use `RuntimeQueryCommandLineCases` to run the same rows against both front ends.
+Compare stdout bytes and exit codes. Both must be equal.
+Keep the tool's `INSTANCE_NOT_RUNNING` text in its client error mapping.
+Core continues to use the existing client transport and JSON options.
+This task does not change the source tool.
+
 ## Frozen provenance
 
 - Source repository: `Dennis40816/nvt-freeform-helper`.
