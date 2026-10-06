@@ -43,5 +43,7 @@ public enum RuntimeQueryDiagnostic
     /// <summary>The run loop failed during shutdown.</summary>
     ShutdownFailed,
     /// <summary>The run loop exceeded the caller's shutdown bound.</summary>
-    ShutdownTimedOut
+    ShutdownTimedOut,
+    /// <summary>Creating a server pipe failed; the run loop ends.</summary>
+    PipeCreationFailed
 }
