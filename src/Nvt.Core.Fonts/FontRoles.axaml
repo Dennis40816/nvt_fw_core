@@ -1,0 +1,50 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <FontFamily x:Key="Nvt.Font.Title.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.Title.Size">24</x:Double>
+  <FontWeight x:Key="Nvt.Font.Title.Weight">SemiBold</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Heading.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.Heading.Size">16</x:Double>
+  <FontWeight x:Key="Nvt.Font.Heading.Weight">SemiBold</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Body.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.Body.Size">13</x:Double>
+  <FontWeight x:Key="Nvt.Font.Body.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Caption.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.Caption.Size">11</x:Double>
+  <FontWeight x:Key="Nvt.Font.Caption.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Mono.Family">avares://Nvt.Core.Fonts/Assets/CascadiaMono#Cascadia Mono</FontFamily>
+  <x:Double x:Key="Nvt.Font.Mono.Size">13</x:Double>
+  <FontWeight x:Key="Nvt.Font.Mono.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Numbers.Family">avares://Nvt.Core.Fonts/Assets/CascadiaMono#Cascadia Mono</FontFamily>
+  <x:Double x:Key="Nvt.Font.Numbers.Size">13</x:Double>
+  <!-- Cascadia Mono has no official static Medium file, so the owner chose Normal on 2026-10-06. -->
+  <FontWeight x:Key="Nvt.Font.Numbers.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.BodyStrong.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.BodyStrong.Size">13</x:Double>
+  <FontWeight x:Key="Nvt.Font.BodyStrong.Weight">SemiBold</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.CaptionStrong.Family">avares://Avalonia.Fonts.Inter/Assets#Inter</FontFamily>
+  <x:Double x:Key="Nvt.Font.CaptionStrong.Size">11</x:Double>
+  <FontWeight x:Key="Nvt.Font.CaptionStrong.Weight">SemiBold</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.MonoStrong.Family">avares://Nvt.Core.Fonts/Assets/CascadiaMono#Cascadia Mono</FontFamily>
+  <x:Double x:Key="Nvt.Font.MonoStrong.Size">13</x:Double>
+  <FontWeight x:Key="Nvt.Font.MonoStrong.Weight">SemiBold</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.MonoCaption.Family">avares://Nvt.Core.Fonts/Assets/CascadiaMono#Cascadia Mono</FontFamily>
+  <x:Double x:Key="Nvt.Font.MonoCaption.Size">11</x:Double>
+  <FontWeight x:Key="Nvt.Font.MonoCaption.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Icon.Family">avares://Nvt.Core.Fonts/Assets/MaterialSymbolsOutlined#Material Symbols Outlined</FontFamily>
+  <x:Double x:Key="Nvt.Font.Icon.Size">16</x:Double>
+  <FontWeight x:Key="Nvt.Font.Icon.Weight">Normal</FontWeight>
+
+  <FontFamily x:Key="Nvt.Font.Fallback.Cjk.Family">avares://Nvt.Core.Fonts/Assets/NotoSansTC#Noto Sans TC</FontFamily>
+</ResourceDictionary>
