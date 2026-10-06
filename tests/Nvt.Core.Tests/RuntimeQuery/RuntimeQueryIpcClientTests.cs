@@ -202,7 +202,9 @@ public sealed class RuntimeQueryIpcClientTests
 
     /// <summary>
     /// Broken-pipe IO messages are forwarded unchanged to the caller's error mapping. The test ends at the IO error;
-    /// the 5000 ms budget, 1500 ms in the source, only bounds a slow runner.
+    /// the 5000 ms budget, 1500 ms in the source, only bounds a slow runner. The peer reads one request byte before it
+    /// disconnects, so the client has finished its same-user check. A disconnect during that check throws
+    /// InvalidOperationException, which is a different failure.
     /// </summary>
     [Fact]
     public async Task DisconnectedPeerReturnsCallerIoErrorAndExceptionMessage()
@@ -213,6 +215,7 @@ public sealed class RuntimeQueryIpcClientTests
         var serverTask = Task.Run(async () =>
         {
             await peer.WaitForConnectionAsync(timeout.Token);
+            await peer.ReadExactlyAsync(new byte[1], timeout.Token);
             peer.Disconnect();
         }, TestContext.Current.CancellationToken);
         string? exceptionMessage = null;
