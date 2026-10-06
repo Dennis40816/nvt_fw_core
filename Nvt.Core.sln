@@ -14,6 +14,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.Fonts", "src\Nvt.C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.Fonts.Tests", "tests\Nvt.Core.Fonts.Tests\Nvt.Core.Fonts.Tests.csproj", "{116C7FEA-50B8-4B57-AC4C-5F2B511BDF9A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.TestProbe", "tests\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj", "{5C2E8B71-3D4A-4F6B-9E1C-7A2D8F0B4C63}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +46,9 @@ Global
 		{116C7FEA-50B8-4B57-AC4C-5F2B511BDF9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{116C7FEA-50B8-4B57-AC4C-5F2B511BDF9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{116C7FEA-50B8-4B57-AC4C-5F2B511BDF9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C2E8B71-3D4A-4F6B-9E1C-7A2D8F0B4C63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C2E8B71-3D4A-4F6B-9E1C-7A2D8F0B4C63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C2E8B71-3D4A-4F6B-9E1C-7A2D8F0B4C63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C2E8B71-3D4A-4F6B-9E1C-7A2D8F0B4C63}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
