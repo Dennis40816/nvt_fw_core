@@ -11,6 +11,7 @@ internal sealed class ProbeInputs
         "mode", "marker", "text", "ambient-handle", "allowed-handle", "cross-handle", "payload",
         "tree-marker", "stdout-text", "exit-code", "app-version", "app-admission", "app-manifest",
         "args-path", "process-marker", "identity-marker", "oversize-chars", "partial-drop", "lock-path", "lock-ready",
+        "out-char", "out-count", "out-suffix", "err-char", "err-count", "err-suffix", "wait-ms",
     };
     private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
 

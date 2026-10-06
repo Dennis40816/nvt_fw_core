@@ -27,7 +27,8 @@ namespace Nvt.Core.TestProbe
                 if (mode is not ("ambient-pipe" or "contained-isolation" or "arguments-environment" or
                     "ready" or "ready-wrong-identity" or "ready-partial" or "invalid-utf8" or "oversized" or
                     "ready-tree-root" or "silent-wait" or "exit" or "tree-grandchild" or "tree-root-exit" or
-                    "tree-root-wait" or "orphan-chain-root" or "detached-descendant-root" or "hold-lock"))
+                    "tree-root-wait" or "orphan-chain-root" or "detached-descendant-root" or "hold-lock" or
+                    "dual-output-exit" or "dual-output-wait"))
                 {
                     throw new ProbeInputException("Unknown mode.");
                 }
@@ -81,6 +82,10 @@ namespace Nvt.Core.TestProbe
                 if (mode == "hold-lock")
                 {
                     return await HoldLockAsync(inputs);
+                }
+                if (mode is "dual-output-exit" or "dual-output-wait")
+                {
+                    return await DualOutputAsync(mode == "dual-output-wait", inputs);
                 }
                 return await RunTreeAsync(mode, inputs);
             }
@@ -198,6 +203,51 @@ namespace Nvt.Core.TestProbe
                 await Task.Delay(Wait);
             }
             return 0;
+        }
+
+        // With the default counts, each stream exceeds a pipe buffer. A parent that drains one stream at a time stalls.
+        private static async Task<int> DualOutputAsync(bool wait, ProbeInputs inputs)
+        {
+            var output = RepeatedText.Read(inputs, "out", wait ? "O" : "A", wait ? "OUT-PARTIAL-END" : "OUT-END");
+            var error = RepeatedText.Read(inputs, "err", wait ? "E" : "B", wait ? "ERR-PARTIAL-END" : "ERR-END");
+            int milliseconds = wait ? inputs.Integer("wait-ms", 30_000, minimum: 1) : 0;
+            output.WriteTo(Console.Out);
+            error.WriteTo(Console.Error);
+            if (wait)
+            {
+                await Task.Delay(milliseconds);
+            }
+            return 0;
+        }
+    }
+
+    internal readonly record struct RepeatedText(char Character, int Count, string Suffix)
+    {
+        internal static RepeatedText Read(ProbeInputs inputs, string stream, string character, string suffix)
+        {
+            string repeated = inputs.Optional(stream + "-char") ?? character;
+            if (repeated.Length != 1 || !Ascii.IsValid(repeated))
+            {
+                throw new ProbeInputException("Invalid input: " + stream + "-char");
+            }
+            string end = inputs.Optional(stream + "-suffix") ?? suffix;
+            if (!Ascii.IsValid(end))
+            {
+                throw new ProbeInputException("Invalid input: " + stream + "-suffix");
+            }
+            return new RepeatedText(repeated[0], inputs.Integer(stream + "-count", 131_072, minimum: 0), end);
+        }
+
+        // Writes in chunks, so any count works without one large string.
+        internal void WriteTo(TextWriter writer)
+        {
+            string chunk = new(Character, Math.Min(Count, 4096));
+            for (int left = Count; left > 0; left -= chunk.Length)
+            {
+                writer.Write(chunk.AsSpan(0, Math.Min(left, chunk.Length)));
+            }
+            writer.Write(Suffix);
+            writer.Flush();
         }
     }
 }

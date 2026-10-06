@@ -24,6 +24,8 @@ It runs from any folder under any executable name.
 | `orphan-chain-root` | `tree-marker` | Starts a pipe-holding middle process. Writes `.middle` and `.ready` markers. Waits with an exited middle process and a live leaf. | 0 or 25 |
 | `detached-descendant-root` | `tree-marker` | Starts a child without inherited standard streams. Exits after its marker appears. | 0 or 25 |
 | `hold-lock` | `lock-path`, `lock-ready` | Writes `STARTED`. Opens an exclusive read/write file. Writes the ready marker and `LOCK_HELD`. Holds the file for 30 seconds. | 0 or 1 |
+| `dual-output-exit` | Optional `out-char`, `out-count`, `out-suffix`, `err-char`, `err-count`, `err-suffix` | Writes the repeated character and the suffix to standard output, then to standard error. Writes no newline. Flushes each stream. Exits immediately. | 0 |
+| `dual-output-wait` | The `dual-output-exit` inputs; optional `wait-ms` | Writes both streams like `dual-output-exit`, with other defaults. Then waits without more output. | 0 |
 
 Every input has two forms:
 
@@ -40,6 +42,15 @@ Optional input defaults are:
 - `exit-code`: 0.
 - `oversize-chars`: 256, with a minimum of 1.
 - `partial-drop`: 0, with a minimum of 0.
+- `out-char`, `out-count`, `out-suffix`: `A`, 131072 and `OUT-END` for `dual-output-exit`. `O`, 131072 and `OUT-PARTIAL-END` for `dual-output-wait`.
+- `err-char`, `err-count`, `err-suffix`: `B`, 131072 and `ERR-END` for `dual-output-exit`. `E`, 131072 and `ERR-PARTIAL-END` for `dual-output-wait`.
+- `wait-ms`: 30000, with a minimum of 1.
+
+A character input is one ASCII character.
+A suffix input is ASCII text.
+A count input has a minimum of 0.
+With the default counts, each stream exceeds a pipe buffer.
+A parent must drain both streams at the same time.
 
 Handles use unsigned decimal text with invariant culture.
 Unparseable ambient, allowed, and cross handles cause no pipe write.
@@ -48,7 +59,9 @@ The probe creates no folders.
 Each file input requires an existing parent folder.
 Files and pipe bytes use UTF-8 without a byte order mark.
 Process identifiers contain invariant decimal digits and no newline.
+Standard output and standard error use UTF-8 without a byte order mark.
 Standard output lines use the platform newline and are flushed.
+The dual-output modes write no newline.
 Pipe lines end with a literal `\n`.
 
 The six READY modes share a prelude.
