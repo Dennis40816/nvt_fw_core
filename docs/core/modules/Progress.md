@@ -421,3 +421,173 @@ NFH keeps these parts:
 - The 120 ms minimum visible time.
 - The frame-yield implementation, which uses the dispatcher.
 - The separate scope counters behind `BeginCadLoadCanvasOverlayScope` and `BeginModalLoadingSpinnerScope`.
+
+## Progress UI
+
+The UI controls preserve NVT FW Combiner's loading structure and caller-owned animation.
+The owner approved this boundary on 2026-10-06.
+The library targets net10.0 with Avalonia 12.1.1.
+Its namespace is `Nvt.Core.Avalonia.Progress`.
+
+### Frozen UI baselines
+
+Read these files with `git show <sha>:<path>`.
+These baselines also supply the provenance for the host's commit message.
+
+| Tool | Repository | Ref | Commit |
+| --- | --- | --- | --- |
+| NVT FW Combiner (NFC) | `nvt_fw_combiner` | `origin/1.2.x` | `a67eaee35b1d7eda9157a82e880e98a70407e913` |
+| NVT FW UTIL (NFU) | `nvt-event-buffer-replay` | `origin/0.2.0` | `26d66bd377a4ad051392bd7cc7e9d1c2e6287dba` |
+| Freeform Helper (NFH) | `nvt-freeform-helper` | `origin/1.3.x` | `4df72911867ad047b3217195d12223038a5781b7` |
+
+NFC supplies the wrapper, padding binding, animation policy, and delivery ordering:
+
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml`.
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/ForegroundLoadingSurface.axaml.cs`.
+- `src/NvtFwCombiner.Presentation.Avalonia/Resources/MainWindowSharedTemplates.axaml`, specifically `ForegroundLoadingStatusTemplate`.
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ForegroundLoadingState.cs`.
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowInspectionLifecycle.cs`, specifically its progress delivery.
+
+The other UI sources establish caller-owned policies:
+
+- NFU: `src/Nvt.Replay.Avalonia/MainWindow.Output.cs`, lines 600–638.
+- NFH: `src/FreeformHelper.UI/Views/WorkflowSteps/RightWorkflowStep5View.axaml`, specifically its progress bar.
+
+Reviewed NFC test sources:
+
+- `tests/NvtFwCombiner.UiSmoke.Tests/ForegroundLoadingStateTests.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/WorkflowInspectionLifecycleTests.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.Startup.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.StandardFeedback.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.Presentation.cs`.
+- `tests/NvtFwCombiner.UiSmoke.Tests/StartupFocusTests.cs`.
+
+### UI delivery rule
+
+[`UiProgress<T>`](../../../src/Nvt.Core.Avalonia/Progress/UiProgress.cs) takes `Action<T> publish`.
+A null callback throws `ArgumentNullException`.
+`Report` runs `publish(value)` inline when `Dispatcher.UIThread.CheckAccess()` returns true.
+Otherwise, it posts the callback to `Dispatcher.UIThread` at the default priority.
+
+NFC calls `Deliver` inline when its captured presentation context is null or equals the current context.
+Otherwise, NFC posts `Deliver` to that context.
+Core preserves NFC's UI-context ordering while requiring every callback to run on the UI thread.
+Core does not retain NFC's context-free background delivery path.
+
+Posted reports keep their enqueue order.
+An inline UI report can overtake an earlier background report that still awaits dispatch.
+The adapter adds no queue or throttle.
+
+NFU constructs `Progress<ExportJobSnapshot>`, which posts through its captured synchronization context.
+NFU then presents the current snapshot directly after start or cancellation.
+Its callback rereads the authoritative snapshot and rejects a different job ID.
+These snapshot checks and direct presentations remain with NFU.
+NFU must retain its always-post observer if inline delivery would change its existing ordering.
+
+### Progress bar
+
+[`ProgressIndicator`](../../../src/Nvt.Core.Avalonia/Progress/ProgressIndicator.cs) inherits `ProgressBar`.
+Its only new property is `ProgressUpdate? Progress`.
+A known fraction sets `Value` to that fraction.
+A null update or null fraction leaves `Value` unchanged.
+
+The control never sets `IsIndeterminate`.
+NFC's `ShouldAnimate` stays true during running progress unless reduced motion is enabled.
+This rule also applies when NFC knows the fraction.
+Keep NFC's `IsIndeterminate="{Binding ShouldAnimate}"` binding.
+
+The style key remains `typeof(ProgressBar)`.
+Existing `ProgressBar` selectors and control themes therefore apply.
+The default `Maximum` remains Avalonia's default.
+NFC and NFH must retain their explicit `Maximum="1"`.
+
+NFC can retain its existing `Value` binding when it uses `ProgressIndicator`.
+Bind `Progress` when the tool supplies a `ProgressUpdate`.
+NFU retains its own unknown-total rule and range.
+
+### Loading surface
+
+[`LoadingSurface`](../../../src/Nvt.Core.Avalonia/Progress/LoadingSurface.cs) inherits `ContentControl` and adds no properties.
+Load `avares://Nvt.Core.Avalonia/Progress/ProgressStyles.axaml` through `StyleInclude`.
+
+The style makes the surface focusable and enables Core's existing `FocusOnRevealBehavior`.
+The template contains a scrim `Grid` and one centered inner `ContentControl`.
+The scrim uses `{DynamicResource NfcModalScrimBrush}` and blocks pointer input.
+The inner control receives the surface's `Content` and `ContentTemplate`.
+
+The named inner part is `PART_Content`.
+The tool supplies width and padding through a template-part style.
+NFC retains these values:
+
+```xml
+<Style Selector="progress|LoadingSurface /template/ ContentControl#PART_Content">
+  <Setter Property="Width" Value="430" />
+  <Setter Property="Padding" Value="28,26" />
+</Style>
+```
+
+The `progress` prefix names `Nvt.Core.Avalonia.Progress`.
+This method adds no size or padding property to Core.
+The surface's inherited `Padding` is not forwarded to the inner part.
+
+NFC's data template retains `Padding="{Binding $parent[ContentControl].Padding}"`.
+Its nearest `ContentControl` remains the centered inner part.
+The binding therefore reads the same element and `28,26` value as the frozen wrapper.
+
+The tool sets `AutomationProperties.Name` on the surface.
+The tool also owns visibility, text, buttons, commands, announcements, sizes, shadows, and product styles.
+Core supplies none of these.
+
+### UI verification
+
+Use the existing restored packages:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Avalonia.Tests.Progress"
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+The tests preserve NFC's applicable animation and wrapper assertions.
+Product lifecycle, text, and command assertions remain in NFC.
+
+[`UiProgressTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/UiProgressTests.cs) check UI-thread delivery, posted ordering, and inline overtaking.
+[`ProgressIndicatorTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/ProgressIndicatorTests.cs) check values, null updates, animation, defaults, and inherited styles.
+[`LoadingSurfaceTests`](../../../tests/Nvt.Core.Avalonia.Tests/Progress/LoadingSurfaceTests.cs) check the tree, dynamic scrim, pointer blocking, padding, content, and reveal focus.
+
+The test assembly uses `AvaloniaTestHost` with real Skia rendering.
+`FrozenNfcLoadingSurface.axaml` preserves the frozen wrapper with test namespaces and synthetic data.
+Paired synthetic templates use `ProgressBar` for the baseline and `ProgressIndicator` for Core.
+Both versions use the same synthetic themes without an animation clock.
+Fourteen comparisons check every RGBA byte at 640 × 360 pixels and 96 DPI.
+
+Verification on 2026-10-06 passed with zero build warnings and errors.
+All 25 Progress UI cases and all 285 Avalonia tests passed.
+No tests failed or were skipped.
+
+### Zero-difference adoption in NFC
+
+Replace `ForegroundLoadingSurface` with `LoadingSurface`.
+Keep NFC's data context, content, visibility binding, automation name, and status template.
+Pass the state through `Content="{Binding}"` and keep its existing `ContentTemplate`.
+Load the Core styles and apply NFC's inner width and padding above.
+Keep all status-template styles, actions, announcements, and the `ShouldAnimate` binding.
+
+Run these NFC suites before and after adoption:
+
+- `ForegroundLoadingStateTests`.
+- `WorkflowInspectionLifecycleTests`.
+- `ShellPreloadSessionTests` and `BuiltInBundlePreloadTests`.
+- `XamlControlStyleContractTests`, including `CatalogWarmupUsesAccessibleRetryableForegroundLoadingSurface`.
+- `StartupFocusTests` and `NavigationFocusIndicatorTests`.
+
+Compare unknown progress, a known fraction, failure, retry, collapse, and completion pixel for pixel.
+Also compare known progress with reduced motion enabled.
+Keep the same OS, fonts, DPI, theme, inputs, and animation capture position.
+Confirm the same focus target, padding, automation names, and stale-progress rejection.
+Do not update approved snapshots to accept a difference.
+
+The synthetic Core comparisons do not replace NFC's product snapshot checks.
+Adoption and product test execution remain outside this task.
+NFH and NFU may change appearance, but their adoption pull requests must include before and after images.
