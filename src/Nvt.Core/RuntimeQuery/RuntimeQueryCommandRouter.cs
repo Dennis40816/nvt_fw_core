@@ -3,10 +3,10 @@
 namespace Nvt.Core.RuntimeQuery;
 
 /// <summary>Checks requests and routes command names to the caller's handlers.</summary>
-public sealed class RuntimeQueryCommandRouter
+public sealed partial class RuntimeQueryCommandRouter
 {
     private readonly IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>> _handlers;
-    private readonly Dictionary<string, RuntimeQueryCommandRisk>? _risks;
+    private readonly Dictionary<string, RuntimeQueryCommand>? _commands;
     private readonly bool _requireConfirmation;
 
     /// <summary>Creates a router from the caller's completed handler table.</summary>
@@ -24,7 +24,7 @@ public sealed class RuntimeQueryCommandRouter
     {
         ArgumentNullException.ThrowIfNull(commands);
         var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal);
-        var risks = new Dictionary<string, RuntimeQueryCommandRisk>(StringComparer.Ordinal);
+        var definitions = new Dictionary<string, RuntimeQueryCommand>(StringComparer.Ordinal);
         var names = new string[commands.Count];
         for (var index = 0; index < commands.Count; index++)
         {
@@ -38,12 +38,12 @@ public sealed class RuntimeQueryCommandRouter
             }
 
             handlers.Add(command.Name, command.Handler);
-            risks.Add(command.Name, command.Risk);
+            definitions.Add(command.Name, command);
             names[index] = command.Name;
         }
 
         _handlers = handlers;
-        _risks = risks;
+        _commands = definitions;
         _requireConfirmation = requireConfirmation;
         RegisteredCommands = Array.AsReadOnly(names);
     }
@@ -71,8 +71,14 @@ public sealed class RuntimeQueryCommandRouter
         return await RouteAsync(request.Command, request.Args);
     }
 
-    /// <summary>Normalizes the command name, applies the enabled confirmation guard, then calls the handler.</summary>
+    /// <summary>Normalizes the name, rejects startup-only commands, checks confirmation, then calls the handler.</summary>
     public Task<RuntimeQueryResponseEnvelope> RouteAsync(string? commandText, IReadOnlyDictionary<string, string>? args)
+    {
+        return RouteCoreAsync(commandText, args, isStartup: false, startupConfirmed: false);
+    }
+
+    private Task<RuntimeQueryResponseEnvelope> RouteCoreAsync(
+        string? commandText, IReadOnlyDictionary<string, string>? args, bool isStartup, bool startupConfirmed)
     {
         var command = commandText?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(command) || !_handlers.TryGetValue(command, out var handler))
@@ -82,11 +88,22 @@ public sealed class RuntimeQueryCommandRouter
                 message: $"Unknown query command '{commandText}'."));
         }
 
+        if (!isStartup && _commands?.GetValueOrDefault(command)?.StartupPhase == RuntimeQueryStartupPhase.BeforeFirstFrame)
+        {
+            return Task.FromResult(RuntimeQueryResponseEnvelope.Failure(
+                code: "STARTUP_ONLY",
+                message: $"Command '{command}' can be used only at startup."));
+        }
+
         if (_requireConfirmation)
         {
-            if (_risks![command] == RuntimeQueryCommandRisk.WritesData)
+            if (_commands![command].Risk == RuntimeQueryCommandRisk.WritesData)
             {
-                var hasConfirmation = RuntimeQueryArgumentParser.TryGetBoolArg(args, "confirm", out var confirmed, out var error);
+                var confirmed = startupConfirmed;
+                RuntimeQueryResponseEnvelope? error = null;
+                var hasConfirmation = isStartup
+                    ? startupConfirmed
+                    : RuntimeQueryArgumentParser.TryGetBoolArg(args, "confirm", out confirmed, out error);
                 if (error is not null)
                 {
                     return Task.FromResult(error);
@@ -100,7 +117,7 @@ public sealed class RuntimeQueryCommandRouter
                 }
             }
 
-            if (args is not null)
+            if (!isStartup && args is not null)
             {
                 var handlerArgs = new Dictionary<string, string>(StringComparer.Ordinal);
                 foreach (var argument in args)
