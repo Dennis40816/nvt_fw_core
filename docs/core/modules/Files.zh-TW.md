@@ -189,7 +189,7 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 
 Files 擁有此根目錄機制、一般檔案防護，以及唯一的完整內容串流雜湊迴圈。沒有新增重複讀取迴圈或原生 custody owner。NFC 保留 `ProtectedPathGuard`、`LocalFileIdentity`、強化輸出寫入器、產品上限及套件路徑政策、stamp、選取檔案模型、顯示提示、schema、信任及發行權限。
 
-NFC 以自己的獨立 PR 採用本模組。該 PR 使用 `vendor/nuget/` 中已驗證且具版本的 nupkg、精確 `[x]` 版本、鎖定相依、來源映射及 `SOURCE.md` 的來源/套件 SHA-256 收據。共用參照與鎖定檔由 NFC 內的負責者管理。只有呼叫端已使用 Core、保留 NFC 模式與例外映射、全部 40 路徑與 12 檔案案例通過，且必要產品輸出與像素證據通過後，才刪除搬移的 NFC 一般機制。Core 測試不能單獨證明 NFC 產品或像素相等。
+NFC 以自己的獨立 PR 採用本模組。該 PR 在建置時透過 `core-packages.json` 下載已驗證且具版本的 nupkg，並使用精確 `[x]` 版本、鎖定相依與來源映射。清單記錄每個套件的 Release 標籤與 SHA-256。共用參照與鎖定檔由 NFC 內的負責者管理。只有呼叫端已使用 Core、保留 NFC 模式與例外映射、全部 40 路徑與 12 檔案案例通過，且必要產品輸出與像素證據通過後，才刪除搬移的 NFC 一般機制。Core 測試不能單獨證明 NFC 產品或像素相等。
 
 之後的 Files 擴充會加入 held Windows 讀取 custody。本版本不提供此能力。
 

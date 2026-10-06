@@ -146,6 +146,6 @@ NFC 以獨立的 PR 採用本模組，與本次抽取分開。受控啟動及外
 
 UI 比較使用共用環境 manifest，並要求解碼後變更像素數為零。適用時，比較也涵蓋完整輸出位元組及事件軌跡，並記錄每個證據檔的 SHA-256。八個 legacy font 值保持不變。
 
-NFC 從自己的 `vendor/nuget/` 資料夾使用已驗證、版本化的 nupkg，採用精確 `[x]` 版本、source mapping、lock files 及 locked restore。`SOURCE.md` 記錄已審查的來源 commit 及套件 SHA-256。套件參照、版本鎖定、source mapping 及 lock files 由 NFC 擁有。NFC 不加入指向 Core checkout 的 ProjectReference。
+NFC 在建置時透過自己的 `core-packages.json` 下載已驗證、版本化的 nupkg，採用精確 `[x]` 版本、source mapping、lock files 及 locked restore。清單記錄每個套件的 Release 標籤與 SHA-256。套件參照、版本鎖定、source mapping 及 lock files 由 NFC 擁有。NFC 不加入指向 Core checkout 的 ProjectReference。
 
 Core 與 NFC 保持各自獨立的版本與發布。兩階段獨立審查都涵蓋抽取 PR 及採用 PR 的精確 head。

@@ -75,11 +75,11 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Focus/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Loading, progress, and cancellation surface | NFC; NFH; NFU | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Progress/` | 1 → 2 | Part of the Progress module; UI controls follow the data and job tasks. NFC adopts first. |
 | Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `src/Nvt.Core.Avalonia/Inputs/`; `src/Nvt.Core.Avalonia/Panels/`; `src/Nvt.Core.Avalonia/Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |
-| Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/MessageCenter/` | 2 | Planned; separate presentation from product providers and reports. |
-| Report lists and history presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Reports/` | 1 → 2 | Planned; product schemas and export policy stay in NFC. |
+| Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/MessageCenter/` | 2 | View-model state merged into `main`; product providers, reports, and export stay in NFC. |
+| Report lists and history presentation | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/ReportList/` | 1 → 2 | Indexed read-only lists merged into `main`; product schemas and export policy stay in NFC. |
 | Console | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Console/` | 2 | NFH trial first; full shared import planned by 10-18. |
-| Shell, navigation, and workspace | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Shell/` | 2 | Planned; retain the existing page-host boundary. |
-| Localization and accessibility resources | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Resources/` | 1 → 2 | Planned; share common strings only. |
+| Shell, navigation, and workspace | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Shell/` | 2 | Navigation history merged into `main`; the page host, guards, and shortcuts stay in NFC. |
+| Localization and accessibility resources | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Locale/` | 1 → 2 | Common text merged into `main`; only common strings are shared. |
 
 ### 6. Launcher
 
@@ -94,7 +94,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Atomic stream output | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Merged into `main`; NFU adopts in its next 0.2.x patch. |
 | File path guard, bounded reads, and hashing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Files/` | 1 → 2 | Bounded read in an open pull request; path guard and hashing planned. |
-| Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Planned; executable trust policy stays in each tool. |
+| Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Bounded output reader merged into `main`; execution, containment, and executable trust policy stay in each tool. |
 | UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/`; `src/Nvt.Core/Time/` | 1 → 2 | Startup trace merged into `main`; clock in an open pull request. |
 | Log entry and formatter | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/Diagnostics/` | 2 | Planned with the console trial. |
 | Coalesced refresh, undo, and UI dispatch | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Lifecycle/`; `src/Nvt.Core.Avalonia/Threading/` | 1 → 2 | Refresh and undo merged into `main`; UI dispatch in an open pull request. |
