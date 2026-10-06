@@ -2,7 +2,7 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 保留 NVT FW Combiner（NFC）通用主題及八個舊有字型值。模組提供 `Theme/ThemeTokens.axaml` 與 `Theme/ButtonStyles.axaml`。將資源字典合併至應用程式資源，並在主機原本的按鈕樣式作用範圍載入樣式。另提供 `UiResourceResolver`，供在程式碼中讀取主題資源的控制項使用，見[資源解析](#資源解析)：
+Theme 保留 NVT FW Combiner（NFC）通用主題及八個舊有字型值。模組提供 `Theme/ThemeTokens.axaml` 與 `Theme/ButtonStyles.axaml`。另提供 `UiResourceResolver`，供在程式碼中讀取主題資源的控制項使用，見[資源解析](#資源解析)。將資源字典合併至應用程式資源，並在主機原本的按鈕樣式作用範圍載入樣式：
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
@@ -135,11 +135,11 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 請在 UI 執行緒呼叫。解析器不快取值，也不監看主題變更。快取解析結果的控制項，須在主題變體改變時自行更新。
 啟動時以 `UiThread.RegisterRunningDispatcher` 註冊 UI dispatcher。未註冊時會略過第 2 步。
 
-### 凍結來源與驗證
+### 解析器的凍結來源與驗證
 
 凍結來源：NFH（`Dennis40816/nvt-freeform-helper`），ref `origin/1.3.x`，完整 commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`。
 抽取的來源路徑：`src/FreeformHelper.UI/Services/UiResourceResolver.cs`。
-Core 版保留 NFH 的簽章與行為，只改命名空間、可見度（public）與文件註解。
+Core 版保留 NFH 的簽章與行為，只改命名空間、`UiThread` 的 using、可見度（public）與文件註解。
 
 `tests/Nvt.Core.Avalonia.Tests/Theme/FrozenNfhUiResourceResolver.cs` 保留 NFH 檔案的凍結副本，只有命名空間、類別名稱與 `UiThread` 的 using 不同。Core 的 `UiThread` 是 NFH 版本未經修改的移植。
 `UiResourceResolverTests` 的 7 個案例都對兩個版本各跑一次，結果必須相同：
@@ -159,6 +159,6 @@ NFH 零差異採用：
 - NFH 刪除自己的副本前，Core 測試對兩個版本都通過。
 - NFH 完整測試清單與結果和凍結來源相同。
 - NFH 的 `ui-visual-minimal-baseline.json` 雜湊與 notch golden 輸出不變。
-- NFH 以 Core 的 `UiThread` 註冊 UI dispatcher。若 NFH 只保留自己的註冊，第 2 步會略過且不報錯。
+- NFH 的所有呼叫端共用同一份 dispatcher 註冊：把 NFH 的 `UiThread` 呼叫改成 Core 的 `UiThread`，或在兩份並存期間兩邊都註冊。NFH 約有 20 處讀自己的 `UiThread`，只註冊 Core 的會讓它們失效；只註冊 NFH 的則會略過第 2 步且不報錯。
 
 目前尚無採用工具，NFH 採用仍待進行。

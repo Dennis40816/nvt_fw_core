@@ -168,7 +168,10 @@ public sealed class UiResourceResolverTests
         Assert.Equal(Colors.Lime, resolver.GetColor(owner, "NfcSurfaceBrush", Colors.Lime));
     }
 
-    /// <summary>Without a registered dispatcher, a control outside any tree gets only fallbacks.</summary>
+    /// <summary>
+    /// Without a registered dispatcher, a control outside any tree gets only fallbacks.
+    /// After registration it reaches the application again. The original registration is restored.
+    /// </summary>
     [AvaloniaTheory]
     [InlineData(Core)]
     [InlineData(FrozenNfh)]
@@ -177,6 +180,7 @@ public sealed class UiResourceResolverTests
         var resolver = Resolver.For(version);
         var registration = typeof(UiThread).GetField("s_runningDispatcher", BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(registration);
+        var original = registration.GetValue(null);
         var owner = new Border();
         try
         {
@@ -184,13 +188,14 @@ public sealed class UiResourceResolverTests
             Assert.False(UiThread.IsCurrent(out _, out _));
             Assert.Equal(new CornerRadius(5), resolver.GetCornerRadius(owner, "NfcPillCornerRadius", new CornerRadius(5)));
             Assert.Equal(-1, resolver.GetDouble(owner, "NfcSpace8", -1));
+
+            UiThread.RegisterRunningDispatcher(Dispatcher.UIThread);
+            Assert.Equal(new CornerRadius(999), resolver.GetCornerRadius(owner, "NfcPillCornerRadius", new CornerRadius(5)));
         }
         finally
         {
-            UiThread.RegisterRunningDispatcher(Dispatcher.UIThread);
+            registration.SetValue(null, original);
         }
-
-        Assert.Equal(new CornerRadius(999), resolver.GetCornerRadius(owner, "NfcPillCornerRadius", new CornerRadius(5)));
     }
 
     private static Color ExpectedApplicationColor(string key, ThemeVariant theme)

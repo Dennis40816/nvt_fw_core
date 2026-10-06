@@ -141,11 +141,11 @@ A wrong resource type also returns the fallback. With the Default variant, keys 
 Call the resolver on the UI thread. It does not cache values or watch theme changes. A control that caches resolved values must refresh them when its theme variant changes.
 Register the UI dispatcher with `UiThread.RegisterRunningDispatcher` at startup. Without the registration, step 2 is skipped.
 
-### Frozen source and checks
+### Resolver frozen source and checks
 
 Frozen parent: NFH (`Dennis40816/nvt-freeform-helper`), ref `origin/1.3.x`, full commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
 Extracted source path: `src/FreeformHelper.UI/Services/UiResourceResolver.cs`.
-The Core version keeps the NFH signatures and behavior. It changes only the namespace, the visibility (public) and the documentation.
+The Core version keeps the NFH signatures and behavior. It changes only the namespace, the `UiThread` import, the visibility (public) and the documentation.
 
 `tests/Nvt.Core.Avalonia.Tests/Theme/FrozenNfhUiResourceResolver.cs` keeps a frozen copy of the NFH file. Only its namespace, class name and `UiThread` import differ. Core's `UiThread` is the unchanged port of NFH's.
 `UiResourceResolverTests` runs each of its 7 cases against both versions, and both must give the same results:
@@ -165,6 +165,6 @@ For zero-difference adoption in NFH:
 - Before NFH deletes its copy, the Core tests pass against both versions.
 - The full NFH test list and outcomes match the frozen parent.
 - NFH's `ui-visual-minimal-baseline.json` hashes and notch golden outputs stay unchanged.
-- NFH registers its UI dispatcher with Core's `UiThread`. If NFH keeps only its own registration, step 2 is skipped without an error.
+- All NFH callers share one dispatcher registration. Either NFH's `UiThread` calls move to Core's `UiThread`, or NFH registers the dispatcher with both while both exist. About 20 NFH call sites read NFH's own `UiThread`, so registering only with Core's breaks them. Registering only with NFH's skips step 2 without an error.
 
 Adopters: none. NFH adoption is pending.
