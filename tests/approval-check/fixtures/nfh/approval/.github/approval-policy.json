@@ -1,0 +1,13 @@
+{
+  "owner": {"login": "sample-owner", "id": 101},
+  "review_record_authors": [
+    {"login": "sample-reviewer", "id": 102}
+  ],
+  "owner_gated_patterns": [
+    "src/**", ".github/**", "scripts/**", ".editorconfig",
+    "Directory.Build.props", "Directory.Packages.props", "global.json",
+    "*.sln", "*.csproj", "VERSION", "AGENTS.md", "CONTRIBUTING.md",
+    ".agents/**", "docs/governance/**"
+  ],
+  "owner_requires_review_record": false
+}

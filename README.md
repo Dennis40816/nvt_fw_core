@@ -1,44 +1,79 @@
 # nvt_fw_core
+English | [中文](README.zh-TW.md)
 
-NVT 韌體工具族的共用核心。**目前是規劃階段：這個 repo 只有規劃文件，沒有程式碼。**
+The shared core for the NVT firmware tool family. **The .NET libraries are in place. Extracted modules are listed under [Nvt.Core libraries](#nvtcore-libraries).** This repository also contains planning documents and code for the first step, 「共用的 CI/CD 與治理框架」 ("shared CI/CD and governance framework"): the shared approval check [`actions/approval-check`](actions/approval-check/).
 
-## 這個 repo 是什麼
+## What this repository is
 
-NVT 有三個各自獨立的韌體工具：
+NVT has three independent firmware tools:
 
-| 簡稱 | 工具 | Repo | 目前版本線 |
+| Abbreviation | Tool | Repo | Current version line |
 |---|---|---|---|
 | NFC | NVT FW Combiner | `Dennis40816/nvt_fw_combiner` | 1.2.x |
-| NFH | Freeform Helper | `Dennis40816/FreeformHelper` | 1.3.x |
-| NFU | NVT FW UTIL（原 Event Buffer Replay） | `Dennis40816/nvt-event-buffer-replay` | 0.x |
+| NFH | Freeform Helper | `Dennis40816/nvt-freeform-helper` (the main development repository since 2026-10-04) | 1.3.x |
+| NFU | NVT FW UTIL (formerly Event Buffer Replay) | `Dennis40816/nvt-event-buffer-replay` | 0.x |
 
-三個工具都有啟動、外殼、設定、診斷這類彼此相似的部分。這個 repo 用來規劃它們的共用核心，最終目標是整合成一個 NVT FW Workstation。
+The three tools have similar parts, such as startup, shell, settings, and diagnostics. This repository is used to plan their shared core, with the ultimate goal of integrating them into a single NVT FW Workstation.
 
-owner（Dennis）的暫定目標，原話：
+The owner (Dennis)'s tentative goal, in his own words:
 
-> 三個版本的 2.0.0 時都開始共用核心架構並在下一個重大版本更新推出整合型的 work station
+> 三個版本的 2.0.0 時都開始共用核心架構並在下一個重大版本更新推出整合型的 work station ("All three versions start using the shared core architecture at 2.0.0, and an integrated work station is introduced in the next major version update.")
 
-## 現況（2026-10-03）
+## Current status (2026-10-05)
 
-- 只有規劃，還沒開始開發。
-- 共用核心的程式碼最後放在哪裡（這個 repo、NFC 的 2.0 主幹、或共用套件）還沒決定，見 [docs/open-questions.md](docs/open-questions.md)。
-- 細節要等各專案各自有雛型後再一起探討。
+- Shared core: the first modules are extracted. No tool uses them yet.
+- Shared CI/CD and governance: the shared approval check `v0.1.0` has been released, and none of the three tool repositories has adopted it yet. NFH is the pilot, which will start after NFH's CI fixes and 1.3.2 are complete. See [docs/shared-ci/README.md](docs/shared-ci/README.md) for progress.
 
-## 原則
+## Principles
 
-1. **逐元件、誰成熟誰納入共用。** launcher 由 NFC 開發完成後直接套用到其他工具；其他元件之後逐一看成熟度，哪個專案做得最好就把它納入共用。
-2. **1.x 照常投入。** 各工具在 1.x（NFU 是 0.x、1.0）期間不必為了共用而停下來。
-3. **先有雛型再探討。** 在各專案各自有雛型之前，不寫共用程式碼，也不為別的專案預先設計。
-4. **開發優先順序：** NFC ≥ NFH > NVT Core > NFU。
-5. **領域中立。** 共用核心不放韌體、Event Buffer、Freeform 的業務邏輯；NFC 裡決定輸出 bytes 的程式（R3）不進共用核心。這一條是規劃時的假設，尚未由 owner 確認。
+1. **Adopt components into the shared core one by one as they mature.** After NFC completes development of the launcher, it will be applied directly to the other tools; other components will then be assessed for maturity one by one, and whichever project does each one best will contribute it for shared use.
+2. **Continue investing in 1.x as usual.** The tools do not need to pause work during 1.x (0.x and 1.0 for NFU) for the sake of sharing.
+3. **Have prototypes before discussing.** Before each project has its own prototype, do not write shared code or design ahead for other projects.
+4. **Development priority:** NFC ≥ NFH > NVT Core > NFU.
+5. **Domain-neutral.** The shared core does not contain firmware, Event Buffer, or Freeform business logic; code in NFC that determines output bytes (R3) does not enter the shared core. This is a planning assumption that has not yet been confirmed by the owner.
 
-## 文件
+## Documents
 
-- [docs/vision.md](docs/vision.md)：目標、版本節奏、階段
-- [docs/components.md](docs/components.md)：元件對照表（三個專案各自的實作與成熟度）
-- [docs/decisions.md](docs/decisions.md)：owner 的決定紀錄
-- [docs/open-questions.md](docs/open-questions.md)：還沒決定的事
+- [src/](src/): Nvt.Core libraries (`Nvt.Core` and `Nvt.Core.Avalonia`)
+- [tools/](tools/): dispatch queue tools and nvt-sched
+- [docs/vision.md](docs/vision.md): goals, version cadence, stages
+- [docs/components.md](docs/components.md): component comparison table (each of the three projects' implementations and maturity)
+- [docs/decisions.md](docs/decisions.md): record of the owner's decisions
+- [docs/open-questions.md](docs/open-questions.md): matters not yet decided
+- [docs/shared-ci/README.md](docs/shared-ci/README.md): shared CI/CD and governance framework (inventory, proposal, progress)
 
-## 誰維護
+## Nvt.Core libraries
 
-目前由 commander session 依 owner 的指示維護。專門的「NVT Core」session 開起來之後由它接手。規劃內容的變更要有 owner 的決定為依據，並記進 [docs/decisions.md](docs/decisions.md)。
+[Nvt.Core.sln](Nvt.Core.sln) contains the UI-independent `Nvt.Core` library (`net8.0`), `Nvt.Core.Avalonia` (`net10.0`, Avalonia 12.1.1), and their empty xUnit test projects. The Avalonia test project references `Avalonia.Headless.XUnit`; no application host or runtime code is extracted in Task 0.
+
+Frozen configuration baseline: NFC (`nvt_fw_combiner`), `origin/1.2.x`, commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Conventions are taken from:
+
+- `global.json`, `Directory.Build.props`, `Directory.Packages.props`, `.gitignore`
+- `src/NvtFwCombiner.Presentation.Avalonia/NvtFwCombiner.Presentation.Avalonia.csproj`
+- `tests/NvtFwCombiner.Domain.Tests/NvtFwCombiner.Domain.Tests.csproj`
+- `tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj`
+
+Only shared compiler/build settings and the packages used here are retained. The SDK is `10.0.301`; package versions are centrally pinned to NFC's baseline. An external script restores packages and commits the generated `packages.lock.json` files. After restore, verify with:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build Nvt.Core.sln --no-restore
+dotnet test Nvt.Core.sln --no-build
+```
+
+Task 0 has no behavior tests or tool adoption, so runtime zero-difference verification does not yet apply. Each later extraction must port the source module's existing tests and add characterization tests. When NFC switches to Core, run its original module tests before and after the switch, including `NvtFwCombiner.UiSmoke.Tests` for UI changes, and compare output bytes or UI snapshots against the frozen baseline with the same OS, fonts, DPI, and theme. Do not refresh baselines to accept a difference.
+
+### Modules
+
+Each module document records its frozen source baseline and how a tool verifies zero difference.
+
+- `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
+- `Nvt.Core.Lifecycle`: [Lifecycle](docs/core/modules/Lifecycle.md)
+- `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
+- `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)
+- `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
+- `Nvt.Core.Persistence`: [Persistence](docs/core/modules/Persistence.md)
+
+## Who maintains this
+
+Since 2026-10-03, the dedicated session 「NVT CORE」 has maintained this repository according to the owner's instructions. Changes to the planning content must be based on the owner's decisions and recorded in [docs/decisions.md](docs/decisions.md). Every PR requires the owner's approval before it can be merged.

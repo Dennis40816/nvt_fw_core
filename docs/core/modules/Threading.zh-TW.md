@@ -1,0 +1,56 @@
+[English](Threading.md) | [中文](Threading.zh-TW.md)
+
+# Threading
+
+`src/Nvt.Core.Avalonia/Threading/` 的 `UiThread` 使用命名空間 `Nvt.Core.Avalonia.Threading`。它以程序內所有執行緒共用的靜態登錄保存可執行迴圈的 UI dispatcher，不依賴 Avalonia 的全域 dispatcher 欄位。登錄與查詢保留來源的 `Volatile.Write` 和 `Volatile.Read`。登錄沒有取消方法；由應用程式啟動流程負責登錄。
+
+## 公開 API
+
+靜態類別及其四個方法皆為 public，保留原有名稱與簽章：
+
+```csharp
+public static void RegisterRunningDispatcher(Dispatcher dispatcher);
+public static bool TryGetRunningDispatcher(out Dispatcher? dispatcher);
+public static bool IsCurrent(out Dispatcher? dispatcher, out Avalonia.Application? application);
+public static bool IsUiThreadThatRunsALoop(bool hasThreadAccess, bool dispatcherRunsLoops);
+```
+
+- `RegisterRunningDispatcher` 遇到 null 時擲出 `ArgumentNullException`，參數名稱為 `dispatcher`。僅保存 `SupportsRunLoops` 為 true 的 dispatcher；其他登錄不改變既有值。
+- `TryGetRunningDispatcher` 在沒有目前應用程式、沒有登錄或已登錄 dispatcher 不支援執行迴圈時，回傳 false 並將 out 值設為 null。其他情況回傳已登錄的 dispatcher，背景執行緒也可查詢。
+- `IsCurrent` 僅在已登錄 dispatcher 支援執行迴圈、允許目前執行緒存取，且存在目前應用程式時回傳 true。執行緒存取失敗時，dispatcher out 值保留已登錄的 dispatcher，application out 值為 null。沒有目前應用程式時，兩個 out 值皆為 null。
+- `IsUiThreadThatRunsALoop` 回傳 `hasThreadAccess && dispatcherRunsLoops`。
+
+## 來源
+
+凍結的父版本基準：NFH、儲存庫 `Dennis40816/nvt-freeform-helper`、ref `1.3.x`、完整 commit `e01e07a361b8dc264a06b3741f40274feeeace2d`、Avalonia 11.3.12 與 xUnit 2。抽取路徑：
+
+- `src/FreeformHelper.UI/Services/UiThread.cs`
+- `tests/FreeformHelper.Tests/UI/TestHost/UiThreadTests.cs`
+
+此 helper 及其既有 fallback 測試已移植至 Core。變更包含命名空間、公開可見性、版權／XML 文件、測試命名與初始化。
+
+## 驗證
+
+Core 使用 Avalonia 12.1.1 與 xUnit v3。`tests/Nvt.Core.Avalonia.Tests/Threading/` 的測試沿用既有 headless `ThemeTestApplication`，沒有新增應用程式 attribute 或 host。每個測試結束時保留目前 UI dispatcher 的登錄。Fallback 測試也會在 `finally` 還原 Avalonia 的全域欄位。
+
+移植的測試暫時清空 `Dispatcher.s_uiThread`，確認仍可取得已登錄的 dispatcher，且不會重新填入該欄位。行為特徵測試涵蓋布林真值表的四種組合、null 登錄與參數名稱、headless UI 執行緒上的 dispatcher 參考一致性、UI 執行緒存取成功，以及背景執行緒失敗時保留 dispatcher out 值、不回傳應用程式。
+
+套件已還原後執行：
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Avalonia.Tests.Threading"
+```
+
+NFH 採用時，先以上述父版本 SHA 凍結結果。切換至 Core 前後皆以 `--no-restore` 建置 NFH，並執行 `dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --filter "FullyQualifiedName~FreeformHelper.Tests.UiThreadTests"`，再執行完整 `FreeformHelper.Tests` 專案以涵蓋使用端。保留既有 fallback 斷言，比較回傳 dispatcher 的參考、fallback 期間保持空值的全域欄位、null 登錄的例外／參數、布林真值表，以及 UI／背景執行緒的回傳值與應用程式參考。在父版本 helper 與 Core 執行相同的行為特徵案例。不得更新預期證據以掩蓋差異。NFH 採用及其前後驗證仍不在本次範圍內。
+
+## 已知差異（Known differences）
+
+- Core 的 helper 為 public；NFH 的類別及成員為 internal。
+- Avalonia 12.1.1 仍有 `Dispatcher.s_uiThread`，因此保留原本以反射驗證 fallback 的情境。不檢查其他 dispatcher 私有成員，執行階段也不需要調整 Avalonia API。
+- 測試改用 xUnit v3 與 Core 既有的 headless 應用程式，取代 xUnit 2、NFH bootstrap 及其 `HeadlessUiSerial` collection。測試方法名稱不含底線，以符合 Core analyzer。
+
+## 留在 NFH 的內容
+
+`tests/FreeformHelper.Tests/UI/TestHost/HeadlessDispatcherSetup.cs` 留在 NFH，包含平台初始化驗證與登錄。NFH 的啟動登錄、bootstrap、記錄、資源解析、runtime query、view／view model 使用端及其產品行為皆不變。本次抽取不在 NFH 採用 Core，也不移動其他 helper。

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Nvt.Core.Avalonia\Nvt.Core.Avalonia.csproj" />
+    <Compile Include="..\..\src\Nvt.Core.Avalonia\Testing\AvaloniaTestHost.cs"
+             Link="Testing\AvaloniaTestHost.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.XUnit" PrivateAssets="all" />
+    <PackageReference Include="Avalonia.Skia" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Theme\Baseline\*.xml" />
+    <EmbeddedResource Include="..\..\src\Nvt.Core.Avalonia\Theme\*.axaml"
+                      LogicalName="Nvt.Core.Avalonia.Tests.Theme.Source.%(Filename).xml" />
+  </ItemGroup>
+</Project>

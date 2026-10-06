@@ -1,0 +1,41 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Nvt.Core.Avalonia.Dialogs.WarningDialog"
+        Width="360"
+        Height="170"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource NfcSurfaceBrush}">
+  <Window.Styles>
+    <StyleInclude Source="avares://Nvt.Core.Avalonia/Dialogs/DialogsStyles.axaml"/>
+  </Window.Styles>
+  <Border Padding="16">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <StackPanel Grid.Row="0"
+                  Orientation="Horizontal"
+                  Spacing="{DynamicResource NfcSpace8}">
+        <Path Classes="warningDialogIcon"
+              Data="M10 1L19 18H1Z M10 6V11 M10 14V15"/>
+        <SelectableTextBlock x:Name="TitleText"
+                             VerticalAlignment="Center"
+                             FontSize="15"
+                             FontWeight="SemiBold"
+                             Foreground="{DynamicResource NfcTextStrongBrush}"/>
+      </StackPanel>
+      <SelectableTextBlock x:Name="MessageText"
+                           Grid.Row="1"
+                           Margin="0,8,0,0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource NfcTextBrush}"/>
+      <StackPanel Grid.Row="2"
+                  Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  Margin="0,14,0,0">
+        <Button x:Name="OkButton"
+                Click="OkButtonClick"
+                Content="OK"/>
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
