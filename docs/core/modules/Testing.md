@@ -109,3 +109,20 @@ dotnet test tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj
 Keep NFC's product application when its adapter calls `AvaloniaTestHost.Build<App>()`. Run the same suite after switching. Compare exact measurements, control bounds, dispatcher ownership, focus, keyboard modifiers, delivered text, capture dimensions, and pixel hashes.
 
 Include `AvaloniaApplicationResourceTests`, `StartupFocusTests`, `NavigationFocusIndicatorTests`, and the existing layout and capture tests. Compare existing screenshots against the unchanged frozen baseline. Any difference blocks adoption. Do not refresh the baseline to accept a difference. NFC adoption remains outside this change.
+
+## Setup failures in headless tests (probe on Avalonia 12.1.1)
+
+Core ships no headless session guard. NFH and NFC keep their own guards. This section records a probe that informs that choice.
+
+NFC's `HeadlessSessionLoopGuard` states that on Avalonia.Headless 12.0.5 an exception during a test's application setup ends the headless session loop. Every later headless test then blocks.
+Source: NFC (`nvt_fw_combiner`), commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`, `tests/NvtFwCombiner.UiSmoke.Tests/HeadlessSessionLoopGuard.cs`.
+
+On 2026-10-06, NFH tested this on Avalonia 12.1.1, Avalonia.Headless.XUnit 12.1.1 and xunit.v3 3.2.2, with the default per-test isolation:
+
+- Code: NFH (`Dennis40816/nvt-freeform-helper`) commit `bcae766b75db00c9cb0c71c1da47c7cb68e7710c`, test host files `tests/FreeformHelper.Tests/UI/TestHost/AvaloniaTestApp.cs` and `HeadlessDispatcherSetup.cs`.
+- Method: a temporary change made the first application setup throw `InvalidOperationException`. One run threw in `AfterPlatformServicesSetup`, and another run threw in `AfterSetup`. Each run executed the same 16 headless tests. The change was not kept.
+- Result, in both runs:
+  - The first test failed with the probe exception. xUnit reported it as a test case cleanup failure. The stack passes through `HeadlessUnitTestSession.EnsureIsolatedApplication`.
+  - The other 15 tests ran after it and passed. No test blocked.
+  - A run without the throw passed all 16 tests.
+- Conclusion: on 12.1.1, an exception during application setup fails only its own test. The loop failure that NFC's guard watches did not occur. The probe did not cover exceptions during teardown.
