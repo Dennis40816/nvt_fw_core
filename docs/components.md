@@ -74,7 +74,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Font set | NFC baseline; Core role table | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Role table decided; NFC's legacy font resources in an open pull request. |
 | Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Focus/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Loading, progress, and cancellation surface | NFC; NFH; NFU | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Progress/` | 1 → 2 | Part of the Progress module; UI controls follow the data and job tasks. NFC adopts first. |
-| Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `Inputs/`; `Panels/`; `Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |
+| Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `src/Nvt.Core.Avalonia/Inputs/`; `src/Nvt.Core.Avalonia/Panels/`; `src/Nvt.Core.Avalonia/Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |
 | Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/MessageCenter/` | 2 | Planned; separate presentation from product providers and reports. |
 | Report lists and history presentation | NFC | NFC | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Reports/` | 1 → 2 | Planned; product schemas and export policy stay in NFC. |
 | Console | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Console/` | 2 | NFH trial first; full shared import planned by 10-18. |
@@ -85,7 +85,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 
 | Module | Source tool | Owning session | Target library | Target folder | Stage | Status |
 |---|---|---|---|---|---|---|
-| Startup, update, package verification, activation, recovery, and rollback | NFC | NFC | Proposed `Nvt.Core.Launcher` | `src/Nvt.Core.Launcher/` | 1 boundary; 2 full import | Planned; acceptance requires verification, recovery, and rollback evidence. |
+| Startup, update, package verification, activation, recovery, and rollback | NFC | NFC | `Nvt.Core` (contracts); proposed `Nvt.Core.Launcher` (full import) | `src/Nvt.Core/Launcher/`; proposed `src/Nvt.Core.Launcher/` | 1 boundary; 2 full import | Contracts merged into `main`. The full import is planned. Its acceptance requires verification, recovery, and rollback evidence. |
 
 ### 7. Utility functions
 

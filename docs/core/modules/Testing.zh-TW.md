@@ -109,3 +109,20 @@ dotnet test tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj
 NFC 的 adapter 呼叫 `AvaloniaTestHost.Build<App>()`，保留產品 application。切換後執行相同 suite，逐項比較精確文字度量、控制項位置大小、dispatcher 歸屬、焦點、鍵盤修飾鍵、收到的文字、擷取尺寸及像素雜湊。
 
 須包含 `AvaloniaApplicationResourceTests`、`StartupFocusTests`、`NavigationFocusIndicatorTests` 及既有版面、擷取測試。既有截圖須與未變更的凍結基準比對。任何差異都阻擋採用，不得更新基準來接受差異。NFC 採用不在本次變更範圍內。
+
+## headless 測試的 setup 失敗（Avalonia 12.1.1 探針）
+
+Core 目前不提供 headless session guard，NFH 與 NFC 各自保留自己的 guard。Core 是否出貨測試輔助程式，owner 尚未決定。本節記錄一次探針結果，供這個決定參考。
+
+NFC 的 `HeadlessSessionLoopGuard` 記載：在 Avalonia.Headless 12.0.5，測試建立應用程式的 setup 若丟出例外，會結束 headless session 迴圈，之後所有 headless 測試都會卡住。
+來源：NFC（`nvt_fw_combiner`），commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`，`tests/NvtFwCombiner.UiSmoke.Tests/HeadlessSessionLoopGuard.cs`。
+
+NFH 於 2026-10-06 在 Avalonia 12.1.1、Avalonia.Headless.XUnit 12.1.1、xunit.v3 3.2.2，以預設的每測試隔離測試這點：
+
+- 程式：NFH（`Dennis40816/nvt-freeform-helper`）commit `bcae766b75db00c9cb0c71c1da47c7cb68e7710c`，測試主機檔案 `tests/FreeformHelper.Tests/UI/TestHost/AvaloniaTestApp.cs` 與 `HeadlessDispatcherSetup.cs`。
+- 方法：以暫時修改讓第一次建立應用程式時丟出 `InvalidOperationException`。一次在 `AfterPlatformServicesSetup` 丟出，另一次在 `AfterSetup` 丟出。兩次都執行同一組 16 個 headless 測試。暫時修改未保留。
+- 結果（兩次相同）：
+  - 第一個測試以探針例外失敗，xUnit 回報為 test case cleanup failure。堆疊經過 `HeadlessUnitTestSession.EnsureIsolatedApplication`。
+  - 其後 15 個測試都有執行且通過，沒有測試卡住。
+  - 不丟例外時，16 個測試全部通過。
+- 結論：在 12.1.1，建立應用程式時的例外只會讓該測試失敗，沒有出現 NFC guard 所監看的迴圈失效。此探針未涵蓋 teardown 期間的例外。
