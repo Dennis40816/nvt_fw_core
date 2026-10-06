@@ -77,6 +77,59 @@ The source request-check adapter uses its protocol version. Other expected-versi
 Command-line handling and the UI-thread step follow in later tasks.
 This extraction does not adopt Core in the source tool.
 
+## Command risk and confirmation
+
+The confirmation guard is off unless the caller enables it.
+This behavior was approved on 2026-10-06 and has no source tool baseline.
+
+| Public API | Contract |
+| --- | --- |
+| `RuntimeQueryCommandRisk` | Defines `ReadOnly`, `ChangesState`, and `WritesData`. |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | A sealed record with the command name, risk, and existing handler type. |
+| `RuntimeQueryCommandRouter(commands, requireConfirmation)` | Builds an ordinal handler table from a command list. `RegisteredCommands` preserves registration order. |
+
+- `ReadOnly` commands only read state.
+- `ChangesState` commands change UI state, such as the page or selection. They write no files and change no data.
+- `WritesData` commands write files or change the tool's data.
+
+The list constructor rejects null lists, commands, names, and handlers with `ArgumentNullException`.
+It rejects duplicate names with `ArgumentException`.
+It also rejects names that differ from their trimmed, lowercase invariant form.
+The dictionary constructor keeps its existing behavior and never requires confirmation.
+
+With `requireConfirmation: false`, handlers receive the original arguments, including any `confirm` key.
+NFH, the FreeformHelper tool, first switches to Core with this flag set to false.
+Turning the guard on is a separate, visible change.
+
+With `requireConfirmation: true`, `RouteAsync` first finds the handler.
+Unknown commands still return `UNKNOWN_COMMAND` before confirmation checks.
+`ExecuteAsync` still checks null requests, then versions, then routing.
+
+For `WritesData`, the router reads `confirm` with `RuntimeQueryArgumentParser.TryGetBoolArg`.
+The helper accepts true/false, 1/0, on/off, and yes/no.
+An invalid value returns the helper's exact `INVALID_ARGUMENTS` error.
+A missing, blank, or false value returns `CONFIRMATION_REQUIRED` with this exact message:
+
+```text
+Command '{name}' writes files or changes data. Add --confirm to run it.
+```
+
+The message uses the normalized command name. The handler does not run after either error.
+For every risk level, the enabled guard removes the ordinal key `confirm` before calling the handler.
+It copies other keys and values unchanged into a new ordinal dictionary.
+The handler receives null when no keys remain. Null arguments stay null.
+Handlers no longer receive the `confirm` key when the guard is on.
+The existing command-line grammar already maps `--confirm` to `"confirm": "true"`.
+
+`RuntimeQueryConfirmationCases` holds the new inputs and literal expected outputs.
+`RuntimeQueryCommandConfirmationTests` compares every existing `RuntimeQueryCommandCases` row through both constructors with the guard off.
+It checks exact responses, handler calls, argument forwarding, registration checks, and error order.
+Run the RuntimeQuery test command below to verify both constructors and the enabled guard.
+
+For zero difference, NFH must keep the guard off and run the existing NFH switch-over checks below.
+Compare test results, stdout and stderr bytes, pipe frames, error codes and messages, and process exit codes.
+The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands and remove `confirm` from handler arguments.
+
 ## Public API
 
 | API | Contract |

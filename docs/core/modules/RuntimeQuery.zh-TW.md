@@ -77,6 +77,59 @@ NFH 切換至 Core 時：
 命令列處理與 UI 執行緒步驟由後續任務加入。
 本次擷取不在來源工具採用 Core。
 
+## Command risk and confirmation
+
+呼叫端啟用之前，確認防護保持關閉。
+此行為於 2026-10-06 核准，沒有來源工具基準。
+
+| 公開 API | 契約 |
+| --- | --- |
+| `RuntimeQueryCommandRisk` | 定義 `ReadOnly`、`ChangesState` 與 `WritesData`。 |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | sealed record，包含命令名稱、風險與現有的處理委派型別。 |
+| `RuntimeQueryCommandRouter(commands, requireConfirmation)` | 由命令清單建立 ordinal 處理委派表。`RegisteredCommands` 保留登錄順序。 |
+
+- `ReadOnly` 命令只讀取狀態。
+- `ChangesState` 命令更改 UI 狀態，例如頁面或選取項目。不寫入檔案，也不更改資料。
+- `WritesData` 命令寫入檔案或更改工具的資料。
+
+清單建構子遇到 null 清單、命令、名稱或處理委派時，擲回 `ArgumentNullException`。
+名稱重複時擲回 `ArgumentException`。
+名稱若不同於去除前後空白並以 invariant culture 轉為小寫的結果，也會遭到拒絕。
+字典建構子保留現有行為，永遠不要求確認。
+
+使用 `requireConfirmation: false` 時，處理委派接收原始引數，包含任何 `confirm` 鍵。
+NFH（FreeformHelper 工具）先以 false 切換至 Core。
+啟用防護是另一項可見的獨立變更。
+
+使用 `requireConfirmation: true` 時，`RouteAsync` 先尋找處理委派。
+未知命令仍先回傳 `UNKNOWN_COMMAND`，再考慮確認檢查。
+`ExecuteAsync` 仍先檢查 null 請求，再檢查版本，最後進行路由。
+
+對 `WritesData`，路由器以 `RuntimeQueryArgumentParser.TryGetBoolArg` 讀取 `confirm`。
+此方法接受 true/false、1/0、on/off 與 yes/no。
+無效值會原樣回傳此方法的 `INVALID_ARGUMENTS` 錯誤。
+缺少值、空白值或 false 會回傳 `CONFIRMATION_REQUIRED`，完整訊息如下：
+
+```text
+Command '{name}' writes files or changes data. Add --confirm to run it.
+```
+
+訊息使用正規化後的命令名稱。發生上述任一錯誤時，處理委派不會執行。
+對每個風險等級，啟用的防護會先以 ordinal 規則移除 `confirm` 鍵，再呼叫處理委派。
+其他鍵與值保持原樣，複製至新的 ordinal 字典。
+沒有剩餘鍵時，處理委派接收 null。null 引數保持 null。
+啟用防護後，處理委派不再接收 `confirm` 鍵。
+現有命令列語法已將 `--confirm` 轉為 `"confirm": "true"`。
+
+`RuntimeQueryConfirmationCases` 集中保存新增輸入與字面預期值。
+`RuntimeQueryCommandConfirmationTests` 在防護關閉時，透過兩個建構子比較 `RuntimeQueryCommandCases` 的每一列。
+測試驗證完整回應、處理委派呼叫、引數傳遞、登錄檢查與錯誤順序。
+執行下方 RuntimeQuery 測試命令，驗證兩個建構子及啟用的防護。
+
+要達成零差異，NFH 必須保持防護關閉，並執行下方現有的 NFH 切換檢查。
+比較測試結果、stdout 與 stderr 位元組、管道框架、錯誤代碼與訊息，以及程序結束代碼。
+獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`，且處理委派引數不含 `confirm`。
+
 ## 公開 API
 
 | API | 契約 |
