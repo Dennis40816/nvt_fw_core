@@ -85,6 +85,7 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.Csv`: [Csv](docs/core/modules/Csv.md)
 - `Nvt.Core.SourceFileNavigation`: [SourceFileNavigation](docs/core/modules/SourceFileNavigation.md)
 - `Nvt.Core.Progress`: [Progress](docs/core/modules/Progress.md)
+- `Nvt.Core.Launcher.Contracts`: [Launcher](docs/core/modules/Launcher.md)
 
 ## Who maintains this
 

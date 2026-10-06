@@ -85,6 +85,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.Csv`：[Csv](docs/core/modules/Csv.zh-TW.md)
 - `Nvt.Core.SourceFileNavigation`：[SourceFileNavigation](docs/core/modules/SourceFileNavigation.zh-TW.md)
 - `Nvt.Core.Progress`：[Progress](docs/core/modules/Progress.zh-TW.md)
+- `Nvt.Core.Launcher.Contracts`：[Launcher](docs/core/modules/Launcher.zh-TW.md)
 
 ## 誰維護
 
