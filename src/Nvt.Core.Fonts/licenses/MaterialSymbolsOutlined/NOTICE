@@ -1,0 +1,15 @@
+MaterialSymbolsOutlined-Regular.ttf is a modified file.
+
+Source: https://github.com/google/material-design-icons
+Commit: 737e3324305806514d7909874fa1818ae1808232
+File: variablefont/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf (font version 2.973)
+
+Change: Nvt.Core.Fonts reduced the variable font to one static instance with fontTools 4.61.1:
+
+    SOURCE_DATE_EPOCH=1790460774 fonttools varLib.instancer "MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf" FILL=0 GRAD=0 opsz=24 wght=400 -o MaterialSymbolsOutlined-Regular.ttf
+
+The command removes the variation tables and prunes their name records.
+The glyph outlines at that location and the icon-name ligatures are unchanged.
+SOURCE_DATE_EPOCH keeps the source font's head.modified value, so the command gives the same bytes again.
+
+The font is licensed under the Apache License, Version 2.0. See LICENSE in this folder.
