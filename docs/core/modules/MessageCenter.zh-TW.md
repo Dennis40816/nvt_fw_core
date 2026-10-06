@@ -29,8 +29,9 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 | `MessageCenterActivityFilter` | 靜態 `Apply(IEnumerable<MessageCenterActivity> activities, MessageActivityFilter filter, bool includeDebug)`，傳回已具體化的列。 |
 | `MessageCenterSession` | 唯讀 `IsOpen`、`IsActivitySelected`、`ExportContextGeneration`；`Open(Action? beforeOpen = null)`、`Close(Action? beforeClose = null)`、`SelectActivity(bool selected, Action? beforeSelect = null)` 與 `IsExportContextCurrent(long generation)`。 |
 | `MessageCenterExportWorkflow` | 建構式 `(MessageCenterSession session, Func<string, CancellationToken, Task> export, Action succeeded, Action failed)`；`Task ExportAsync(string destinationPath, CancellationToken cancellationToken)`；`Task ExportWithPickerAsync(Func<Task<string?>> pickPathAsync, Func<bool> isViewContextCurrent)`。 |
+| `MessageCenterRefreshCoordinator` | 建構式 `(Func<bool, CancellationToken, Task> refresh)`；`Task RefreshAsync(bool reloadSources, CancellationToken cancellationToken)`；`Task RefreshAfterCurrentAsync(bool reloadSources, CancellationToken cancellationToken)`。 |
 
-實作位於 [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs)、[IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs)、[MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs)、[MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs) 與 [MessageCenterExportWorkflow.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterExportWorkflow.cs)。
+實作位於 [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs)、[IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs)、[MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs)、[MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs)、[MessageCenterExportWorkflow.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterExportWorkflow.cs) 與 [MessageCenterRefreshCoordinator.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterRefreshCoordinator.cs)。
 
 ## 保留的顯示行為
 
@@ -87,6 +88,18 @@ $"{Time}. {Title}. {Category}. {Detail}. {Status}."
 
 關閉／重開、重複開啟與實際頁面變更會使擷取世代失效；同頁面選取不會。主程式語言變更與重新整理不遞增世代。選擇器接受後，寫入完成只檢查世代，因此單獨替換檢視不會抑制狀態發布。關閉工作階段不會取消或刪除已執行中的寫入。Await 延續保留呼叫端情境；主程式在原有序列化情境中執行工作階段操作與回呼。Core 不新增 dispatcher、鎖定、關閉逾時、dispose API 或取消政策。
 
+## 保留的重新整理協調行為
+
+`MessageCenterRefreshCoordinator` 來自 NFC 的 `MessageCenterViewModel`（#81）。主機提供重新整理委派，委派收到核准的強度（`reloadSources`）與擁有者的 token。
+
+- 沒有未完成的重新整理時，`RefreshAsync` 以呼叫者的 token 啟動委派，並記為進行中的重新整理。
+- 相容的請求會加入未完成的進行中工作：觀察可加入任何工作，重新載入只加入進行中的重新載入。加入者以自己的 token 等待，取消時不會取消擁有者。
+- 進行中工作是觀察時，重新載入請求會先等它結束，忽略該工作無關的失敗或取消，再啟動一次完整的重新載入。相容的重新載入請求可以加入這次新的嘗試。
+- `RefreshAfterCurrentAsync` 一定先等目前未完成的工作，再照一般規則核准。只有目前的工作不算滿足這個請求。等待中呼叫者取消時，取消會往外傳。
+- 完成時只清除協調器自己記錄的工作。已完成的工作不會被加入。
+- 核准不是執行緒安全的。主機要序列化呼叫與後續動作，NFC 在 UI 執行緒上這樣做。Core 不加 dispatcher、鎖或取消政策。發布、就緒與最新發布政策留在主機。
+- `Lifecycle.CoalescedRefresh` 負責排程回呼，不能取代這個非同步合併器。
+
 ## 所有權與使用端契約
 
 Core 擁有列契約、被動篩選與投影順序、模態世代機制，以及選擇器／匯出狀態發布工作流程。NFC 保留訊息來源、歷程、診斷轉換註冊、路徑 token 驗證、用語、在地化與時間格式、報告歷程、重新整理政策、儲存選擇器、匯出位元組／schema／路徑及組合範本。NFC 凍結的 **128 筆活動上限** 留在 NFC。顯示與匯出契約沒有 Core 歷程、路徑或大小上限，也沒有正值上限參數；工作階段的固定世代上限仍為 `long.MaxValue`。
@@ -97,7 +110,7 @@ NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並
 
 ## 來源至 Core 測試對照
 
-測試使用 xunit.v3 與記憶體內合成資料，位於 [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs)、[SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs) 與 [ExportWorkflowTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs)。工作流程測試不使用檔案系統或實際選擇器，並斷言完整目的地／token 記錄與選擇器、身分檢查、匯出器及狀態回呼的有序軌跡。
+測試使用 xunit.v3 與記憶體內合成資料，位於 [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs)、[SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs)、[ExportWorkflowTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs) 與 [RefreshCoordinatorTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/RefreshCoordinatorTests.cs)。工作流程測試不使用檔案系統或實際選擇器，並斷言完整目的地／token 記錄與選擇器、身分檢查、匯出器及狀態回呼的有序軌跡。
 
 | 凍結來源證據 | Core 測試與保留斷言 |
 | --- | --- |
