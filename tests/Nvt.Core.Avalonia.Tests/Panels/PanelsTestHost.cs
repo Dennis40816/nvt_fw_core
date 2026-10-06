@@ -14,6 +14,9 @@ internal static class PanelsTestHost
     internal static Window Create(Control control, Action<Window>? configure = null)
     {
         var host = new Window { Width = 960, Height = 640, Content = control };
+        var buttons = new Uri("avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
+        host.Styles.Add(new StyleInclude(buttons) { Source = buttons });
+        host.Classes.Add("reducedMotion");
         host.Styles.Add(new StyleInclude(StylesUri) { Source = StylesUri });
         configure?.Invoke(host);
         host.Show();

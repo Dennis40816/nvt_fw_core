@@ -6,12 +6,12 @@
 
 `src/Nvt.Core.Avalonia/Dialogs/` 提供兩個小型視窗，命名空間為 `Nvt.Core.Avalonia.Dialogs`：
 
-- `ConfirmDialog()` 與 `ConfirmDialog(string title, string message, string confirmText, string cancelText, bool emphasizeCancel = false, string? confirmTip = null, string? cancelTip = null)`。確認按鈕以 `true` 完成 `ShowDialog<bool>(owner)`；取消按鈕以 `false` 完成。強調取消時加入 `danger` 並顯示關閉圖示。任一提示為 null 時，對應按鈕沒有工具提示。
+- `ConfirmDialog()` 與 `ConfirmDialog(string title, string message, string confirmText, string cancelText, bool emphasizeCancel = false, string? confirmTip = null, string? cancelTip = null)`。確認按鈕以 `true` 完成 `ShowDialog<bool>(owner)`；取消按鈕以 `false` 完成。強調取消時加入 `actionDanger` 並顯示關閉圖示。任一提示為 null 時，對應按鈕沒有工具提示。
 - `WarningDialog()` 與 `WarningDialog(string title, string message)`。按鈕文字為 `OK`；點擊後呼叫 `Close()` 並完成 `ShowDialog(owner)`。
 
 兩個視窗均保留可選取的標題與訊息、訊息自動換行、固定 360 × 170 尺寸、`CanResize = false` 及 `WindowStartupLocation = CenterOwner`。無參數建構函式載入相同版面，內容為空。如同 NFH，傳入的標題是可選取的內容標題，不會設定 `Window.Title`。
 
-每個視窗在自身樣式中載入 `DialogsStyles.axaml`。應用程式將 `avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml` 載入資源，並提供原有的視窗／按鈕控制項佈景及基本按鈕／danger 樣式。Core 現有的 `Theme/ButtonStyles.axaml` 可提供按鈕樣式。未新增應用程式佈景、對話框服務、選項記錄或其他設定。
+每個視窗在自身樣式中載入 `DialogsStyles.axaml`。應用程式合併 `Theme/ThemeTokens.axaml` 並載入唯一的 `Theme/ButtonStyles.axaml`；使用捲軸時再載入 `Theme/ScrollStyles.axaml`。Confirm 採 `actionPrimary`、Cancel 採 `actionNeutral`，強調取消時改為 `actionDanger`；Warning 的 OK 採 `actionPrimary`。所有按鈕採共用 32 px 高度、膠囊圓角與 14,0 內距。局部樣式只保留圖示與內容排列。未新增服務或設定。
 
 ## 來源
 
@@ -30,7 +30,7 @@
 
 ## 資源對應
 
-以下列出所有抽取的 NFH 資源與現有 Core 資源之對應。全部 Core 參照使用 `DynamicResource`；`ThemeTokens.axaml` 未變更。
+以下列出所有抽取的 NFH 資源與現有 Core 資源之對應。全部 Core 參照使用 `DynamicResource`；`ThemeTokens.axaml` 提供共用色票。
 
 | NFH token | Core token | 用途 |
 | --- | --- | --- |
@@ -46,7 +46,7 @@
 
 ## 驗證
 
-Core 使用 Avalonia 12.1.1、xUnit v3 及未變更的 `ThemeTestApplication` 無介面測試宿主。`tests/Nvt.Core.Avalonia.Tests/Dialogs/` 覆蓋可選取的傳入文字（一般、空字串、Unicode、多行）、兩種實際 `ShowDialog<bool>` 結果、擁有者、強調與一般取消狀態、無參數載入、獨立的選用／null／空字串提示、凍結的視窗／操作列版面、畫刷隨佈景切換、警告內容，以及實際模態工作的 OK 關閉行為。警告內容案例是限縮範圍的既有 NFH 證據移植；其他案例刻畫凍結對話框的行為。
+Core 使用 Avalonia 12.1.1、xUnit v3 及未變更的 `ThemeTestApplication` 無介面測試宿主。`tests/Nvt.Core.Avalonia.Tests/Dialogs/` 覆蓋可選取的傳入文字（一般、空字串、Unicode、多行）、兩種實際 `ShowDialog<bool>` 結果、擁有者、強調與一般取消狀態、無參數載入、獨立的選用／null／空字串提示、凍結的視窗版面與共用操作按鈕幾何、畫刷隨佈景切換、警告內容，以及實際模態工作的 OK 關閉行為。警告內容案例是限縮範圍的既有 NFH 證據移植；其他案例刻畫凍結對話框的行為。
 
 使用既有套件還原結果執行：
 
@@ -59,9 +59,9 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 NFH 採用時：
 
 1. 在 `FreeformHelperView.Pickers.cs` 的 Embed DXF 呼叫點傳入 `confirmTip: "Embed DXF into the project file."` 與 `cancelTip: "Cancel and keep external DXF reference."`。其他呼叫端選擇自己的提示或保留 null。凍結對話框將這兩個產品提示套用至每個實例；Core 明確改由呼叫端提供。
-2. 採用 Core 的色彩。不在應用程式範圍以 NFH 的值覆寫 `Nfc*` 鍵。取消圖示採用按鈕的實際前景色，因此在任何使用端與按鈕狀態下都與取消文字同色。導入圖片呈現強調取消按鈕的一般與滑鼠移上狀態。
+2. 採用 Core 的色彩。僅在應用程式範圍覆寫核准的 `NfcAccent*` 鍵；其他 Core 鍵均不可覆寫。取消圖示採用按鈕的實際前景色，因此在任何使用端與按鈕狀態下都與取消文字同色。導入圖片呈現強調取消按鈕的一般與滑鼠移上狀態。
 3. 執行上述 Core Dialogs 測試群組，以及 NFH 完整既有測試專案：`dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build`。尤其保留 `FreeformHelper.Tests.FreeformHelperViewModelTests.ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog`，包含其命令／狀態斷言。診斷採用問題時，可加上 `--filter "FullyQualifiedName~ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog"` 單獨執行。
-4. 比較傳入的標題／訊息／按鈕文字、兩個 DXF 提示、`danger` 與圖示可見性、360 × 170 尺寸、縮放／啟動位置設定、確認 = true、取消 = false 及 OK 關閉。檢查 Embed DXF、重設 DXF 編輯、重設設定、未存檔專案與警告呼叫端。未存檔專案提示另須確認：不按按鈕直接關閉對話框仍回傳 null，應用程式保持開啟。這些對話框結果維持相同。
+4. 比較傳入的標題／訊息／按鈕文字、兩個 DXF 提示、`actionDanger` 與圖示可見性、360 × 170 尺寸、縮放／啟動位置設定、確認 = true、取消 = false 及 OK 關閉。檢查 Embed DXF、重設 DXF 編輯、重設設定、未存檔專案與警告呼叫端。未存檔專案提示另須確認：不按按鈕直接關閉對話框仍回傳 null，應用程式保持開啟。這些對話框結果維持相同。
 5. 使用凍結基準，在相同作業系統、字型、DPI 及佈景下擷取前後圖片。NFH UI 快照可能改變，包含圖示與對應色彩。採用 PR 附上兩組圖片並說明這些已知視覺差異；保留行為預期，不以更新預期來接受結果變更。
 
 NFH 採用與產品圖片比對不在本次抽取範圍內。
@@ -72,7 +72,7 @@ NFH 採用與產品圖片比對不在本次抽取範圍內。
 - 兩個寫死的 DXF 提示改為選用建構函式參數，預設 null。原本四個字串的建構函式呼叫及選用的強調參數仍保持原始碼相容。
 - 取消字型圖示改為描邊 `Path`，使用 `NfcCloseIconGeometry`、24 × 24 方框與 2 單位圓頭描邊，取代粗體字型圖示。警告字型圖示改為外框 `Path`，使用 literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`、20 × 20 方框、2 單位圓頭描邊及 `NfcWarningAccentStrongBrush`。未抽取圖示字型、`FontIcon` 或 `IconGlyphs`。
 - Core 預設色盤與 NFH 不同。尤其 NFH 以固定的 `BrushWhite` 繪製取消圖示。Core 將描邊繫結到圖示繼承的 `TextElement.Foreground`，也就是按鈕的實際前景色，因此圖示在任何 danger 底色與按鈕狀態下都跟隨文字顏色。NFH 採用 Core 的色彩並檢視圖片。純量間距改用動態資源，取代 NFH 的靜態資源。
-- 下列 NFH 值沒有相符型別／語意的 Core 鍵，保留完全相同的 literal。Core 有純量間距鍵，但沒有對應 inset 的 `Thickness` 資源。不新增佈景鍵。
+- 下列 NFH 值沒有相符型別／語意的 Core 鍵，保留完全相同的 literal。Core 有純量間距鍵，但沒有對應 inset 的 `Thickness` 資源。按鈕尺寸改由 `NfcControlHeight` 提供；原本 36／40 px 操作尺寸與 14,8 內距改採共用角色。
 
 | NFH token | 保留的 literal |
 | --- | --- |
@@ -81,12 +81,9 @@ NFH 採用與產品圖片比對不在本次抽取範圍內。
 | `Inset16` | `16`（四邊 padding） |
 | `InsetTop8` | `0,8,0,0` |
 | `InsetTop14` | `0,14,0,0` |
-| `Inset14_8` | `14,8` |
 | `FontSizeLg` | `15` |
 | `IconSizeLg` | `20`（警告向量方框） |
 | `ConfirmDialogDangerIconSize` | `24`（取消向量方框） |
-| `ConfirmDialogActionMinHeight` | `36` |
-| `ConfirmDialogActionHeight` | `40` |
 
 ## 留在 NFH 的部分
 

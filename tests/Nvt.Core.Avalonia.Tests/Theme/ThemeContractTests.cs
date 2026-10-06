@@ -2,12 +2,15 @@
 
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Avalonia.Controls;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
 using Avalonia.Headless.XUnit;
 using Xunit;
 
 namespace Nvt.Core.Avalonia.Tests.Theme;
 
-/// <summary>Pins the generic projection of NFC's frozen theme and style contracts.</summary>
+/// <summary>Pins the approved shared theme and style contracts.</summary>
 public sealed class ThemeContractTests
 {
     internal static readonly XNamespace Presentation = "https://github.com/avaloniaui";
@@ -48,7 +51,7 @@ public sealed class ThemeContractTests
         Assert.Equal(3, common.Count(element => element.Name.LocalName == "CornerRadius"));
 
         string styles = ReadExtracted("ButtonStyles").ToString();
-        string[] references = [.. Regex.Matches(styles, @"\{DynamicResource (?<key>[^}]+)\}", RegexOptions.CultureInvariant)
+        string[] references = [.. Regex.Matches(styles, @"\{DynamicResource (?<key>N(?:fc|vt)[^}]+)\}", RegexOptions.CultureInvariant)
             .Select(match => match.Groups["key"].Value).Distinct(StringComparer.Ordinal)];
         Assert.NotEmpty(references);
         foreach (XElement[] resources in themes.Values)
@@ -57,50 +60,69 @@ public sealed class ThemeContractTests
         }
     }
 
-    /// <summary>Ports NFC's owned button template and Open-pill geometry contract.</summary>
+    /// <summary>Every button selector is scoped to a public role; focus sets only an adorner.</summary>
     [AvaloniaFact]
-    public void SemanticButtonsShareOpenPillsAndKeepExplicitStructuralGeometry()
+    public void ButtonsAreRoleScopedAndFocusChangesOnlyTheAdorner()
     {
         XDocument styles = ReadExtracted("ButtonStyles");
-        XElement theme = Assert.Single(styles.Descendants(Presentation + "ControlTheme"));
-        Assert.Equal("NfcSemanticButtonTheme", theme.Attribute(Xaml + "Key")!.Value);
-        Assert.Equal("Button", theme.Attribute("TargetType")!.Value);
-        XElement presenter = Assert.Single(theme.Descendants(Presentation + "ContentPresenter"));
-        Assert.Equal("PART_ContentPresenter", presenter.Attribute(Xaml + "Name")!.Value);
-        Assert.Equal("{DynamicResource NfcCompactCornerRadius}", presenter.Attribute("CornerRadius")!.Value);
-        Assert.Equal("True", presenter.Attribute("RecognizesAccessKey")!.Value);
-        AssertSetter(styles, "Button", "Theme", "{StaticResource NfcSemanticButtonTheme}");
-        AssertSetter(styles, "Button", "FocusAdorner", "{x:Null}");
-        foreach (string role in new[] { "semanticAction", "browseAction", "railAction", "summaryChip", "closeButton" })
+        Assert.Empty(styles.Descendants(Presentation + "ControlTheme"));
+        foreach (XElement style in styles.Descendants(Presentation + "Style"))
         {
-            AssertSetter(styles, $"Button.{role} /template/ ContentPresenter#PART_ContentPresenter",
-                "CornerRadius", "{DynamicResource NfcPillCornerRadius}");
-        }
+            string selector = style.Attribute("Selector")!.Value;
+            foreach (string branch in selector.Split(','))
+            {
+                Assert.Matches(@"(?:Button|ToggleButton)\.(?:actionPrimary|actionNeutral|actionDanger|actionGhost|actionIconButton|chipAction)|Border\.chipStatus", branch);
+            }
 
-        AssertSetter(styles, "Button.primary", "Background", "{DynamicResource NfcAccentSurfaceBrush}");
-        AssertSetter(styles, "Button.primary", "BorderBrush", "{DynamicResource NfcAccentBorderLightBrush}");
-        AssertSetter(styles, "Button.secondary", "Background", "{DynamicResource NfcSurfaceBrush}");
-        AssertSetter(styles, "Button.secondary:pressed /template/ ContentPresenter#PART_ContentPresenter",
-            "Background", "{DynamicResource NfcSecondaryActionPressedBrush}");
-        AssertSetter(styles, "Button.action:pointerover /template/ ContentPresenter#PART_ContentPresenter",
-            "Background", "{DynamicResource NfcAccentBrush}");
-        Assert.DoesNotContain(styles.Descendants(Presentation + "Style"), element =>
-            element.Attribute("Selector")!.Value.Contains("Button.browseAction:pointerover", StringComparison.Ordinal));
+            if (selector.Contains(":focus", StringComparison.Ordinal))
+            {
+                Assert.Contains(":focus-visible", selector, StringComparison.Ordinal);
+                Assert.DoesNotContain(":focus ", selector, StringComparison.Ordinal);
+                Assert.Equal("FocusAdorner", Assert.Single(style.Elements()).Attribute("Property")!.Value);
+            }
+        }
     }
 
-    /// <summary>Ports NFC's focus-visible contract without product-navigation selectors.</summary>
-    [AvaloniaFact]
-    public void SemanticButtonFocusUsesFocusVisibleWithoutAPlainFocusSelector()
+    /// <summary>Resolves every static and dynamic resource in every Theme file in both variants.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EveryThemeResourceReferenceResolves(bool dark)
     {
-        XDocument styles = ReadExtracted("ButtonStyles");
-        string[] focusSelectors = [.. styles.Descendants(Presentation + "Style")
-            .Select(element => element.Attribute("Selector")!.Value)
-            .Where(selector => selector.Contains(":focus", StringComparison.Ordinal))];
-        Assert.NotEmpty(focusSelectors);
-        Assert.All(focusSelectors, selector => Assert.Contains(":focus-visible", selector, StringComparison.Ordinal));
-        const string focus = "Button:focus-visible /template/ ContentPresenter#PART_ContentPresenter";
-        AssertSetter(styles, focus, "BorderThickness", "2");
-        AssertSetter(styles, focus, "BorderBrush", "{DynamicResource NfcAccentBorderStrongBrush}");
+        var host = new Window { RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light };
+        try
+        {
+            string[] files = [.. typeof(ThemeContractTests).Assembly.GetManifestResourceNames()
+                .Where(name => name.StartsWith("Nvt.Core.Avalonia.Tests.Theme.Source.", StringComparison.Ordinal))];
+            foreach (string file in files)
+            {
+                string name = file["Nvt.Core.Avalonia.Tests.Theme.Source.".Length..^4];
+                XDocument document = ReadExtracted(name);
+                var uri = new Uri($"avares://Nvt.Core.Avalonia/Theme/{name}.axaml");
+                if (document.Root!.Name.LocalName == "Styles")
+                    host.Styles.Add(new StyleInclude(uri) { Source = uri });
+                else
+                    host.Resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
+            }
+
+            foreach (string file in files)
+            {
+                string name = file["Nvt.Core.Avalonia.Tests.Theme.Source.".Length..^4];
+                XDocument document = ReadExtracted(name);
+                foreach (Match match in Regex.Matches(document.ToString(), @"\{(?:DynamicResource|StaticResource) (?<key>[^}]+)\}", RegexOptions.CultureInvariant))
+                {
+                    string key = match.Groups["key"].Value;
+                    Assert.True(host.TryFindResource(key, host.ActualThemeVariant, out object? value), $"{name}: {key}");
+                    Assert.NotNull(value);
+                }
+                foreach (XElement alias in document.Descendants(Presentation + "StaticResource"))
+                {
+                    string key = alias.Attribute("ResourceKey")!.Value;
+                    Assert.True(host.TryFindResource(key, host.ActualThemeVariant, out _), $"{name}: {key}");
+                }
+            }
+        }
+        finally { host.Close(); }
     }
 
     internal static XDocument ReadBaseline(string name)
@@ -117,7 +139,7 @@ public sealed class ThemeContractTests
         XDocument document = XDocument.Load(stream);
         if (name == "ThemeTokens")
         {
-            // Expand the eight font aliases before comparing the unchanged NFC projection.
+            // Expand the eight font aliases before comparing the approved palette.
             XElement fonts = ReadExtracted("NfcLegacyFontTokens").Root!;
             document.Root!.Element(Presentation + "ResourceDictionary.MergedDictionaries")!.Remove();
             foreach (XElement alias in document.Root.Elements(Presentation + "StaticResource").ToArray())
@@ -135,11 +157,4 @@ public sealed class ThemeContractTests
     private static string[] Keys(IEnumerable<XElement> elements) =>
         [.. elements.Select(element => element.Attribute(Xaml + "Key")!.Value).Order(StringComparer.Ordinal)];
 
-    private static void AssertSetter(XDocument styles, string selector, string property, string value)
-    {
-        XElement style = Assert.Single(styles.Descendants(Presentation + "Style"), element =>
-            element.Attribute("Selector")!.Value.Split(',').Select(part => part.Trim()).Contains(selector, StringComparer.Ordinal));
-        XElement setter = Assert.Single(style.Elements(), element => element.Attribute("Property")!.Value == property);
-        Assert.Equal(value, setter.Attribute("Value")!.Value);
-    }
 }

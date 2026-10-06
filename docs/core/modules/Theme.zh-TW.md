@@ -2,16 +2,374 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 保留 NVT FW Combiner（NFC）通用主題及八個舊有字型值。模組提供 `Theme/ThemeTokens.axaml` 與 `Theme/ButtonStyles.axaml`，另有 `Theme/ScrollStyles.axaml`，見[捲軸樣式](#捲軸樣式)。另提供 `UiResourceResolver`，供在程式碼中讀取主題資源的控制項使用，見[資源解析](#資源解析)。將資源字典合併至應用程式資源，並在主機原本的按鈕樣式作用範圍載入樣式：
+Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入兩個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔；不載入草稿 PR #71 的 `ActionRoleStyles.axaml`。八個舊有字型值與資源解析器保持不變。
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
 ```
 
-為維持相容，既有資源鍵保留 `Nfc` 名稱。八個字型值另有 Core 名稱。模組保留 Light、Dark 各 51 個筆刷鍵、22 個共用圓角／圖示／間距／字型相容 token、語意按鈕範本，以及 78 個樣式區塊。通用角色包含 semantic、primary、secondary、danger、command、icon/copy、close、inline edit、breadcrumb、action/browse、file reveal、summary chip，以及支援減少動態效果的展開式 rail。值、範本繫結、選擇器分支、轉場與樣式順序皆維持原樣。
+## 共用色票
 
-排除的 token 家族：`NfcKept`、`NfcReferenceInput`、`NfcControllerInput`、`NfcHex`、`NfcRequired`、`NfcMemory`、`NfcWorkflow`、`NfcWorkspace`、`NfcNav`、`NfcReport`。排除的選擇器分支：`settingsNavItem`、`messageCenterNavigationItem`、`activityFilter`、`sourceEditButton`、`version*`、`slotClearAction`、`outputRailAction`、`outputNameEdit`。混合選擇器只保留通用分支。這些產品資源與分支由 NFC 保留；整合時須維持原有樣式優先順序。
+既有鍵名與型別全部保留。`Nfc*` 是相容命名，不代表 NFC 獨有外觀。資料色留在工具，不加入 Core。
+
+### 中性色
+
+| Token | Light | Dark |
+|---|---|---|
+| `NfcAppBackgroundBrush` | `#F1F5F9` | `#0B1220` |
+| `NfcSurfaceBrush` | `#FFFFFF` | `#111827` |
+| `NfcSurfaceSubtleBrush` | `#F8FAFC` | `#182337` |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcBorderMutedBrush` | `#CBD5E1` | `#334155` |
+| `NfcDividerBrush` | `#E2E8F0` | `#273449` |
+| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `NfcTextMutedBrush` | `#526176` | `#A1AEC2` |
+| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+
+`NfcBorderBrush` 是可辨識的輸入邊界；soft、muted 與 divider 只作裝飾。停用控制項與捲軸拇指共用 disabled 色，拇指滑入採 muted 色。
+
+### 語意色
+
+| Token | Light | Dark |
+|---|---|---|
+| `NfcSuccessSurfaceBrush` | `#ECFDF5` | `#123024` |
+| `NfcSuccessBorderBrush` | `#4D8E68` | `#4D9D75` |
+| `NfcSuccessAccentBrush` | `#168043` | `#69CF99` |
+| `NfcSuccessTextStrongBrush` | `#14532D` | `#BBF7D0` |
+| `NfcSuccessTextBrush` | `#166534` | `#89DFB2` |
+| `NfcSuccessEmphasisBrush` | `#166534` | `#89DFB2` |
+| `NfcInfoSurfaceStrongBrush` | `#ECF3FC` | `#173248` |
+| `NfcInfoTextBrush` | `#245B91` | `#8AC5F2` |
+| `NfcWarningSurfaceBrush` | `#FFFBEB` | `#2D2313` |
+| `NfcWarningBorderBrush` | `#A97925` | `#BB8A3D` |
+| `NfcWarningAccentBrush` | `#946000` | `#E5B35D` |
+| `NfcWarningAccentStrongBrush` | `#875400` | `#F5CE8A` |
+| `NfcWarningTextSubtleBrush` | `#734A11` | `#F5CE8A` |
+| `NfcWarningTextMutedBrush` | `#875400` | `#E5B35D` |
+| `NfcWarningTextBrush` | `#875400` | `#F5CE8A` |
+| `NfcWarningBorderStrongBrush` | `#946000` | `#E5B35D` |
+| `NfcWarningTextStrongBrush` | `#70440B` | `#FFE9C4` |
+| `NfcCautionSurfaceBrush` | `#FFFBEB` | `#2D2313` |
+| `NfcCautionBorderBrush` | `#A97925` | `#BB8A3D` |
+| `NfcCautionBorderSoftBrush` | `#BE913D` | `#9D773B` |
+| `NfcCautionTextBrush` | `#875400` | `#F5CE8A` |
+| `NfcDangerSurfaceBrush` | `#FFF1F3` | `#2B171E` |
+| `NfcDangerBorderBrush` | `#C04A5C` | `#C96579` |
+| `NfcDangerTextBrush` | `#A82035` | `#FFADB7` |
+| `NfcDangerSurfaceMutedBrush` | `#FFE8ED` | `#321B24` |
+| `NfcDangerBorderStrongBrush` | `#A82035` | `#FF8295` |
+| `NfcDangerTextStrongBrush` | `#861B2C` | `#FFD0D7` |
+| `NfcCriticalSurfaceBrush` | `#FFE4E6` | `#391D27` |
+| `NfcCriticalBorderBrush` | `#A82035` | `#FF8295` |
+| `NfcModalScrimBrush` | `#660F172A` | `#B30B1220` |
+
+遮罩上不直接放資訊文字；對話框使用不透明表面。相容的 success emphasis、warning muted、caution 與 critical 名稱都保留。
+
+### 工具主色
+
+Core 預設採 NFC 值。工具在應用程式資源範圍的 Light／Dark 字典只覆寫下表七個 `NfcAccent*` 鍵。不得覆寫任何其他 Core 鍵；不得局部覆寫基本控制項樣式。需要變體時由 Core 增加角色。焦點色不跟隨主色。
+
+| Tool / 工具 | Token | Light | Dark |
+|---|---|---|---|
+| NFC | `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| NFC | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| NFC | `NfcAccentSurfaceBrush` | `#EFF3FD` | `#1A2940` |
+| NFC | `NfcAccentSurfaceSubtleBrush` | `#F7F9FE` | `#162034` |
+| NFC | `NfcAccentBorderBrush` | `#1557E9` | `#5FA5FA` |
+| NFC | `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
+| NFC | `NfcAccentBorderLightBrush` | `#1557E9` | `#5FA5FA` |
+| NFH | `NfcAccentBrush` | `#2967A9` | `#53A6FF` |
+| NFH | `NfcAccentStrongBrush` | `#225489` | `#86C0FF` |
+| NFH | `NfcAccentSurfaceBrush` | `#F0F4F9` | `#192941` |
+| NFH | `NfcAccentSurfaceSubtleBrush` | `#F8FAFC` | `#152134` |
+| NFH | `NfcAccentBorderBrush` | `#2967A9` | `#53A6FF` |
+| NFH | `NfcAccentBorderStrongBrush` | `#225489` | `#86C0FF` |
+| NFH | `NfcAccentBorderLightBrush` | `#2967A9` | `#53A6FF` |
+| NFU | `NfcAccentBrush` | `#4A6F00` | `#82B11A` |
+| NFU | `NfcAccentStrongBrush` | `#3D5B00` | `#97CD1E` |
+| NFU | `NfcAccentSurfaceBrush` | `#F2F5ED` | `#1F2A25` |
+| NFU | `NfcAccentSurfaceSubtleBrush` | `#F9FAF6` | `#182126` |
+| NFU | `NfcAccentBorderBrush` | `#4A6F00` | `#82B11A` |
+| NFU | `NfcAccentBorderStrongBrush` | `#3D5B00` | `#97CD1E` |
+| NFU | `NfcAccentBorderLightBrush` | `#4A6F00` | `#82B11A` |
+
+Light 填色按鈕的標籤採 `NfcSurfaceBrush`；Dark 採 `NfcAppBackgroundBrush`。樣式內的 `PrimaryLabelBrush` 只是這兩個既有 token 的主題別名，並非可供工具覆寫的 token。
+
+## 尺寸與圓角
+
+| 項目 | Token／值 |
+|---|---|
+| Control height / 控制項高度 | `NfcControlHeight` = 32 |
+| Compact corners / 緊湊圓角 | `NfcCompactCornerRadius` = 6 |
+| Surface corners / 表面圓角 | `NfcSurfaceCornerRadius` = 8 |
+| Button and chip corners / 按鈕與膠囊圓角 | `NfcPillCornerRadius` = 999 |
+| Text padding / 文字內距 | 14 horizontal / 水平, 0 vertical / 垂直 |
+| Icon button / 圖示按鈕 | 32 × 32, padding / 內距 0 |
+| Button and chip border / 按鈕與膠囊邊界 | 1 |
+| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 10,0; radius / 圓角 6 |
+| Spacing / 間距 | `NfcSpace2/4/8/12/16/24`; `NfcFieldSpacing` = 4 |
+
+以上皆為邏輯像素，不再額外乘 DPI。按鈕內容置中、單行、字元省略並裁切；圖示角色繼承所組合色彩角色。焦點需容器預留 4 px；相鄰控制項建議間隔 8 px。接合邊為零圓角；多行編輯器與資料視覺不套用 32 px。字型與字型 fallback 不變。本次沒有增加一般輸入框樣式。
+
+## 按鈕角色與狀態
+
+公開 class 為 `actionPrimary`、`actionNeutral`、`actionDanger`、`actionGhost`、`actionIconButton`、`chipAction` 與 `Border.chipStatus`。互動角色同時支援 `Button`／`ToggleButton`，單一角色即完整外觀。舊版面 class `actionTextButton`、`actionChip`、`actionButton` 不是公開角色。沒有全域 Button／ToggleButton 規則；未指定角色的控制項不受此檔影響。
+
+| 角色 | 狀態 | 底色 | 邊界 | 文字 |
+|---|---|---|---|---|
+| `actionPrimary` | rest | `NfcAccentBrush` | `NfcAccentBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
+| `actionPrimary` | hover | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
+| `actionPrimary` | pressed | `NfcAccentStrongBrush` | `NfcAccentStrongBrush` | `NfcSurfaceBrush (Light) / NfcAppBackgroundBrush (Dark)` |
+| `actionPrimary` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| `actionPrimary` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
+| `actionPrimary` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionPrimary` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionNeutral` | rest | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| `actionNeutral` | hover | `NfcSelectionSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| `actionNeutral` | pressed | `NfcSecondaryActionPressedBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| `actionNeutral` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| `actionNeutral` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
+| `actionNeutral` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionNeutral` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionDanger` | rest | `NfcDangerSurfaceBrush` | `NfcDangerBorderBrush` | `NfcDangerTextBrush` |
+| `actionDanger` | hover | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextBrush` |
+| `actionDanger` | pressed | `NfcCriticalSurfaceBrush` | `NfcCriticalBorderBrush` | `NfcDangerTextStrongBrush` |
+| `actionDanger` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| `actionDanger` | checked | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextStrongBrush` |
+| `actionDanger` | checked_hover | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextStrongBrush` |
+| `actionDanger` | checked_pressed | `NfcCriticalSurfaceBrush` | `NfcCriticalBorderBrush` | `NfcDangerTextStrongBrush` |
+| `actionGhost` | rest | `Transparent` | `Transparent` | `NfcTextSecondaryBrush` |
+| `actionGhost` | hover | `NfcSelectionSurfaceBrush` | `Transparent` | `NfcTextBrush` |
+| `actionGhost` | pressed | `NfcSecondaryActionPressedBrush` | `Transparent` | `NfcTextBrush` |
+| `actionGhost` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| `actionGhost` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
+| `actionGhost` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionGhost` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `chipStatus` | rest / disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextSecondaryBrush` |
+| `chipStatus.warning` | rest / disabled | `NfcWarningSurfaceBrush` | `NfcWarningBorderBrush` | `NfcWarningTextBrush` |
+| `chipStatus.danger` | rest / disabled | `NfcDangerSurfaceBrush` | `NfcDangerBorderBrush` | `NfcDangerTextBrush` |
+| `chipStatus.success` | rest / disabled | `NfcSuccessSurfaceBrush` | `NfcSuccessBorderBrush` | `NfcSuccessTextBrush` |
+
+`actionIconButton` 預設採 `actionNeutral`；可與四種色彩角色組合，採其所有狀態。`chipAction` 採中性色角色；`chipAction.active` 與 ToggleButton 的 checked 使用相同選取規則。active／checked 滑入採淡主色底色，按下採中性按下底色，保留強主色文字與強邊界。一般 Button 沒有 checked。`chipStatus` 的 warning／danger／success 使用上表語意底色、文字與邊界；無互動、選取或焦點狀態，停用仍保留資訊顏色與 opacity 1。
+
+停用最優先：所有互動角色採 `NfcSurfaceSubtleBrush`、`NfcBorderMutedBrush`、`NfcTextDisabledBrush`、opacity 1，覆蓋滑入、按下、checked 與 active。依工作簡述，ghost 停用也採次表面，取代提案的透明底色。沒有雙重淡化。
+
+背景、邊界、文字轉場為 120 ms。按下時關閉轉場；primary 按下的內側 2 px 邊線由不占版面的覆蓋層繪製。焦點立即顯示。控制項或任何祖先加 `.reducedMotion` 會關閉轉場。
+
+### 焦點框
+
+| Token | Light | Dark |
+|---|---|---|
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.DangerRingBrush` | `#C62828` | `#FF6B6B` |
+
+`Nvt.Focus.RingThickness` 為 Thickness 2，三個焦點 token 全在 `ThemeTokens.axaml`。每個互動角色預設 `FocusAdorner=null`，取消預設矩形。只有 `:focus-visible` 顯示 Border adorner；真實 Tab 顯示，指標焦點不顯示。`Margin=-4` 形成 2 px 線與 2 px 外側間隙；`IsHitTestVisible=False`、`AdornerLayer.IsClipEnabled=False`。圓角隨控制項動態變化：膠囊保留 999，矩形每個角加 4。`actionDanger`（含圖示危險組合）採紅框，其餘採藍框。焦點在靜止、滑入、checked、active 均不改底色、邊界或文字。
+
+擁有者待確認：是否維持僅鍵盤的 `:focus-visible` 焦點框？本次依核准選擇 B 實作。
+
+## 角色遷移
+
+逐項依三個核准 `role_mapping` 區段列出 NFC 59、NFH 105、NFU 22 個來源 class／組合。product role 的行為與版面留在工具；共同基本外觀由 Core 角色組合提供。
+
+| 工具 | 目前 class | 共用角色或保留位置 |
+|---|---|---|
+| NFC | `action` | `actionPrimary` |
+| NFC | `activityFilter` | 產品角色，留在工具內 |
+| NFC | `bankScope` | 產品角色，留在工具內 |
+| NFC | `bankViewSwitch` | 產品角色，留在工具內 |
+| NFC | `breadcrumb` | `actionGhost` |
+| NFC | `browseAction` | `actionNeutral` |
+| NFC | `closeButton` | 產品角色，留在工具內 |
+| NFC | `command` | `actionGhost` |
+| NFC | `configSelected` | 產品角色，留在工具內 |
+| NFC | `danger` | `actionDanger` |
+| NFC | `fileRevealAction` | 產品角色，留在工具內 |
+| NFC | `hexApplyChange` | `actionNeutral` |
+| NFC | `hexAsciiSearch` | `actionIconButton` + `actionGhost` |
+| NFC | `hexChangedBlockNavigator` | 產品角色，留在工具內 |
+| NFC | `hexChangedBlockRow` | 產品角色，留在工具內 |
+| NFC | `hexGoToAddress` | `actionIconButton` + `actionGhost` |
+| NFC | `hexInspectorAction` | `actionIconButton` |
+| NFC | `iconButton` | `actionIconButton` |
+| NFC | `iconButton.codeBlockCopy` | `actionIconButton` |
+| NFC | `inlineDisclosure` | 產品角色，留在工具內 |
+| NFC | `inlineEdit` | `actionIconButton` + `actionGhost` |
+| NFC | `launcher-action` | `actionNeutral` |
+| NFC | `launcher-close` | 產品角色，留在工具內 |
+| NFC | `launcher-icon` | `actionIconButton` + `actionGhost` |
+| NFC | `launcher-primary` | `actionPrimary` |
+| NFC | `messageCenterNavigationItem` | 產品角色，留在工具內 |
+| NFC | `nav` | 產品角色，留在工具內 |
+| NFC | `outputNameEdit` | 產品角色，留在工具內 |
+| NFC | `outputRailAction` | 產品角色，留在工具內 |
+| NFC | `primary` | `actionPrimary` |
+| NFC | `primaryRailAction` | 產品角色，留在工具內 |
+| NFC | `quietDisclosure` | 產品角色，留在工具內 |
+| NFC | `railAction` | 產品角色，留在工具內 |
+| NFC | `railAction.reducedMotion` | 產品角色，留在工具內 |
+| NFC | `referenceChoice` | 產品角色，留在工具內 |
+| NFC | `reportListRow` | 產品角色，留在工具內 |
+| NFC | `reportLoad` | `actionNeutral` |
+| NFC | `secondary` | `actionNeutral` |
+| NFC | `segment` | 產品角色，留在工具內 |
+| NFC | `semanticAction` | `actionNeutral` |
+| NFC | `semanticAction.command` | `actionGhost` |
+| NFC | `semanticAction.command.configSelected` | 產品角色，留在工具內 |
+| NFC | `settingsNavItem` | 產品角色，留在工具內 |
+| NFC | `settingsNavItem.selected` | 產品角色，留在工具內 |
+| NFC | `slotClearAction` | 產品角色，留在工具內 |
+| NFC | `slotStateAction` | `chipAction` |
+| NFC | `slotStateAction.checking` | `chipAction` |
+| NFC | `slotStateAction.error` | `chipAction` |
+| NFC | `slotStateAction.inspected` | `chipAction` |
+| NFC | `slotStateAction.notApplicable` | `chipAction` |
+| NFC | `slotStateAction.pendingInput` | `chipAction` |
+| NFC | `slotStateAction.verified` | `chipAction` |
+| NFC | `slotStateAction.warning` | `chipAction` |
+| NFC | `sourceEditButton` | 產品角色，留在工具內 |
+| NFC | `summaryChip` | `chipAction` |
+| NFC | `versionChoice` | 產品角色，留在工具內 |
+| NFC | `versionInstallAction` | 產品角色，留在工具內 |
+| NFC | `versionReleaseNotesAction` | 產品角色，留在工具內 |
+| NFC | `versionTableAction` | 產品角色，留在工具內 |
+| NFH | `actionButton` | `actionNeutral` |
+| NFH | `actionChip` | `chipAction` |
+| NFH | `actionDanger` | `actionDanger` |
+| NFH | `actionGhost` | `actionGhost` |
+| NFH | `actionIconButton` | `actionIconButton` |
+| NFH | `actionIconButton.actionDanger` | `actionIconButton` + `actionDanger` |
+| NFH | `actionIconButton.actionGhost` | `actionIconButton` + `actionGhost` |
+| NFH | `actionIconButton.actionNeutral` | `actionIconButton` + `actionNeutral` |
+| NFH | `actionIconButton.actionPrimary` | `actionIconButton` + `actionPrimary` |
+| NFH | `actionIconButton.consoleHeaderAction` | 產品角色，留在工具內 |
+| NFH | `actionIconButton.panelChromeToggle` | 產品角色，留在工具內 |
+| NFH | `actionIconButton.viewportOverlayAction` | 產品角色，留在工具內 |
+| NFH | `actionNeutral` | `actionNeutral` |
+| NFH | `actionPrimary` | `actionPrimary` |
+| NFH | `actionTextButton` | `actionNeutral` |
+| NFH | `actionTextButton.actionDanger` | `actionDanger` |
+| NFH | `actionTextButton.actionGhost` | `actionGhost` |
+| NFH | `actionTextButton.actionNeutral` | `actionNeutral` |
+| NFH | `actionTextButton.actionPrimary` | `actionPrimary` |
+| NFH | `actionTextButton.workspaceActionButton` | `actionNeutral` |
+| NFH | `chipAction` | `chipAction` |
+| NFH | `chipAction.active` | `chipAction.active` |
+| NFH | `chipAction.combined` | 產品角色，留在工具內 |
+| NFH | `chipAction.direct` | 產品角色，留在工具內 |
+| NFH | `chipAction.duplicate` | 產品角色，留在工具內 |
+| NFH | `chipAction.geometry` | 產品角色，留在工具內 |
+| NFH | `chipAction.hidden` | 產品角色，留在工具內 |
+| NFH | `chipAction.incoming` | 產品角色，留在工具內 |
+| NFH | `chipAction.layer` | 產品角色，留在工具內 |
+| NFH | `chipAction.legacy` | 產品角色，留在工具內 |
+| NFH | `chipAction.linked` | 產品角色，留在工具內 |
+| NFH | `chipAction.nocad` | 產品角色，留在工具內 |
+| NFH | `chipAction.outgoing` | 產品角色，留在工具內 |
+| NFH | `chipAction.transfer` | 產品角色，留在工具內 |
+| NFH | `chipStatus` | `chipStatus` |
+| NFH | `chipStatus.danger` | `chipStatus.danger` |
+| NFH | `chipStatus.success` | `chipStatus.success` |
+| NFH | `chipStatus.warning` | `chipStatus.warning` |
+| NFH | `confirmDialogActionButton` | `actionNeutral` |
+| NFH | `confirmDialogDangerButton` | `actionDanger` |
+| NFH | `consoleHeaderAction` | 產品角色，留在工具內 |
+| NFH | `danger` | `actionDanger` |
+| NFH | `dangerTextButton` | `actionDanger` |
+| NFH | `dangerTextButton.dxfEditMiniAction` | `actionIconButton` + `actionDanger` |
+| NFH | `dxfEditCompactIconAction` | `actionIconButton` |
+| NFH | `dxfEditMiniAction` | `actionIconButton` |
+| NFH | `dxfEditSummaryChip` | 產品角色，留在工具內 |
+| NFH | `dxfLayerBulkToggleButton` | 產品角色，留在工具內 |
+| NFH | `icon` | 產品角色，留在工具內 |
+| NFH | `icon.ghost` | 產品角色，留在工具內 |
+| NFH | `icon.ghost.workflowOverviewAction` | 產品角色，留在工具內 |
+| NFH | `icon.ghost.workflowStepAction` | 產品角色，留在工具內 |
+| NFH | `iconTextButton` | `actionNeutral` |
+| NFH | `notchExportRestoreHintAction` | 產品角色，留在工具內 |
+| NFH | `padInfoActionButton` | `actionNeutral` |
+| NFH | `padInfoActionButton.compact` | `actionNeutral` |
+| NFH | `padInfoAllocationButton` | 產品角色，留在工具內 |
+| NFH | `padInfoHeaderActionButton` | `actionGhost` |
+| NFH | `padInfoInfoButton` | `actionIconButton` + `actionGhost` |
+| NFH | `padInfoOverrideIconButton` | `actionIconButton` |
+| NFH | `padInfoSectionToggle` | 產品角色，留在工具內 |
+| NFH | `padInfoSectionToggle.debugCard` | 產品角色，留在工具內 |
+| NFH | `panelBlockHeader` | 產品角色，留在工具內 |
+| NFH | `panelChromeToggle` | 產品角色，留在工具內 |
+| NFH | `rightPanelBrowserTab` | 產品角色，留在工具內 |
+| NFH | `rightPanelTab` | 產品角色，留在工具內 |
+| NFH | `settingsNavItem` | 產品角色，留在工具內 |
+| NFH | `shellTab` | 產品角色，留在工具內 |
+| NFH | `shellTab.settingsWindowNavTab` | 產品角色，留在工具內 |
+| NFH | `simulationActionButton` | `actionPrimary` |
+| NFH | `validationCountPill` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.direct` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.incoming` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.legacy` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.nocad` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.outgoing` | 產品角色，留在工具內 |
+| NFH | `validationRowKindTag.workspaceContextBadge` | 產品角色，留在工具內 |
+| NFH | `validationTraceRow` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.active` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.direct` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.incoming` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.legacy` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.nocad` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.outgoing` | 產品角色，留在工具內 |
+| NFH | `verificationSummaryChip.transfer` | 產品角色，留在工具內 |
+| NFH | `verificationTableRow` | 產品角色，留在工具內 |
+| NFH | `verificationTableRow.verificationTableRowActive` | 產品角色，留在工具內 |
+| NFH | `viewMenuButton` | `actionNeutral` |
+| NFH | `viewportOverlayAction` | 產品角色，留在工具內 |
+| NFH | `workspaceActionButton` | `actionNeutral` |
+| NFH | `workspaceDataRow` | 產品角色，留在工具內 |
+| NFH | `workspaceDataRow.workspaceDataRowActive` | 產品角色，留在工具內 |
+| NFH | `workspaceFoldHeader` | 產品角色，留在工具內 |
+| NFH | `workspaceGroupActionButton` | `actionNeutral` |
+| NFH | `workspaceHeaderAction` | `actionGhost` |
+| NFH | `workspaceHeaderInspectorCard` | 產品角色，留在工具內 |
+| NFH | `workspaceInfoButton` | `actionIconButton` + `actionGhost` |
+| NFH | `workspaceSearchClearButton` | `actionIconButton` + `actionGhost` |
+| NFH | `workspaceSubtleAction` | `actionGhost` |
+| NFH | `workspaceTableHeaderButton` | 產品角色，留在工具內 |
+| NFH | `workspaceTableHeaderButton.active` | 產品角色，留在工具內 |
+| NFH | `workspaceTextAction` | `actionGhost` |
+| NFH | `workspaceToggleChip` | `chipAction` |
+| NFU | `axisToggle` | 產品角色，留在工具內 |
+| NFU | `canvasIcon` | 產品角色，留在工具內 |
+| NFU | `canvasQuick` | 產品角色，留在工具內 |
+| NFU | `canvasQuick.active` | 產品角色，留在工具內 |
+| NFU | `ghost` | `actionGhost` |
+| NFU | `headerAction` | `actionGhost` |
+| NFU | `headerAction.headerPrimary` | `actionPrimary` |
+| NFU | `headerIcon` | `actionIconButton` + `actionGhost` |
+| NFU | `inspectorIcon` | `actionIconButton` + `actionGhost` |
+| NFU | `outputPreviewPlay` | 產品角色，留在工具內 |
+| NFU | `outputPreviewPlay.playing` | 產品角色，留在工具內 |
+| NFU | `paintMarkerRemove` | `actionIconButton` + `actionDanger` |
+| NFU | `primary` | `actionPrimary` |
+| NFU | `rawSourceOpen` | `actionGhost` |
+| NFU | `settingsChoice` | 產品角色，留在工具內 |
+| NFU | `settingsNav` | 產品角色，留在工具內 |
+| NFU | `settingsNav.active` | 產品角色，留在工具內 |
+| NFU | `shortcutRow` | 產品角色，留在工具內 |
+| NFU | `sourceLineLink` | `actionGhost` |
+| NFU | `toolbarAction` | `actionNeutral` |
+| NFU | `transportPlay` | 產品角色，留在工具內 |
+| NFU | `transportPlay.playing` | 產品角色，留在工具內 |
+
+舊 Core 的 `railActionIcon`、`railActionLabel`、`railActionIconSlot` 與 `NfcSemanticButtonTheme` 及僅供舊角色的 theme 資源也離開 Core，屬於產品角色，留在工具內。`codeBlockCopy` 對應 `actionIconButton`；`primaryRailAction` 與 `fileRevealAction` 是產品角色。工具須移除舊檔載入與舊版面 class；本次不提供相容別名。
+
+Core 使用處：ConfirmDialog 的確認採 primary、取消採 neutral、強調取消改為 danger；WarningDialog 的 OK 採 primary；CollapsiblePanel 的 header 採 ghost，保留展開繫結、stretch 內容與 chevron 方向。panel root 不裁切外側焦點框。
 
 ## NFC 舊有字型資源抽取
 
@@ -56,62 +414,29 @@ NFC 也須保留：
 - Static 與 DynamicResource 查找方式。
 - 字型資產、Inter 套件版本及 fallback 順序。
 
-## 凍結來源與驗證
 
-凍結來源：NFC（`nvt_fw_combiner`），ref `origin/1.2.x`，完整 commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。
-即使遠端 ref 前進，基準仍固定在此完整 commit。
-抽取的來源路徑：
+## 驗證與來源
 
-- `src/NvtFwCombiner.Presentation.Avalonia/Styles/ThemeTokens.axaml`
-- `src/NvtFwCombiner.Presentation.Avalonia/Styles/MainWindowButtonStyles.axaml`
+本次取代 NFC 衍生色票與舊按鈕角色，合併 PR #71 的範本與焦點方案到唯一的 `ButtonStyles.axaml`，修正停用與 active 疊加。`ThemeTokens.xml`、`ButtonStyles.xml` 刻意依新的核准檔案重新產生，不再宣稱保留舊 NFC 外觀。`ExtractedXamlMatchesFrozenBaseline` 仍鎖定完整 XML；token 比對先展開八個既有字型別名。捲軸幾何與 baseline 不因本次色票調整而變動。
 
-通用測試斷言移植自同一 commit 的：
+舊 NFC 抽取與字型的凍結來源為 `origin/1.2.x`、commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。PR #71 的角色來源固定於 `0f29143712cc18127df8e00636b1bfb3552d3aef`；其基準不沿用。2026-10-06 核准的共用提案與 NFH 命名決策是本次規格。
 
-- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.ThemeTokens.cs`
-- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.Buttons.cs`
-- `tests/NvtFwCombiner.UiSmoke.Tests/XamlControlStyleContractTests.Build.cs`
-- `tests/NvtFwCombiner.Architecture.Tests/PresentationBoundaryTests.ShellSurface.cs`（只移植字型斷言）
-
-`tests/Nvt.Core.Avalonia.Tests/Theme/Baseline/*.xml` 凍結來源資源的通用子集。`ExtractedXamlMatchesFrozenBaseline` 先展開八個字型相容別名，再比對完整凍結 XML 樹。測試逐一鎖定資源鍵／值、選擇器、setter、範本繫結、轉場及順序。基準檔案未更動。行為特徵測試也檢查所有編譯後 token 值、兩種主題、一般按鈕幾何、primary／secondary／danger／action 狀態、滑鼠與鍵盤焦點差異、rail 展開及減少動態效果。測試保留 NFC 既有的 primary presenter 行為：較後的基本 setter 覆蓋按下／停用時的 presenter 配色，但內部文字仍隨狀態變化。同樣的 22 個執行階段特徵案例已對完整凍結 NFC XAML 的暫存副本通過驗證；副本未保留。
-
-`NfcLegacyFontTests` 將每個 Core 字型值固定在 NFC 凍結值，並在 Light、Dark 檢查所有相容鍵。
-測試也獨立載入編譯後字型字典。
-編譯後的 `StaticResource` 與 `DynamicResource` 使用處，對英文、繁中及技術文字保留相同字族、字級、字重、換行與邊界。
-這些 headless 檢查不能證明實際桌面畫面相同。
-
-使用已還原的套件驗證 Core：
+- `ButtonThemeTests`：僅載入 ThemeTokens／ButtonStyles；Light／Dark、兩種控制項、每個角色與狀態、幾何、單行／省略／裁切、未指定角色、真實 Tab 與指標焦點、焦點 brush／幾何／命中測試、四種狀態焦點不改色、停用優先與減少動態。
+- `PaletteContrastTests`：編譯後 token，三工具主色同一資料驅動測試；內文、提示、語意文字、主色文字與填色標籤 4.5:1；停用文字、輸入邊界、焦點、捲軸拇指 3:1。檢查全部不透明中性／語意／主色底色，無例外測試。裝飾邊界與半透明 scrim 不承載文字。
+- `ThemeContractTests`：所有 Theme 檔的 StaticResource／DynamicResource 在兩個主題均解析；只允許有角色的按鈕 selector；保留三份 XML baseline 比對。
+- `NfcLegacyFontTests` 與資源解析器測試不變；Dialogs／Panels 的測試改為共用角色，其他行為合約不變。
 
 ```powershell
 $env:AVALONIA_TELEMETRY_OPTOUT = '1'
-dotnet build Nvt.Core.sln --no-restore --disable-build-servers
-dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+dotnet build Nvt.Core.sln --no-restore
+dotnet test Nvt.Core.sln --no-build
 ```
 
-採用時的零差異驗證：先在凍結來源執行 NFC 的 UI smoke 與架構測試，切換至 Core 後再執行。
-調整來源文字檢查，使其追蹤資源載入與別名，但保留每個既有預期值。
-須包含以下既有檢查：
+暫存 headless helper 在測試通過後載入 Fluent、ThemeTokens、ButtonStyles、ScrollStyles，產生 `artifacts/palette-gallery/roles-dark.png`、`roles-light.png`、`controls-dark.png`、`controls-light.png`。輸出受 git ignore；helper 隨後刪除。圖庫以固定狀態並排比較，不取代真實輸入測試。
 
-- `XamlControlStyleContractTests`：主題鍵、字型值、按鈕狀態、邊框與減少動態效果。
-- `PresentationBoundaryTests`：shell 字族與字級合約。
-- `MemorySourcePresentationTests`：既有 static size-14 使用處、英文／繁中及展開互動。
-- `ReportChangesLayoutTests` 與 `HomeWorkflowCardVerticalAlignmentDiagnosticTests`：技術與 UI 字族使用處。
-- `NavigationFocusIndicatorTests`、`NavigationCheckedStateTests` 及既有 modal 鍵盤巡覽測試。
+### 採用
 
-透過 Core 與 NFC 鍵比對解析後的字族清單及六個字級。
-也須比對筆刷值、按鈕與 presenter 幾何、Tab 順序、rail 展開及減少動態效果行為。
-比對採用前後的實際截圖、文字換行、文字邊界、控制項尺寸及互動。
-檢查英文／繁中、Light／Dark，以及受影響的滑過、按下、停用與鍵盤焦點狀態。
-每次比較須使用相同 OS、已安裝字型版本、字型資產、DPI、視窗大小、主題及減少動態效果設定。
-桌面截圖須逐像素比對，並保留原始基準。
-先依 NFC 既有流程還原與建置，再執行：
-
-```powershell
-$env:AVALONIA_TELEMETRY_OPTOUT = '1'
-dotnet test tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj --no-build
-dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Tests.csproj --no-build
-```
-
-目前尚無採用工具。NFC 整合、完整產品測試及桌面截圖比對仍屬後續工作；本次未更動套件或共用設定。
+每套工具各自提出採用 PR，套用表中主色並移除局部基本控制項覆寫。每個 PR 附採用前後影像供 owner 核准，涵蓋 Light／Dark、英文／繁中、各互動狀態、DPI 與長文字；產品行為與資料色留在工具。本次不採用到任何工具、不提交變更。
 
 ## 捲軸樣式
 
@@ -153,12 +478,12 @@ NFH 自己的捲軸規則（同一檔第 8-94 行）沒有移植。Core 採用 N
 - `ExtractedXamlMatchesFrozenBaseline` 比對此檔與 `Baseline/ScrollStyles.xml`，baseline 由同樣的來源行產生。
 - `ScrollStylesTests` 檢查：每個資源鍵在兩個主題都存在、viewport-bound class 排在最後、兩個方向的捲軸尺寸與自動隱藏 setter，以及 scroll viewer 與範本控制項的自動隱藏。
 - `ScrollStylesTests` 也在 Fluent 範本下檢查兩個方向的淺色與深色：14 px 軌道、置中的 6 px thumb、隱藏的軌道與上下按鈕、指標停留時的筆刷、拖曳 thumb，以及點擊隱藏軌道翻頁。`ListBox` 內部的 scroll viewer 捲軸也不自動隱藏。它檢查 viewport-bound 內容取可視寬度，並檢查垂直捲軸每次出現或消失時，寬度在同一次排版內穩定，不會來回震盪。
-- 測試專案為這些檢查參考 `Avalonia.Themes.Fluent` 12.1.1。只有捲軸測試在自己的視窗載入 `FluentTheme`。套件不增加任何相依。
+- 測試專案為這些檢查參考 `Avalonia.Themes.Fluent` 12.1.1。捲軸測試與暫存色票圖庫在各自的視窗載入 `FluentTheme`。套件不增加任何相依。
 - NFC 規則的同樣 7 個執行期案例，對完整 NFC 凍結檔的暫存副本也都通過。副本拿掉了 3 個選取 NFC view 型別的樣式，因為 Core 無法編譯它們。副本未保留。
 
-零差異採用：
+採用共用色票：
 
-- NFC 把第 117-185 行換成上面的 include，位置不變。NFC 必須逐像素相同：執行 UI smoke 測試，並以相同的作業系統、字型、DPI 與主題比對採用前後的桌面截圖。
+- NFC 把第 117-185 行換成上面的 include，位置不變。幾何維持相同，共用色票改變 thumb 顏色。執行 UI smoke 測試，以相同作業系統、字型、DPI 與主題附上採用前後影像供 owner 審查。
 - NFH 的外觀與行為會改變。NFH 的採用 PR 須附前後截圖，由 owner 核准外觀改變。非 UI 測試的清單與結果須相同。
 - NFH 保留 `scrollV2`、`scrollDevCandidate`、`workspaceDataList`、`workspaceGroupStripScroll` 與 `DevScrollPreviewHeight`。
 
