@@ -17,11 +17,15 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedInstallationLayout.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs`
 
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/StableManagedExecutableLaunchLease.cs` (complete lease adapter, PE checks, held measurement and copying; complete-content hashing delegates to Files)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemManagedVersionRepositoryTests.cs` (`AcquiredApplicationLeaseDeniesExecutableSwapUntilReleased` generic custody assertions only)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemInstalledLauncherRepositoryTests.cs` (generic held lease, ancestor replacement, content and late-child assertions; product schema and repository policy remain in NFC)
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。本模組不存取檔案系統或啟動 process；純路徑正規化遵循目前平台的規則。
+`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。這些值與介面不存取檔案系統或啟動 process；verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。
 
-抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護及 repository/state-reader 介面。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值與介面，experience partial 留在 NFC。`VersionManagerStateStore.cs` 抽取讀寫結果值與 `IVersionManagerStateReader`；writer acquisition 與 live custody 屬於獨立 persistence 合約。原生結構、execution token、ZIP plan 及嚴格 wire DTO/codec 不在本模組內。
+抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護及 repository/state-reader 介面。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值與介面，experience partial 留在 NFC。`VersionManagerStateStore.cs` 抽取讀寫結果值與 `IVersionManagerStateReader`；writer acquisition 與 live custody 屬於獨立 persistence 合約。原生 custody 結構屬於 Files；execution token、ZIP plan 與嚴格 wire DTO/codec 維持 internal 或由產品 owner 保留。
 
 ## Contracts
 
@@ -35,7 +39,7 @@ Catalog admission identity 保留 `version|relative-package-path|invariant-packa
 
 [ManagedLauncherIdentity.Create](../../../src/Nvt.Core/Launcher/Contracts/ManagedLauncherIdentity.cs) 要求 descriptor、明確且不超過 200,000,000 bytes 的正執行檔上限，以及所有精確 owner/version/hash/protocol/path/size 欄位。NFC 提供 200,000,000 bytes。Protocol 精確為 `1`；執行檔路徑以 ordinal 比較 descriptor；非空白 owner admission 最多 2,048 字元；兩個 digest 都必須是小寫 SHA-256。`MatchesOwner` 以 ordinal 比較應用版本、admission 字串與 manifest digest。`ManagedImmutableBootstrapIdentity.Create` 保留精確 descriptor root 檔名與 200,000,000-byte 上限。
 
-[ManagedPackageResults](../../../src/Nvt.Core/Launcher/Contracts/ManagedPackageResults.cs) 保留 install、verification、executable-lease 與 installed-launcher issue 值及成功條件，包括 `HasSupportedManagedLauncher`。`IManagedExecutableLaunchLease` 提供可 Dispose custody、精確 executable/working-directory 及啟動前最終同步驗證；本模組不實作 process starter 或 custody。
+[ManagedPackageResults](../../../src/Nvt.Core/Launcher/Contracts/ManagedPackageResults.cs) 保留 install、verification、executable-lease 與 installed-launcher issue 值及成功條件，包括 `HasSupportedManagedLauncher`。`IManagedExecutableLaunchLease` 提供可 Dispose custody、精確 executable/working-directory 及啟動前最終同步驗證；此 port 未宣告 process starter；其 internal Windows adapter 將 custody 委派給 Files。
 
 ## 啟用與 inventory API
 
@@ -166,3 +170,29 @@ Core 與凍結的 NFC verifier 有三處不同。每一處都是拒絕原始碼�
 - `VerifyAsync` 在讀取前先檢查套件 stream 可讀取且可 seek，並檢查候選套件大小不超過 `MaximumPackageBytes`。任一項不符時回傳 `PackageUnavailable`。
 - 讀取途中套件內容改變時，結果是 `PackageUnavailable`。原始碼回傳 `PackageMismatch`。
 - manifest 的檔案項目若名為 `RELEASE-MANIFEST.json` 或 `SHA256SUMS.txt`，會以 `InvalidPayload` 拒絕。
+## Held executable lease
+
+`Nvt.Core.Launcher.Windows.StableManagedExecutableLaunchLease` 是既有公開 `IManagedExecutableLaunchLease` 的 internal adapter，不新增公開 factory 或原生結構。Files 擁有所有原生路徑、樹、promotion 與相對寫入 custody。lease 提供精確 held `ExecutablePath`、其 parent `WorkingDirectory` 及 `TryValidateForStart()`。呼叫端須讓 lease 保持存活直到最後驗證與 process 建立；process 建立由 Processes 負責。
+
+internal acquisition 與 measurement 必須提供正值 `maximumExecutableBytes`。NFC 透過符合 descriptor 的 `ManagedLauncherIdentity.Create` 合約提供凍結的 200,000,000 位元組 launcher 上限。application consumer 保留自己的 admitted package 上限，不會把 launcher 上限默默套用到無關 application 檔案。預期大小無效或 digest 為空，保留在路徑取得前回傳 `Tampered` 的順序。unsafe、reparse 或 changed custody 對應 `UnsafePath`；無法存取、contended 或 unavailable custody 對應 `Unavailable`。
+
+`TryCreateAsync(ownedCustody, executableRelativePath, expectedSize, expectedSha256, maximumExecutableBytes, token)` 在每個結果都接收 custody 所有權。依序檢查取消、正值上限、精確長度、凍結 PE 條件，使用 `Files.BoundedFileReader.ReadAndHashAsync` 對完整 held bytes 計算雜湊、ordinal 比對 digest，再驗證封閉 held tree。不新增私有雜湊迴圈。成功時所有權轉入 lease；失敗或取消釋放串流與 custody。完整內容 EOF 與最後長度／位置檢查仍由 Files 提供。
+
+`TryCreateFromVerifiedTreeAsync` 是獨立的 internal 路徑，要求呼叫端已在相同 held tree 下驗證完整 package 內容；保留精確長度、PE 與 topology 檢查，不重複雜湊已證明內容。outer-launcher 路徑雜湊自己的執行檔，同時持有周圍 declared tree 的封閉 topology；其他 payload 位元組驗證屬於完整 application activation。兩者均不驗證產品 JSON，也不取代必要 NFC admission adapter。僅捕捉 topology 不授予 release content 權限。
+
+PE 檢查保留最少 64 位元組 DOS header、精確 `MZ`、`0x3C` 的 signed little-endian offset、offset 至少 64 且不超過長度減四，以及精確四位元組 `PE\0\0` signature。`CopyToAsync` 使用 create-new 輸出、凍結的 65,536 位元組 buffer、非同步 flush 與 flush-to-disk，原內容 custody 持續存活。measurement 使用相容 net8.0 的小寫 SHA-256。
+
+來源至 Core lease 測試對照：
+
+| 凍結來源案例 | `StableManagedExecutableLaunchLeaseTests` Core 案例 |
+| --- | --- |
+| `FileSystemManagedVersionRepositoryTests:65 AcquiredApplicationLeaseDeniesExecutableSwapUntilReleased` | 同名方法；合成 descriptor-relative 執行檔在 Dispose 前不可替換 |
+| `FileSystemInstalledLauncherRepositoryTests:196 AddedChildAfterManifestProofFailsClosedAndReleasesCustody` | 同名方法；通用實體 proof 與 release 斷言 |
+| `AcquiredLauncherLeaseClosesAncestorAdmissionRace` | 同名方法，保留一／兩層祖先 |
+| `SameLengthLauncherBytesChangedReturnsTamperedBeforeLeaseAdmission` | `SameLengthExecutableSwapFailsContentAdmission` |
+| `DeclaredNonLauncherMemberChangedIsRejectedByApplicationActivationAfterLeaseAdmission` | `VerifiedTreeDoesNotRehashContentButOuterLauncherDoes` 描述通用分工；完整產品 activation 斷言仍留在 NFC |
+| `RepositoryLeaseRejectsLateChildBeforeLauncherProcessStart` | `SharedProbeLateChildFailsFinalStartValidation` |
+
+其他案例涵蓋 PE 大小／offset 精確及相鄰邊界、全部 signature 位元組、199,999,999／200,000,000／200,000,001 位元組 sparse executable、每個 acquisition 與 transferred-custody 入口的無效上限、digest／大小順序、取消及 no-replace copy。實際 Windows child 證據使用共用 test probe：複製整個 framework-dependent 輸出目錄，只把 apphost 改為 descriptor 路徑。案例在 custody 持續存活時啟動該執行檔；確定性的 late-child gate 在產生 child 或 marker 前拒絕 start。
+
+NFC 保留嚴格 manifest／admission schema、產品名稱與安全路徑政策、release-coupled identity 權限、firmware、信任、發行核准與產品 process orchestration。採用使用獨立版本 nupkg、精確 `[x]` 版本、locked restore、限制來源映射及記錄的 source／package SHA-256。只有原呼叫端透過此 port 在 start 前後保留相同 held identity、原 schema／產品／值／trace／output 斷言通過，且必要 UI 像素比較相同後，NFC 才刪除舊 lease adapter。Core 測試不授予 Bootstrap 套件 wiring 權限。

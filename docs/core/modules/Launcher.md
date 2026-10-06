@@ -17,11 +17,15 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedInstallationLayout.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs`
 
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/StableManagedExecutableLaunchLease.cs` (complete lease adapter, PE checks, held measurement and copying; complete-content hashing delegates to Files)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemManagedVersionRepositoryTests.cs` (`AcquiredApplicationLeaseDeniesExecutableSwapUntilReleased` generic custody assertions only)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemInstalledLauncherRepositoryTests.cs` (generic held lease, ancestor replacement, content and late-child assertions; product schema and repository policy remain in NFC)
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` and `Nvt.Core.Launcher.Activation` provide BCL-only `net8.0` values and ports for managed application and launcher activation. The module performs no filesystem or process access. Pure path normalization uses the current platform's path rules.
+`Nvt.Core.Launcher.Contracts` and `Nvt.Core.Launcher.Activation` provide BCL-only `net8.0` values and ports for managed application and launcher activation. These values and ports perform no filesystem or process access; verification and the internal Windows lease adapter are described below. Pure path normalization uses the current platform's path rules.
 
-The extracted slices are version and content identities, descriptor and package-policy declarations, normalized package results, immutable application and launcher state, transition helpers, durable snapshot comparison, generic inventory, delete-owner protection, and repository/state-reader ports. `UpdateSourceRegistry.cs` contributes only `VersionSourceRegistryState`. `VersionManagementPolicy.cs` contributes inventory and generic delete decisions; its retention threshold, automatic deletion policy and discovery notifications remain in NFC. `LauncherMutationFence.cs` contributes protection values and its port; the experience partial remains in NFC. `VersionManagerStateStore.cs` contributes load/save result values and `IVersionManagerStateReader`; writer acquisition and live custody are separate persistence contracts. Native structures, execution tokens, ZIP plans and strict wire DTOs/codecs are outside this module.
+The extracted slices are version and content identities, descriptor and package-policy declarations, normalized package results, immutable application and launcher state, transition helpers, durable snapshot comparison, generic inventory, delete-owner protection, and repository/state-reader ports. `UpdateSourceRegistry.cs` contributes only `VersionSourceRegistryState`. `VersionManagementPolicy.cs` contributes inventory and generic delete decisions; its retention threshold, automatic deletion policy and discovery notifications remain in NFC. `LauncherMutationFence.cs` contributes protection values and its port; the experience partial remains in NFC. `VersionManagerStateStore.cs` contributes load/save result values and `IVersionManagerStateReader`; writer acquisition and live custody are separate persistence contracts. Native custody structures belong to Files; execution tokens, ZIP plans and strict wire DTOs/codecs stay internal or with their product owner.
 
 ## Contracts
 
@@ -35,7 +39,7 @@ Catalog admission identity remains `version|relative-package-path|invariant-pack
 
 [ManagedLauncherIdentity.Create](../../../src/Nvt.Core/Launcher/Contracts/ManagedLauncherIdentity.cs) requires the descriptor, an explicit positive executable ceiling no greater than 200,000,000 bytes, and every exact owner/version/hash/protocol/path/size field. NFC supplies 200,000,000 bytes. Protocol remains exactly `1`; the executable path matches the descriptor ordinally; the nonblank owner admission is at most 2,048 characters; both digests are lowercase SHA-256. `MatchesOwner` compares application version, admission string and manifest digest ordinally. `ManagedImmutableBootstrapIdentity.Create` retains its exact descriptor-bound root filename and 200,000,000-byte ceiling.
 
-[ManagedPackageResults](../../../src/Nvt.Core/Launcher/Contracts/ManagedPackageResults.cs) preserves install, verification, executable-lease and installed-launcher issue values and success predicates, including `HasSupportedManagedLauncher`. `IManagedExecutableLaunchLease` supplies disposable custody, exact executable/working-directory values and final synchronous validation. This module declares no process starter or custody implementation.
+[ManagedPackageResults](../../../src/Nvt.Core/Launcher/Contracts/ManagedPackageResults.cs) preserves install, verification, executable-lease and installed-launcher issue values and success predicates, including `HasSupportedManagedLauncher`. `IManagedExecutableLaunchLease` supplies disposable custody, exact executable/working-directory values and final synchronous validation. The port declares no process starter; its internal Windows adapter delegates custody to Files.
 
 ## Activation and inventory API
 
@@ -166,3 +170,29 @@ Core differs from the frozen NFC verifier in three places. Each one rejects inpu
 - `VerifyAsync` checks that the package stream can read and seek, and that the candidate package size is within `MaximumPackageBytes`, before it reads. Either failure returns `PackageUnavailable`.
 - When the package changes while it is read, the result is `PackageUnavailable`. The source returned `PackageMismatch`.
 - A manifest file entry named `RELEASE-MANIFEST.json` or `SHA256SUMS.txt` is rejected as `InvalidPayload`.
+## Held executable lease
+
+`Nvt.Core.Launcher.Windows.StableManagedExecutableLaunchLease` is an internal adapter to the existing public `IManagedExecutableLaunchLease` port. It adds no public factory or native structure. Files owns all native path, tree, promotion and relative-write custody. The lease exposes the exact held `ExecutablePath`, its parent `WorkingDirectory`, and `TryValidateForStart()`. The caller keeps the lease alive through final validation and process creation; process creation belongs to Processes.
+
+Internal acquisition and measurement require an explicit positive `maximumExecutableBytes`. NFC supplies its frozen 200,000,000-byte launcher ceiling through the descriptor-bound `ManagedLauncherIdentity.Create` contract. Application consumers retain their own admitted package ceiling; the launcher ceiling is not silently applied to unrelated application files. Invalid expected sizes or blank digests retain `Tampered` precedence before path acquisition. Unsafe, reparse or changed custody maps to `UnsafePath`; inaccessible, contended or unavailable custody maps to `Unavailable`.
+
+`TryCreateAsync(ownedCustody, executableRelativePath, expectedSize, expectedSha256, maximumExecutableBytes, token)` consumes custody on every outcome. It checks cancellation, positive limits, exact length and the frozen PE predicates, hashes complete held bytes through `Files.BoundedFileReader.ReadAndHashAsync`, compares the digest ordinally, then revalidates the closed held tree. No private hash loop is introduced. Successful ownership transfers into the lease; failures and cancellation release both stream and custody. Complete-content reader EOF and final length/position checks remain in Files.
+
+`TryCreateFromVerifiedTreeAsync` is the separate internal path for a caller that already verified complete package content under the same held tree. It retains exact length, PE and topology checks without rehashing already-proven content. The outer-launcher path hashes its own executable while holding closed topology for the surrounding declared tree; verification of other payload bytes belongs to full application activation. Neither internal path validates product JSON or replaces the mandatory NFC admission adapter. A captured topology alone does not authorize release content.
+
+PE checks retain a minimum 64-byte DOS header, exact `MZ`, a signed little-endian offset at `0x3C`, offset at least 64 and at most length minus four, and the exact four-byte `PE\0\0` signature. `CopyToAsync` uses create-new output, the frozen 65,536-byte buffer, asynchronous flush and flush-to-disk while original content custody remains held. Measurement uses lowercase SHA-256 compatible with net8.0.
+
+The source-to-Core lease test map is:
+
+| Frozen source case | Core case in `StableManagedExecutableLaunchLeaseTests` |
+| --- | --- |
+| `FileSystemManagedVersionRepositoryTests:65 AcquiredApplicationLeaseDeniesExecutableSwapUntilReleased` | Same method; synthetic descriptor-relative executable swap remains denied until disposal |
+| `FileSystemInstalledLauncherRepositoryTests:196 AddedChildAfterManifestProofFailsClosedAndReleasesCustody` | Same method; generic physical proof and release assertions |
+| `AcquiredLauncherLeaseClosesAncestorAdmissionRace` | Same method and one/two ancestor levels |
+| `SameLengthLauncherBytesChangedReturnsTamperedBeforeLeaseAdmission` | `SameLengthExecutableSwapFailsContentAdmission` |
+| `DeclaredNonLauncherMemberChangedIsRejectedByApplicationActivationAfterLeaseAdmission` | `VerifiedTreeDoesNotRehashContentButOuterLauncherDoes` characterizes the generic split; full product activation assertions remain NFC |
+| `RepositoryLeaseRejectsLateChildBeforeLauncherProcessStart` | `SharedProbeLateChildFailsFinalStartValidation` |
+
+Additional cases cover exact and neighboring PE size/offset bounds, all signature bytes, 199,999,999/200,000,000/200,000,001-byte sparse executables, invalid limits at every acquisition and transferred-custody entry point, digest/size ordering, cancellation and no-replace copying. Real Windows child evidence uses the shared test probe: its entire framework-dependent output directory is copied and only its apphost is renamed to the descriptor path. One case starts that executable while custody stays held; a deterministic late-child gate rejects start before a child or marker exists.
+
+NFC retains strict manifest/admission schemas, product names and safe-path policy, release-coupled identity authority, firmware, trust, release approval and product process orchestration. Adoption uses independently versioned nupkg files, exact `[x]` versions, locked restore, restricted source mapping and recorded source/package SHA-256. NFC removes its old lease adapter only after retained callers consume this port with the same held identity through start, original schema/product/value/trace/output assertions pass and required UI pixel comparisons remain identical. Core tests confer no Bootstrap package wiring authority.

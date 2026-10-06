@@ -14,6 +14,14 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs` (unique workspace, byte writing, and bounded Windows disposal slices)
 - `tests/NvtFwCombiner.TestSupport/RepositoryPaths.cs` (`NormalizeRelativePath` only)
 
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/WindowsStablePathCustody.cs` (held identity, closed-tree capture, cloning, explicit limits and native issue mapping; product defaults replaced by required parameters)
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/WindowsStablePathCustody.Native.cs` (complete no-follow relative opens, identity, duplication, deletion and native rename primitives)
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/WindowsStablePathCustody.Promotion.cs` (complete held capture, promotion transition, exact snapshots, deletion and missing-child observations)
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/WindowsStableRelativeWriteTree.cs` (complete relative write, reservation, native promotion and exact cleanup mechanism; directory names and strict path admission supplied by the caller)
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs` (`PathComparer` only; product policy and repository helpers remain in NFC)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/WindowsStablePathCustodyTests.cs` (generic custody assertions)
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemManagedVersionRepositoryTests.WriteCustody.cs` (relative-write, promotion and cleanup assertions; repository and product assertions remain in NFC)
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
 `Nvt.Core.Files` 解析根目錄路徑、拒絕非一般檔案、依明確位元組上限開啟檔案，並以既有有界 SHA-256 串流讀取器讀取完整內容。串流迴圈、尾端位元組探測及最終長度/位置檢查未變。產品提示與模型留在 NFC。
@@ -150,7 +158,7 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 
 開啟設定為 `Open`、`Read`、`FileShare.Read`、`Asynchronous | SequentialScan` 及 64 KiB 緩衝區。讀取器以 `await using` 持有並釋放串流，量得長度後，超過呼叫端上限則拋出 `FileSizeLimitExceededException`，否則以 `ConfigureAwait(false)` 委派至未變的 `ReadAndHashAsync`。
 
-這些是開啟前的根目錄檢查，不是持續持有的檔案系統 custody。它們無法消除路徑替換競爭，也無法偵測單次讀取期間所有長度不變的改寫。`ReadFileAsyncDetectsSameSizeMutation` 驗證兩次完整讀取之間完成的改寫。後續 Files Windows custody 工作提供更強的保證。
+這些是開啟前的根目錄檢查，不是持續持有的檔案系統 custody。它們無法消除路徑替換競爭，也無法偵測單次讀取期間所有長度不變的改寫。`ReadFileAsyncDetectsSameSizeMutation` 驗證兩次完整讀取之間完成的改寫。下節所述 Files Windows custody 提供更強的保證。
 
 ## 路徑測試對照與邊界
 
@@ -187,11 +195,11 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 
 ## 所有權與採用
 
-Files 擁有此根目錄機制、一般檔案防護，以及唯一的完整內容串流雜湊迴圈。沒有新增重複讀取迴圈或原生 custody owner。NFC 保留 `ProtectedPathGuard`、`LocalFileIdentity`、強化輸出寫入器、產品上限及套件路徑政策、stamp、選取檔案模型、顯示提示、schema、信任及發行權限。
+Files 擁有根目錄解析、一般檔案防護、唯一的完整內容雜湊迴圈及 held Windows custody。NFC 保留 `ProtectedPathGuard`、`LocalFileIdentity`、強化輸出寫入器、產品上限及套件路徑政策、stamp、選取檔案模型、顯示提示、schema、信任及發行權限。
 
 NFC 以自己的獨立 PR 採用本模組。該 PR 在建置時透過 `core-packages.json` 下載已驗證且具版本的 nupkg，並使用精確 `[x]` 版本、鎖定相依與來源映射。清單記錄每個套件的 Release 標籤與 SHA-256。共用參照與鎖定檔由 NFC 內的負責者管理。只有呼叫端已使用 Core、保留 NFC 模式與例外映射、全部 40 路徑與 12 檔案案例通過，且必要產品輸出與像素證據通過後，才刪除搬移的 NFC 一般機制。Core 測試不能單獨證明 NFC 產品或像素相等。
 
-之後的 Files 擴充會加入 held Windows 讀取 custody。本版本不提供此能力。
+
 
 ## 離線驗證
 
@@ -202,3 +210,75 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Files"
 dotnet test Nvt.Core.sln --no-build
 ```
+## Windows held custody
+
+`Nvt.Core.Files.Windows` 擁有唯一的 internal Windows 原生路徑、promotion 與相對寫入樹實作。這些型別供 Core 內部協作使用，不新增公開 Files API。原生結構、建構式、snapshot 及確定性測試 hook 均維持 internal。
+
+不可變樹必須使用以下介面：
+
+```csharp
+internal static WindowsStableCustodyResult TryAcquireImmutableTree(
+    string absoluteRoot, WindowsStableTreeLimits limits,
+    CancellationToken cancellationToken,
+    Action<WindowsStableCustodyStage>? testHook = null);
+```
+
+`WindowsStableTreeLimits(maximumFiles, maximumDirectories, maximumBytes)` 依檔案、目錄、位元組順序要求正值。取得 custody 時也拒絕 default limits struct。reservation 數量可以為零，但不可為負值。`ForInstalledVersion(maximumFiles, maximumDirectories, maximumExpandedBytes, maximumAdmissionBytes)` 依此順序檢查每個正值，並以 checked 算術相加展開量與 admission allowance。不提供套件專屬預設值。
+
+| Reservation | 凍結 NFC 值 | 呼叫端提供的合約 |
+| --- | ---: | --- |
+| 檔案 | 4,097 | `MaximumFiles` |
+| 子目錄，不含 held root | 4,096 | `MaximumDirectories` |
+| 展開 payload 位元組 | 536,870,912 | `maximumExpandedBytes` |
+| Admission allowance 位元組 | 4,096 | `maximumAdmissionBytes` |
+| 已安裝總位元組 | 536,875,008 | 展開量與 admission 的 checked 加總；`MaximumBytes` |
+| 相對路徑字元 | 512 | `maximumRelativePathCharacters` 與必要的嚴格 NFC admission |
+
+Core 不會自行擴大上限。admission allowance 保留整棵樹的總空間；admission 文件解析及個別讀取上限由安裝 consumer 負責。剩餘位元組預算先減後加。子項目列舉 allowance 保留 checked 算術及多一項的 overflow sentinel。
+
+取得 custody 會正規化本機 fixed-volume 絕對路徑，拒絕相對、UNC、device、extended 與 alternate-stream authority。開啟 volume 與每個祖先時不跟隨 reparse point，再相對於保留的 parent handle 開啟子項目。祖先拒絕刪除；不可變樹的檔案及目錄拒絕寫入與刪除。每個項目都檢查預期型別與 reparse 屬性。完整封閉 topology 以 ordinal 排序名稱捕捉兩次；最終驗證逐一比對 held volume/file identity 與每個目錄的精確子項目清單。即使原內容仍被鎖定，新增子項目也會使 proof 失效。路徑及 held identity 缺一不可；正規化本身不提供 custody。
+
+`TryAcquireFile`、`TryAcquireWritableParent`、`TryAcquirePromotableTree` 與 delete-capable 方法保留不同 sharing 合約。缺少子項目的證據須在同一 held parent 下觀察兩次，不能把無法存取的祖先或建立競態視為缺少。`TryClone` 複製現有 handle，不重新依路徑取得；sharing 不變，每份複本有獨立所有權。取得失敗、取消、中斷 clone 與 hook 故障均釋放部分所有權。借用的 held root 仍屬呼叫端。
+
+`OpenReadOnlyFile` 將複製的 handle 交給呼叫端擁有的串流，固定串流緩衝區為 4,096 位元組。完整讀取使用 `BoundedFileReader.ReadAndHashAsync`，保留其 65,536 位元組緩衝區、尾端一位元組 probe 與最後長度／位置檢查；custody 不新增私有雜湊迴圈。
+
+### Promotion 與相對寫入合約
+
+`WindowsStableRelativeWriteRoot.TryAcquire(root, out writeRoot)` 持有可寫 root 及其祖先。`FromHeldDirectory(root, heldRoot)` 以複製 handle 借用既有目錄身分，兩者均不自行建立 installation root。
+
+```csharp
+internal WindowsStableCustodyIssue TryCreateVersionTree(
+    string versionName, string stagingDirectoryName, string versionsDirectoryName,
+    WindowsStableTreeReservation reservation, int maximumRelativePathCharacters,
+    Func<string, bool> isSafeRelativePayloadPath,
+    Action<string>? afterDirectoryCreated,
+    out WindowsStableRelativeWriteTree? tree);
+```
+
+呼叫端必須提供兩個目錄名稱、精確檔案／目錄／位元組 reservation、正值路徑上限及嚴格產品路徑 callback。單純目錄名稱解析使用 `RootedPathGuard`；更強的寫入 custody 仍由 held native parent 提供。NFC 保留受保護的 `ManagedRelativePathRules` 並提供更嚴格的 callback，沒有接受所有輸入的預設或 fallback。
+
+`CreateFile` 相對於保留的 no-follow parent 建立每個目錄及 leaf，使用 create-new 語意並持有原始 handle。巢狀 junction 競態會失敗，不能將寫入導向樹外。`PrepareForPromotion` 檢查精確檔案與目錄數、先減後加的實際位元組、兩次精確 topology，再記錄 owned identity snapshot 並釋放 descendant handle。`Promote` 在 held destination parent 下執行原生 same-volume 相對 rename，禁止 replacement，不以一般依路徑 move 取代。
+
+`CapturePromotedImmutableTree` 捕捉相同 held root 並逐一比對 snapshot identity。`TryTransitionPromotedTreeToImmutableCustody` 以 read bridge 保留同一身分，將 delete-capable promotion custody 轉換為 immutable custody。rename 結構保留 32-bit 與 64-bit layout，filename offset 分別為 12 與 20。`Cleanup` 與 `RollbackPromotionAndCleanup` 只移除 owned identity；foreign child 或被替換的 descendant 會保留並回傳 `Changed`。重用的 staging 名稱不會被當成 promoted tree。cleanup 具冪等性，取消不能免除精確 rollback 責任。
+
+### Custody 測試對照
+
+來源檔案均位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`；Core Files 測試位於 `tests/Nvt.Core.Tests/Files/Windows/`。
+
+| 凍結來源案例 | Core 案例 |
+| --- | --- |
+| `WindowsStablePathCustodyTests:102 ImmutableTreeLocksContentAndDetectsAddedChildUntilDisposed` | `WindowsStablePathCustodyTests` 同名方法 |
+| `WindowsStablePathCustodyTests:136 FileCustodyCannotMixAnAncestorReplacementWithTheOriginalLeaf` | `WindowsStablePathCustodyTests` 同名方法 |
+| `WindowsStablePathCustodyTests:274 ImmutableTreeRejectsReparseChild` | `WindowsStablePathCustodyTests` 同名方法 |
+| `WindowsStablePathCustodyTests:325 ImmutableTreeEnforcesPackageEntryBoundAndReleasesPartialCustody` | `WindowsStablePathCustodyTests` 同名方法，保留 4,098 個實體項目 |
+| `WindowsStablePathCustodyTests` 其他通用案例 | 同名方法，含凍結檔案／位元組精確上限、獨立目錄上限、取消、missing-child 競態與長 descendant 身分 |
+| `WriteCustody.cs: PreparedTreePromotesWithHeldParentAndDeletesExactFinalTree` | `WindowsStableRelativeWriteTreeTests` 同名方法 |
+| `WriteCustody.cs: PromotedTreeCancellationCleansHeldRootAndPreservesForeignStagingReplacement` | `WindowsStableRelativeWriteTreeTests` 同名方法 |
+| `WriteCustody.cs: PreparedTreeRejectsAndPreservesSubstitutedDescendant` | `WindowsStableRelativeWriteTreeTests` 同名方法 |
+| `WriteCustody.cs: InstallRejectsNestedJunctionRaceWithoutOutsideWriteOrPromotion` | `WindowsStableRelativeWriteTreeEdgesTests.NestedJunctionRaceNeverWritesOutsideAndPreservesForeignResidue` |
+| `WriteCustody.cs: InstallBlocksVerifiedFileRewriteAndRejectsLateChildBeforePromotion`、`InstallReportsCleanupIncompleteWhenForeignChildPreventsExactCleanup` | `HeldRewriteIsDeniedAndLateChildPreventsPromotionAndExactCleanup` 保留通用實體斷言 |
+| `WriteCustody.cs: InstallPromotionNeverReplacesLateDestination` | `WindowsStableRelativeWriteTreeEdgesTests.PromotionNeverReplacesLateDestination` |
+
+`WindowsStableTreeLimitsTests` 涵蓋各上限零／負值、default struct、精確 NFC reservation 與相鄰值、展開量／admission allowance 輸入及 checked 加總 overflow。`WindowsStablePathCustodyEdgesTests` 使用實際 Windows handle 測試凍結檔案、目錄及 sparse installed-byte 邊界的少一／精確／多一，也涵蓋 linked ancestor、native open 失敗、stage fault、中斷複製及 clone 釋放後 sharing。`WindowsStablePromotionAcquisitionTests` 涵蓋每種 acquisition mode 的 capture 失敗、借用所有權、missing-child observation fault 、每種 mode 的 checked enumeration overflow cleanup、null-root 例外順序，以及 checked 原生 UTF-16 名稱 32,767 字元上限的 32,766／32,767／32,768 邊界。write-tree edge 測試涵蓋 511／512／513 字元、必要 policy、非正值路徑上限、獨立檔案／目錄 reservation 及精確實際位元組 reservation。
+
+fixture 僅含合成位元組，位於唯一的暫存目錄。不支援的作業系統明確略過 native 案例；缺少 link 建立權限時明確略過 link 案例。repository 安裝結果、產品 schema 與發行權限仍由 NFC 提供證據。只有 Core consumer 在採用期間保留相同 held identity、原產品斷言保留原值與輸出，且獨立審查的版本化套件採用符合產品與 UI 相容規則後，NFC 才刪除已搬移的原生 owner。此抽取不授權 Bootstrap 套件 wiring。
