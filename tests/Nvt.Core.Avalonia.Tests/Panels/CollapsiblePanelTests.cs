@@ -237,21 +237,21 @@ public sealed class CollapsiblePanelTests
         try
         {
             ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
-            ContentPresenter presenter = Assert.Single(header.GetVisualDescendants().OfType<ContentPresenter>(),
-                candidate => candidate.Name == "PART_ContentPresenter");
+            Border presenter = Assert.Single(header.GetVisualDescendants().OfType<Border>(),
+                candidate => candidate.Name == "RoleBorder");
             Assert.True(header.IsChecked);
-            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.Background).Color);
-            AssertBrush(presenter.BorderBrush, "NfcBorderBrush", dark);
+            AssertBrush(presenter.Background, "NfcAccentSurfaceBrush", dark);
+            AssertBrush(presenter.BorderBrush, "NfcAccentBorderBrush", dark);
 
             Point center = header.TranslatePoint(new Point(header.Bounds.Width / 2, header.Bounds.Height / 2), host)!.Value;
             host.MouseMove(center);
-            AssertBrush(presenter.Background, "NfcAccentSurfaceBrush", dark);
+            AssertBrush(presenter.Background, "NfcAccentSurfaceSubtleBrush", dark);
             host.MouseDown(center, MouseButton.Left);
             AssertBrush(presenter.Background, "NfcSecondaryActionPressedBrush", dark);
             host.MouseUp(center, MouseButton.Left);
             Assert.False(panel.IsExpanded);
-            AssertBrush(presenter.Background, "NfcAccentSurfaceBrush", dark);
-            AssertBrush(presenter.BorderBrush, "NfcBorderBrush", dark);
+            AssertBrush(presenter.Background, "NfcSelectionSurfaceBrush", dark);
+            Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.BorderBrush).Color);
         }
         finally { host.Close(); }
     }
@@ -292,10 +292,12 @@ public sealed class CollapsiblePanelTests
             Assert.Equal(new Thickness(1), root.BorderThickness);
             Assert.Equal(new CornerRadius(6), root.CornerRadius);
             Assert.Equal(new Thickness(0), root.Padding);
-            Assert.True(root.ClipToBounds);
-            Assert.Equal(new Thickness(12, 10), header.Padding);
-            Assert.Equal(new Thickness(0, 0, 0, 1), header.BorderThickness);
-            Assert.Equal(new CornerRadius(10, 10, 0, 0), header.CornerRadius);
+            Assert.False(root.ClipToBounds);
+            Assert.Equal(new Thickness(14, 0), header.Padding);
+            Assert.Equal(32, header.Height);
+            Assert.Contains("actionGhost", header.Classes);
+            Assert.Equal(new Thickness(1), header.BorderThickness);
+            Assert.Equal(new CornerRadius(999), header.CornerRadius);
             Assert.Equal(HorizontalAlignment.Stretch, header.HorizontalContentAlignment);
             Assert.Equal(new Thickness(10), body.Padding);
             Assert.Equal(new Thickness(0, 1, 0, 0), body.BorderThickness);
