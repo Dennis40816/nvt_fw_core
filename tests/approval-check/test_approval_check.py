@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import copy
+import base64
 from contextlib import redirect_stdout
 import http.client
+import hashlib
 import importlib.util
 import io
 import json
@@ -707,6 +709,271 @@ class ApprovalCheckTests(unittest.TestCase):
         caller_uses = re.findall(r"(?m)^        uses: (.+)$", caller)
         self.assertEqual(caller_uses, [
             "Dennis40816/nvt_fw_core/actions/approval-check@" + "0" * 40])
+
+
+class CarryoverTests(unittest.TestCase):
+    def setUp(self):
+        self.reader = MemoryReader()
+        self.policy = copy.deepcopy(POLICY)
+        self.policy["review_carryover"] = {"enabled": True, "allowlist": ["docs/**"]}
+        record = self.reader.payloads["reviews-1"][0]
+        record.update(commit_id=OLD, body=f"Review record: {OLD} accept")
+        self.reader.payloads["compare"] = {"behind_by": 0, "files": []}
+        self.reader.payloads["compare-accepted"] = {"behind_by": 1, "files": []}
+        self.reader.payloads["files-1"] = []
+        for commit, tree in ((OLD, "1" * 40), (HEAD, "2" * 40), ("b" * 40, "3" * 40)):
+            self.reader.payloads[f"commit-{commit}"] = {"tree": {"sha": tree}}
+            self.reader.payloads[f"tree-{tree}"] = {"truncated": False, "tree": []}
+
+    def change(self, path="docs/notes.md", before="Original.\n", after="Updated.\n"):
+        for text, label, tree in ((before, "compare-accepted", "1" * 40),
+                                  (after, "compare", "2" * 40)):
+            if text is None:
+                continue
+            data = text.encode("utf-8")
+            blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+            self.reader.payloads[f"blob-{blob}"] = {
+                "sha": blob, "encoding": "base64",
+                "content": base64.b64encode(data).decode() + "\n"}
+            files = self.reader.payloads[label]["files"]
+            files[:] = [item for item in files if item["filename"] != path]
+            files.append({"filename": path, "status": "added" if before is None else "modified",
+                          "sha": blob})
+            entries = self.reader.payloads[f"tree-{tree}"]["tree"]
+            entries[:] = [item for item in entries if item["path"] != path]
+            entries.append({"path": path, "mode": "100644", "type": "blob", "sha": blob})
+            if label == "compare-accepted":
+                self.reader.payloads[f"tree-{'3' * 40}"]["tree"] = copy.deepcopy(entries)
+        self.reader.payloads["files-1"] = copy.deepcopy(self.reader.payloads["compare"]["files"])
+
+    def result(self):
+        return {name: (ok, reason) for name, ok, reason in
+                approval.evaluate(self.reader, self.policy, None)}
+
+    def test_off_keeps_existing_results_and_requests(self):
+        self.change()
+        for setting in (None, False, {}, {"enabled": False, "allowlist": ["docs/**"]}):
+            for current in (False, True):
+                with self.subTest(setting=setting, current=current):
+                    self.policy.pop("review_carryover", None)
+                    if setting is not None:
+                        self.policy["review_carryover"] = setting
+                    self.reader.payloads["reviews-1"][0]["body"] = (
+                        f"Review record: {HEAD if current else OLD} accept")
+                    self.reader.paths.clear()
+                    self.assertEqual(self.result()["review record"],
+                                     (True, "latest allowed review record accepts the current head")
+                                     if current else
+                                     (False, "latest review record names an older or different head"))
+                    self.assertEqual([label for label, _ in self.reader.paths],
+                                     ["pull", "base-ref", "compare", "files", "reviews"])
+
+    def test_small_change_carries_and_summary_names_reviewed_sha(self):
+        import tempfile
+        # Unchanged HTML and URLs do not block a prose change; fences anywhere in the file do.
+        unchanged = "<div></div>\nhttps://example.com\n<!-- comment -->\nPlain unchanged text.\n"
+        self.change(before=unchanged + "Original.\n", after=unchanged + "Updated.\n")
+        self.change("docs/extra.txt", before=None, after="An extra note.\n")
+        self.reader.payloads["pull"]["base"]["sha"] = OLD
+        with tempfile.TemporaryDirectory() as directory:
+            policy = Path(directory) / "policy.json"
+            summary = Path(directory) / "summary.md"
+            policy.write_text(json.dumps(self.policy), encoding="utf-8")
+            with mock.patch.object(approval, "Reader", return_value=self.reader):
+                with redirect_stdout(io.StringIO()) as output:
+                    code = approval.main([
+                        "--repository", "Dennis40816/nvt-event-buffer-replay",
+                        "--pull-request", "1", "--fixture", str(FIXTURE),
+                        "--policy", str(policy), "--summary", str(summary)])
+            self.assertEqual(code, 0)
+            self.assertEqual(summary.read_text(encoding="utf-8"), output.getvalue())
+        self.assertIn(f"accept carried over from {OLD}; 2 file(s), 3 added/deleted line(s)",
+                      output.getvalue())
+        for path in ("docs/notes.md", "docs/extra.txt"):
+            self.assertIn(path, output.getvalue())
+        self.assertIn(("compare-accepted", f"compare/{'b' * 40}...{OLD}"), self.reader.paths)
+        # A carried result is not a new review: the next run still compares with OLD.
+        self.change(before=unchanged + "Original.\n", after=unchanged + "New.\n" * 40)
+        self.assertFalse(self.result()["review record"][0])
+
+    def test_file_and_line_limits(self):
+        for counts, passes, reason in (((8,) * 5, True, "40 added/deleted"),
+                                       ((1,) * 6, False, "5 files"),
+                                       ((41,), False, "40 added/deleted"),
+                                       ((9, 8, 8, 8, 8), False, "40 added/deleted")):
+            with self.subTest(counts=counts):
+                self.setUp()
+                for index, count in enumerate(counts):
+                    self.change(f"docs/{index}.txt", before=None, after="Note.\n" * count)
+                ok, detail = self.result()["review record"]
+                self.assertEqual(ok, passes)
+                self.assertIn(reason, detail)
+
+    def test_forbidden_content_on_either_side(self):
+        cases = (
+            ("", "```\n"), ("", "~~~\n"),
+            ("```\nold\n```\n", "```\nnew\n```\n"),
+            ("~~~\nold\n~~~\n", "~~~\nnew\n~~~\n"),
+            ("````\n```\nold\n````\n", "````\n```\nnew\n````\n"),
+            ("> ```\n> old\n> ```\n", "> ```\n> new\n> ```\n"),
+            ("", "https://example.com\n"), ("", "www.example.com\n"),
+            ("", "mailto:review@example.com\n"), ("", "[link](relative.md)\n"),
+            ("", "ipfs:content\n"),
+            ("", "[link]: relative.md\n"), ("", "<b>hidden</b>\n"),
+            ("<script>\nold\n</script>\n", "<script>\nnew\n</script>\n"),
+            ("<div>\nold\n</div>\n", "<div>\nnew\n</div>\n"),
+            ('<div title="/>\n</div>\n">\nold\n</div>\n',
+             '<div title="/>\n</div>\n">\nnew\n</div>\n'),
+            ("<!--\nold\n-->\n", "<!--\nnew\n-->\n"),
+            ("<a\n title=old\n>\n", "<a\n title=new\n>\n"),
+            ("", "Zero\u200bwidth\n"), ("", "Bidi\u202econtrol\n"),
+            ("", "Soft\u00adhyphen\n"), ("", "Hidden&#8203;text\n"),
+        )
+        for before, after in cases:
+            for reverse in (False, True):
+                with self.subTest(after=after, reverse=reverse):
+                    self.setUp()
+                    self.change(before=after if reverse else before,
+                                after=before if reverse else after)
+                    ok, detail = self.result()["review record"]
+                    self.assertFalse(ok)
+                    self.assertIn("forbidden content", detail)
+
+    def test_indented_or_quoted_fence_does_not_carry(self):
+        for fence in ("~~~", "```"):
+            for prefix in ("    ", "> ", "    > >\t"):
+                before = f"{fence}\n{prefix}{fence}\nold_command\n{fence}\n"
+                after = before.replace("old_command", "new_command")
+                for reverse in (False, True):
+                    with self.subTest(fence=fence, prefix=prefix, reverse=reverse):
+                        self.setUp()
+                        self.change(before=after if reverse else before,
+                                    after=before if reverse else after)
+                        ok, detail = self.result()["review record"]
+                        self.assertFalse(ok)
+                        self.assertIn("forbidden content", detail)
+
+    def test_multiline_link_destinations_do_not_carry(self):
+        for opening, closing in (("[download](", ")\n"), ("[download]:", "")):
+            for separator in ("\n", "\n\n"):
+                before = opening + separator + "old-package.zip\n" + closing
+                after = before.replace("old-package.zip", "new-package.zip")
+                for reverse in (False, True):
+                    with self.subTest(opening=opening, separator=separator, reverse=reverse):
+                        self.setUp()
+                        self.change(before=after if reverse else before,
+                                    after=before if reverse else after)
+                        ok, detail = self.result()["review record"]
+                        self.assertFalse(ok)
+                        self.assertIn("forbidden content", detail)
+
+    def test_fence_in_base_accepted_or_current_file_does_not_carry(self):
+        for version in ("base", "accepted", "current", "accepted-and-current"):
+            for fence in ("~~~", "```"):
+                with self.subTest(version=version, fence=fence):
+                    self.setUp()
+                    fenced = f"{fence}\nUnchanged command.\n{fence}\n"
+                    self.change(
+                        before=(fenced if version in ("accepted", "accepted-and-current") else "")
+                        + "Original.\n",
+                        after=(fenced if version in ("current", "accepted-and-current") else "")
+                        + "Updated.\n")
+                    if version == "base":
+                        data = fenced.encode("utf-8")
+                        blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+                        self.reader.payloads[f"blob-{blob}"] = {
+                            "sha": blob, "encoding": "base64",
+                            "content": base64.b64encode(data).decode()}
+                        self.reader.payloads[f"tree-{'3' * 40}"]["tree"][0]["sha"] = blob
+                    ok, detail = self.result()["review record"]
+                    self.assertFalse(ok)
+                    self.assertIn("forbidden content", detail)
+
+    def test_unavailable_base_fence_evidence_does_not_carry(self):
+        for missing in (f"commit-{'b' * 40}", f"tree-{'3' * 40}"):
+            with self.subTest(missing=missing):
+                self.setUp()
+                self.change()
+                del self.reader.payloads[missing]
+                self.assertFalse(self.result()["review record"][0])
+
+    def test_clean_base_merge_carries_identical_net_change(self):
+        self.change("src/code.cs", before="Reviewed code.\n", after="Reviewed code.\n")
+        self.reader.payloads["reviews-1"].append(review(101, commit=OLD))
+        result = self.result()
+        self.assertTrue(result["review record"][0])
+        self.assertIn(f"accept carried over from {OLD}; 0 file(s), 0 added/deleted line(s)",
+                      result["review record"][1])
+        self.assertFalse(result["owner approval"][0])
+        self.assertTrue(result["up to date"][0])
+        self.assertFalse(any(label.startswith("blob-") for label, _ in self.reader.paths))
+
+    def test_ineligible_paths_statuses_and_modes(self):
+        for path in ("README.md", "docs/release.md", "docs/adr/decision.md", "docs/code.py",
+                     "tests/existing.txt"):
+            with self.subTest(path=path):
+                self.setUp()
+                self.policy["review_carryover"]["allowlist"].append("tests/**")
+                self.change(path)
+                self.assertFalse(self.result()["review record"][0])
+        for status in ("removed", "renamed", "copied"):
+            for label in ("compare", "compare-accepted"):
+                with self.subTest(status=status, label=label):
+                    self.setUp()
+                    self.change()
+                    item = self.reader.payloads[label]["files"][0]
+                    item.update(status=status, previous_filename="src/old.cs")
+                    self.assertFalse(self.result()["review record"][0])
+        for mode, kind in (("100755", "blob"), ("120000", "blob"), ("160000", "commit")):
+            with self.subTest(mode=mode):
+                self.setUp()
+                # Same blob and net metadata: mode changes still require review.
+                self.change(before="Same.\n", after="Same.\n")
+                self.reader.payloads[f"tree-{'2' * 40}"]["tree"][0].update(mode=mode, type=kind)
+                self.assertFalse(self.result()["review record"][0])
+
+    def test_latest_record_and_unavailable_evidence_fail_closed(self):
+        for body, state in ((f"Review record: {OLD} reject", "COMMENTED"),
+                            (f"**Review record: {OLD} accept**", "COMMENTED"),
+                            (f"Review record: {OLD} accept", "DISMISSED"),
+                            (f"Review record: {OLD} accept", "CHANGES_REQUESTED")):
+            with self.subTest(body=body, state=state):
+                self.setUp()
+                self.change()
+                self.reader.payloads["reviews-1"].append(review(101, state=state, body=body))
+                self.assertFalse(self.result()["review record"][0])
+                self.assertNotIn("compare-accepted", [label for label, _ in self.reader.paths])
+        for label in ("compare", "compare-accepted"):
+            for count in (300, 301):
+                with self.subTest(label=label, count=count):
+                    self.setUp()
+                    self.change()
+                    self.reader.payloads[label]["files"] *= count
+                    self.assertFalse(self.result()["review record"][0])
+        for missing in ("compare-accepted", f"commit-{OLD}", f"tree-{'1' * 40}"):
+            with self.subTest(missing=missing):
+                self.setUp()
+                self.change()
+                del self.reader.payloads[missing]
+                self.assertFalse(self.result()["review record"][0])
+        for truncated in ("compare", "compare-accepted", f"tree-{'1' * 40}",
+                          f"tree-{'2' * 40}"):
+            with self.subTest(truncated=truncated):
+                self.setUp()
+                self.change()
+                self.reader.payloads[truncated]["truncated"] = True
+                self.assertFalse(self.result()["review record"][0])
+        for content in ("invalid base64!", "/w=="):
+            with self.subTest(content=content):
+                self.setUp()
+                self.change()
+                blob = self.reader.payloads["compare"]["files"][0]["sha"]
+                self.reader.payloads[f"blob-{blob}"]["content"] = content
+                self.assertFalse(self.result()["review record"][0])
+        self.setUp()
+        self.change(before="Same.\n", after="Same.\n")
+        self.reader.payloads[f"tree-{'1' * 40}"]["tree"] = []
+        self.assertFalse(self.result()["review record"][0])
 
 
 if __name__ == "__main__":
