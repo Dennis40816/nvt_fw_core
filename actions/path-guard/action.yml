@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Dennis Liu. All rights reserved.
+name: Path guard
+description: Check tracked test, configuration, and fixture text for nonportable literal paths.
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.13'
+    - name: Check paths
+      shell: pwsh
+      env:
+        PATH_GUARD_REPOSITORY: ${{ github.workspace }}
+      run: |
+        & "$env:GITHUB_ACTION_PATH/check.ps1" -RepositoryRoot $env:PATH_GUARD_REPOSITORY
