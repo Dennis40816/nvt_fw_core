@@ -297,7 +297,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.0.5, )",
-          "Nvt.Core": "[1.0.0, )"
+          "Nvt.Core": "[0.1.0, )"
         }
       },
       "Avalonia": {
