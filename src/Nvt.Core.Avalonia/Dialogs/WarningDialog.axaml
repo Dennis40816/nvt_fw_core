@@ -33,6 +33,7 @@
                   HorizontalAlignment="Right"
                   Margin="0,14,0,0">
         <Button x:Name="OkButton"
+                Classes="actionPrimary"
                 Click="OkButtonClick"
                 Content="OK"/>
       </StackPanel>

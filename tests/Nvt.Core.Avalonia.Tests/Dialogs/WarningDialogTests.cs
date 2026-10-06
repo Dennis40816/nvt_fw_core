@@ -4,8 +4,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.Dialogs;
 using Xunit;
 using Path = Avalonia.Controls.Shapes.Path;
@@ -39,9 +41,13 @@ public sealed class WarningDialogTests
     {
         var dialog = new WarningDialog("DXF not loaded",
             "Export DXF image requires an imported DXF.\nPlease load a DXF file first.");
-        Assert.Equal("DXF not loaded", dialog.FindControl<SelectableTextBlock>("TitleText")!.Text);
-        Assert.Contains("requires an imported DXF", dialog.FindControl<SelectableTextBlock>("MessageText")!.Text,
-            StringComparison.Ordinal);
+        try
+        {
+            Assert.Equal("DXF not loaded", dialog.FindControl<SelectableTextBlock>("TitleText")!.Text);
+            Assert.Contains("requires an imported DXF", dialog.FindControl<SelectableTextBlock>("MessageText")!.Text,
+                StringComparison.Ordinal);
+        }
+        finally { dialog.Close(); }
     }
 
     /// <summary>OK closes the window and completes the owner's actual modal task without a result.</summary>
@@ -78,16 +84,20 @@ public sealed class WarningDialogTests
     public void ParameterlessConstructorPreservesWindowSettings()
     {
         var dialog = new WarningDialog();
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("TitleText")!.Text));
-        Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("MessageText")!.Text));
-        Assert.Equal("OK", dialog.FindControl<Button>("OkButton")!.Content);
-        Assert.Equal(360, dialog.Width);
-        Assert.Equal(170, dialog.Height);
-        Assert.False(dialog.CanResize);
-        Assert.Equal(WindowStartupLocation.CenterOwner, dialog.WindowStartupLocation);
-        Assert.Equal(new Thickness(16), Assert.IsType<Border>(dialog.Content).Padding);
-        Assert.Equal(15, dialog.FindControl<SelectableTextBlock>("TitleText")!.FontSize);
-        Assert.Equal(new Thickness(0, 8, 0, 0), dialog.FindControl<SelectableTextBlock>("MessageText")!.Margin);
+        try
+        {
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("TitleText")!.Text));
+            Assert.True(string.IsNullOrEmpty(dialog.FindControl<SelectableTextBlock>("MessageText")!.Text));
+            Assert.Equal("OK", dialog.FindControl<Button>("OkButton")!.Content);
+            Assert.Equal(360, dialog.Width);
+            Assert.Equal(170, dialog.Height);
+            Assert.False(dialog.CanResize);
+            Assert.Equal(WindowStartupLocation.CenterOwner, dialog.WindowStartupLocation);
+            Assert.Equal(new Thickness(16), Assert.IsType<Border>(dialog.Content).Padding);
+            Assert.Equal(15, dialog.FindControl<SelectableTextBlock>("TitleText")!.FontSize);
+            Assert.Equal(new Thickness(0, 8, 0, 0), dialog.FindControl<SelectableTextBlock>("MessageText")!.Margin);
+        }
+        finally { dialog.Close(); }
     }
 
     /// <summary>The literal warning vector uses the mapped warning brush in either theme.</summary>
@@ -100,6 +110,8 @@ public sealed class WarningDialogTests
         {
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
         };
+        var buttons = new Uri("avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
+        dialog.Styles.Add(new StyleInclude(buttons) { Source = buttons });
         try
         {
             dialog.Show();
@@ -117,6 +129,17 @@ public sealed class WarningDialogTests
             Assert.Equal(PenLineCap.Round, icon.StrokeLineCap);
             Assert.True(Application.Current!.TryGetResource("NfcSurfaceBrush", dialog.ActualThemeVariant, out object? surface));
             Assert.Same(surface, dialog.Background);
+            Button ok = dialog.FindControl<Button>("OkButton")!;
+            Assert.Contains("actionPrimary", ok.Classes);
+            Assert.Equal(32, ok.Height);
+            Assert.Equal(new Thickness(14, 0), ok.Padding);
+            Assert.Equal(new CornerRadius(999), ok.CornerRadius);
+            Assert.True(Application.Current.TryGetResource("NfcAccentBrush", dialog.ActualThemeVariant, out object? accent));
+            Assert.Same(accent, ok.Background);
+            TextBlock label = Assert.Single(ok.GetVisualDescendants().OfType<TextBlock>());
+            Assert.Equal(TextWrapping.NoWrap, label.TextWrapping);
+            Assert.Equal(TextTrimming.CharacterEllipsis, label.TextTrimming);
+            Assert.Equal(1, label.MaxLines);
         }
         finally { dialog.Close(); }
     }

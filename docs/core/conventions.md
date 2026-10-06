@@ -108,12 +108,17 @@ NFC adopts the font set in two steps:
 
 ## Theme keys
 
-Core styles use only the `Nfc*` keys in `src/Nvt.Core.Avalonia/Theme/`. Pick each key by the role of its use, not by the source tool's token name.
+Core styles use the `Nfc*`, `Nvt.Focus.*` and `Nvt.Button.*` keys in `src/Nvt.Core.Avalonia/Theme/`. Pick each key by the role of its use, not by the source tool's token name.
 
-- Use Core's existing state pairs for hover and pressed. For example, `Button.secondary` uses `NfcAccentSurfaceBrush` for hover and `NfcSecondaryActionPressedBrush` for pressed.
+- Use Core's existing state pairs for hover and pressed. For example, `Button.actionNeutral` uses `NfcSelectionSurfaceBrush` for hover and `NfcSecondaryActionPressedBrush` for pressed.
 - Several source tokens may map to one Core key. One source token may map to different keys in different modules.
-- Tools adopt Core's colors. Do not override `Nfc*` keys with a tool's own values at application scope.
+- Tools adopt the shared palette in the two steps below. An accent is one color expressed as seven `NfcAccent*` keys; a tool sets all seven.
 - Each module document lists its source-to-Core mapping and every literal under "Known differences".
+
+The owner chose this two-step adoption on 2026-10-06:
+
+1. In the adoption PR, a tool may override, at application scope, any `Nfc*` color, size and radius key and the `Nvt.Button.*` and `Nvt.Focus.*` keys, including `Nvt.Button.PrimaryLabelBrush`, with its current values. Verify with before-and-after images that the screens do not change.
+2. In a later color PR approved by the owner, remove those overrides and keep only the seven `NfcAccent*` keys for the tool's accent.
 
 ## Public repository hygiene and license
 

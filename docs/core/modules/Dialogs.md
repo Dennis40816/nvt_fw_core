@@ -6,12 +6,12 @@
 
 `src/Nvt.Core.Avalonia/Dialogs/` contains two small windows in namespace `Nvt.Core.Avalonia.Dialogs`:
 
-- `ConfirmDialog()` and `ConfirmDialog(string title, string message, string confirmText, string cancelText, bool emphasizeCancel = false, string? confirmTip = null, string? cancelTip = null)`. Confirm completes `ShowDialog<bool>(owner)` with `true`; Cancel completes it with `false`. Cancel emphasis adds `danger` and displays the close icon. Each null tip means that button has no tooltip.
+- `ConfirmDialog()` and `ConfirmDialog(string title, string message, string confirmText, string cancelText, bool emphasizeCancel = false, string? confirmTip = null, string? cancelTip = null)`. Confirm completes `ShowDialog<bool>(owner)` with `true`; Cancel completes it with `false`. Cancel emphasis adds `actionDanger` and displays the close icon. Each null tip means that button has no tooltip.
 - `WarningDialog()` and `WarningDialog(string title, string message)`. The button text is `OK`; clicking it calls `Close()` and completes `ShowDialog(owner)`.
 
 Both windows retain selectable titles and messages, wrapping messages, fixed 360 × 170 dimensions, `CanResize = false`, and `WindowStartupLocation = CenterOwner`. The parameterless constructors load the same layout with empty content. As in NFH, the supplied title is the selectable content title; it does not set `Window.Title`.
 
-Each window includes `DialogsStyles.axaml` locally. The application loads `avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml` into its resources and supplies its normal window/button control themes and base button/danger styling. Core's existing `Theme/ButtonStyles.axaml` can supply button styling. No application theme, dialog service, options record, or additional configuration is introduced.
+Each window includes `DialogsStyles.axaml` locally. The application merges `Theme/ThemeTokens.axaml` and loads the single `Theme/ButtonStyles.axaml`; add `Theme/ScrollStyles.axaml` when using scroll bars. Confirm uses `actionPrimary`, Cancel uses `actionNeutral` and switches to `actionDanger` when emphasized, and Warning OK uses `actionPrimary`. All buttons use shared 32 px height, pill corners and 14,0 padding. Local styles retain only icons and content arrangement. No service or configuration is added.
 
 ## Provenance
 
@@ -30,7 +30,7 @@ The callers were inspected for context only: `src/FreeformHelper.UI/Views/Freefo
 
 ## Resource mappings
 
-Every extracted NFH resource mapped to an existing Core resource is listed below. All Core references use `DynamicResource`; `ThemeTokens.axaml` is unchanged.
+Every extracted NFH resource mapped to an existing Core resource is listed below. All Core references use `DynamicResource`; `ThemeTokens.axaml` supplies the shared palette.
 
 | NFH token | Core token | Use |
 | --- | --- | --- |
@@ -46,7 +46,7 @@ The font-based `IconGlyphs.Close` is replaced by `NfcCloseIconGeometry` through 
 
 ## Verification
 
-Core uses Avalonia 12.1.1, xUnit v3, and the unchanged `ThemeTestApplication` headless host. `tests/Nvt.Core.Avalonia.Tests/Dialogs/` covers selectable supplied text (ordinary, empty, Unicode, multiline), both actual `ShowDialog<bool>` results, ownership, emphasized and ordinary cancel states, parameterless loading, independent optional/null/empty tips, frozen window/action layout, dynamic brush changes, warning content, and OK closure through the actual modal task. The warning-content case is the scoped port of existing NFH evidence; the remaining cases characterize the frozen dialogs.
+Core uses Avalonia 12.1.1, xUnit v3, and the unchanged `ThemeTestApplication` headless host. `tests/Nvt.Core.Avalonia.Tests/Dialogs/` covers selectable supplied text (ordinary, empty, Unicode, multiline), both actual `ShowDialog<bool>` results, ownership, emphasized and ordinary cancel states, parameterless loading, independent optional/null/empty tips, frozen window layout and shared action geometry, dynamic brush changes, warning content, and OK closure through the actual modal task. The warning-content case is the scoped port of existing NFH evidence; the remaining cases characterize the frozen dialogs.
 
 After the existing package restore, run:
 
@@ -59,9 +59,9 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-bu
 For NFH adoption:
 
 1. At the Embed DXF call site in `FreeformHelperView.Pickers.cs`, pass `confirmTip: "Embed DXF into the project file."` and `cancelTip: "Cancel and keep external DXF reference."`. Other callers choose their own tips or leave them null. The frozen dialog applies these product tips to every instance; Core deliberately makes them caller supplied.
-2. Adopt Core's colors. Do not override `Nfc*` keys with NFH values at application scope. The cancel icon takes the button's effective foreground, so it matches the cancel label in every host and button state. The adoption images show the emphasized cancel button at rest and on hover.
+2. Adopt Core's colors. Override only the approved `NfcAccent*` keys at application scope; override no other Core keys. The cancel icon takes the button's effective foreground, so it matches the cancel label in every host and button state. The adoption images show the emphasized cancel button at rest and on hover.
 3. Run the Core Dialogs group above and NFH's full existing test project with `dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build`. Specifically retain `FreeformHelper.Tests.FreeformHelperViewModelTests.ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog`, including its command/status assertions. Run it alone with `--filter "FullyQualifiedName~ExportDxfLayerImageCommand_WhenDxfMissing_ShowsWarningDialog"` when diagnosing adoption.
-4. Compare supplied title/message/button text, the two DXF tips, `danger` and icon visibility, 360 × 170 dimensions, resize/startup settings, Confirm = true, Cancel = false, and OK closure. Check the Embed DXF, reset-DXF-edits, reset-settings, unsaved-project and warning callers. For the unsaved-project prompt, also check that closing the dialog without a button still returns null and keeps the application open. These dialog results stay identical.
+4. Compare supplied title/message/button text, the two DXF tips, `actionDanger` and icon visibility, 360 × 170 dimensions, resize/startup settings, Confirm = true, Cancel = false, and OK closure. Check the Embed DXF, reset-DXF-edits, reset-settings, unsaved-project and warning callers. For the unsaved-project prompt, also check that closing the dialog without a button still returns null and keeps the application open. These dialog results stay identical.
 5. Capture before-and-after images on the same OS, fonts, DPI, and theme, using the frozen baseline. NFH UI snapshots may change, including the icons and mapped colors. The adoption PR attaches both images and explains those known visual differences; it retains behavioral expectations rather than refreshing them to accept result changes.
 
 NFH adoption and product image comparisons are outside this extraction task.
@@ -72,7 +72,7 @@ NFH adoption and product image comparisons are outside this extraction task.
 - The two hard-coded DXF tips become optional constructor arguments, defaulting to null. The original four-string constructor call and optional emphasis argument remain source compatible.
 - The cancel font glyph becomes a stroked `Path` using `NfcCloseIconGeometry`, with a 24 × 24 box and a rounded 2-unit stroke instead of a bold font glyph. The warning font glyph becomes an outline `Path` with literal geometry `M10 1L19 18H1Z M10 6V11 M10 14V15`, a 20 × 20 box, a 2-unit stroke with round caps, and `NfcWarningAccentStrongBrush`. No icon font, `FontIcon`, or `IconGlyphs` is extracted.
 - Core's default palette differs from NFH's. In particular, NFH paints the cancel glyph with the constant `BrushWhite`. Core binds the stroke to the icon's inherited `TextElement.Foreground`, which is the button's effective foreground, so the icon follows the label's color on any danger surface and in every button state. NFH adopts Core's colors and reviews the images. Scalar spacing uses dynamic resources instead of NFH's static resources.
-- The following NFH values have no matching typed/semantic Core key and remain exact literals. Core has scalar spacing keys, but no corresponding `Thickness` resources for the insets. No new theme keys are added.
+- The following NFH values have no matching typed/semantic Core key and remain exact literals. Core has scalar spacing keys, but no corresponding `Thickness` resources for the insets. Button sizing now comes from `NfcControlHeight`; the former 36/40 px action sizes and 14,8 padding are superseded by the shared role.
 
 | NFH token | Retained literal |
 | --- | --- |
@@ -81,12 +81,9 @@ NFH adoption and product image comparisons are outside this extraction task.
 | `Inset16` | `16` (uniform padding) |
 | `InsetTop8` | `0,8,0,0` |
 | `InsetTop14` | `0,14,0,0` |
-| `Inset14_8` | `14,8` |
 | `FontSizeLg` | `15` |
 | `IconSizeLg` | `20` (warning vector box) |
 | `ConfirmDialogDangerIconSize` | `24` (cancel vector box) |
-| `ConfirmDialogActionMinHeight` | `36` |
-| `ConfirmDialogActionHeight` | `40` |
 
 ## What stays in NFH
 
