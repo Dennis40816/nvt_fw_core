@@ -1,0 +1,4 @@
+# Replace placeholders with reviewed relative paths in the runtime queue.
+# Comments alone use common protections; they do not retain all missing-file legacy floors.
+# R3 <PROTECTED_DIRECTORY>/
+# R2 <REVIEWED_DIRECTORY>/

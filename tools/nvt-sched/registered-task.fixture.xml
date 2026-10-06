@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- From %TEMP%\registered-task.xml; machine, user and SID are synthetic. -->
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <URI>\NVT-S-1-5-21-100-200-300-1001-commander-tick</URI>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id="CurrentUser">
+      <UserId>S-1-5-21-100-200-300-1001</UserId>
+      <LogonType>InteractiveToken</LogonType>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT5M</ExecutionTimeLimit>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
+  </Settings>
+  <Triggers>
+    <TimeTrigger>
+      <StartBoundary>2026-01-01T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT20M</Interval>
+      </Repetition>
+    </TimeTrigger>
+    <LogonTrigger>
+      <UserId>{{ACCOUNT}}</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Actions Context="CurrentUser">
+    <Exec>
+      <Command>{{HOST_PATH}}</Command>
+      <Arguments>{{RUNNER_ARGUMENTS}}</Arguments>
+      <WorkingDirectory>{{COMMANDER_DIR}}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
