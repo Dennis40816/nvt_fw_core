@@ -16,9 +16,13 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ProcessLaunchGateTests.cs`（全部八個案例及輔助行為）。
 - `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs`（暫存路徑、位元組寫入及有界清理支援；產品前綴及儲存庫路徑轉接保留在 NFC）。
 
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.cs`（完整 runner、清理時間、schedule、容量、階段及 seams；輔助型別分成獨立 Core 檔案）。
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.Invocation.cs`（完整 invocation custody 及終止清理）。
+- `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerTests.cs`（全部六個案例及程序身分／退出斷言；子程序 fixture 使用共用 test probe）。
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
+僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約及命令執行、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
 
 ## API
 
@@ -45,6 +49,13 @@ public static class ProcessLaunchGate
 public interface IExternalProcessRunner
 {
     ValueTask<ExternalProcessResult> RunAsync(
+        ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
+}
+
+public sealed partial class SystemExternalProcessRunner : IExternalProcessRunner
+{
+    public SystemExternalProcessRunner();
+    public ValueTask<ExternalProcessResult> RunAsync(
         ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
 }
 
@@ -85,7 +96,7 @@ public sealed class ExternalProcessStartFailedException : Exception
 
 供受控啟動及外部 runner 使用的內部契約為 `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`、`DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>` 及 `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`。`BoundedProcessOutput` 是內部 readonly record struct，包含 `string Text` 及 `bool ReachedEndOfStream`。`WindowsSynchronousReadCancellation` 維持 internal、sealed、partial、可釋放，並保留 `[SupportedOSPlatform("windows")]`。
 
-指定的凍結來源沒有產品專屬的路徑、引數或程序容量准入上限，只有下列固定讀取機制界限及暫停子程序終止確認的五秒界限。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式及外部 runner 契約負責。
+指定的凍結來源沒有產品專屬的路徑或引數上限。正式 invocation 容量是八個的固定機制界限，由所有預設 runner 實例共用。讀取器、終止時間及暫停子程序終止確認的五秒界限均保持固定。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式負責。
 
 ## 保留行為
 
@@ -212,7 +223,59 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 `WindowsContainedProcessStarterContractTests` 固定空／非空 command line、原始引數、零／一／二反斜線、空格／tab／引號／換行邊界、Unicode、ordinal 忽略大小寫環境排序、null 省略、空值、零／一／二環境項目及精確結尾。它固定 5,000-ms 確認常數；此期限沒有呼叫者可傳入的前一值／後一值。原生建立後案例證明暫停子程序不能執行，且其實體管線在原有兩秒門檻內關閉。
 
-`OptionalPowerShellQuotedArguments` 獨立透過 PowerShell 測試 `two words`、`quote"inside` 及 `trail\`，保留十分鐘 checkpoint。執行檔不可用或 PowerShell 引數解讀不同時報告 skip，不修改受控啟動器。
+`OptionalPowerShellQuotedArguments` 獨立透過 PowerShell 測試 `two words`、`quote"inside` 及 `trail\`。執行檔不可用或 PowerShell 引數解讀不同時報告 skip，不修改受控啟動器。
+
+## 外部命令執行
+
+`SystemExternalProcessRunner` 是單次外部命令 invocation 的唯一擁有者。建立只使用 `ProcessLaunchGate.Start(CreateProcessStartInfo(startInfo))`；輸出使用既有的 `BoundedProcessOutputReader.DrainProcessStreamAsync`。Launcher 另外擁有 READY、ADMITTED、協定 Job 及准入期限。
+
+`RunAsync` 依序檢查 null 輸入、呼叫者取消，再於建立程序前以原子方式保留容量。容量拒絕不啟動程序，並回報保留時觀察到的數量。所有啟動失敗均歸還槽位。`Win32Exception` 轉成 `ExternalProcessStartFailedException`；其他失敗原樣傳播。null 程序保留 `External process did not start.`。啟動資訊保留執行檔、工作目錄及每個有序的 `ArgumentList` 項目，停用 shell、不建立 console，並重新導向兩個輸出串流。
+
+| 機制 | 凍結 runner 契約 |
+| --- | --- |
+| 正式容量 | 所有預設實例共用八個 invocation，包含 detached 清理；沒有公開容量設定。 |
+| 終止總期限 | 終止訊號後五秒，由所有終止等待共用。 |
+| held-output grace | 自然退出後兩秒。 |
+| reader-stop reserve | 總期限內最後一秒。 |
+| 取消回呼 | 只送出訊號，不執行 OS 終止或資源釋放。 |
+| 終止 | 每次 invocation 一個背景工作，使用 `Kill(entireProcessTree: true)`。 |
+| 退出及輸出 | 觀察 `WaitForExitAsync`，並行排空兩個串流，保留有界部分輸出。 |
+| 正式 observer | null；排序及故障 seams 維持 internal。 |
+
+兩個串流及退出觀察先啟動，之後才註冊取消並送出 `Started`。選取終止訊號時已觀察到的呼叫者取消，優先於同時發生的退出或 timeout。自然退出等待串流或取消直到 grace 時點；仍開啟的串流啟動終止，而沒有取消的 grace 到期送出 `OutputHeldAfterExit`。其他終止訊號立即啟動終止。終止、退出及串流 settlement 共用 reader-stop 時點。未完成的 reader 收到 `CancelAsync`，全部終止工作及取消派送共用最後期限。
+
+清理優先順序維持 `TerminationUnconfirmed`、`OutputStreamHeldOpen`、`OutputReadFailed`，最後為 `Complete`。aggregate、Win32、invalid-operation 及 unsupported 終止失敗使用既有外部清理結果。Timeout 回傳 exit code -1 及 `TimedOut == true`；自然退出保留直接子程序的 exit code。取消使用呼叫者 token 並保留完整文字 `The external process run was canceled; observed cleanup: {cleanup}.`。
+
+只要任何追蹤工作尚未完成，`Release` 就保留原有容量。完成後先觀察所有晚到的 fault，個別釋放 stdout、stderr、process、reader-stop source 及 exit-observation source，最後歸還容量。全部釋放成功送出 `ResourcesReleased`；任一釋放失敗送出 `ResourcesReleaseFailed`。net8.0 移植以 private `object` 作為 invocation gate，保留兩個 lock statement。Runner 不承接 Launcher Job 或 READY 狀態。未持有任何重新導向串流的後代仍不在其觀察契約內。
+
+內部契約為 `ExternalProcessCleanupTiming`、`CleanupSchedule`、`ExternalProcessCapacity`、`ExternalProcessRunnerPhase` 及 `ExternalProcessRunnerSeams`。時間驗證依序保留：正值 deadline、正值 grace、正值 reserve、grace 加 reserve 不超過 deadline，最後 deadline 不超過 `int.MaxValue` 毫秒。總和超限維持 `ParamName == "HeldOutputGrace"`。Schedule 保留 `(long)(span.TotalSeconds * Stopwatch.Frequency)`，並以終止訊號建立絕對時間戳。內部測試容量必須為正；正式容量仍為八個。
+
+## Runner 測試及來源對應
+
+`SystemExternalProcessRunnerTests` 保留全部六個凍結案例的名稱、斷言及執行／退出觀察門檻。凍結類別沒有 collection attribute，這個選擇保持不變。共用 probe 契約為 [probe README](../../../tests/Nvt.Core.TestProbe/README.md)，不需私人子程序 harness 或修改 probe。
+
+| 凍結案例及 Core 方法 | 共用 probe 及保留證據 |
+| --- | --- |
+| `CreateProcessStartInfoIsHeadlessAndShellFree` | 不建立子程序；旗標、執行檔、工作目錄及引數順序。 |
+| `RunAsyncTranslatesOperatingSystemStartFailureToTypedExceptionAndReleasesCapacity` | 不存在的執行檔，再使用 `exit`；typed Win32 失敗、容量歸零及成功重用。 |
+| `RunAsyncCancellationKillsChildProcessBeforeThrowing` | `tree-root-wait`；取消前擷取 root／child 的 PID 及 start-time 身分，30 秒執行 timeout，各程序三秒退出觀察。 |
+| `RunAsyncTimeoutKillsChildProcessBeforeReturning` | `tree-root-wait`；十秒 timeout 前擷取身分，timeout 旗標、exit -1 及三秒退出觀察。 |
+| `RunAsyncBoundsAndDrainsBothOutputStreams` | `dual-output-exit`；各串流 131,072 字元加 `OUT-END`／`ERR-END`，十秒 timeout，精確擷取長度、前綴、截斷標記及後綴斷言。 |
+| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`；各串流 131,072 字元加 `OUT-PARTIAL-END`／`ERR-PARTIAL-END`，兩秒 timeout，exit -1、timeout 旗標、精確有界長度及後綴。 |
+
+`SystemExternalProcessRunnerBoundaryTests` 新增 23 個方法及 56 個靜態列舉案例：
+
+- 預設時間、八槽正式容量、null observer，以及全部 phase 名稱與值。
+- 精確的 `Schedule(1000)` 時間戳及小數 tick 轉換，包含最大相容 deadline。
+- 每個正值 timing 欄位及 private capacity 參數的零／負值；最小正值時間；驗證順序及來源的 overflow 行為。
+- Grace 加 reserve 及最大 deadline 的前一 tick／精確邊界／後一 tick；建構函式時間驗證。
+- 一、七、八、九及 `int.MaxValue` 的 private capacity，涵蓋精確准入、拒絕、觀察數量、歸還及重用。
+- Null seams、null 輸入優先順序、空／滿容量下已取消的輸入，以及嘗試不存在執行檔前的 private 單槽拒絕。
+- 精確啟動引數／工作目錄；真正的 `exit --exit-code 7`、phase 順序，以及五秒內觀察到容量歸還。
+- 真正 stdout／stderr 的獨立路由，以及 65,535／65,536／65,537 擷取長度。
+- 共用 OS 終止失敗歸類為 `TerminationUnconfirmed`、單一終止工作及 private capacity 歸還。
+
+測試使用合成資料、獨立暫存資料夾中的 tree marker 及 test-context 取消 token。原生案例執行 Windows 程序，其他平台透過 xUnit skip 明確略過。Marker 輪詢只在 fixture 界限內重試短暫分享違規；PID 加 start time 避免緊急清理誤殺重用的 PID。這些測試描述外部命令行為；長期 Job 證據屬於 Launcher。
 
 ## NFC 擁有權及採用
 
@@ -220,10 +283,10 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 NFC 以獨立的 PR 採用本模組，與本次抽取分開。所有受控 launcher 呼叫者使用 `StartContained(startInfo, inheritedHandles, validateImmediatelyBeforeStart)`；一般外部工具啟動使用 `Start(startInfo)`。原始程序建立留在 Processes，不置入 Launcher。採用結案前，生命週期證據必須通過。
 
-只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用讀取器、同步取消、啟動閘門、繼承控制代碼 record 及受控啟動器副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
+只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用外部 runner、invocation 輔助型別、讀取器、同步取消、啟動閘門、繼承控制代碼 record 及受控啟動器副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
 
 UI 比較使用共用環境 manifest，並要求解碼後變更像素數為零。適用時，比較也涵蓋完整輸出位元組及事件軌跡，並記錄每個證據檔的 SHA-256。八個 legacy font 值保持不變。
 
 NFC 在建置時透過自己的 `core-packages.json` 下載已驗證、版本化的 nupkg，採用精確 `[x]` 版本、source mapping、lock files 及 locked restore。清單記錄每個套件的 Release 標籤與 SHA-256。套件參照、版本鎖定、source mapping 及 lock files 由 NFC 擁有。NFC 不加入指向 Core checkout 的 ProjectReference。
 
-Core 與 NFC 保持各自獨立的版本與發布。兩階段獨立審查都涵蓋抽取 PR 及採用 PR 的精確 head。
+Core 與 NFC 保持各自獨立的版本與發布。
