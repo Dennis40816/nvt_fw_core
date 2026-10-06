@@ -130,6 +130,110 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 比較測試結果、stdout 與 stderr 位元組、管道框架、錯誤代碼與訊息，以及程序結束代碼。
 獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`，且處理委派引數不含 `confirm`。
 
+## Startup entry
+
+工具只定義一次命令，並從啟動引數及 RuntimeQuery 請求使用同一份定義。
+擁有者於 2026-10-06 核准此新行為。
+此行為沒有來源工具基準，也沒有擷取的來源路徑。
+
+| 公開 API | 契約 |
+| --- | --- |
+| `RuntimeQueryStartupPhase` | `None` 不新增啟動選項。`BeforeFirstFrame` 僅供啟動使用。`AfterStartup` 也接受 RuntimeQuery 請求。 |
+| `RuntimeQueryCommand.StartupPhase` | 可省略的中繼資料。預設為 `None`，現有登錄維持原有行為。 |
+| `RuntimeQueryCommand.StartupValueKey` | 一個啟動值的引數鍵。預設為 null，表示旗標，處理委派接收 null 引數。 |
+| `RuntimeQueryCommand.StartupValidator` | 可省略的驗證委派，型別為 `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`。有效時回傳 null，無效時回傳失敗。 |
+| `RuntimeQueryStartupCall(Command, Args)` | 一次已辨識的命令出現。`Phase` 來自命令定義。包含有問題的呼叫，並保留命令列順序。 |
+| `RuntimeQueryStartupIssue(Option, Message)` | 選項名稱及完整問題訊息。 |
+| `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | 一次解析的全部呼叫、工具剩餘引數及問題。 |
+| `RuntimeQueryStartupCallResult(Call, Response)` | 已執行的呼叫及原樣回傳的回應。 |
+| `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | 依路由器登錄的命令及確認設定解析原始引數。不執行處理委派。 |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | 透過路由器依命令列順序執行一個階段。包含第一個失敗回應，然後停止。 |
+
+例如，將 `theme` 登錄為 `AfterStartup`，並使用引數鍵 `value`：
+
+```csharp
+var command = new RuntimeQueryCommand(
+    "theme",
+    RuntimeQueryCommandRisk.ChangesState,
+    ApplyThemeAsync,
+    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    StartupValueKey: "value",
+    StartupValidator: ValidateTheme);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+```
+
+工具可在 `ApplyThemeAsync` 中呼叫 `ValidateTheme`，讓值的規則只存在於一個函式。
+驗證委派不得有副作用，也不得執行命令。
+
+兩個入口都以 ordinal 鍵 `"value"`，將 `"dark"` 傳給同一個處理委派：
+
+```text
+--theme dark
+query theme --value dark
+```
+
+Core 接受以下啟動形式：
+
+- 值選項使用 `--name value` 或 `--name=value`。
+- 旗標使用 `--name`。
+- 值可以包含 `=`，且文字保持原樣。
+
+Core 只接收 `--` 加上已登錄且階段不是 `None` 的命令名稱。
+名稱以 ordinal 相等比較，不改變大小寫。
+工具保留既有選項的解析器。
+Core 依原始順序，原樣傳遞所有其他引數。
+例如，`--page home --theme dark --load-report a.json` 留下 `--page home --load-report a.json` 給工具。
+Core 不為 `page` 或 `help` 等通用命令新增啟動階段。
+工具若未登錄任何啟動階段，行為完全不變。
+解析器傳遞每一個引數，包含 `--confirm`。
+
+解析器回報以下完整語法訊息：
+
+- 兩種形式中缺少值、空值或空白值：`--{name} requires a value.`。
+- 旗標含等號：`--{name} does not take a value.`。
+- 選項重複：`--{name} is given more than once.`。
+
+下一個 token 若以 `--` 開頭，就不是值，解析器不會消耗它。
+每個沒有語法問題的呼叫，Core 都只呼叫一次啟動驗證委派。
+驗證失敗會成為問題，訊息保持原樣。
+解析器一次回傳全部呼叫及問題，讓工具檢查選項之間的規則。
+
+有登錄啟動命令且啟用確認防護時，Core 將 `--confirm` 保留為啟動旗標。
+此旗標確認全部 `WritesData` 呼叫，也包含出現在旗標之前的呼叫。
+未確認時，每個此類呼叫新增 `--{name} writes files or changes data. Add --confirm to use it.`。
+防護關閉時，`--confirm` 原樣傳給工具。
+處理委派不會收到保留的啟動確認旗標。
+
+工具在主視窗顯示之前執行 `BeforeFirstFrame`。
+影響第一個畫面的設定使用此階段。
+工具在自身啟動流程結束之後執行 `AfterStartup`。
+Core 不提供視窗事件或 UI 派送。
+階段執行略過執行期間的啟動專用檢查，並保留已啟用的確認防護。
+工具須先檢查解析問題及選項之間的規則，再呼叫任一階段。
+
+執行期間的請求依序檢查 null、版本、未知命令、啟動專用狀態及確認。
+`RouteAsync` 與 `ExecuteAsync` 都以 `STARTUP_ONLY` 拒絕 `BeforeFirstFrame`，完整訊息如下：
+
+```text
+Command '{name}' can be used only at startup.
+```
+
+嚴格模式由工具決定。
+自動化執行遇到啟動問題時，以結束代碼 64 拒絕執行，且不開啟 UI。
+啟動驗證委派讓工具在開啟任何視窗之前拒絕無效值。
+互動執行透過工具自己的 UI 顯示問題。
+Core 只回傳問題及回應，不定義結束代碼常數。
+
+`RuntimeQueryStartupCases` 集中保存輸入與字面預期輸出。
+`RuntimeQueryStartupParserTests` 與 `RuntimeQueryStartupTests` 驗證解析、執行期間錯誤順序、相同的處理委派引數及階段執行。
+使用已還原的套件執行下方 RuntimeQuery 測試命令。
+要達成零差異，不登錄啟動階段，並逐項比較傳遞後的引數與原始清單。
+以兩份清單執行工具既有的啟動解析器測試。
+比較解析結果及完整錯誤訊息，包含既有的 `page`、`help` 與報告選項。
+登錄啟動階段會新增行為，工具須另行測試後才採用。
+本任務不修改任何工具儲存庫。
+
 ## 公開 API
 
 | API | 契約 |
