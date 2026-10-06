@@ -1,8 +1,11 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 
 namespace Nvt.Core.RuntimeQuery;
 
@@ -21,6 +24,8 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
     private NamedPipeServerStream? _activePipe;
     private Task? _runLoopTask;
     private Task? _disposeTask;
+
+    internal NamedPipeServerStream? ActivePipe => Volatile.Read(ref _activePipe);
 
     /// <summary>Creates a server with caller-owned identity, limits, errors, diagnostics and handling.</summary>
     /// <param name="pipeName">The local named-pipe name.</param>
@@ -115,12 +120,22 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            await using var pipe = new NamedPipeServerStream(
-                _pipeName,
-                PipeDirection.InOut,
-                maxNumberOfServerInstances: 1,
-                PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous);
+            NamedPipeServerStream createdPipe;
+            try
+            {
+                createdPipe = CreatePipe();
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _diagnostic?.Invoke(RuntimeQueryDiagnostic.PipeCreationFailed, ex);
+                break;
+            }
+
+            await using var pipe = createdPipe;
             Volatile.Write(ref _activePipe, pipe);
 
             try
@@ -160,6 +175,34 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         }
 
         _diagnostic?.Invoke(RuntimeQueryDiagnostic.Stopped, null);
+    }
+
+    private NamedPipeServerStream CreatePipe()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            // Read the process token rather than an impersonated thread token.
+            using var identity = WindowsIdentity.RunImpersonated(
+                SafeAccessTokenHandle.InvalidHandle, WindowsIdentity.GetCurrent);
+            var security = new PipeSecurity();
+            security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            security.AddAccessRule(new PipeAccessRule(
+                new SecurityIdentifier(WellKnownSidType.NetworkSid, null),
+                PipeAccessRights.FullControl, AccessControlType.Deny));
+            security.AddAccessRule(new PipeAccessRule(
+                identity.User!, PipeAccessRights.FullControl, AccessControlType.Allow));
+            // Match the CurrentUserOnly client's token-owner check, including elevated tokens.
+            security.SetOwner(identity.Owner!);
+
+            // .NET rejects CurrentUserOnly with explicit security. Keep the NETWORK denial.
+            return NamedPipeServerStreamAcl.Create(
+                _pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+                PipeOptions.Asynchronous, inBufferSize: 0, outBufferSize: 0, security);
+        }
+
+        return new NamedPipeServerStream(
+            _pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
     }
 
     private async Task HandleConnectionAsync(NamedPipeServerStream pipe, CancellationToken cancellationToken)

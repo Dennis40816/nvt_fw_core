@@ -30,7 +30,7 @@ public static class RuntimeQueryIpcClient
         try
         {
             using var client = new NamedPipeClientStream(
-                ".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                ".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             var startedAt = Stopwatch.GetTimestamp();
             client.Connect(timeoutMs);
             using var timeoutCts = new CancellationTokenSource(GetRemainingTimeout(timeoutMs, startedAt));
@@ -55,22 +55,22 @@ public static class RuntimeQueryIpcClient
                 responseJson, RuntimeQueryProtocol.CompactJsonOptions);
             return response ?? Failure(error, RuntimeQueryFailure.InvalidResponse);
         }
-        catch (TimeoutException)
-        {
-            return Failure(error, RuntimeQueryFailure.ConnectionTimeout);
-        }
-        catch (OperationCanceledException)
-        {
-            return Failure(error, RuntimeQueryFailure.ClientTimeout);
-        }
-        catch (IOException ex)
-        {
-            return Failure(error, RuntimeQueryFailure.IoError, ex.Message);
-        }
         catch (Exception ex)
         {
-            return Failure(error, RuntimeQueryFailure.ClientError, ex.Message);
+            return Failure(error, ex);
         }
+    }
+
+    internal static RuntimeQueryResponseEnvelope Failure(
+        Func<RuntimeQueryFailure, string?, RuntimeQueryError> error, Exception exception)
+    {
+        return exception switch
+        {
+            TimeoutException => Failure(error, RuntimeQueryFailure.ConnectionTimeout),
+            OperationCanceledException => Failure(error, RuntimeQueryFailure.ClientTimeout),
+            IOException => Failure(error, RuntimeQueryFailure.IoError, exception.Message),
+            _ => Failure(error, RuntimeQueryFailure.ClientError, exception.Message)
+        };
     }
 
     private static int GetRemainingTimeout(int timeoutMs, long startedAt)
