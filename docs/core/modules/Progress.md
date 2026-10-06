@@ -4,13 +4,14 @@
 
 ## Summary
 
-Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and the progress interval gate from Freeform Helper (NFH).
+Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and two Freeform Helper (NFH) parts: the progress interval gate and the loading scope coordinator.
 The module uses only the .NET base class libraries and targets net8.0.
 Its namespace is `Nvt.Core.Progress`.
 
 Each tool keeps its update rate, progress payloads, result payloads, and presentation policy.
 The owner approved this boundary on 2026-10-06.
-The module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
+The loading scope waits for its minimum visible time with `Task.Delay` on its `TimeProvider`.
+Apart from that wait, the module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
 
 ## Frozen baselines
 
@@ -53,6 +54,11 @@ Related caller tests provide final-delivery and stale-result assertions:
 
 Core adapts these generic assertions to synthetic final values and an external validity check.
 NFH retains the domain assertions, progress text, revision checks, and UI dispatch.
+
+NFH also supplies the loading scope coordinator in `src/FreeformHelper.UI/Services/LoadingScopeCoordinator.cs`.
+Its two source tests are in `tests/FreeformHelper.Tests/UI/Services/LoadingScopeCoordinatorTests.cs`.
+The callers, for context only, are `src/FreeformHelper.UI/ViewModels/FreeformHelperViewModel.CadLoadOverlay.cs` and `FreeformHelperViewModel.ModalLoading.cs`.
+Both callers use a 120 ms minimum visible time.
 
 ## Progress data
 
@@ -308,11 +314,119 @@ Core uses `TimeProvider` timestamps.
 On a real machine, a report near the 120 ms boundary can pass or drop differently.
 Use exact fake-clock timelines for the zero-difference comparison.
 
+## Loading scope
+
+[`LoadingScopeCoordinator`](../../../src/Nvt.Core/Progress/LoadingScopeCoordinator.cs) decides when a loading surface, such as an overlay or a spinner, shows and hides.
+It holds no Avalonia, dispatcher, or NFH types.
+A surface plugs in through a callback.
+For an Avalonia control, pass `visible => surface.IsVisible = visible`.
+
+```csharp
+public LoadingScopeCoordinator(
+    Func<Task> yieldFrameAsync,
+    TimeSpan minimumVisibleDuration,
+    TimeProvider? timeProvider = null);
+```
+
+- `yieldFrameAsync` yields to the UI so that a visibility change can render.
+- A null `yieldFrameAsync` throws `ArgumentNullException`.
+- A negative `minimumVisibleDuration` counts as zero.
+- `timeProvider` supplies the clock and the wait timer, and null means `TimeProvider.System`.
+
+`Begin(setVisible)` opens a scope.
+The first open scope records the start time and calls `setVisible(true)`.
+Nested scopes do not call it again.
+
+`EndAsync(setVisible)` closes a scope:
+
+- Without an open scope, it returns at once and does nothing.
+- While other scopes stay open, it returns at once.
+- When the last scope closes, it waits for the rest of the minimum visible time and then yields a frame.
+- Unless a scope is open at that moment, it then calls `setVisible(false)` and yields one more frame.
+
+The check after the wait looks only at the current scope count.
+A scope that begins during the wait and is still open keeps the surface visible.
+That `Begin` calls `setVisible(true)` again and restarts the minimum visible time.
+If the newer scope also ends during the wait, the earlier call still hides the surface at its own time.
+The surface then hides before the newer scope's minimum visible time has passed.
+The newer call hides it again when its own wait ends.
+Core keeps this source behavior.
+
+`RunAsync(action, setVisible)` begins a scope, yields a frame, runs the action, and ends the scope.
+The scope also ends when the action throws, and the exception reaches the caller.
+Null `action` or `setVisible` arguments throw `ArgumentNullException` with their parameter names.
+
+A lock guards only the scope count.
+The callbacks run outside the lock, and the coordinator does not marshal calls.
+Callers must serialize `Begin` and `EndAsync`, for example by calling them on the UI thread.
+Unserialized calls on two threads can hide the surface before a concurrent `Begin` shows it.
+The surface then stays visible with no open scope.
+The awaits keep the caller's synchronization context, so calls made on the UI thread continue there.
+
+### Verification for the loading scope
+
+Run these commands after packages have been restored:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Progress.LoadingScopeCoordinatorTests"
+```
+
+The two ported source tests check the show-and-hide order and the minimum visible time.
+The source measured the minimum time with a `Stopwatch` against the wall clock.
+The port runs that test on a manual `TimeProvider`, because a system clock change could skip the wait.
+A separate smoke test runs on the system clock without a time threshold.
+The manual clock is `tests/Nvt.Core.Tests/Progress/ManualTimeProvider.cs`.
+
+Characterization tests cover these cases:
+
+- The remaining wait, and no timer once the minimum has passed.
+- A negative minimum.
+- Nested scopes, and an end without an open scope.
+- A new scope that is still open when the wait ends.
+- An earlier end that hides the surface although a newer scope began and ended during its wait.
+- Unserialized calls that leave the surface visible with no open scope.
+- The frame-yield order, a failing action, and null arguments.
+
+### Zero-difference verification for the NFH loading scope
+
+NFH adoption is a separate change.
+NFH passes no time provider, so it keeps the system clock.
+Before and after replacing NFH's class, run these tests from the NFH repository root with the same environment:
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build FreeformHelper.sln --no-restore
+dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --filter "FullyQualifiedName~FreeformHelper.Tests.LoadingScopeCoordinatorTests|FullyQualifiedName~FreeformHelper.Tests.FreeformHelperViewModelTests|FullyQualifiedName~FreeformHelper.Tests.OpenDxfSinglePassTests|FullyQualifiedName~FreeformHelper.Tests.HeadlessUiSmokeTests"
+```
+
+The view-model filter includes the load-overlay and modal-spinner scope tests in `FreeformHelperViewModelTests.Basics.LoadOverlay.cs`.
+Compare test names, counts, and results with the frozen baseline.
+Keep the frozen expected values instead of updating them to accept a difference.
+
+### Loading scope differences
+
+The class is public.
+It has a Core namespace, a copyright header, and API documentation.
+The source read `DateTimeOffset.UtcNow` and waited with `Task.Delay(remaining)`.
+Core reads `TimeProvider.GetUtcNow()` and waits with `Task.Delay(remaining, timeProvider)`.
+With the default `TimeProvider.System`, both calls behave as before.
+`GetUtcNow()` is still the wall clock, so a system clock change during a scope affects the wait as it did in NFH.
+A source comparison that excludes comments and whitespace shows no other change in the method bodies.
+
+NFH keeps these parts:
+
+- The overlay and spinner view-model properties.
+- The 120 ms minimum visible time.
+- The frame-yield implementation, which uses the dispatcher.
+- The separate scope counters behind `BeginCadLoadCanvasOverlayScope` and `BeginModalLoadingSpinnerScope`.
+
 ## Progress UI
 
 The UI controls preserve NVT FW Combiner's loading structure and caller-owned animation.
 The owner approved this boundary on 2026-10-06.
-The library targets net10.0 with Avalonia 12.0.5.
+The library targets net10.0 with Avalonia 12.1.1.
 Its namespace is `Nvt.Core.Avalonia.Progress`.
 
 ### Frozen UI baselines
