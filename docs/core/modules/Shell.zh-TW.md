@@ -99,7 +99,7 @@ NFC 保留 `ShellPage`、頁面識別與工廠、韌體防護、首頁返回不�
 `MainWindowViewModel.Context.cs` 保留產品頁面啟用與成功時的
 `Navigation.UpdateState()` 更新；`MainWindowViewModel.Construction.cs` 保留產品組合。
 
-NFC 以自己的獨立 PR 採用本模組。該 PR 使用 `vendor/nuget/` 中已驗證且具版本的 `Nvt.Core` nupkg，
-搭配精確 `[x]` 版本、鎖定還原、套件來源對應，以及 `SOURCE.md` 中的來源與套件 SHA-256。
+NFC 以自己的獨立 PR 採用本模組。該 PR 在建置時透過 `core-packages.json` 下載已驗證且具版本的 `Nvt.Core` nupkg，
+搭配精確 `[x]` 版本、鎖定還原、套件來源對應，以及清單中的 Release 標籤與套件 SHA-256。
 套件參照與鎖定檔由 NFC 擁有。套件與可執行行為都符合凍結父版本後，NFC 只刪除本地泛型歷史儲存與
 完成回復方法本體。NFC 保留自己的產品轉接層，並在相同的已記錄環境下證明 UI 快照完全一致。

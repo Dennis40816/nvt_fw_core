@@ -77,6 +77,163 @@ NFH 切換至 Core 時：
 命令列處理與 UI 執行緒步驟由後續任務加入。
 本次擷取不在來源工具採用 Core。
 
+## Command risk and confirmation
+
+呼叫端啟用之前，確認防護保持關閉。
+此行為於 2026-10-06 核准，沒有來源工具基準。
+
+| 公開 API | 契約 |
+| --- | --- |
+| `RuntimeQueryCommandRisk` | 定義 `ReadOnly`、`ChangesState` 與 `WritesData`。 |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | sealed record，包含命令名稱、風險與現有的處理委派型別。 |
+| `RuntimeQueryCommandRouter(commands, requireConfirmation)` | 由命令清單建立 ordinal 處理委派表。`RegisteredCommands` 保留登錄順序。 |
+
+- `ReadOnly` 命令只讀取狀態。
+- `ChangesState` 命令更改 UI 狀態，例如頁面或選取項目。不寫入檔案，也不更改資料。
+- `WritesData` 命令寫入檔案或更改工具的資料。
+
+清單建構子遇到 null 清單、命令、名稱或處理委派時，擲回 `ArgumentNullException`。
+名稱重複時擲回 `ArgumentException`。
+名稱若不同於去除前後空白並以 invariant culture 轉為小寫的結果，也會遭到拒絕。
+字典建構子保留現有行為，永遠不要求確認。
+
+使用 `requireConfirmation: false` 時，處理委派接收原始引數，包含任何 `confirm` 鍵。
+NFH（FreeformHelper 工具）先以 false 切換至 Core。
+啟用防護是另一項可見的獨立變更。
+
+使用 `requireConfirmation: true` 時，`RouteAsync` 先尋找處理委派。
+未知命令仍先回傳 `UNKNOWN_COMMAND`，再考慮確認檢查。
+`ExecuteAsync` 仍先檢查 null 請求，再檢查版本，最後進行路由。
+
+對 `WritesData`，路由器以 `RuntimeQueryArgumentParser.TryGetBoolArg` 讀取 `confirm`。
+此方法接受 true/false、1/0、on/off 與 yes/no。
+無效值會原樣回傳此方法的 `INVALID_ARGUMENTS` 錯誤。
+缺少值、空白值或 false 會回傳 `CONFIRMATION_REQUIRED`，完整訊息如下：
+
+```text
+Command '{name}' writes files or changes data. Add --confirm to run it.
+```
+
+訊息使用正規化後的命令名稱。發生上述任一錯誤時，處理委派不會執行。
+對每個風險等級，啟用的防護會先以 ordinal 規則移除 `confirm` 鍵，再呼叫處理委派。
+其他鍵與值保持原樣，複製至新的 ordinal 字典。
+沒有剩餘鍵時，處理委派接收 null。null 引數保持 null。
+啟用防護後，處理委派不再接收 `confirm` 鍵。
+現有命令列語法已將 `--confirm` 轉為 `"confirm": "true"`。
+
+`RuntimeQueryConfirmationCases` 集中保存新增輸入與字面預期值。
+`RuntimeQueryCommandConfirmationTests` 在防護關閉時，透過兩個建構子比較 `RuntimeQueryCommandCases` 的每一列。
+測試驗證完整回應、處理委派呼叫、引數傳遞、登錄檢查與錯誤順序。
+執行下方 RuntimeQuery 測試命令，驗證兩個建構子及啟用的防護。
+
+要達成零差異，NFH 必須保持防護關閉，並執行下方現有的 NFH 切換檢查。
+比較測試結果、stdout 與 stderr 位元組、管道框架、錯誤代碼與訊息，以及程序結束代碼。
+獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`，且處理委派引數不含 `confirm`。
+
+## Startup entry
+
+工具只定義一次命令，並從啟動引數及 RuntimeQuery 請求使用同一份定義。
+擁有者於 2026-10-06 核准此新行為。
+此行為沒有來源工具基準，也沒有擷取的來源路徑。
+
+| 公開 API | 契約 |
+| --- | --- |
+| `RuntimeQueryStartupPhase` | `None` 不新增啟動選項。`BeforeFirstFrame` 僅供啟動使用。`AfterStartup` 也接受 RuntimeQuery 請求。 |
+| `RuntimeQueryCommand.StartupPhase` | 可省略的中繼資料。預設為 `None`，現有登錄維持原有行為。 |
+| `RuntimeQueryCommand.StartupValueKey` | 一個啟動值的引數鍵。預設為 null，表示旗標，處理委派接收 null 引數。 |
+| `RuntimeQueryCommand.StartupValidator` | 可省略的驗證委派，型別為 `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`。有效時回傳 null，無效時回傳失敗。 |
+| `RuntimeQueryStartupCall(Command, Args)` | 一次已辨識的命令出現。`Phase` 來自命令定義。包含有問題的呼叫，並保留命令列順序。 |
+| `RuntimeQueryStartupIssue(Option, Message)` | 選項名稱及完整問題訊息。 |
+| `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | 一次解析的全部呼叫、工具剩餘引數及問題。 |
+| `RuntimeQueryStartupCallResult(Call, Response)` | 已執行的呼叫及原樣回傳的回應。 |
+| `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | 依路由器登錄的命令及確認設定解析原始引數。不執行處理委派。 |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | 透過路由器依命令列順序執行一個階段。包含第一個失敗回應，然後停止。 |
+
+例如，將 `theme` 登錄為 `AfterStartup`，並使用引數鍵 `value`：
+
+```csharp
+var command = new RuntimeQueryCommand(
+    "theme",
+    RuntimeQueryCommandRisk.ChangesState,
+    ApplyThemeAsync,
+    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    StartupValueKey: "value",
+    StartupValidator: ValidateTheme);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+```
+
+工具可在 `ApplyThemeAsync` 中呼叫 `ValidateTheme`，讓值的規則只存在於一個函式。
+驗證委派不得有副作用，也不得執行命令。
+
+兩個入口都以 ordinal 鍵 `"value"`，將 `"dark"` 傳給同一個處理委派：
+
+```text
+--theme dark
+query theme --value dark
+```
+
+Core 接受以下啟動形式：
+
+- 值選項使用 `--name value` 或 `--name=value`。
+- 旗標使用 `--name`。
+- 值可以包含 `=`，且文字保持原樣。
+
+Core 只接收 `--` 加上已登錄且階段不是 `None` 的命令名稱。
+名稱以 ordinal 相等比較，不改變大小寫。
+工具保留既有選項的解析器。
+Core 依原始順序，原樣傳遞所有其他引數。
+例如，`--page home --theme dark --load-report a.json` 留下 `--page home --load-report a.json` 給工具。
+Core 不為 `page` 或 `help` 等通用命令新增啟動階段。
+工具若未登錄任何啟動階段，行為完全不變。
+解析器傳遞每一個引數，包含 `--confirm`。
+
+解析器回報以下完整語法訊息：
+
+- 兩種形式中缺少值、空值或空白值：`--{name} requires a value.`。
+- 旗標含等號：`--{name} does not take a value.`。
+- 選項重複：`--{name} is given more than once.`。
+
+下一個 token 若以 `--` 開頭，就不是值，解析器不會消耗它。
+每個沒有語法問題的呼叫，Core 都只呼叫一次啟動驗證委派。
+驗證失敗會成為問題，訊息保持原樣。
+解析器一次回傳全部呼叫及問題，讓工具檢查選項之間的規則。
+
+有登錄啟動命令且啟用確認防護時，Core 將 `--confirm` 保留為啟動旗標。
+此旗標確認全部 `WritesData` 呼叫，也包含出現在旗標之前的呼叫。
+未確認時，每個此類呼叫新增 `--{name} writes files or changes data. Add --confirm to use it.`。
+防護關閉時，`--confirm` 原樣傳給工具。
+處理委派不會收到保留的啟動確認旗標。
+
+工具在主視窗顯示之前執行 `BeforeFirstFrame`。
+影響第一個畫面的設定使用此階段。
+工具在自身啟動流程結束之後執行 `AfterStartup`。
+Core 不提供視窗事件或 UI 派送。
+階段執行略過執行期間的啟動專用檢查，並保留已啟用的確認防護。
+工具須先檢查解析問題及選項之間的規則，再呼叫任一階段。
+
+執行期間的請求依序檢查 null、版本、未知命令、啟動專用狀態及確認。
+`RouteAsync` 與 `ExecuteAsync` 都以 `STARTUP_ONLY` 拒絕 `BeforeFirstFrame`，完整訊息如下：
+
+```text
+Command '{name}' can be used only at startup.
+```
+
+嚴格模式由工具決定。
+自動化執行遇到啟動問題時，以結束代碼 64 拒絕執行，且不開啟 UI。
+啟動驗證委派讓工具在開啟任何視窗之前拒絕無效值。
+互動執行透過工具自己的 UI 顯示問題。
+Core 只回傳問題及回應，不定義結束代碼常數。
+
+`RuntimeQueryStartupCases` 集中保存輸入與字面預期輸出。
+`RuntimeQueryStartupParserTests` 與 `RuntimeQueryStartupTests` 驗證解析、執行期間錯誤順序、相同的處理委派引數及階段執行。
+使用已還原的套件執行下方 RuntimeQuery 測試命令。
+要達成零差異，不登錄啟動階段，並逐項比較傳遞後的引數與原始清單。
+以兩份清單執行工具既有的啟動解析器測試。
+比較解析結果及完整錯誤訊息，包含既有的 `page`、`help` 與報告選項。
+登錄啟動階段會新增行為，工具須另行測試後才採用。
+本任務不修改任何工具儲存庫。
+
 ## 公開 API
 
 | API | 契約 |
@@ -133,6 +290,87 @@ Windows 上的 .NET 8.0.31 測試確認此組合遭拒，並驗證連續兩個�
 
 同一位使用者的呼叫端不會看到請求或回應位元組的改變。其他使用者的程序無法再連線。
 名稱衝突現在會產生一次診斷事件。管道名稱、實例探索、選項及封套格式不變。
+
+## Command line
+
+Core 現在提供 query 命令列前端，保留凍結來源的行為。
+工具保留管道名稱、協定版本、依原順序排列的命令清單，以及用戶端錯誤文字。
+Core 負責解析、JSON 輸出、結束代碼，以及預設用戶端逾時。
+
+新增的公開型別是 `RuntimeQueryCommandLine`。
+唯一入口方法是 `TryHandleQueryCommand(args, pipeName, protocolVersion, supportedCommands, error, output, out exitCode)`。
+錯誤對應使用既有的 `Func<RuntimeQueryFailure, string?, RuntimeQueryError>` 契約。
+工具將 `Console.Out` 傳入輸出 writer。
+
+- 只有第一個引數等於 `query` 時才處理，忽略大小寫。
+- 未處理的引數不產生輸出，結束代碼為 0。
+- 解析器去除命令前後空白，再使用 invariant culture 轉成小寫。
+- 使用說明與不支援命令的錯誤，依提供的原順序列出命令。
+- 預設輸出格式化 JSON。最後一個 `--json-pretty` 或 `--json-compact` 決定回應格式。
+- 解析錯誤一律輸出格式化的 `INVALID_ARGUMENTS` JSON，結束代碼為 2。
+- 回應的 `ok` 為 true 時結束代碼為 0，否則為 1。
+- 前端只呼叫一次 `WriteLine`，寫入序列化的 JSON。
+
+只有第一個 `=` 的位置大於 2 時，選項才在該處分割。
+否則 `--` 後的完整 token 就是鍵。
+缺少值時使用 `"true"`，包含下一個 token 以 `--` 開頭的情況。
+鍵不區分大小寫。重複鍵保留第一次的拼法與最後一次的值。
+`--timeout-ms` 只供用戶端使用，預設為 1500，接受 1 到 120000 的整數。
+沒有剩餘命令引數時，請求的引數為 null。
+
+### 命令列基準
+
+- 來源儲存庫：`nvt-freeform-helper`（NFH）。
+- 正式程式碼 ref：`origin/1.3.x`。
+- 凍結正式程式碼 commit：`847cc4530ed098ceb56aa1bd8beda77bcd1ec227`。
+- 擷取路徑：`src/FreeformHelper.UI/Services/RuntimeQueryIpc.cs`，第 239–289 與 376–463 行。
+- 呼叫端參考：相同 commit 的 `src/FreeformHelper.UI/Program.cs`，約第 37 行。
+- 特徵測試 ref：`test/1.3.x/runtimequery-characterization`，NFH pull request 47。
+- 凍結特徵測試 commit：`464ecf4d98095ac26b195046bfb50ef66679286f`。
+- 特徵測試路徑：
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationCommandLineTests.cs`
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationSubject.cs`
+
+### 命令列驗證
+
+`RuntimeQueryCommandLineCases` 將全部 40 個凍結輸入與預期輸出放在同一個可共用的測試表。
+另外四列涵蓋 `--=x`、`--a=b=c`、空命令，以及前後有空白的命令。
+凍結的 query 單獨一列涵蓋 `query` 後沒有引數的情況。
+測試使用 `Environment.NewLine` 建立精確的 stdout 字串與請求框架，逐字比較。
+三個逾時案例依來源測試方式檢查私有解析器。
+Program 案例重現呼叫端指定結束代碼的流程，不啟動 UI。
+全部管道測試共用一個停用平行執行的 collection。
+連線測試使用唯一管道名稱，所有等待都有時間上限。
+產品管道名稱只用於不會連線的測試資料。
+
+設定 `AVALONIA_TELEMETRY_OPTOUT=1`，使用已還原的套件：
+
+```text
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.RuntimeQuery"
+```
+
+### 零差異切換
+
+NFH 保留凍結順序的命令清單，以及既有的用戶端錯誤文字。
+在 `Program.cs` 將前端呼叫換成 Core 入口：
+
+```csharp
+if (RuntimeQueryCommandLine.TryHandleQueryCommand(
+    args, PipeName, ProtocolVersion, SupportedCommands, ClientError, Console.Out, out var cliExitCode))
+{
+    Environment.ExitCode = cliExitCode;
+    return;
+}
+```
+
+範例中的設定名稱代表工具既有的設定值與用戶端錯誤對應。
+切換前後都執行全部 40 個 `RuntimeQueryCharacterizationCommandLineTests` 案例。
+使用 `RuntimeQueryCommandLineCases`，讓兩個前端執行相同資料列。
+比較 stdout 位元組與結束代碼，兩者都必須相等。
+工具的 `INSTANCE_NOT_RUNNING` 文字繼續由其用戶端錯誤對應提供。
+Core 繼續使用既有的用戶端傳輸與 JSON 選項。
+本次工作不變更來源工具。
 
 ## 凍結來源
 

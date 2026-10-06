@@ -77,6 +77,163 @@ The source request-check adapter uses its protocol version. Other expected-versi
 Command-line handling and the UI-thread step follow in later tasks.
 This extraction does not adopt Core in the source tool.
 
+## Command risk and confirmation
+
+The confirmation guard is off unless the caller enables it.
+This behavior was approved on 2026-10-06 and has no source tool baseline.
+
+| Public API | Contract |
+| --- | --- |
+| `RuntimeQueryCommandRisk` | Defines `ReadOnly`, `ChangesState`, and `WritesData`. |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | A sealed record with the command name, risk, and existing handler type. |
+| `RuntimeQueryCommandRouter(commands, requireConfirmation)` | Builds an ordinal handler table from a command list. `RegisteredCommands` preserves registration order. |
+
+- `ReadOnly` commands only read state.
+- `ChangesState` commands change UI state, such as the page or selection. They write no files and change no data.
+- `WritesData` commands write files or change the tool's data.
+
+The list constructor rejects null lists, commands, names, and handlers with `ArgumentNullException`.
+It rejects duplicate names with `ArgumentException`.
+It also rejects names that differ from their trimmed, lowercase invariant form.
+The dictionary constructor keeps its existing behavior and never requires confirmation.
+
+With `requireConfirmation: false`, handlers receive the original arguments, including any `confirm` key.
+NFH, the FreeformHelper tool, first switches to Core with this flag set to false.
+Turning the guard on is a separate, visible change.
+
+With `requireConfirmation: true`, `RouteAsync` first finds the handler.
+Unknown commands still return `UNKNOWN_COMMAND` before confirmation checks.
+`ExecuteAsync` still checks null requests, then versions, then routing.
+
+For `WritesData`, the router reads `confirm` with `RuntimeQueryArgumentParser.TryGetBoolArg`.
+The helper accepts true/false, 1/0, on/off, and yes/no.
+An invalid value returns the helper's exact `INVALID_ARGUMENTS` error.
+A missing, blank, or false value returns `CONFIRMATION_REQUIRED` with this exact message:
+
+```text
+Command '{name}' writes files or changes data. Add --confirm to run it.
+```
+
+The message uses the normalized command name. The handler does not run after either error.
+For every risk level, the enabled guard removes the ordinal key `confirm` before calling the handler.
+It copies other keys and values unchanged into a new ordinal dictionary.
+The handler receives null when no keys remain. Null arguments stay null.
+Handlers no longer receive the `confirm` key when the guard is on.
+The existing command-line grammar already maps `--confirm` to `"confirm": "true"`.
+
+`RuntimeQueryConfirmationCases` holds the new inputs and literal expected outputs.
+`RuntimeQueryCommandConfirmationTests` compares every existing `RuntimeQueryCommandCases` row through both constructors with the guard off.
+It checks exact responses, handler calls, argument forwarding, registration checks, and error order.
+Run the RuntimeQuery test command below to verify both constructors and the enabled guard.
+
+For zero difference, NFH must keep the guard off and run the existing NFH switch-over checks below.
+Compare test results, stdout and stderr bytes, pipe frames, error codes and messages, and process exit codes.
+The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands and remove `confirm` from handler arguments.
+
+## Startup entry
+
+A tool defines each command once for startup arguments and RuntimeQuery requests.
+The owner approved this new behavior on 2026-10-06.
+It has no source tool baseline or extracted source paths.
+
+| Public API | Contract |
+| --- | --- |
+| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. |
+| `RuntimeQueryCommand.StartupPhase` | Optional metadata. The default is `None`, so existing registrations keep their behavior. |
+| `RuntimeQueryCommand.StartupValueKey` | Optional argument key for one startup value. The default is null, which defines a flag with null handler arguments. |
+| `RuntimeQueryCommand.StartupValidator` | Optional validator with type `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`. Returns null for valid arguments or a failure. |
+| `RuntimeQueryStartupCall(Command, Args)` | One recognized occurrence. `Phase` comes from its command definition. Calls retain command-line order, including occurrences with issues. |
+| `RuntimeQueryStartupIssue(Option, Message)` | The option name and exact issue message. |
+| `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | All calls, remaining tool arguments, and issues from one parse. |
+| `RuntimeQueryStartupCallResult(Call, Response)` | The executed call and its unchanged response. |
+| `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | Parses raw arguments against the router's registered commands and confirmation setting. Runs no handlers. |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | Runs one phase through the router in command-line order. Includes the first failed response, then stops. |
+
+For example, register `theme` with phase `AfterStartup` and value key `value`:
+
+```csharp
+var command = new RuntimeQueryCommand(
+    "theme",
+    RuntimeQueryCommandRisk.ChangesState,
+    ApplyThemeAsync,
+    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    StartupValueKey: "value",
+    StartupValidator: ValidateTheme);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+```
+
+The tool can call `ValidateTheme` from `ApplyThemeAsync` to keep value rules in one function.
+The validator must have no side effects and must not run the command.
+
+Both entry points pass `"dark"` under the ordinal key `"value"` to the same handler:
+
+```text
+--theme dark
+query theme --value dark
+```
+
+Core accepts these startup forms:
+
+- `--name value` and `--name=value` for value options.
+- `--name` for flags.
+- Values containing `=`, with their text unchanged.
+
+Core takes only `--` followed by a registered command name whose phase differs from `None`.
+It compares names with ordinal equality and does not change case.
+A tool keeps its own parser for its existing options.
+Core passes every other argument through unchanged, in its original order.
+For example, `--page home --theme dark --load-report a.json` leaves `--page home --load-report a.json` for the tool.
+Core adds no startup phases to generic commands such as `page` or `help`.
+A tool that registers no startup phase sees no change.
+The parser passes every argument through, including `--confirm`.
+
+The parser reports these exact grammar messages:
+
+- `--{name} requires a value.` for missing, empty, or blank values in either form.
+- `--{name} does not take a value.` for flags with an equals sign.
+- `--{name} is given more than once.` for repeated options.
+
+A next token starting with `--` is not a value and remains available for parsing.
+For each call without a grammar issue, Core calls its startup validator once.
+A validator failure becomes an issue with its message unchanged.
+The parser returns all calls and issues together for tool checks across options.
+
+With startup commands registered, the enabled confirmation guard reserves `--confirm` as a startup flag.
+It confirms every `WritesData` call, including calls before the flag.
+Without confirmation, each such call adds `--{name} writes files or changes data. Add --confirm to use it.`.
+With the guard off, `--confirm` passes through to the tool.
+Handlers never receive the reserved startup confirmation flag.
+
+The tool runs `BeforeFirstFrame` before the main window shows.
+Use this phase for settings that affect the first frame.
+The tool runs `AfterStartup` after its startup flow ends.
+Core supplies no window events or UI dispatch.
+Phase execution bypasses the runtime startup-only check and retains the enabled confirmation guard.
+The tool checks parse issues and rules across options before it calls either phase.
+
+Runtime requests check null, version, unknown command, startup-only status, then confirmation.
+Both `RouteAsync` and `ExecuteAsync` reject `BeforeFirstFrame` with `STARTUP_ONLY` and this exact message:
+
+```text
+Command '{name}' can be used only at startup.
+```
+
+Strict mode stays with the tool.
+An automation run rejects startup issues with exit code 64 and opens no UI.
+Startup validators let the tool reject invalid values before any window opens.
+An interactive run shows issues through the tool's own UI.
+Core returns issues and responses and defines no exit-code constant.
+
+`RuntimeQueryStartupCases` holds the input and literal expected-output rows.
+`RuntimeQueryStartupParserTests` and `RuntimeQueryStartupTests` check parsing, runtime error order, equal handler arguments, and phase execution.
+Run the RuntimeQuery test command below with the already-restored packages.
+For zero difference, register no startup phase and compare every passed-through argument with the original list.
+Run the tool's existing startup parser tests on both lists.
+Compare parse results and exact error messages, including existing `page`, `help`, and report options.
+Registering startup phases adds behavior and requires separate tool tests before adoption.
+This task changes no tool repository.
+
 ## Public API
 
 | API | Contract |
@@ -133,6 +290,87 @@ The first server continues to answer requests. Disposal retains the configured s
 
 Callers of the same user see no change to request or response bytes. Another user's process can no longer connect.
 A name conflict now produces one diagnostic event. Pipe names, discovery, options and envelope formats do not change.
+
+## Command line
+
+Core now provides the query command-line front end with the frozen source behavior.
+The tool keeps its pipe name, protocol version, ordered command list, and client error texts.
+Core handles parsing, JSON output, exit codes, and the default client timeout.
+
+The new public type is `RuntimeQueryCommandLine`.
+Its only entry method is `TryHandleQueryCommand(args, pipeName, protocolVersion, supportedCommands, error, output, out exitCode)`.
+The error mapping uses the existing `Func<RuntimeQueryFailure, string?, RuntimeQueryError>` contract.
+Tools pass `Console.Out` as the output writer.
+
+- Only a first argument equal to `query`, ignoring case, returns handled.
+- Unhandled arguments produce no output and return exit code 0.
+- The parser trims the command and converts it to lowercase with the invariant culture.
+- Usage and unsupported-command errors list the supplied commands in their original order.
+- Pretty JSON is the default. The last `--json-pretty` or `--json-compact` switch selects the response format.
+- Parse errors always print pretty `INVALID_ARGUMENTS` JSON and return exit code 2.
+- Responses return exit code 0 when `ok` is true and 1 when it is false.
+- The front end calls `WriteLine` once with the serialized JSON.
+
+Options split at the first `=` only when its position is greater than 2.
+Otherwise, the complete token after `--` becomes the key.
+A missing value becomes `"true"`, including when the next token starts with `--`.
+Keys ignore case. Repeated keys keep their first spelling and their last value.
+The client-only `--timeout-ms` defaults to 1500 and accepts integers from 1 through 120000.
+The request carries null arguments when no command arguments remain.
+
+### Command-line baseline
+
+- Source repository: `nvt-freeform-helper` (NFH).
+- Production ref: `origin/1.3.x`.
+- Frozen production commit: `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
+- Extracted path: `src/FreeformHelper.UI/Services/RuntimeQueryIpc.cs`, lines 239–289 and 376–463.
+- Caller reference: `src/FreeformHelper.UI/Program.cs`, near line 37, at the same commit.
+- Characterization ref: `test/1.3.x/runtimequery-characterization`, NFH pull request 47.
+- Frozen characterization commit: `464ecf4d98095ac26b195046bfb50ef66679286f`.
+- Characterization paths:
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationCommandLineTests.cs`
+  - `tests/FreeformHelper.Tests/UI/Services/RuntimeQueryCharacterizationSubject.cs`
+
+### Command-line verification
+
+`RuntimeQueryCommandLineCases` holds all 40 frozen input and expected-output rows in one reusable test table.
+Four added rows cover `--=x`, `--a=b=c`, an empty command, and a command with surrounding spaces.
+The frozen query-only row covers an empty argument list after `query`.
+Tests compare exact stdout strings and request frames with `Environment.NewLine`.
+The three timeout rows inspect the private parser, as the source tests do.
+The Program row reproduces the caller's exit-code assignment without starting a UI.
+All pipe tests share one collection with parallel execution disabled.
+Tests use unique pipe names for connections and bounded waits.
+The product pipe name remains test data only for cases that cannot connect.
+
+Set `AVALONIA_TELEMETRY_OPTOUT=1` and use the restored packages:
+
+```text
+dotnet build Nvt.Core.sln --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.RuntimeQuery"
+```
+
+### Zero-difference switch
+
+NFH keeps its command list in the frozen order and keeps its existing client error texts.
+In `Program.cs`, replace the front-end call with the Core entry method:
+
+```csharp
+if (RuntimeQueryCommandLine.TryHandleQueryCommand(
+    args, PipeName, ProtocolVersion, SupportedCommands, ClientError, Console.Out, out var cliExitCode))
+{
+    Environment.ExitCode = cliExitCode;
+    return;
+}
+```
+
+The setting names in this example represent the tool's existing values and client error mapping.
+Run all 40 `RuntimeQueryCharacterizationCommandLineTests` cases before and after the switch.
+Use `RuntimeQueryCommandLineCases` to run the same rows against both front ends.
+Compare stdout bytes and exit codes. Both must be equal.
+Keep the tool's `INSTANCE_NOT_RUNNING` text in its client error mapping.
+Core continues to use the existing client transport and JSON options.
+This task does not change the source tool.
 
 ## Frozen provenance
 
