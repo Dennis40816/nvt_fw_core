@@ -11,13 +11,37 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.Platform/Processes/WindowsSynchronousReadCancellation.cs`（完整取消機制）。
 - `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/BoundedProcessOutputReaderTests.cs`（全部 11 個案例及完整輔助程式）。
 
+- `src/NvtFwCombiner.Platform/Processes/ProcessLaunchGate.cs`（完整閘門及控制代碼 record，分成獨立的 Core 檔案）。
+- `src/NvtFwCombiner.Platform/Processes/WindowsContainedProcessStarter.cs`（完整原生受控啟動器）。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ProcessLaunchGateTests.cs`（全部八個案例及輔助行為）。
+- `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs`（暫存路徑、位元組寫入及有界清理支援；產品前綴及儲存庫路徑轉接保留在 NFC）。
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-此切片將僅使用 BCL、以 net8.0 為目標的外部程序契約、有界 UTF-16 診斷輸出讀取器及 Windows 同步讀取取消機制移入 `Nvt.Core.Processes`。Processes 是這些 Core 機制的唯一擁有者。受控啟動、runner 實作及子程序／Job 生命週期證據由後續 Processes 切片負責。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
+僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
 
-## 契約收據
+## API
 
 ```csharp
+public readonly record struct ProcessInheritedHandle
+{
+    public ProcessInheritedHandle(string environmentVariable, IntPtr handle);
+    public string EnvironmentVariable { get; }
+    public IntPtr Handle { get; }
+    public static ProcessInheritedHandle Parse(string environmentVariable, string handle);
+}
+
+public static class ProcessLaunchGate
+{
+    public static Process? Start(ProcessStartInfo startInfo);
+    public static Process? StartContained(
+        ProcessStartInfo startInfo, IReadOnlyList<ProcessInheritedHandle> inheritedHandles);
+    public static Process? StartContained(
+        ProcessStartInfo startInfo, IReadOnlyList<ProcessInheritedHandle> inheritedHandles,
+        Func<bool> validateImmediatelyBeforeStart);
+    public static bool TryClearInheritance(IntPtr handle);
+}
+
 public interface IExternalProcessRunner
 {
     ValueTask<ExternalProcessResult> RunAsync(
@@ -61,7 +85,7 @@ public sealed class ExternalProcessStartFailedException : Exception
 
 供受控啟動及外部 runner 使用的內部契約為 `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`、`DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>` 及 `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`。`BoundedProcessOutput` 是內部 readonly record struct，包含 `string Text` 及 `bool ReachedEndOfStream`。`WindowsSynchronousReadCancellation` 維持 internal、sealed、partial、可釋放，並保留 `[SupportedOSPlatform("windows")]`。
 
-指定的凍結來源沒有產品專屬的路徑、引數或程序容量准入上限，只有下列固定讀取機制界限。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式及後續 runner 契約負責。
+指定的凍結來源沒有產品專屬的路徑、引數或程序容量准入上限，只有下列固定讀取機制界限及暫停子程序終止確認的五秒界限。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式及外部 runner 契約負責。
 
 ## 保留行為
 
@@ -95,7 +119,7 @@ The external process runner is at its limit of {limit} invocations that are runn
 
 ## 測試及來源對應
 
-共有 40 個已記錄 XML 文件的公開測試方法，靜態列舉為 95 個案例：11 個移植案例、15 個讀取器邊界方法（49 個案例）及 14 個契約方法（35 個案例）。全部輸入均為合成資料。可接受 token 的呼叫均直接使用 `TestContext.Current.CancellationToken` 或透過相連的停止來源傳入。
+讀取器及外部程序契約涵蓋 40 個已記錄 XML 文件的公開測試方法，靜態列舉為 95 個案例：11 個移植案例、15 個讀取器邊界方法（49 個案例）及 14 個契約方法（35 個案例）。全部輸入均為合成資料。可接受 token 的呼叫均直接使用 `TestContext.Current.CancellationToken` 或透過相連的停止來源傳入。
 
 來源名稱、斷言、門檻及 `BeforeKernelReadReader`、`HeldOpenReader`、`CreatePattern`、`AssertWellFormedUtf16` 全數保留。三處來源 `Production.Drain` 改呼叫 `DrainProcessStreamAsync`。測試支援僅新增 Core namespace、明確 xUnit import、覆寫成員 XML 文件及測試 token 接線。
 
@@ -134,15 +158,69 @@ The external process runner is at its limit of {limit} invocations that are runn
 - `CapacityExceptionPreservesPropertiesAndExactMessage` 涵蓋傳入容量八的前一個／邊界／後一個計數，以及不另驗證的零、負值及整數極值。
 - `StartFailurePreservesTypeTextAndInnerException`、`StartFailureWithNullExceptionPreservesSourceFailure`、`CleanupEnumPreservesExactNamesAndOrder` 固定其餘契約。
 
-kernel 讀取前的競態測試使用真正的 Windows 匿名管線及確定性閘門，非 Windows 透過 `Assert.Skip` 明確略過。略過不提供原生證據。子程序、繼承控制代碼隔離及 Job 證據仍由後續啟動及生命週期切片負責。
+kernel 讀取前的競態測試使用真正的 Windows 匿名管線及確定性閘門，非 Windows 透過 `Assert.Skip` 明確略過。略過不提供原生證據。以下受控啟動測試提供真正的子程序及繼承控制代碼證據；Job 成員關係屬於獨立的生命週期範圍。
+
+## 受控建立行為
+
+`Start` 與兩個 `StartContained` 多載透過同一個 private static `object` 鎖序列化。只有經過此 API 的啟動才參與閘門。一般啟動在鎖定前檢查 `startInfo`；受控啟動依序在鎖定前檢查 `startInfo`、`inheritedHandles` 及 `validateImmediatelyBeforeStart`。兩參數多載提供永遠回傳 true 的回呼。
+
+`ProcessInheritedHandle` 依序拒絕空白名稱、含 `=` 的名稱，以及有號 `ToInt64()` 值非正的控制代碼。其餘名稱和值保持原樣。`Parse` 使用 `NumberStyles.None` 及 invariant culture；解析失敗保留 `ParamName == "handle"` 與 `Inherited handle must be a positive decimal value.`。解析成功的零值由建構函式拒絕。Record 相等性包含完整名稱及控制代碼；default record 保留 null／零欄位。
+
+Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步驟：
+
+1. 拒絕 shell、任何重新導向標準串流或非完整絕對執行檔路徑；接著檢查替代使用者名稱／密碼、混用 `Arguments` 與 `ArgumentList`，最後以 ordinal 忽略大小寫比較檢查重複綁定名稱。這些檢查都在複製控制代碼與最後驗證之前。
+2. 依宣告順序複製原始控制代碼，保持相同存取權限並啟用繼承。使用 ordinal 忽略大小寫鍵複製環境，再將宣告名稱綁定到副本的 invariant 十進位值。呼叫者的環境不變。原始控制代碼仍由呼叫者擁有；需要時透過 `TryClearInheritance` 清除其繼承旗標。
+3. 非空允許清單只初始化一個 `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`，其中只有這些副本，並啟用 extended startup information。空清單關閉繼承，使用一般 startup information。機制不新增控制代碼數量上限。
+4. 環境項目以 ordinal 忽略大小寫排序，省略 null 值、保留空值及凍結的 NUL 結尾。執行檔及各個 `ArgumentList` 項目保留空格／tab／引號及反斜線 quoting 規則；沒有 argument list 時逐字附加原始 `Arguments`。
+5. 準備原生緩衝區後，在仍持有閘門時執行最後 custody 驗證；拒絕時回傳 null 且不建立子程序。驗證例外在清理後原樣傳播。`CreateProcessW` 使用 suspended 及 Unicode environment 旗標，並依要求使用 no-window。先查找 managed process 並取得其 handle，再恢復原生執行緒。
+6. 建立後、恢復前失敗時，釋放 managed process，以 exit code 1 終止暫停子程序，最多等待 5,000 ms 確認。確認終止後傳播原始失敗；終止或確認失敗時，以原生錯誤或有界 timeout 包裝原始失敗。
+7. `finally` 依凍結順序關閉原生執行緒／程序控制代碼、刪除 attribute list、釋放 handle-list／environment／command-line 緩衝區，並釋放所有副本。凍結函式本身未釋放 attribute-list 的配置；此配置行為保持原樣。
+
+原生拒絕訊息逐字保留：
+
+- `Contained process starts require an absolute executable, shell disabled, and no redirected streams.`
+- `Contained process starts do not support alternate credentials.`
+- `Contained process starts cannot mix Arguments and ArgumentList.`
+- `Inherited handle environment names must be unique.`（`ParamName == "inheritedHandles"`）。
+
+建立後失敗保留 `Contained process creation failed and the suspended child could not be terminated.`、`Contained process creation failed and child termination could not be confirmed.` 及 `The suspended child did not terminate within the bounded confirmation deadline.`。其他原生失敗維持使用最後原生錯誤的 `Win32Exception`。
+
+非 Windows 受控啟動在同一閘門內執行最後驗證，再呼叫 `Process.Start` 或回傳 null；不套用 Windows 限制及控制代碼允許清單。`TryClearInheritance` 在其他平台回傳 true；Windows 在 `SetHandleInformation` 前拒絕 0 與 -1。原生成員保留 Windows 平台屬性及 mutable-layout 警告抑制。Core 將 net9 鎖改為 `object`，並將相同 quoting 字元存入 static readonly 陣列以符合分析器要求。
+
+## 受控啟動測試對應
+
+受控啟動新增 47 個已記錄 XML 文件的公開測試方法及 107 個靜態列舉案例：八個移植案例方法，以及以下輸入、閘門與準備邊界方法。
+
+全部凍結閘門案例在 `ProcessLaunchGateTests` 保留原名。測試使用共用的 BCL-only probe，不複製產品 probe 專案。
+
+| 凍結及 Core 案例 | 共用 probe 模式 |
+| --- | --- |
+| `ContainedChildExcludesUnstatedAmbientInheritableHandle` | `ambient-pipe` |
+| `InvalidAllowlistHandleStartsNoChildAndDoesNotPoisonNextLaunch` | `ambient-pipe` |
+| `InheritedHandleRejectsEveryNonPositiveValue` | 不建立子程序 |
+| `ParallelContainedStartsDoNotCrossInheritHandles` | `contained-isolation` |
+| `ContainedStartPreservesUnicodeArgumentsAndEnvironment` | `arguments-environment` |
+| `FinalValidationRejectsChangeAfterNativePreparation` | `ambient-pipe` |
+| `ValidationWaitsForGateAndRejectsChangedStateBeforeStart` | `arguments-environment` |
+| `PostCreateFailureTerminatesSuspendedChildAndReleasesPhysicalPipe` | `contained-isolation` |
+
+`ProcessSerialCollection` 序列化共用程序狀態的閘門測試。原有實體管線斷言、`first`／`second` 內容、Unicode 值及兩秒／200-ms 門檻保持原樣。其餘原本無界的 fixture 等待限制為 30 秒。僅限 Windows 的案例在其他平台使用 xUnit skip。
+
+`ProcessInheritedHandleTests` 新增建構檢查順序、空白／等號名稱、未正規化的名稱、零／負值／正一控制代碼、有號指標極值、invariant 十進位語法、`long.MaxValue` 前一值／邊界／後一值及 record 相等性。啟動閘門沒有可調整的正值數字上限參數。
+
+`ProcessLaunchGateBoundaryTests` 新增公開／內部 null 順序、一般 `exit` 啟動、拒絕且無 marker、回呼失敗與閘門重用、一般啟動序列化、原生驗證順序、default record 複製失敗、精確零／一／二控制代碼清單、相同原始控制代碼綁定、父環境不變、原生建立清理，以及無效／真實管線／非 Windows 的繼承清除。完整 probe 資料夾副本只重新命名 apphost 並測試原始 Arguments。
+
+`WindowsContainedProcessStarterContractTests` 固定空／非空 command line、原始引數、零／一／二反斜線、空格／tab／引號／換行邊界、Unicode、ordinal 忽略大小寫環境排序、null 省略、空值、零／一／二環境項目及精確結尾。它固定 5,000-ms 確認常數；此期限沒有呼叫者可傳入的前一值／後一值。原生建立後案例證明暫停子程序不能執行，且其實體管線在原有兩秒門檻內關閉。
+
+`OptionalPowerShellQuotedArguments` 獨立透過 PowerShell 測試 `two words`、`quote"inside` 及 `trail\`，保留十分鐘 checkpoint。執行檔不可用或 PowerShell 引數解讀不同時報告 skip，不修改受控啟動器。
 
 ## NFC 擁有權及採用
 
 `ExternalProcessCleanupText`、issue codes、產品文字、`ToExecutedCommand` 稽核轉接、信任、manifest 驗證、staging、routing、韌體行為、schemas、golden 證據及 release authority 均留在 NFC。機制註解已不含私人紀錄識別碼。執行判斷、界限及訊息不變。
 
-NFC 以獨立的 PR 採用本模組，與本次抽取分開。受控啟動及外部 runner 建立在本契約之上。採用結案前，生命週期證據必須通過。
+NFC 以獨立的 PR 採用本模組，與本次抽取分開。所有受控 launcher 呼叫者使用 `StartContained(startInfo, inheritedHandles, validateImmediatelyBeforeStart)`；一般外部工具啟動使用 `Start(startInfo)`。原始程序建立留在 Processes，不置入 Launcher。採用結案前，生命週期證據必須通過。
 
-只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用讀取器及同步取消副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
+只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用讀取器、同步取消、啟動閘門、繼承控制代碼 record 及受控啟動器副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
 
 UI 比較使用共用環境 manifest，並要求解碼後變更像素數為零。適用時，比較也涵蓋完整輸出位元組及事件軌跡，並記錄每個證據檔的 SHA-256。八個 legacy font 值保持不變。
 
