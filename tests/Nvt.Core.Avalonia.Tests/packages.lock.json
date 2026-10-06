@@ -66,14 +66,6 @@
         "resolved": "11.3.2",
         "contentHash": "qHDToxto1e3hci5YqbG9n0Ty8mlp3zBUN5wT66wKqaDVzXyQ0do3EnRILd4Ke9jpvsktaPpgE0YjEk7hornryQ=="
       },
-      "Avalonia.Fonts.Inter": {
-        "type": "Transitive",
-        "resolved": "12.1.1",
-        "contentHash": "V2d7OM1jybcl31KThdhf8XSl5SjQ6Ll/tXIfwQ00kMeWuPegRcOx8DLVpECHOOEKO9JZelXW0enuUu1D7Svikg==",
-        "dependencies": {
-          "Avalonia": "12.1.1"
-        }
-      },
       "Avalonia.HarfBuzz": {
         "type": "Transitive",
         "resolved": "12.1.1",
@@ -318,6 +310,15 @@
           "Avalonia.BuildServices": "11.3.2",
           "Avalonia.Remote.Protocol": "12.1.1",
           "MicroCom.Runtime": "0.11.6"
+        }
+      },
+      "Avalonia.Fonts.Inter": {
+        "type": "CentralTransitive",
+        "requested": "[12.1.1, )",
+        "resolved": "12.1.1",
+        "contentHash": "V2d7OM1jybcl31KThdhf8XSl5SjQ6Ll/tXIfwQ00kMeWuPegRcOx8DLVpECHOOEKO9JZelXW0enuUu1D7Svikg==",
+        "dependencies": {
+          "Avalonia": "12.1.1"
         }
       }
     }

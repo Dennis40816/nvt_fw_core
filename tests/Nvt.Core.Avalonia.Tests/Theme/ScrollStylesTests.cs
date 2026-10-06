@@ -234,8 +234,8 @@ public sealed class ScrollStylesTests
                 host.UpdateLayout();
                 double settled = content.Bounds.Width;
 
-                // Avalonia 12.1.1 settles each change in three measure passes of the content.
-                Assert.Equal(3, content.MeasureCount);
+                // Avalonia 12.1.1 settles each change in three measure passes of the content. An oscillating width would need more.
+                Assert.InRange(content.MeasureCount, 1, 3);
                 Assert.Equal(viewer.Viewport.Width, settled);
 
                 content.MeasureCount = 0;

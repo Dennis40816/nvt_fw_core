@@ -2,7 +2,7 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 保留 NVT FW Combiner（NFC）通用主題及八個舊有字型值。模組提供 `Theme/ThemeTokens.axaml` 與 `Theme/ButtonStyles.axaml`，另有 `Theme/ScrollStyles.axaml`，見[捲軸樣式](#捲軸樣式)。將資源字典合併至應用程式資源，並在主機原本的按鈕樣式作用範圍載入樣式：
+Theme 保留 NVT FW Combiner（NFC）通用主題及八個舊有字型值。模組提供 `Theme/ThemeTokens.axaml` 與 `Theme/ButtonStyles.axaml`，另有 `Theme/ScrollStyles.axaml`，見[捲軸樣式](#捲軸樣式)。另提供 `UiResourceResolver`，供在程式碼中讀取主題資源的控制項使用，見[資源解析](#資源解析)。將資源字典合併至應用程式資源，並在主機原本的按鈕樣式作用範圍載入樣式：
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
@@ -115,8 +115,9 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 
 ## 捲軸樣式
 
-`Theme/ScrollStyles.axaml` 讓所有捲軸外觀一致，並提供兩個選用的 class，讓內容寬度不超過可視寬度。
-這些樣式修改 Fluent `ScrollBar` 範本內的元件，所以載入它的工具必須使用 Fluent 主題。NFC 與 NFH 都是。
+`Theme/ScrollStyles.axaml` 把 NFC 的捲軸外觀定為 Core 共用外觀，另加入 NFH 的兩個選用 class，讓內容寬度不超過可視寬度。
+這些樣式修改 Fluent `ScrollBar` 範本內的元件，所以載入它的工具必須使用 Fluent 主題。
+NFC 在 `085f71c` 的 `src/NvtFwCombiner.Presentation.Avalonia/App.axaml` 載入 Fluent。NFH 在 `847cc45` 的 `src/FreeformHelper.UI/App.axaml` 載入 Fluent。
 請在工具原本捲軸樣式所在的位置載入，維持樣式順序不變：
 
 ```xml
@@ -139,10 +140,13 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 
 ### 捲軸樣式的凍結來源與驗證
 
-檔案由兩個凍結來源組成，每個選擇器、setter、值與順序都不變：
+檔案由兩個凍結來源組成。捲軸外觀來自 NFC，只有兩個 viewport-bound class 來自 NFH。
+從各來源取用的行，每個選擇器、setter、值與順序都不變：
 
 - NFC（`nvt_fw_combiner`），ref `origin/1.2.x`，完整 commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`，`src/NvtFwCombiner.Presentation.Avalonia/Styles/MainWindowControlStyles.axaml` 第 117-185 行。第 186 行的 `ScrollViewer#SupportMatrixScroll` 屬於 NFC 產品，留在 NFC。
 - NFH（`nvt-freeform-helper`），ref `origin/1.3.x`，完整 commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`，`src/FreeformHelper.UI/Styles/Controls.Scroll.axaml` 第 12-19 行（只取兩個 viewport-bound class）。
+
+NFH 自己的捲軸規則（同一檔第 8-94 行）沒有移植。Core 採用 NFC 的外觀，工具採用 Core 的顏色，依[慣例](../conventions.md)的規定。
 
 驗證：
 
@@ -155,7 +159,69 @@ dotnet test tests/NvtFwCombiner.Architecture.Tests/NvtFwCombiner.Architecture.Te
 零差異採用：
 
 - NFC 把第 117-185 行換成上面的 include，位置不變。NFC 必須逐像素相同：執行 UI smoke 測試，並以相同的作業系統、字型、DPI 與主題比對採用前後的桌面截圖。
-- NFH 外觀會改變：2.5 px 的捲軸改為 14 px 軌道加 6 px thumb。NFH 須附前後對照圖，非 UI 測試的清單與結果須相同。
-- NFH 保留 `scrollDevCandidate`、`workspaceDataList`、`workspaceGroupStripScroll` 與 `DevScrollPreviewHeight`。
+- NFH 的外觀與行為會改變。NFH 的採用 PR 須附前後截圖，由 owner 核准外觀改變。非 UI 測試的清單與結果須相同。
+- NFH 保留 `scrollV2`、`scrollDevCandidate`、`workspaceDataList`、`workspaceGroupStripScroll` 與 `DevScrollPreviewHeight`。
+
+NFH 採用時會改變的地方：
+
+| 項目 | NFH 現況（`847cc45`） | Core |
+|---|---|---|
+| 捲軸粗細 | 2.5 px（`ScrollBarThickness`） | 14 px |
+| 捲軸背景 | `BrushScrollTrack` | 透明 |
+| thumb | 填滿捲軸，平時、停留、按下都用 `BrushScrollThumb`，`RadiusPill` | 6 px、置中，`NfcTextDisabledBrush`，停留時 `NfcTextMutedBrush`，`NfcPillCornerRadius` |
+| thumb 最小長度 | 36（`ScrollBarThumbMinLength`） | 未設定 |
+| 上下按鈕 | `IsVisible=False`，不佔空間 | `Opacity=0`，仍佔空間 |
+| 軌道矩形 | 未更動 | 隱藏 |
+| 按下（pressed）規則 | 有 | 無 |
 
 目前尚無採用工具。
+
+## 資源解析
+
+`UiResourceResolver` 為在程式碼中繪製的控制項讀取一個主題資源。每個方法都接收擁有者控制項、資源鍵與後備值。
+
+| 方法 | 接受的資源型別 |
+|---|---|
+| `GetBrush` | 任何 `IBrush`，或交給呼叫端筆刷工廠的 `Color` |
+| `GetColor`、`TryGetColor` | `Color`，或 `SolidColorBrush` 的顏色 |
+| `GetDouble` | `double`、`float` 或 `int` |
+| `GetCornerRadius` | `CornerRadius` |
+| `GetThickness` | `Thickness` |
+
+查找分三步：
+
+1. 以擁有者實際的主題變體，搜尋擁有者及其樣式父層。不在任何樹上的控制項變體為 null，查找改用 `ThemeVariant.Default`。
+2. 若找不到且 `UiThread.IsCurrent` 成功，以同一變體搜尋目前的應用程式。
+3. 否則傳回後備值。
+
+資源型別不符時也傳回後備值。使用 Default 變體時，只存在於 Light 與 Dark 字典的鍵查不到。
+請在 UI 執行緒呼叫。解析器不快取值，也不監看主題變更。快取解析結果的控制項，須在主題變體改變時自行更新。
+啟動時以 `UiThread.RegisterRunningDispatcher` 註冊 UI dispatcher。未註冊時會略過第 2 步。
+
+### 解析器的凍結來源與驗證
+
+凍結來源：NFH（`Dennis40816/nvt-freeform-helper`），ref `origin/1.3.x`，完整 commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`。
+抽取的來源路徑：`src/FreeformHelper.UI/Services/UiResourceResolver.cs`。
+Core 版保留 NFH 的簽章與行為，只改命名空間、`UiThread` 的 using、可見度（public）與文件註解。
+
+`tests/Nvt.Core.Avalonia.Tests/Theme/FrozenNfhUiResourceResolver.cs` 保留 NFH 檔案的凍結副本，只有命名空間、類別名稱與 `UiThread` 的 using 不同。Core 的 `UiThread` 是 NFH 版本未經修改的移植。
+`UiResourceResolverTests` 的 7 個案例都對兩個版本各跑一次，結果必須相同：
+
+- 視窗內控制項在 Light 與 Dark 下，視窗資源鍵與應用程式資源鍵的結果。
+- 筆刷資源、由顏色建立的筆刷，以及工廠呼叫次數。
+- 顏色只來自 `Color` 與 `SolidColorBrush`；`ImmutableSolidColorBrush` 傳回後備值。
+- 數值轉換，以及其他型別傳回後備值。
+- 圓角與邊距的型別。
+- 不在樹上的控制項：變體為 null，找得到應用程式頂層鍵，找不到 Light 與 Dark 的鍵。
+- 未註冊 dispatcher：略過應用程式那一步。
+
+此測試類別在不平行執行的集合中執行，因為其中一個案例會清除共用的 dispatcher 註冊。
+
+NFH 零差異採用：
+
+- NFH 刪除自己的副本前，Core 測試對兩個版本都通過。
+- NFH 完整測試清單與結果和凍結來源相同。
+- NFH 的 `ui-visual-minimal-baseline.json` 雜湊與 notch golden 輸出不變。
+- NFH 的所有呼叫端共用同一份 dispatcher 註冊：把 NFH 的 `UiThread` 呼叫改成 Core 的 `UiThread`，或在兩份並存期間兩邊都註冊。NFH 約有 20 處讀自己的 `UiThread`，只註冊 Core 的會讓它們失效；只註冊 NFH 的則會略過第 2 步且不報錯。
+
+目前尚無採用工具，NFH 採用仍待進行。

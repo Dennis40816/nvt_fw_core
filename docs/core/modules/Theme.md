@@ -6,6 +6,7 @@ Theme preserves the generic NVT FW Combiner (NFC) theme and its eight legacy fon
 The module provides `Theme/ThemeTokens.axaml` and `Theme/ButtonStyles.axaml`.
 Merge the resource dictionary into application resources.
 It also provides `Theme/ScrollStyles.axaml`. See [Scroll styles](#scroll-styles).
+It also provides `UiResourceResolver` for controls that read theme resources in code. See [Resource resolver](#resource-resolver).
 Include the styles at the host's existing button-style scope:
 
 ```xml
@@ -121,8 +122,9 @@ This extraction changes no packages or shared configuration.
 
 ## Scroll styles
 
-`Theme/ScrollStyles.axaml` gives every scroll bar the same look, and adds two opt-in classes that keep content inside the viewport width.
-The styles change parts of the Fluent `ScrollBar` template, so a tool that includes them must use the Fluent theme. NFC and NFH both do.
+`Theme/ScrollStyles.axaml` makes NFC's scroll bar look the shared Core look. It adds NFH's two opt-in classes that keep content inside the viewport width.
+The styles change parts of the Fluent `ScrollBar` template, so a tool that includes them must use the Fluent theme.
+NFC loads it in `src/NvtFwCombiner.Presentation.Avalonia/App.axaml` at `085f71c`. NFH loads it in `src/FreeformHelper.UI/App.axaml` at `847cc45`.
 Include the file at the position where the tool's own scroll styles were, so that the style order stays the same:
 
 ```xml
@@ -145,10 +147,13 @@ Which rules need the Fluent template:
 
 ### Scroll frozen sources and checks
 
-The file is built from two frozen sources, with every selector, setter, value and the order unchanged:
+The file is built from two frozen sources. The scroll bar look comes from NFC. Only the two viewport-bound classes come from NFH.
+In the lines taken from each source, every selector, setter, value and the order are unchanged:
 
 - NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `085f71cfaf9d1f592759d1c58b5bdc4f7b572902`, `src/NvtFwCombiner.Presentation.Avalonia/Styles/MainWindowControlStyles.axaml`, lines 117-185. NFC's `ScrollViewer#SupportMatrixScroll` rule at line 186 is product-specific and stays in NFC.
 - NFH (`nvt-freeform-helper`), ref `origin/1.3.x`, full commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`, `src/FreeformHelper.UI/Styles/Controls.Scroll.axaml`, lines 12-19 (the two viewport-bound classes only).
+
+NFH's own scroll bar rules (lines 8-94 of the same NFH file) are not ported. Core uses NFC's look, and tools adopt Core's colors, as [conventions](../conventions.md) requires.
 
 Checks:
 
@@ -161,7 +166,69 @@ Checks:
 For zero-difference adoption:
 
 - NFC replaces lines 117-185 with the include at the same position. NFC must stay pixel-identical: run its UI smoke tests, and compare desktop captures before and after with the same OS, fonts, DPI and theme.
-- NFH will look different: a 14 px lane with a 6 px thumb replaces its 2.5 px bar. NFH attaches before/after images. Its non-UI tests must keep the same list and outcomes.
-- NFH keeps `scrollDevCandidate`, `workspaceDataList`, `workspaceGroupStripScroll` and `DevScrollPreviewHeight`.
+- NFH will look and behave differently. The owner must approve the change in NFH's adoption PR, which attaches before and after screenshots. Its non-UI tests must keep the same list and outcomes.
+- NFH keeps `scrollV2`, `scrollDevCandidate`, `workspaceDataList`, `workspaceGroupStripScroll` and `DevScrollPreviewHeight`.
+
+What changes in NFH on adoption:
+
+| Item | NFH now (`847cc45`) | Core |
+|---|---|---|
+| Bar thickness | 2.5 px (`ScrollBarThickness`) | 14 px |
+| Bar background | `BrushScrollTrack` | Transparent |
+| Thumb | Fills the bar, `BrushScrollThumb` at rest, hover and pressed, `RadiusPill` | 6 px, centred, `NfcTextDisabledBrush`, `NfcTextMutedBrush` on hover, `NfcPillCornerRadius` |
+| Thumb minimum length | 36 (`ScrollBarThumbMinLength`) | Not set |
+| Line buttons | `IsVisible=False`, take no space | `Opacity=0`, still take space |
+| Track rectangle | Not changed | Hidden |
+| Pressed rules | Present | None |
 
 Adopters: none yet.
+
+## Resource resolver
+
+`UiResourceResolver` reads one theme resource for a control that draws in code. Each method takes the owner control, the key and a fallback value.
+
+| Method | Accepted resource types |
+|---|---|
+| `GetBrush` | any `IBrush`, or a `Color` passed to the caller's brush factory |
+| `GetColor`, `TryGetColor` | `Color`, or the color of a `SolidColorBrush` |
+| `GetDouble` | `double`, `float` or `int` |
+| `GetCornerRadius` | `CornerRadius` |
+| `GetThickness` | `Thickness` |
+
+A lookup has three steps:
+
+1. It searches the owner and its styling parents with the owner's actual theme variant. A control outside any tree has a null variant, so the lookup uses `ThemeVariant.Default`.
+2. If that fails and `UiThread.IsCurrent` succeeds, it searches the current application with the same variant.
+3. Otherwise it returns the fallback.
+
+A wrong resource type also returns the fallback. With the Default variant, keys that exist only in Light and Dark dictionaries are not found.
+Call the resolver on the UI thread. It does not cache values or watch theme changes. A control that caches resolved values must refresh them when its theme variant changes.
+Register the UI dispatcher with `UiThread.RegisterRunningDispatcher` at startup. Without the registration, step 2 is skipped.
+
+### Resolver frozen source and checks
+
+Frozen parent: NFH (`Dennis40816/nvt-freeform-helper`), ref `origin/1.3.x`, full commit `847cc4530ed098ceb56aa1bd8beda77bcd1ec227`.
+Extracted source path: `src/FreeformHelper.UI/Services/UiResourceResolver.cs`.
+The Core version keeps the NFH signatures and behavior. It changes only the namespace, the `UiThread` import, the visibility (public) and the documentation.
+
+`tests/Nvt.Core.Avalonia.Tests/Theme/FrozenNfhUiResourceResolver.cs` keeps a frozen copy of the NFH file. Only its namespace, class name and `UiThread` import differ. Core's `UiThread` is the unchanged port of NFH's.
+`UiResourceResolverTests` runs each of its 7 cases against both versions, and both must give the same results:
+
+- Light and Dark for a control in a window, for a window key and an application key.
+- Brush resources, brushes built from colors, and the factory call count.
+- Colors from `Color` and `SolidColorBrush` only. An `ImmutableSolidColorBrush` returns the fallback.
+- Number conversion and fallback for other types.
+- Corner radius and thickness types.
+- A control outside any tree: a null variant, application top-level keys found, Light and Dark keys not found.
+- No registered dispatcher: the application step is skipped.
+
+The test class runs in a collection without parallel tests, because one case clears the shared dispatcher registration.
+
+For zero-difference adoption in NFH:
+
+- Before NFH deletes its copy, the Core tests pass against both versions.
+- The full NFH test list and outcomes match the frozen parent.
+- NFH's `ui-visual-minimal-baseline.json` hashes and notch golden outputs stay unchanged.
+- All NFH callers share one dispatcher registration. Either NFH's `UiThread` calls move to Core's `UiThread`, or NFH registers the dispatcher with both while both exist. About 20 NFH call sites read NFH's own `UiThread`, so registering only with Core's breaks them. Registering only with NFH's skips step 2 without an error.
+
+Adopters: none. NFH adoption is pending.

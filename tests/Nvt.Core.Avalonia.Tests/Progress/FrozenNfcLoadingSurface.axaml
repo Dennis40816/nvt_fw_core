@@ -1,0 +1,23 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<!-- Frozen NFC wrapper. Only class, behavior and synthetic data namespaces differ. -->
+<UserControl
+    x:Class="Nvt.Core.Avalonia.Tests.Progress.FrozenNfcLoadingSurface"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:behaviors="using:Nvt.Core.Avalonia.Focus"
+    xmlns:vm="using:Nvt.Core.Avalonia.Tests.Progress"
+    x:DataType="vm:LoadingTestState"
+    AutomationProperties.Name="{Binding AccessibleStatus}"
+    behaviors:FocusOnRevealBehavior.IsEnabled="True"
+    Focusable="True"
+    IsVisible="{Binding IsVisible}">
+  <Grid Background="{DynamicResource NfcModalScrimBrush}">
+    <ContentControl
+        Width="430"
+        Padding="28,26"
+        Content="{Binding}"
+        ContentTemplate="{DynamicResource ForegroundLoadingStatusTemplate}"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center" />
+  </Grid>
+</UserControl>
