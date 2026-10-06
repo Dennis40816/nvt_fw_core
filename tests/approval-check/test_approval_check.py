@@ -700,10 +700,9 @@ class ApprovalCheckTests(unittest.TestCase):
         self.assertEqual(action.count("shell: bash"), 5)
         self.assertEqual(action.count("if: ${{ !cancelled() }}"), 2)
         action_uses = re.findall(r"(?m)^      uses: (.+)$", action)
-        self.assertEqual(action_uses, [
-            "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0",
-            "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0",
-        ])
+        # Dependabot bumps these pins, so check the actions and order, not the SHAs.
+        self.assertEqual([used.split("@", 1)[0] for used in action_uses],
+                         ["actions/checkout", "actions/setup-python"])
         for used in action_uses:
             self.assertRegex(used, r"^[^ @]+@[0-9a-f]{40} # v[0-9.]+$")
         caller_uses = re.findall(r"(?m)^        uses: (.+)$", caller)
