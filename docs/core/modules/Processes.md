@@ -261,7 +261,7 @@ All six frozen scenarios retain their names, assertions, and execution/exit obse
 | `RunAsyncCancellationKillsChildProcessBeforeThrowing` | `tree-root-wait`; capture root and child PID/start-time identity before cancellation, 30-second execution timeout, three-second exit observation for each process. |
 | `RunAsyncTimeoutKillsChildProcessBeforeReturning` | `tree-root-wait`; identities before a ten-second timeout, timeout flag, exit -1, and three-second exit observation. |
 | `RunAsyncBoundsAndDrainsBothOutputStreams` | `dual-output-exit`; 131,072 characters on each stream plus `OUT-END`/`ERR-END`, ten-second timeout, exact capture length, prefix, truncation marker, and suffix assertions. |
-| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`; 131,072 characters per stream plus `OUT-PARTIAL-END`/`ERR-PARTIAL-END`, two-second timeout, exit -1, timeout flag, exact bounded lengths and suffixes. |
+| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`; 131,072 characters per stream plus `OUT-PARTIAL-END`/`ERR-PARTIAL-END`, ten-second timeout (NFC used two seconds; a loaded host can need more than one second to start the probe, and the probe still waits 30 seconds), exit -1, timeout flag, exact bounded lengths and suffixes. |
 
 `SystemExternalProcessRunnerBoundaryTests` adds 23 methods and 56 statically enumerated cases:
 

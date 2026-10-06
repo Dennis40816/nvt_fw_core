@@ -261,7 +261,7 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 | `RunAsyncCancellationKillsChildProcessBeforeThrowing` | `tree-root-wait`；取消前擷取 root／child 的 PID 及 start-time 身分，30 秒執行 timeout，各程序三秒退出觀察。 |
 | `RunAsyncTimeoutKillsChildProcessBeforeReturning` | `tree-root-wait`；十秒 timeout 前擷取身分，timeout 旗標、exit -1 及三秒退出觀察。 |
 | `RunAsyncBoundsAndDrainsBothOutputStreams` | `dual-output-exit`；各串流 131,072 字元加 `OUT-END`／`ERR-END`，十秒 timeout，精確擷取長度、前綴、截斷標記及後綴斷言。 |
-| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`；各串流 131,072 字元加 `OUT-PARTIAL-END`／`ERR-PARTIAL-END`，兩秒 timeout，exit -1、timeout 旗標、精確有界長度及後綴。 |
+| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`；各串流 131,072 字元加 `OUT-PARTIAL-END`／`ERR-PARTIAL-END`，十秒 timeout（NFC 為兩秒；負載高時 probe 啟動可能超過一秒，probe 仍會等待 30 秒），exit -1、timeout 旗標、精確有界長度及後綴。 |
 
 `SystemExternalProcessRunnerBoundaryTests` 新增 23 個方法及 56 個靜態列舉案例：
 

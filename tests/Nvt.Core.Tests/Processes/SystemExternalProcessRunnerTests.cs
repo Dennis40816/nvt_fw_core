@@ -212,8 +212,10 @@ public sealed class SystemExternalProcessRunnerTests
         }
 
         var runner = new SystemExternalProcessRunner();
+        // NFC used 2 s. A loaded host can need more than 1 s to start the probe, so 10 s leaves room for both
+        // streams to finish; the probe still waits 30 s, so the run still ends through the timeout path.
         ExternalProcessStartInfo startInfo = CreateStartInfo(
-            Environment.CurrentDirectory, "dual-output-wait", TimeSpan.FromSeconds(2));
+            Environment.CurrentDirectory, "dual-output-wait", TimeSpan.FromSeconds(10));
 
         ExternalProcessResult result = await runner.RunAsync(
             startInfo,
