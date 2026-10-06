@@ -4,13 +4,14 @@
 
 ## 摘要
 
-Progress 提供有範圍驗證的進度資料、NVT FW UTIL（NFU）一次只執行一個工作的背景服務，以及 Freeform Helper（NFH）的進度間隔限制。
+Progress 提供有範圍驗證的進度資料、NVT FW UTIL（NFU）一次只執行一個工作的背景服務，以及 Freeform Helper（NFH）的兩個部分：進度間隔限制與讀取範圍協調器。
 模組僅使用 .NET 基礎類別庫，目標框架為 net8.0。
 命名空間為 `Nvt.Core.Progress`。
 
 各工具保留自己的更新頻率、進度類別、結果類別與呈現政策。
 擁有者於 2026-10-06 核准此邊界。
-模組不加入巢狀進度、佇列、排程器、取代模式、關閉框架、計時器、延後補送或 UI 程式碼。
+讀取範圍以其 `TimeProvider` 上的 `Task.Delay` 等待最短顯示時間。
+除了這個等待，模組不加入巢狀進度、佇列、排程器、取代模式、關閉框架、計時器、延後補送或 UI 程式碼。
 
 ## 凍結基準
 
@@ -53,6 +54,11 @@ Core 明確讓首筆回報通過，也涵蓋從零開始的測試時鐘。
 
 Core 以合成的最終值與外部有效性檢查，保留上述通用斷言。
 NFH 保留領域斷言、進度文字、版本檢查與 UI 派送。
+
+NFH 另外提供 `src/FreeformHelper.UI/Services/LoadingScopeCoordinator.cs` 的讀取範圍協調器。
+兩個來源測試位於 `tests/FreeformHelper.Tests/UI/Services/LoadingScopeCoordinatorTests.cs`。
+僅供了解脈絡的呼叫端為 `src/FreeformHelper.UI/ViewModels/FreeformHelperViewModel.CadLoadOverlay.cs` 與 `FreeformHelperViewModel.ModalLoading.cs`。
+兩個呼叫端的最短顯示時間都是 120 ms。
 
 ## Progress data
 
@@ -307,3 +313,111 @@ dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --
 Core 使用 `TimeProvider` 時間戳記。
 在實機上，接近 120 ms 邊界的回報可能產生不同的通過或捨棄結果。
 零差異比較應使用精確的假時鐘時間序列。
+
+## Loading scope
+
+[`LoadingScopeCoordinator`](../../../src/Nvt.Core/Progress/LoadingScopeCoordinator.cs) 決定讀取畫面（例如遮罩或轉圈）何時顯示與隱藏。
+它不含 Avalonia、dispatcher 或 NFH 型別。
+顯示元件透過回呼接上。
+Avalonia 控制項可傳入 `visible => surface.IsVisible = visible`。
+
+```csharp
+public LoadingScopeCoordinator(
+    Func<Task> yieldFrameAsync,
+    TimeSpan minimumVisibleDuration,
+    TimeProvider? timeProvider = null);
+```
+
+- `yieldFrameAsync` 讓出一次 UI，使顯示變更能夠繪製。
+- `yieldFrameAsync` 為 null 時擲出 `ArgumentNullException`。
+- 負的 `minimumVisibleDuration` 視為零。
+- `timeProvider` 提供時鐘與等待用的計時器，null 代表 `TimeProvider.System`。
+
+`Begin(setVisible)` 開啟一個範圍。
+第一個開啟的範圍記錄開始時間並呼叫 `setVisible(true)`。
+巢狀範圍不會再次呼叫。
+
+`EndAsync(setVisible)` 關閉一個範圍：
+
+- 沒有開啟中的範圍時，立即返回，不做任何事。
+- 仍有其他範圍開啟時，立即返回。
+- 最後一個範圍關閉時，先等到最短顯示時間用完，再讓出一次畫面。
+- 此時若沒有開啟中的範圍，就呼叫 `setVisible(false)`，然後再讓出一次畫面。
+
+等待結束後的檢查只看當下的範圍數。
+等待期間開始、而且仍開啟的範圍會讓畫面保持顯示。
+該次 `Begin` 會再呼叫一次 `setVisible(true)`，並重新計算最短顯示時間。
+若這個較新的範圍也在等待期間結束，較早的呼叫仍會在自己的時間點隱藏畫面。
+此時畫面會在較新範圍的最短顯示時間用完前隱藏。
+較新的呼叫在自己的等待結束時會再隱藏一次。
+Core 保留這個來源行為。
+
+`RunAsync(action, setVisible)` 開始一個範圍、讓出一次畫面、執行 action，然後結束範圍。
+action 擲出例外時範圍仍會結束，例外會傳回呼叫端。
+`action` 或 `setVisible` 為 null 時，會擲出帶有參數名稱的 `ArgumentNullException`。
+
+lock 只保護範圍數。
+回呼在 lock 之外執行，協調器也不會切換執行緒。
+呼叫端必須依序呼叫 `Begin` 與 `EndAsync`，例如都在 UI 執行緒上呼叫。
+在兩個執行緒上同時呼叫時，隱藏可能發生在另一個 `Begin` 顯示之前。
+此時畫面會在沒有開啟中範圍的情況下保持顯示。
+await 會保留呼叫端的同步內容，所以從 UI 執行緒呼叫時，後續步驟也留在 UI 執行緒。
+
+### 讀取範圍的驗證
+
+套件還原後執行：
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-restore
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Progress.LoadingScopeCoordinatorTests"
+```
+
+兩個移植的來源測試檢查顯示與隱藏的順序，以及最短顯示時間。
+來源以 `Stopwatch` 對照牆上時鐘量測最短時間。
+移植版改用手動的 `TimeProvider` 執行該測試，因為系統時鐘被調整時可能跳過等待。
+另有一個使用系統時鐘的冒煙測試，不設時間門檻。
+手動時鐘位於 `tests/Nvt.Core.Tests/Progress/ManualTimeProvider.cs`。
+
+特徵測試涵蓋下列情況：
+
+- 剩餘的等待時間，以及最短時間已過時不建立計時器。
+- 負的最短時間。
+- 巢狀範圍，以及沒有開啟中範圍時的結束。
+- 等待結束時仍開啟的新範圍。
+- 較新的範圍在等待期間開始又結束，較早的結束仍會隱藏畫面。
+- 未依序的呼叫讓畫面在沒有開啟中範圍時保持顯示。
+- 讓出畫面的順序、失敗的 action，以及 null 參數。
+
+### NFH 讀取範圍的零差異驗證
+
+在 NFH 導入 Core 是另一項變更。
+NFH 不傳入 time provider，因此沿用系統時鐘。
+替換 NFH 的類別前後，在 NFH repository 根目錄以相同環境執行下列測試：
+
+```powershell
+$env:AVALONIA_TELEMETRY_OPTOUT = '1'
+dotnet build FreeformHelper.sln --no-restore
+dotnet test tests/FreeformHelper.Tests/FreeformHelper.Tests.csproj --no-build --filter "FullyQualifiedName~FreeformHelper.Tests.LoadingScopeCoordinatorTests|FullyQualifiedName~FreeformHelper.Tests.FreeformHelperViewModelTests|FullyQualifiedName~FreeformHelper.Tests.OpenDxfSinglePassTests|FullyQualifiedName~FreeformHelper.Tests.HeadlessUiSmokeTests"
+```
+
+view-model 篩選包含 `FreeformHelperViewModelTests.Basics.LoadOverlay.cs` 中的讀取遮罩與 modal 轉圈範圍測試。
+與凍結基準比較測試名稱、數量與結果。
+保留凍結的預期值，不要為了接受差異而更新。
+
+### 讀取範圍的差異
+
+類別改為 public。
+它使用 Core 命名空間、著作權標頭與 API 文件。
+來源讀取 `DateTimeOffset.UtcNow`，並以 `Task.Delay(remaining)` 等待。
+Core 讀取 `TimeProvider.GetUtcNow()`，並以 `Task.Delay(remaining, timeProvider)` 等待。
+使用預設的 `TimeProvider.System` 時，兩個呼叫的行為與原本相同。
+`GetUtcNow()` 仍是牆上時鐘，因此範圍期間若系統時鐘被調整，等待時間受到的影響與 NFH 相同。
+排除註解與空白的來源比對顯示，方法本體沒有其他變更。
+
+下列部分保留在 NFH：
+
+- 遮罩與轉圈的 view-model 屬性。
+- 120 ms 的最短顯示時間。
+- 使用 dispatcher 的讓出畫面實作。
+- `BeginCadLoadCanvasOverlayScope` 與 `BeginModalLoadingSpinnerScope` 背後各自的範圍計數。
