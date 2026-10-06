@@ -11,13 +11,37 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.Platform/Processes/WindowsSynchronousReadCancellation.cs` (complete cancellation mechanism).
 - `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/BoundedProcessOutputReaderTests.cs` (all 11 scenarios and complete helper support).
 
+- `src/NvtFwCombiner.Platform/Processes/ProcessLaunchGate.cs` (complete gate and handle record, split into separate Core files).
+- `src/NvtFwCombiner.Platform/Processes/WindowsContainedProcessStarter.cs` (complete native contained starter).
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ProcessLaunchGateTests.cs` (all eight scenarios and helper behavior).
+- `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs` (temporary path, byte-writing, and bounded cleanup support; product prefix and repository path adapter stay in NFC).
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-This slice adds the BCL-only, net8.0 external-process contracts, bounded UTF-16 diagnostic reader, and Windows synchronous-read cancellation to `Nvt.Core.Processes`. Processes is their sole Core owner. Contained launch, the runner implementation, and child/Job lifetime evidence belong to the following Processes slices. Launcher.Transport retains its separate strict UTF-8 line reader.
+The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
 
-## Contract receipt
+## API
 
 ```csharp
+public readonly record struct ProcessInheritedHandle
+{
+    public ProcessInheritedHandle(string environmentVariable, IntPtr handle);
+    public string EnvironmentVariable { get; }
+    public IntPtr Handle { get; }
+    public static ProcessInheritedHandle Parse(string environmentVariable, string handle);
+}
+
+public static class ProcessLaunchGate
+{
+    public static Process? Start(ProcessStartInfo startInfo);
+    public static Process? StartContained(
+        ProcessStartInfo startInfo, IReadOnlyList<ProcessInheritedHandle> inheritedHandles);
+    public static Process? StartContained(
+        ProcessStartInfo startInfo, IReadOnlyList<ProcessInheritedHandle> inheritedHandles,
+        Func<bool> validateImmediatelyBeforeStart);
+    public static bool TryClearInheritance(IntPtr handle);
+}
+
 public interface IExternalProcessRunner
 {
     ValueTask<ExternalProcessResult> RunAsync(
@@ -59,9 +83,9 @@ public sealed class ExternalProcessStartFailedException : Exception
 }
 ```
 
-The internal receipt for contained-launch and external-runner consumers is `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`, `DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`, and `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`. `BoundedProcessOutput` is an internal readonly record struct with `string Text` and `bool ReachedEndOfStream`. `WindowsSynchronousReadCancellation` remains internal, sealed, partial, disposable, and annotated `[SupportedOSPlatform("windows")]`.
+The internal API for contained-launch and external-runner consumers is `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`, `DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`, and `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`. `BoundedProcessOutput` is an internal readonly record struct with `string Text` and `bool ReachedEndOfStream`. `WindowsSynchronousReadCancellation` remains internal, sealed, partial, disposable, and annotated `[SupportedOSPlatform("windows")]`.
 
-The frozen assigned source defines no product-specific path, argument, or invocation-admission ceiling. It defines the fixed reader bounds below. The launch request's only positive numeric parameter is `timeout`; the capacity exception reports its supplied integers without validating them. Product admission policy remains with the host application and the later runner contract.
+The frozen assigned source defines no product-specific path, argument, or invocation-admission ceiling. It defines the fixed reader bounds below and the five-second suspended-child termination confirmation bound. The launch request's only positive numeric parameter is `timeout`; the capacity exception reports its supplied integers without validating them. Product admission policy remains with the host application and the external runner contract.
 
 ## Preserved behavior
 
@@ -95,7 +119,7 @@ The start-failure message remains `The external process could not be started ({s
 
 ## Tests and source mapping
 
-There are 40 documented public test methods and 95 statically enumerated cases: 11 ported scenarios, 15 reader-boundary methods (49 cases), and 14 contract methods (35 cases). All inputs are synthetic. Tests pass `TestContext.Current.CancellationToken` directly or through a linked stop source where a token is accepted.
+Reader and external-process contract coverage has 40 documented public test methods and 95 statically enumerated cases: 11 ported scenarios, 15 reader-boundary methods (49 cases), and 14 contract methods (35 cases). All inputs are synthetic. Tests pass `TestContext.Current.CancellationToken` directly or through a linked stop source where a token is accepted.
 
 All source names, assertions, thresholds, `BeforeKernelReadReader`, `HeldOpenReader`, `CreatePattern`, and `AssertWellFormedUtf16` are retained. The three source `Production.Drain` calls now use `DrainProcessStreamAsync`. Test-support changes add the Core namespace, explicit xUnit import, XML documentation on overrides, and test-token wiring.
 
@@ -134,15 +158,69 @@ Additional contract coverage:
 - `CapacityExceptionPreservesPropertiesAndExactMessage` covers counts below/at/above a supplied capacity of eight and unvalidated zero/negative/extreme constructor values.
 - `StartFailurePreservesTypeTextAndInnerException`, `StartFailureWithNullExceptionPreservesSourceFailure`, and `CleanupEnumPreservesExactNamesAndOrder` pin the remaining contracts.
 
-The before-kernel-read test uses a real Windows anonymous pipe and deterministic gates. It calls `Assert.Skip` on non-Windows systems. Such a skip supplies no native evidence. Child process, inherited-handle containment, and Job evidence remain with the later launch and lifetime slices.
+The before-kernel-read test uses a real Windows anonymous pipe and deterministic gates. It calls `Assert.Skip` on non-Windows systems. Such a skip supplies no native evidence. The contained-launch tests below add actual child and inherited-handle evidence. Job membership is a separate lifetime concern.
+
+## Contained creation behavior
+
+`Start` and both `StartContained` overloads serialize through the same private static `object` lock. Only starts routed through this API participate in that gate. Ordinary start checks `startInfo` before locking. Contained start checks `startInfo`, `inheritedHandles`, and `validateImmediatelyBeforeStart`, in that order, before locking. The two-argument overload supplies a callback returning true.
+
+`ProcessInheritedHandle` rejects blank names, then names containing `=`, then handles whose signed `ToInt64()` value is nonpositive. Names and values are otherwise unchanged. `Parse` uses `NumberStyles.None` and invariant culture; a parse failure uses `ParamName == "handle"` and `Inherited handle must be a positive decimal value.`. Parsed zero reaches the constructor's nonpositive predicate. Record equality includes the exact name and handle. The default record retains null/zero fields.
+
+On Windows, one internal `WindowsContainedProcessStarter` performs these steps:
+
+1. Reject shell execution, any redirected standard stream, or a non-fully-qualified executable; then alternate username/password credentials; then mixed `Arguments` and `ArgumentList`; then duplicate binding names under ordinal case-insensitive comparison. These checks precede duplication and final validation.
+2. Duplicate each original handle in declared order with the same access and inheritance enabled. Copy the environment with ordinal case-insensitive keys and bind each declared name to its duplicate's invariant decimal value. The caller's environment remains unchanged. Originals remain owned by the caller; callers clear their inheritance through `TryClearInheritance` when needed.
+3. With a nonempty allowlist, initialize exactly one `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` containing exactly those duplicate handles and enable extended startup information. With no handles, disable inheritance and use ordinary startup information. The mechanism adds no handle-count ceiling.
+4. Sort environment entries ordinally ignoring case, omit null values, preserve empty values, and append the frozen NUL terminators. Quote the executable and each `ArgumentList` element with the frozen space/tab/quote and backslash rules; append a raw `Arguments` string unchanged when there is no argument list.
+5. Prepare native buffers, invoke final custody validation while the gate is held, and return null without creating a child when it refuses. Validation exceptions propagate after cleanup. Call `CreateProcessW` with suspended and Unicode-environment flags, plus no-window when requested. Look up the managed process and acquire its handle before resuming the native thread.
+6. On a failure after creation and before resume, dispose any managed process, terminate the suspended child with exit code 1, and wait at most 5,000 ms for confirmation. The original failure propagates on confirmed termination; termination or confirmation failure wraps it with the native error or bounded timeout.
+7. In `finally`, close native thread/process handles, delete the attribute list, free handle-list/environment/command-line buffers, and dispose all duplicates in frozen order. The frozen routine does not free the attribute-list allocation itself; that allocation behavior is preserved.
+
+The native rejection messages remain exactly:
+
+- `Contained process starts require an absolute executable, shell disabled, and no redirected streams.`
+- `Contained process starts do not support alternate credentials.`
+- `Contained process starts cannot mix Arguments and ArgumentList.`
+- `Inherited handle environment names must be unique.` (`ParamName == "inheritedHandles"`).
+
+Post-create failures retain `Contained process creation failed and the suspended child could not be terminated.`, `Contained process creation failed and child termination could not be confirmed.`, and `The suspended child did not terminate within the bounded confirmation deadline.`. Other native failures remain `Win32Exception` instances using the last native error.
+
+Outside Windows, contained start runs final validation under the same gate and then calls `Process.Start`, or returns null. Windows-specific restrictions and inheritance allowlists do not apply there. `TryClearInheritance` returns true on other platforms; on Windows it rejects 0 and -1 before `SetHandleInformation`. Native members retain their Windows platform attributes and mutable-layout warning suppression. Core replaces the net9 lock with `object` and stores the same quoting characters in a static readonly array for analyzer compatibility.
+
+## Contained launch test mapping
+
+Contained launch coverage adds 47 documented public test methods and 107 statically enumerated cases: eight ported scenario methods and the input, gate, and preparation boundary methods below.
+
+Every frozen launch-gate scenario retains its name in `ProcessLaunchGateTests`. Tests use the shared BCL-only probe; no product probe project is copied.
+
+| Frozen and Core scenario | Shared probe mode |
+| --- | --- |
+| `ContainedChildExcludesUnstatedAmbientInheritableHandle` | `ambient-pipe` |
+| `InvalidAllowlistHandleStartsNoChildAndDoesNotPoisonNextLaunch` | `ambient-pipe` |
+| `InheritedHandleRejectsEveryNonPositiveValue` | No child |
+| `ParallelContainedStartsDoNotCrossInheritHandles` | `contained-isolation` |
+| `ContainedStartPreservesUnicodeArgumentsAndEnvironment` | `arguments-environment` |
+| `FinalValidationRejectsChangeAfterNativePreparation` | `ambient-pipe` |
+| `ValidationWaitsForGateAndRejectsChangedStateBeforeStart` | `arguments-environment` |
+| `PostCreateFailureTerminatesSuspendedChildAndReleasesPhysicalPipe` | `contained-isolation` |
+
+`ProcessSerialCollection` serializes gate tests sharing process state. Original physical-pipe assertions, `first`/`second` payloads, Unicode values, and two-second/200-ms thresholds remain. Otherwise unbounded fixture waits use a 30-second bound. Windows-only cases report an xUnit skip elsewhere.
+
+`ProcessInheritedHandleTests` adds constructor check-order, blank/equals names, exact unnormalized names, zero/negative/positive-one handles, signed pointer extremes, invariant decimal syntax, parser values immediately below/at/above `long.MaxValue`, and record equality. There is no adjustable positive launch-gate limit parameter.
+
+`ProcessLaunchGateBoundaryTests` adds public/internal null order, ordinary `exit` starts, final refusal without a marker, callback failure and gate reuse, ordinary start serialization, native validation order, default-record duplication failure, exact zero/one/two allowlists, duplicate-original bindings, unchanged parent environment, native-create cleanup, and invalid/real-pipe/non-Windows inheritance clearing. A complete probe-folder copy renames only the apphost and exercises raw arguments.
+
+`WindowsContainedProcessStarterContractTests` pins empty and nonempty command lines, raw arguments, zero/one/two backslashes, space/tab/quote/newline edges, Unicode, ordinal case-insensitive environment sorting, null omission, empty values, zero/one/two environment entries, and exact terminators. It pins the fixed 5,000-ms confirmation constant; that deadline has no caller-supplied below/above input. The native post-create scenario proves a suspended child cannot run and its physical pipe closes within the original two-second threshold.
+
+`OptionalPowerShellQuotedArguments` separately exercises `two words`, `quote"inside`, and `trail\` through PowerShell, with its ten-minute checkpoint. An unavailable executable or different PowerShell argument interpretation reports a skip and does not alter the contained starter.
 
 ## NFC ownership and adoption
 
 NFC keeps `ExternalProcessCleanupText`, its issue codes and product wording, the `ToExecutedCommand` audit adapter, trust, manifest validation, staging, routing, firmware behavior, schemas, golden evidence, and release authority. Mechanism comments no longer carry private record identifiers. Executable predicates, limits, and messages are unchanged.
 
-NFC adopts this module in its own pull request, separate from this extraction. The contained launch and the external runner build on this contract. Lifetime evidence must pass before the adoption closes.
+NFC adopts this module in its own pull request, separate from this extraction. All contained launcher callers use `StartContained(startInfo, inheritedHandles, validateImmediatelyBeforeStart)`; ordinary external-tool starts use `Start(startInfo)`. Raw process creation stays in Processes rather than Launcher. Lifetime evidence must pass before the adoption closes.
 
-NFC deletes its generic reader and synchronous cancellation copies only after every caller uses the verified Processes package and the adoption proves zero difference: frozen behavior, native lifetime, and the required UI evidence. NFC removes its Platform copy only after its remaining Platform callers move and the host structure trial passes. NFC keeps its historical executor evidence.
+NFC deletes its generic reader, synchronous cancellation, launch gate, inherited-handle record, and contained-starter copies only after every caller uses the verified Processes package and the adoption proves zero difference: frozen behavior, native lifetime, and the required UI evidence. NFC removes its Platform copy only after its remaining Platform callers move and the host structure trial passes. NFC keeps its historical executor evidence.
 
 The UI comparisons use the shared environment manifest and require zero changed decoded pixels. Where they apply, the comparisons also cover the complete output bytes and the event traces and record each artifact's SHA-256. The eight legacy font values stay unchanged.
 
