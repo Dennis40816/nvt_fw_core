@@ -533,11 +533,18 @@ function Assert-GhAppReviewHistory {
     param([hashtable]$Context, [int]$Number, [string]$Worktree, $Pr, $Request)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
     if ($Pr.baseRefName -cne $Request.Base) { throw "#$Number stop: review request base changed; owner approval and a new review request required." }
-    if ($head -ceq $Request.Head) { return }
+    # Returns the proven chain from the current head back to the review request head, both included.
+    if ($head -ceq $Request.Head) { return ,@($head) }
     $base = Assert-GhAppSha "base of #$Number" $Pr.baseRefOid
     Sync-GhAppReviewCommits $Context $Worktree @($head, $Request.Head, $base)
+    $version = Invoke-GhAppGit $Worktree @('--version')
+    if ($version -notmatch '^git version (\d+)\.(\d+)' -or [version]"$($Matches[1]).$($Matches[2])" -lt [version]'2.38') {
+        throw "#$Number stop: clean merge proof needs Git 2.38 or later for merge-tree --write-tree."
+    }
+    $chain = [Collections.Generic.List[string]]::new()
     $current = $head
     for ($count = 0; $current -cne $Request.Head; $count++) {
+        $chain.Add($current)
         if ($count -ge 20) { throw "#$Number stop: review request $($Request.Head) was not reached within 20 first-parent commits from $head." }
         $parents = (Invoke-GhAppGit $Worktree @('rev-list', '--parents', '-n', '1', $current)).Trim().Split(' ')
         if ($parents.Length -ne 3) {
@@ -549,10 +556,6 @@ function Assert-GhAppReviewHistory {
         if ($contained.ExitCode -ne 0) { throw "#$Number stop: second parent $second is not contained in $($Pr.baseRefName); owner approval and a new review request required." }
         # Every merge is recomputed. A blob comparison alone would accept a conflict resolved
         # wholly to either parent, so no shortcut is taken.
-        $version = Invoke-GhAppGit $Worktree @('--version')
-        if ($version -notmatch '^git version (\d+)\.(\d+)' -or [version]"$($Matches[1]).$($Matches[2])" -lt [version]'2.38') {
-            throw "#$Number stop: clean merge proof needs Git 2.38 or later for merge-tree --write-tree."
-        }
         # merge-tree writes only objects: it leaves the index, worktree, and refs untouched.
         $result = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-tree', '--write-tree', $first, $second) -AllowedExitCodes @(0, 1) -Result
         if ($result.ExitCode -ne 0) { throw "#$Number stop: recomputed merge conflicts; manual resolution requires owner approval." }
@@ -561,6 +564,8 @@ function Assert-GhAppReviewHistory {
         if ($tree -cne $actual) { throw "#$Number stop: merge tree differs from the clean automatic merge; manual resolution requires owner approval." }
         $current = $first
     }
+    $chain.Add($Request.Head)
+    return ,$chain.ToArray()
 }
 
 function Get-GhAppTimelineObservation {
@@ -593,7 +598,12 @@ function Get-GhAppApprovedReviewRequest {
     $request = Get-GhAppReviewRequest $Context $Number $LedgerPath
     $approval = Get-GhAppOwnerApproval $Context $Number $request.RequestedAt
     if ($null -eq $approval) { throw "#$Number stop: no owner approval after review request $($request.Head)." }
-    Assert-GhAppReviewHistory $Context $Number $Worktree $Pr $request
+    $chain = Assert-GhAppReviewHistory $Context $Number $Worktree $Pr $request
+    # The ledger time comes from this machine's clock. Binding the approval to the proven chain means a
+    # skewed clock can never let an approval of an older head count for the request.
+    if ([string]$approval.commit_id -cnotin $chain) {
+        throw "#$Number stop: owner approval is on $($approval.commit_id), not on review request $($request.Head) or a clean base merge after it."
+    }
     [pscustomobject]@{ Request = $request; Approval = $approval }
 }
 
@@ -606,16 +616,18 @@ function Wait-GhAppApprovedHead {
         if ($Pr.state -cne 'OPEN') { throw "#$Number stop: state $($Pr.state)." }
         if ($Pr.isDraft -or $Pr.author.login -cne $Context.botLogin) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
         $current = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-        $evidence = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $Pr $LedgerPath
         if ($Pr.mergeStateStatus -ceq 'DIRTY') { throw "#$Number stop: merge conflict with $($Pr.baseRefName); manual resolution requires owner approval." }
         if ((Get-GhAppUtcNow) -ge $deadline) { throw "#$Number stop: timed out in state $($Pr.mergeStateStatus)." }
-        if ($updates -ge 3 -and $Pr.mergeStateStatus -ceq 'BEHIND') { throw "#$Number stop: still behind $($Pr.baseRefName) after three updates." }
-        if ($updatingHead -ceq $current) {
+        # While an update is pending the head has not moved, so skip the proof until it does.
+        # A PR that is no longer behind needs no new head, so stop waiting for one.
+        if ($updatingHead -ceq $current -and $Pr.mergeStateStatus -ceq 'BEHIND') {
             Start-Sleep -Seconds $PollSeconds
             $Pr = Get-GhAppPullRequest $Context $Number
             continue
         }
         $updatingHead = $null
+        $null = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $Pr $LedgerPath
+        if ($updates -ge 3 -and $Pr.mergeStateStatus -ceq 'BEHIND') { throw "#$Number stop: still behind $($Pr.baseRefName) after three updates." }
         if ($Pr.mergeStateStatus -ceq 'BEHIND') {
             try { $null = Invoke-GhAppApi $Context PUT "pulls/$Number/update-branch" @{ expected_head_sha = $current } -AsApp }
             catch { throw "#$Number stop: branch update failed; manual resolution requires owner approval." }

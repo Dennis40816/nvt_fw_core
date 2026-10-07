@@ -155,7 +155,7 @@ The module trusts the head recorded when the session sent the PR to the owner.
 All three approval conditions must hold:
 
 1. The latest appended ledger entry for this owner, repository, and PR supplies requested head S and request time T.
-2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED`, `DISMISSED`, and `PENDING` block merging.
+2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED`, `DISMISSED`, and `PENDING` block merging. The approval's `commit_id` must also be S or a proven merge after S. T comes from this machine's clock, so this binding stops an approval of an older head from counting when the clock runs behind GitHub.
 3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request.
 
 Every merge after the review request is recomputed with `git merge-tree --write-tree P1 P2`.

@@ -112,7 +112,7 @@ GitHub 可能把 review 的 `commit_id` 移到新 head，因此不能用該欄�
 以下三個條件必須同時成立：
 
 1. Ledger 內此 owner、repository 與 PR 最新附加的 entry 提供送審 head S 與時間 T。
-2. Owner 最新會改變狀態的 review 是 `APPROVED`，而且提交時間嚴格晚於 T。依提交時間排序，同時間以 review ID 排序。`COMMENTED` 不影響核准；`CHANGES_REQUESTED`、`DISMISSED` 與 `PENDING` 禁止合併。
+2. Owner 最新會改變狀態的 review 是 `APPROVED`，而且提交時間嚴格晚於 T。依提交時間排序，同時間以 review ID 排序。`COMMENTED` 不影響核准；`CHANGES_REQUESTED`、`DISMISSED` 與 `PENDING` 禁止合併。 核准的 `commit_id` 也必須是 S,或 S 之後經證明的 merge。T 取自本機時鐘，本機時鐘比 GitHub 慢時，這個綁定可以防止舊 head 的核准被算成 S 的核准。
 3. 從目前 head H 沿 first parent 回走，20 個 commit 內到達 S。S 之後每個 commit 都恰有兩個 parent，second parent 必須包含在目前 PR base 中。Base 分支名稱必須和送審紀錄相同。
 
 送審 request 之後的每個 merge 都會使用 `git merge-tree --write-tree P1 P2` 重算。

@@ -791,7 +791,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         It 'requires manual conflict resolution and owner approval' {
             Set-Responses @((New-PrStep -Pr (New-Pr -MergeState DIRTY)), (New-ReviewStep))
             Get-Message { Invoke-MergeFixture } | Should Be '#7 stop: merge conflict with main; manual resolution requires owner approval.'
-            @(Get-Calls).Count | Should Be 2
+            @(Get-Calls).Count | Should Be 1
         }
         It 'waits for pending required checks before merging' {
             $steps = @(New-MergeSteps)
@@ -992,13 +992,21 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         }
         It 'requires approval strictly after the latest request' {
             Add-LedgerFixture -Head $script:ReviewedSha -RequestedAt '2026-01-01T00:00:00Z'
-            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)), (New-ReviewStep))
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
             Get-Message { Invoke-ReviewMergeFixture } | Should Match 'no owner approval after review request'
             @(Get-Calls).Count | Should Be 2
         }
-        It 'accepts approval on S when H is S regardless of review commit_id' {
+        It 'refuses an approval whose commit is not on the proven chain, even when its time is after the request' {
+            # A local clock behind GitHub can make an approval of an older head look newer than the request.
             Add-LedgerFixture -Head $script:ReviewedSha
-            Set-Responses @(New-ReviewMergeSteps -Reviews @((New-Review -Head $script:NextSha)))
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)), (New-ReviewStep -Reviews @((New-Review -Head $script:NextSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: owner approval is on $script:NextSha, not on review request $script:ReviewedSha or a clean base merge after it."
+            Assert-MockCalled Sync-GhAppReviewCommits -Times 0 -Exactly
+        }
+        It 'accepts approval on S when H is S' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @(New-ReviewMergeSteps)
             Invoke-ReviewMergeFixture
             Assert-MockCalled Sync-GhAppReviewCommits -Times 0 -Exactly
         }
@@ -1041,8 +1049,8 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         It 'waits for an asynchronous update without sending it again for the unchanged head' {
             Add-LedgerFixture -Head $script:ReviewedSha
             $behind = New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -MergeState BEHIND
-            Set-Responses (@((New-PrStep -Pr $behind), (New-ReviewStep), (New-ApiStep pulls/7/update-branch PUT @{} -App),
-                (New-PrStep -Pr $behind), (New-ReviewStep)) + @(New-ReviewMergeSteps -Head $script:BaseUpdateMerges[0] -Base $script:BaseUpdateCommits[0]))
+            Set-Responses (@((New-PrStep -Pr $behind), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))), (New-ApiStep pulls/7/update-branch PUT @{} -App),
+                (New-PrStep -Pr $behind)) + @(New-ReviewMergeSteps -Head $script:BaseUpdateMerges[0] -Base $script:BaseUpdateCommits[0]))
             Invoke-ReviewMergeFixture
             @(Get-Calls | Where-Object { $_.Arguments[1] -match '/update-branch$' }).Count | Should Be 1
         }
@@ -1056,10 +1064,18 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
                 @(Get-Calls).Count | Should Be 5
             }
         }
+        It 'stops waiting for a new head when the PR is no longer behind after an update' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $behind = New-Pr -Head $script:ReviewedSha -MergeState BEHIND
+            Set-Responses (@((New-PrStep -Pr $behind), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))),
+                (New-ApiStep pulls/7/update-branch PUT @{} -App)) + @(New-ReviewMergeSteps))
+            Invoke-ReviewMergeFixture
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/update-branch$' }).Count | Should Be 1
+        }
         It 'refuses an unreviewed non-merge head that arrives while checks run' {
             Add-LedgerFixture -Head $script:ReviewedSha
-            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)), (New-ReviewStep), (New-ChecksStep),
-                (New-PrStep -Pr (New-Pr -Head $script:NonMerge)), (New-ReviewStep))
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))), (New-ChecksStep),
+                (New-PrStep -Pr (New-Pr -Head $script:NonMerge)), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
             Get-Message { Invoke-ReviewMergeFixture } |
                 Should Be "#7 stop: head $script:NonMerge adds commits after review request $script:ReviewedSha; owner approval and a new review request required."
             @(Get-Calls).Count | Should Be 5
@@ -1127,7 +1143,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             for ($round = 0; $round -le 3; $round++) {
                 $head = $(if ($round -eq 0) { $script:ReviewedSha } else { $script:BaseUpdateMerges[$round - 1] })
                 $steps += New-PrStep -Pr (New-Pr -Head $head -BaseHead $script:BaseUpdateCommits[$round] -MergeState BEHIND)
-                $steps += New-ReviewStep
+                $steps += New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))
                 if ($round -lt 3) { $steps += New-ApiStep pulls/7/update-branch PUT @{} -App }
             }
             Set-Responses $steps
@@ -1136,16 +1152,16 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         }
         It 'stops if an update exposes DIRTY' {
             Add-LedgerFixture -Head $script:ReviewedSha
-            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -MergeState BEHIND)), (New-ReviewStep),
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -MergeState BEHIND)), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))),
                 (New-ApiStep pulls/7/update-branch PUT @{} -App),
-                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -MergeState DIRTY)), (New-ReviewStep))
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -MergeState DIRTY)), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
             Get-Message { Invoke-ReviewMergeFixture } | Should Be '#7 stop: merge conflict with main; manual resolution requires owner approval.'
         }
         It 'requires an unchanged review base' {
             Add-LedgerFixture -Head $script:ReviewedSha
             $pr = New-Pr -Head $script:ReviewedSha
             $pr.baseRefName = 'release'
-            Set-Responses @((New-PrStep -Pr $pr), (New-ReviewStep))
+            Set-Responses @((New-PrStep -Pr $pr), (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
             Get-Message { Invoke-ReviewMergeFixture } | Should Match 'review request base changed'
         }
         It 'rechecks the ledger and rejects a newer request made while checks run' {
