@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Nvt.Core.Tests" />
+    <InternalsVisibleTo Include="Nvt.Core.LinkedProbe" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
