@@ -20,6 +20,8 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.Invocation.cs` (complete invocation custody and terminal cleanup).
 - `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerTests.cs` (all six scenarios and process identity/exit assertions; child fixtures use the shared test probe).
 
+- `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerLifetimeTests.cs` (25 runner, scheduling, capacity, and cancellation methods with their nested helpers; the cleanup-text method remains in NFC).
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
 The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts and command execution, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
@@ -276,6 +278,64 @@ All six frozen scenarios retain their names, assertions, and execution/exit obse
 - Shared OS termination failures classified as `TerminationUnconfirmed`, one termination work item, and private capacity release.
 
 Tests use synthetic data, unique temporary folders for tree markers, and test-context cancellation tokens. Native cases execute Windows processes and report an xUnit skip on unsupported systems. Marker polling retries only transient sharing violations inside its fixture bound; PID plus start time prevents emergency cleanup from killing a reused PID. These tests establish external-command behavior; long-lived Job evidence belongs to Launcher.
+
+## Runner lifetime test mapping
+
+Core contains 25 of the 26 frozen lifetime scenarios. These runner, scheduling, capacity, and cancellation methods retain their names and source order in `SystemExternalProcessRunnerLifetimeTests`. NFC keeps `CleanupDiagnosticsDescribeOnlyTheObservation` and its three theory cases because they test NFC's product formatter, `ExternalProcessCleanupText.Describe`. Core has no cleanup-text API and does not copy that formatter; the exact wording assertions remain in NFC.
+
+| Frozen source method | Core method or retained owner | Shared probe and frozen evidence |
+| --- | --- | --- |
+| `CancelReturnsAtOnceAndRunEndsWithinDeadlineWhileTerminationBlocks` | Same name | `silent-wait`; blocked termination, cancellation returns before one second, bounded run, late release. |
+| `TimeoutWithBlockedTerminationReturnsUnconfirmedWithinDeadline` | Same name | `silent-wait`; 300-ms timeout, blocked termination, unconfirmed cleanup. |
+| `RefusedTerminationIsClassifiedAsUnconfirmed` | Same name | `silent-wait`; aggregate, Win32, invalid-operation, and unsupported refusal data. |
+| `RefusedTerminationOnCancellationEndsCanceled` | Same name | `silent-wait`; refused termination yields caller cancellation. |
+| `TerminationWithoutObservedExitIsBoundedAndUnconfirmed` | Same name | `silent-wait`; ignored termination, one bounded cleanup deadline. |
+| `CancellationRightAfterTimeoutSignalEndsCanceled` | Same name | `silent-wait`; cancellation injected at `TimeoutSignaled`. |
+| `CancellationRightAfterExitSignalEndsCanceled` | Same name | `exit`; cancellation injected at `ExitSignaled`. |
+| `CancellationAfterTerminalDecisionKeepsResult` | Same name | `exit`; cancellation injected at `Returning` preserves the result. |
+| `UncooperativeReaderIsDetachedAtDeadlineAndObservedLater` | Same name | `exit`; a held reader detaches, then faults and releases custody. |
+| `ReaderFaultWithoutCancellationIsOutputReadFailed` | Same name | `exit`; reader fault is a cleanup classification. |
+| `ReaderStartupFaultIsOutputReadFailed` | Same name | `exit`; production drain startup fault and single-slot release. |
+| `ReaderFaultWithCancellationEndsCanceled` | Same name | `silent-wait`; cancellation takes precedence over reader failure. |
+| `ExitObservationFaultIsUnconfirmedOrCanceled` | Same name | `silent-wait`; both original cancellation theory values and exit-observer failure. |
+| `HeldOutputAfterNaturalExitIsBoundedAndReported` | Same name | `tree-root-exit`; production timing and output-held phase. |
+| `CancellationDuringHeldDrainEndsCanceledWithinDeadline` | Same name | `tree-root-exit`; cancellation at direct-root exit under production timing. |
+| `OrphanHoldingOutputAfterTimeoutIsBoundedAndReported` | Same name | `orphan-chain-root`; leaf PID, `.middle`, and `.ready`; parent-exited handshake before the three-second timeout. |
+| `OrphanHoldingOutputAfterExitStopsWithoutDetachingAndKeepsText` | Same name | `orphan-chain-exit --stdout-text before-reader-stop`; the middle exits before the root exits naturally with code 0, while the surviving leaf holds both streams. |
+| `DescendantWithoutRedirectedStreamIsNotObserved` | Same name | `detached-descendant-root`; complete cleanup can coexist with an invisible live descendant. |
+| `CleanupScheduleKeepsReaderStopWithinTheSingleDeadline` | Same name | No child; exact production schedule and reserve inside the deadline. |
+| `CleanupDiagnosticsDescribeOnlyTheObservation` | NFC product formatter | Three theory cases test `ExternalProcessCleanupText.Describe`; NFC retains the exact sentence fragments and both assertions against attributing an unobserved cause. |
+| `CancelWithinGuardFailsPromptlyOnBlockingCancel` | Same name | No child; one-second blocking-cancel guard and ten-second reporting ceiling. |
+| `DetachedCleanupIsBoundedAndRefusesNewRunsAtTheLimit` | Same name | `silent-wait`, then `exit`; single-slot refusal and reuse after late termination. |
+| `CapacityIsAHardCapUnderConcurrentStarts` | Same name | `exit`; barrier races eight dedicated threads against three slots for ten iterations. |
+| `TryReserveIsAtomicUnderContention` | Same name | No child; 32 dedicated contenders, eight slots, 200 rounds. |
+| `DisposalFailureStillReturnsSlotAndSignalsFailure` | Same name | `exit`; all five disposals, failure publication, and slot reuse. |
+| `DetachedDisposalFailureStillReturnsSlotAndSignalsFailure` | Same name | `silent-wait`; detached termination followed by five disposals and failure publication. |
+
+The class retains its absence of a collection attribute. All native cases require actual Windows processes and use xUnit skip on other operating systems. The schedule, atomic reservation, and blocking-cancel guard cases remain portable. `TestToken` is `TestContext.Current.CancellationToken`; phase hooks, blocked termination, held readers, and dedicated-thread barriers drive ordering. Every original run is awaited under the 40-second watchdog, and clocks start before triggering calls, including `Cancel()`.
+
+| Frozen test limit | Value and meaning |
+| --- | --- |
+| Helper lifetime | 30 seconds; shared `silent-wait` and descendant modes outlive every terminal bound. |
+| Watchdog | 40 seconds for run and phase waits. |
+| Scheduling margin | Four seconds beyond the selected cleanup deadline. |
+| Cancellation return | Strictly less than one second, measured before `Cancel()`. |
+| Fast cleanup | Deadline 1,500 ms; held-output grace 300 ms; reader-stop reserve 500 ms. |
+| Production cleanup | Deadline five seconds; grace two seconds; reserve one second. |
+| Timeout fixtures | 300 ms for slow-runner cases; three seconds for the orphan-chain parent-exited handshake; all original 30-second and 60-second launch timeouts remain unchanged. |
+| Guard fixture | One-second blocking-cancel bound; report strictly before ten seconds. |
+| Capacity bursts | Three slots/eight starts/ten iterations; eight slots/32 contenders/200 rounds. |
+| Marker and contention polling | Original 100-ms readiness poll and 20-ms predicate poll. The probe separately uses its documented five-second handshake and 10-ms poll. |
+
+The 300-ms slow-runner timeout bounds the run rather than proving that probe startup has finished. A loaded Windows host can take more than one second to start the probe. The three-second orphan-chain threshold also requires the leaf marker and actual middle exit before timeout; that threshold is preserved. Neither wait is shortened or widened.
+
+The source helpers `PhaseRecorder`, `TerminationSeam`, `ThrowingDisposal`, `FirstReader`, `CancelWithinAsync`, `SpinUntilAsync`, `HasExited`, `ReadPidAsync`, `WaitForFileAsync`, and `KillById` retain their mechanisms. Only launch setup uses the shared probe instead of shell scripts. Probe inputs are arguments, and markers live in the Processes `TestWorkspace` under the system temporary folder. The orphan-chain marker contains the leaf PID; `.middle` contains the middle PID, and `.ready` appears after that process exits. The fixtures wait for `.ready` before reading the PIDs, then observe the middle's exit before awaiting the run.
+
+`orphan-chain-exit` writes and flushes `before-reader-stop` before starting the middle process. The middle starts a leaf that inherits stdout and stderr, then exits; the root exits naturally with code 0 after the ready marker. On Windows, the retained line is exactly `before-reader-stop\r\n`. The leaf remains alive when the run returns with `OutputStreamHeldOpen`; reader stop preserves the line, avoids detachment, and releases resources and capacity. The fixture terminates the leaf in `finally`.
+
+`Complete` still observes only direct-child exit and both stream ends. A detached descendant holding neither redirected stream is invisible; complete cleanup is not proof that the process tree is empty. Cleanup uncertainty precedence, cancellation precedence, late fault observation, all five disposal attempts, failure publication, and release only after settlement remain unchanged.
+
+`SystemExternalProcessRunnerLifetimeBoundaryTests.DetachedReadersRetainExactCapacityUntilLateSettlement` adds 12 native cases: capacities one, two, three, and eight, each with late reader completion, fault, or cancellation. Deterministic gates retain the real exited process's custody. The cases admit at one below the capacity, fill the exact capacity, refuse the next request without consuming another slot, release exactly one settled slot, reuse it, and finally return to zero. Existing `SystemExternalProcessRunnerBoundaryTests` supplies zero/negative positive-parameter cases, one-tick minima, grace-plus-reserve below/at/above the deadline, and deadline below/at/above `int.MaxValue` milliseconds. Fixed fixture waits are scheduling bounds, not caller-adjustable positive-limit parameters.
 
 ## NFC ownership and adoption
 

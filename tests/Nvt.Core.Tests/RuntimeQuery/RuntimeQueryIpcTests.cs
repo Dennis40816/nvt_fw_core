@@ -50,6 +50,118 @@ public sealed class RuntimeQueryIpcTests
         await server.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromMilliseconds(RuntimeQueryTestValues.ShutdownBoundMs), TestContext.Current.CancellationToken);
     }
 
+    /// <summary>Stop waits for an already-read request and preserves the complete flushed response.</summary>
+    [Fact]
+    public async Task DisposeAsyncLetsBlockedHandlerFinishAndFlushResponse()
+    {
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        var entered = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var events = new ConcurrentQueue<RuntimeQueryDiagnostic>();
+        await using var server = RuntimeQueryTestValues.CreateServer(pipeName, (_, _, token) =>
+        {
+            entered.SetResult(token);
+            return release.Task;
+        }, diagnostic: (kind, _) => events.Enqueue(kind));
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        using var responseBytes = new MemoryStream();
+        server.Start();
+        await client.ConnectAsync(RuntimeQueryTestValues.ClientTimeoutMs, timeout.Token);
+        await client.WriteAsync(Encoding.UTF8.GetBytes("{\"version\":\"1\",\"command\":\"probe\",\"args\":null}\n"), timeout.Token);
+        var handlerToken = await entered.Task.WaitAsync(timeout.Token);
+        var readTask = client.CopyToAsync(responseBytes, timeout.Token);
+        try
+        {
+            var stopTask = server.DisposeAsync().AsTask();
+            Assert.False(stopTask.IsCompleted);
+            Assert.False(handlerToken.IsCancellationRequested);
+            Assert.False(readTask.IsCompleted);
+
+            var text = new string('x', 16384);
+            release.SetResult(RuntimeQueryResponseEnvelope.Success(new { text }));
+            await readTask.WaitAsync(timeout.Token);
+            Assert.Equal(Encoding.UTF8.GetBytes(
+                "{\"ok\":true,\"data\":{\"text\":\"" + text + "\"},\"error\":null}" + Environment.NewLine), responseBytes.ToArray());
+            await stopTask.WaitAsync(timeout.Token);
+            Assert.Collection(events,
+                kind => Assert.Equal(RuntimeQueryDiagnostic.Started, kind),
+                kind => Assert.Equal(RuntimeQueryDiagnostic.Stopped, kind));
+        }
+        finally
+        {
+            release.TrySetResult(RuntimeQueryResponseEnvelope.Success(null));
+        }
+    }
+
+    /// <summary>A request that outlasts the shutdown bound is cancelled without a response.</summary>
+    [Fact]
+    public async Task DisposeAsyncTimesOutBlockedHandlerAndSendsNoResponse()
+    {
+        const int shutdownTimeoutMs = 100;
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        var entered = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var timedOut = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var server = new RuntimeQueryIpcServer(pipeName, "1", 5000, shutdownTimeoutMs, RuntimeQueryTestValues.NfhError,
+            (kind, exception) =>
+            {
+                if (kind == RuntimeQueryDiagnostic.ShutdownTimedOut)
+                {
+                    timedOut.SetResult(exception!);
+                }
+            }, (_, _, token) =>
+            {
+                entered.SetResult(token);
+                return release.Task;
+            });
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        server.Start();
+        await client.ConnectAsync(RuntimeQueryTestValues.ClientTimeoutMs, timeout.Token);
+        await client.WriteAsync(Encoding.UTF8.GetBytes("{\"version\":\"1\",\"command\":\"probe\",\"args\":null}\n"), timeout.Token);
+        var handlerToken = await entered.Task.WaitAsync(timeout.Token);
+        try
+        {
+            var stopTask = server.DisposeAsync().AsTask();
+            Assert.False(stopTask.IsCompleted);
+            Assert.False(handlerToken.IsCancellationRequested);
+            await stopTask.WaitAsync(TimeSpan.FromMilliseconds(RuntimeQueryTestValues.ShutdownBoundMs), timeout.Token);
+            Assert.IsType<TimeoutException>(await timedOut.Task.WaitAsync(timeout.Token));
+            Assert.True(handlerToken.IsCancellationRequested);
+            Assert.False(release.Task.IsCompleted);
+            using var responseBytes = new MemoryStream();
+            var readError = await Record.ExceptionAsync(() => client.CopyToAsync(responseBytes, timeout.Token));
+            Assert.True(readError is null or IOException);
+            Assert.Empty(responseBytes.ToArray());
+        }
+        finally
+        {
+            release.TrySetResult(RuntimeQueryResponseEnvelope.Success(null));
+        }
+    }
+
+    /// <summary>An idle connection stops immediately instead of using either configured timeout.</summary>
+    [Fact]
+    public async Task DisposeAsyncCancelsIdleConnectionBeforeReadTimeout()
+    {
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        var events = new ConcurrentQueue<RuntimeQueryDiagnostic>();
+        await using var server = new RuntimeQueryIpcServer(pipeName, "1", 30000, 10000, RuntimeQueryTestValues.NfhError,
+            (kind, _) => events.Enqueue(kind),
+            (_, _, _) => throw new InvalidOperationException("An idle client must not invoke the handler."));
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        server.Start();
+        await client.ConnectAsync(RuntimeQueryTestValues.ClientTimeoutMs, TestContext.Current.CancellationToken);
+        await server.DisposeAsync().AsTask().WaitAsync(
+            TimeSpan.FromMilliseconds(RuntimeQueryTestValues.ShutdownBoundMs), TestContext.Current.CancellationToken);
+        Assert.Collection(events,
+            kind => Assert.Equal(RuntimeQueryDiagnostic.Started, kind),
+            kind => Assert.Equal(RuntimeQueryDiagnostic.Stopped, kind));
+    }
+
     /// <summary>A handler that ignores cancellation cannot hold the pipe run loop open.</summary>
     [Fact]
     public async Task DisposeAsyncWhenHandlerIgnoresCancellationCompletesWithinTimeout()
@@ -69,7 +181,8 @@ public sealed class RuntimeQueryIpcTests
         var handlerToken = await entered.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
         try
         {
-            await server.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromMilliseconds(RuntimeQueryTestValues.ShutdownBoundMs), TestContext.Current.CancellationToken);
+            // An already-read request may use the whole shutdown bound before cancellation; allow scheduling margin.
+            await server.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromMilliseconds(RuntimeQueryTestValues.ShutdownBoundMs + 2000), TestContext.Current.CancellationToken);
             Assert.True(handlerToken.IsCancellationRequested);
         }
         finally

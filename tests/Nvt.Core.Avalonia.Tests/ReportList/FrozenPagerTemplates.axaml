@@ -1,0 +1,49 @@
+<!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<!-- Frozen fragments: MainWindowReportTemplates.axaml:10-25; HexEditorPanel.axaml:11-35.
+     Parent: 60e3f28e9c9f9926097e642e22e59d2a92ebc00e. Only the model namespace changes. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="using:Nvt.Core.Avalonia.ReportList">
+<DataTemplate x:Key="ReportPagerTemplate" DataType="vm:ReportPagedListViewModel">
+  <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+    <TextBlock
+        VerticalAlignment="Center"
+        Classes="captionText"
+        Text="{Binding PageStatus}"
+        AutomationProperties.Name="{Binding PageStatus}"
+        AutomationProperties.LiveSetting="Polite" />
+    <Button
+        Grid.Column="1"
+        Classes="semanticAction secondary"
+        Command="{Binding LoadMoreCommand}"
+        Content="{Binding LoadMoreLabel}"
+        AutomationProperties.Name="{Binding LoadMoreLabel}" />
+  </Grid>
+</DataTemplate>
+
+    <DataTemplate x:Key="HexEditorChangedBlockPagerTemplate" DataType="vm:ReportWindowedListViewModel">
+      <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource NfcSpace8}">
+        <TextBlock
+            HorizontalAlignment="Center"
+            Classes="captionText"
+            Text="{Binding PageStatus}"
+            TextWrapping="Wrap"
+            ToolTip.Tip="{Binding PageStatus}"
+            AutomationProperties.Name="{Binding PageStatus}"
+            AutomationProperties.LiveSetting="Polite" />
+        <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource NfcSpace8}">
+          <Button
+              Classes="semanticAction secondary"
+              Command="{Binding PreviousPageCommand}"
+              Content="{Binding PreviousPageLabel}"
+              AutomationProperties.Name="{Binding PreviousPageLabel}" />
+          <Button
+              Grid.Column="1"
+              Classes="semanticAction secondary"
+              Command="{Binding NextPageCommand}"
+              Content="{Binding NextPageLabel}"
+              AutomationProperties.Name="{Binding NextPageLabel}" />
+        </Grid>
+      </Grid>
+    </DataTemplate>
+</ResourceDictionary>

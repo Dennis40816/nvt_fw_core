@@ -10,6 +10,8 @@ public sealed class RuntimeQueryHost
     private readonly Func<RuntimeQueryIpcServer> _factory;
     private readonly object _sync = new();
     private RuntimeQueryIpcServer? _server;
+    // The last stop, shared with later callers until a new server starts. Guarded by _sync.
+    private Task _stopTask = Task.CompletedTask;
 
     /// <summary>Creates a host that obtains a new server for each start after a stop.</summary>
     /// <param name="factory">Creates a server with the tool's handler and configuration.</param>
@@ -34,16 +36,18 @@ public sealed class RuntimeQueryHost
         }
     }
 
-    /// <summary>Removes the current server under a lock and disposes it, or completes immediately when none is present.</summary>
+    /// <summary>Removes the current server under a lock and disposes it. Later calls return the same stop until the next start.</summary>
     public Task StopAsync()
     {
-        RuntimeQueryIpcServer? server;
         lock (_sync)
         {
-            server = _server;
-            _server = null;
-        }
+            if (_server is { } server)
+            {
+                _server = null;
+                _stopTask = server.DisposeAsync().AsTask();
+            }
 
-        return server?.DisposeAsync().AsTask() ?? Task.CompletedTask;
+            return _stopTask;
+        }
     }
 }

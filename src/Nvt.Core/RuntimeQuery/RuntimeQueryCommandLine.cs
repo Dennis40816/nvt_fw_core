@@ -52,6 +52,54 @@ public static class RuntimeQueryCommandLine
         return true;
     }
 
+    /// <summary>Handles query arguments using the latest running window, or the client-only --pid option.</summary>
+    /// <param name="args">The raw command-line arguments.</param>
+    /// <param name="baseName">The tool's pipe base name.</param>
+    /// <param name="protocolVersion">The tool's protocol version.</param>
+    /// <param name="supportedCommands">The supported command names in the tool's order.</param>
+    /// <param name="error">Maps client failures to the tool's error codes and messages.</param>
+    /// <param name="output">The output writer; tools pass Console.Out.</param>
+    /// <param name="exitCode">Zero for success or unhandled arguments, one for failure, or two for invalid arguments.</param>
+    /// <returns>Whether the first argument was query.</returns>
+    public static bool TryHandlePerWindowQueryCommand(
+        string[] args,
+        string baseName,
+        string protocolVersion,
+        IReadOnlyList<string> supportedCommands,
+        Func<RuntimeQueryFailure, string?, RuntimeQueryError> error,
+        TextWriter output,
+        out int exitCode)
+    {
+        exitCode = 0;
+        if (args.Length == 0 || !string.Equals(args[0], "query", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!TryParseCommandLineCore(args, supportedCommands, perWindow: true, out var command, out var commandArgs,
+            out var timeoutMs, out var prettyJson, out var processId, out var parseError))
+        {
+            var response = RuntimeQueryResponseEnvelope.Failure("INVALID_ARGUMENTS", parseError ?? "Invalid arguments.");
+            output.WriteLine(JsonSerializer.Serialize(response, RuntimeQueryProtocol.PrettyJsonOptions));
+            exitCode = 2;
+            return true;
+        }
+
+        var candidates = RuntimeQueryWindowPipes.DiscoverCandidates(baseName);
+        var selected = RuntimeQueryWindowPipes.SelectProcessId(candidates.Select(candidate => (candidate.ProcessId, candidate.StartTime)), processId);
+        var request = new RuntimeQueryRequest(
+            Version: protocolVersion,
+            Command: command,
+            Args: commandArgs.Count == 0 ? null : commandArgs);
+        var reply = selected is null
+            ? new RuntimeQueryResponseEnvelope(Ok: false, Data: null, Error: error(RuntimeQueryFailure.ServerNotFound, null))
+            : RuntimeQueryIpcClient.SendRequest(candidates.First(candidate => candidate.ProcessId == selected.Value).PipeName, request, timeoutMs, error);
+        var options = prettyJson ? RuntimeQueryProtocol.PrettyJsonOptions : RuntimeQueryProtocol.CompactJsonOptions;
+        output.WriteLine(JsonSerializer.Serialize(reply, options));
+        exitCode = reply.Ok ? 0 : 1;
+        return true;
+    }
+
     private static bool TryParseCommandLine(
         string[] args,
         IReadOnlyList<string> supportedCommands,
@@ -61,10 +109,26 @@ public static class RuntimeQueryCommandLine
         out bool prettyJson,
         out string? error)
     {
+        return TryParseCommandLineCore(args, supportedCommands, perWindow: false, out command, out commandArgs,
+            out timeoutMs, out prettyJson, out _, out error);
+    }
+
+    private static bool TryParseCommandLineCore(
+        string[] args,
+        IReadOnlyList<string> supportedCommands,
+        bool perWindow,
+        out string command,
+        out Dictionary<string, string> commandArgs,
+        out int timeoutMs,
+        out bool prettyJson,
+        out int? processId,
+        out string? error)
+    {
         command = string.Empty;
         commandArgs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         timeoutMs = 1500;
         prettyJson = true;
+        processId = null;
         error = null;
 
         if (args.Length < 2)
@@ -120,6 +184,18 @@ public static class RuntimeQueryCommandLine
                 {
                     value = "true";
                 }
+            }
+
+            if (perWindow && string.Equals(key, "pid", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedProcessId) || parsedProcessId <= 0)
+                {
+                    error = "--pid must be a positive process ID.";
+                    return false;
+                }
+
+                processId = parsedProcessId;
+                continue;
             }
 
             if (string.Equals(key, "timeout-ms", StringComparison.OrdinalIgnoreCase))

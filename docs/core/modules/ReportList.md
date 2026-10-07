@@ -1,4 +1,4 @@
-[繁體中文](ReportList.zh-TW.md)
+[English](ReportList.md) | [中文](ReportList.zh-TW.md)
 
 # ReportList
 
@@ -8,6 +8,8 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ResettableObservableCollection.cs`
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportWindowedListViewModel.cs`
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportPagedListViewModel.cs`
+- `src/NvtFwCombiner.Presentation.Avalonia/Resources/MainWindowReportTemplates.axaml:10-25` (paged pager only)
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/HexEditorPanel.axaml:11-35` (windowed pager only)
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
@@ -140,9 +142,38 @@ Window status retains the intermediate `first + VisibleCount - 1` overflow, incl
 No model stores derived counts or availability flags; the window page index is the only independent mutable position.
 Collection contents and page position have one model owner and UI-thread-only access.
 
+### Pager templates
+
+Load `avares://Nvt.Core.Avalonia/ReportList/ReportPagerTemplates.axaml` through a `ResourceInclude` at the caller's existing resource scope.
+The dictionary contains exactly two `DataTemplate` resources:
+
+| Key | Model | Tree |
+| --- | --- | --- |
+| `Nvt.ReportList.PagedPagerTemplate` | `ReportPagedListViewModel` | One two-column Grid, status TextBlock, and load-more Button. |
+| `Nvt.ReportList.WindowedPagerTemplate` | `ReportWindowedListViewModel` | One two-row Grid, wrapping status TextBlock, and a two-column Grid with previous/next Buttons. |
+
+The templates read the existing models; they own no paging state or commands.
+The host supplies `captionText` and `semanticAction secondary` styles and the `Nvt.ReportList.WindowedSpacing` resource.
+Both `Classes` values are unchanged from NFC: `captionText` on each status and `semanticAction secondary` on every pager button.
+At the frozen commit, `Styles/MainWindowControlStyles.axaml:503` selects `TextBlock.captionText`; `Styles/MainWindowButtonStyles.axaml:33,45,48` selects `Button.semanticAction` and `:51,57,62,67` selects `Button.secondary` and its states.
+These selectors continue to apply when NFC loads the shared templates; there is no class-name migration.
+NFC supplies spacing at exactly 8 DIP, retaining both the row and button-column gaps.
+The paged tree retains margin `0,8,0,0`, columns `*,Auto`, and a 10 DIP column gap.
+The windowed tree retains centered wrapping status, its bound tooltip, and equal-width button columns.
+Status automation names equal visible status text and `AutomationProperties.LiveSetting` is `Polite`.
+Button automation names equal their bound visible labels, and command availability controls effective enabled state.
+The paged end button remains visible with the all-items-loaded label; windowed endpoint buttons remain visible and disabled when unavailable.
+The host controls windowed-pager visibility through `HasMultiplePages`, as the frozen caller does.
+No template adds a visibility predicate, row renderer, UserControl wrapper, theme/font import, schema, or export command.
+
+The host retains the existing Theme resource owner and all eight legacy font values.
+The UI family chain remains `fonts:Inter#Inter, Microsoft JhengHei UI, Noto Sans CJK TC, Noto Sans TC, Segoe UI`; the technical chain remains `Cascadia Mono, Consolas`.
+Sizes remain 10, 11, 12, 13, 14, and 16 DIP.
+These templates do not adopt the new Core font roles or redefine a font resource.
+
 ## Tests and provenance
 
-Tests live in `tests/Nvt.Core.Tests/ReportList/`.
+Model tests live in `tests/Nvt.Core.Tests/ReportList/`.
 All test data is synthetic.
 All three facts from `tests/NvtFwCombiner.UiSmoke.Tests/ReportIndexedReadOnlyListsTests.cs` are ported.
 Their allocation bound is unchanged.
@@ -181,6 +212,32 @@ Tests assert complete notification traces, per-Add state, one Reset per replacem
 `ReportListMechanismTests` also covers null elements, memoized window revisits, immutable label choices and null label members.
 Custom labels differ from both frozen languages.
 
+The compiled pager assertions are in `ReportPagerTemplateTests`:
+
+| Frozen source assertion | Core mapping |
+| --- | --- |
+| `XamlControlStyleContractTests.Report.cs:101-106` | `PagedBindingsUpdateThroughTheBoundCommandAndKeepTheEndButtonVisible`: loaded status/label bindings, accessible names, Polite status, and visible disabled end button. |
+| `XamlControlStyleContractTests.HexEditor.cs`, `HexViewport.cs`: windowed template, page content, commands, and caller visibility | `WindowedBindingsKeepWrappingTooltipNavigationAndDisabledEndpoints`, `WindowedPagerVisibilityBelongsToTheHost`: loaded fixed-window navigation, labels, tooltip, equal columns, spacing, and the caller's `HasMultiplePages` predicate. Product viewport, inspector and row assertions remain in NFC. |
+| `ReportChangesLayoutTests`: same-theme/language rendered layout methodology | Fragment comparisons use the independent frozen pager slices and synthetic rows. Product range-card, scrollbar, byte viewport and report-loading assertions remain in NFC. |
+| `AvaloniaHeadlessTestApplication.cs` | The existing shared `AvaloniaTestHost` and single test-assembly registration supply Inter, Skia and `UseHeadlessDrawing=false`; no second bootstrap is introduced. |
+
+`DictionaryContainsExactlyTheTwoModelTemplates` checks resource count and model matching.
+`LoadedControlsFollowCountBoundaries` covers empty and single-row inputs, page size one, and counts below, at and above the first and second boundaries for sizes 8, 24, 40 and 64.
+`DeferredModelsLoadThroughTheCompiledCommandBinding` checks the deferred status and initial command.
+`WindowedSpacingUsesTheHostResourceWithoutOwningADefault` checks both dynamic gaps and caller resource replacement.
+The frozen comparison dictionary is copied directly from the two source slices, retaining original keys and `NfcSpace8`; only its model namespace is retargeted for compilation.
+Its source is independent of the new template and does not include product row trees.
+
+`ReportPagerCoreThemeGeometryTests` checks the independent frozen slices and shared templates under `ThemeTokens.axaml`, `ButtonStyles.axaml` and `ScrollStyles.axaml`, with Fluent supplying the base control themes.
+Every comparison uses a 960 × 180 DIP window, explicit render scaling 1.0 (96 DPI), manual sizing and layout rounding.
+The pager widths are 240 and 960 DIP; edge-input comparisons use 336 DIP inside the same fixed window.
+Typography resolves through the shared Core Theme's `Nvt.Font.NfcLegacy.Ui.Family` / `NfcUiFontFamily` and size-13 resources.
+Assertions check the resolved family, 13 DIP size, normal weight/style, both 8 DIP windowed gaps, paged margin and 10 DIP gap, equal star columns, and base-control padding, border, corner radius and minimum height.
+The geometry label sets use short and long Latin text covered by bundled Inter; shaped glyphs must be present without font simulation, and each resolved font stream must match the bundled `Inter-Regular.ttf` SHA-256.
+This avoids machine-dependent installed CJK fallback fonts while the compiled binding/accessibility tests retain English and Traditional Chinese labels.
+Navigation comparisons include the first, middle and final states, disabled endpoints and reverse navigation; edge cases include empty, single-row, exact and adjacent pages and maximum batch sizes.
+These checks establish Core Theme geometry; NFC supplies its own caption and secondary-button selectors at adoption.
+
 After packages are restored, run from the repository root:
 
 ```text
@@ -201,6 +258,9 @@ The two models and their creation/navigation members become public in `Nvt.Core.
 Language branches become immutable injected labels and formatters; null labels and null label members are rejected after frozen item and page-size validation.
 The frozen model notification sequence and Toolkit command behavior remain intact.
 Pager templates are separate from these models.
+Pager extraction renames only the two resource keys, the model namespace, and the windowed spacing resource key.
+The original deferred resource scopes remain caller-owned; no resource is loaded eagerly by Core.
+The templates introduce no C# state fields and require no changes to the paging models.
 
 ## NFC ownership and adoption
 
@@ -210,17 +270,37 @@ The shared reset collection serves `MergeCoverageSegments`.
 It also serves `ReplaceCoverageSegments` and `CtrlRamOverview`.
 MessageCenter's passive activity projection stays outside this module.
 Later consumers must use one shared reset implementation.
-NFC adoption must pin the exact reviewed Core revision or package version.
-NFC downloads verified versioned packages at build time through `core-packages.json` (Core #61).
+NFC adoption must pin the exact Core revision or package version.
+NFC downloads verified versioned packages at build time through `core-packages.json`.
 Use exact `[x]` versions, locked restore, and source mapping restricted to the package download folder.
 The manifest records each package's Release tag and SHA-256; Core and NFC retain independent versioned releases.
-Delete NFC's local generic collections, paging models and object adapter only after all their callers use the reviewed packages and equivalent executable checks preserve the frozen values, identities, materialization and notifications.
+Delete NFC's local generic collections, paging models and object adapter only after all their callers use the pinned packages and equivalent executable checks preserve the frozen values, identities, materialization and notifications.
 Retarget every report and shared memory Reset consumer to the single collection owner.
 NFC keeps its separate label factory, ShellLanguage mapping, row factories, report DTOs, schema, export, async providers, report history and product navigation policy.
 MessageCenter keeps its separate report history table.
 Run NFC's existing functional and publication tests against the frozen baseline.
 Compare complete values, row identity, materialization and notifications.
-NFC UI adoption still requires zero changed decoded pixels.
-Core tests alone do not establish that UI result.
+Core pager tests cover compiled structure, bindings, commands, accessibility and geometry under the Core Theme.
+NFC takes pixel evidence at adoption using its zero-difference UI snapshot rule: the before/after NFC screens must have zero changed decoded pixels.
+Core fragment tests do not establish that product UI result and do not load NFC styles or compare decoded NFC pixels.
 Compare under the same OS, resolved fonts, DPI, theme, renderer, viewport, motion, input, time and IDs, and record each artifact's SHA-256.
 Compare complete values, event traces and output bytes where applicable, and preserve the eight legacy font values.
+NFC's existing product image producers are in `tests/NvtFwCombiner.UiSmoke.Tests/` and save frames when `NFC_VISUAL_OUTPUT_DIR` is set:
+
+| NFC test | Captured screens at the frozen baseline |
+| --- | --- |
+| `ReportChangesLayoutTests.ChangedRangeCardsReserveAStableScrollbarGutter` | Report modal Changes workspace at 1440 × 900 in Light/Dark and English/Traditional Chinese; the light-English CRC-cause view is also captured. |
+| `ReportHistoryControlTests.DpWarningHistoryShowsRecordedLengths` | Report history and the opened report review at 1536 × 864, light English. |
+| `ReportHistoryControlTests.HistoryTrashDeletesOnlyTargetAndPersists` | Report history rows at widths 1920 and 1024, height 850, across the declared theme/language pairs. |
+| `RunReportsListTests.RunReportsShowsDirectListAndFullWidthNavigation` | Message Center Run Reports list at 1635 × 962 light English and 1024 × 768 dark Traditional Chinese. |
+
+For pager adoption, NFC's before/after snapshot pairs compare the actual Report modal paged collections (output-difference summaries and Audit lists, including loaded-more and all-loaded states) and the Hex Editor changed-block fixed-window list (first, middle and final windows, both disabled endpoints, and the host's hidden zero/one-page pager).
+Use the same theme/language and environment for each pair and require zero changed decoded pixels.
+The frozen NFC tree does not contain a dedicated image-producing test for those two pager-state matrices; the broader captures above do not establish their pixel parity.
+NFC owns those adoption captures alongside `XamlControlStyleContractTests.ReportDetailCollectionsUseBoundedPagerBindings`, `XamlControlStyleContractTests.HexEditorInspectorUsesCompactTopAlignedLayout`, `ReportWindowedListViewModelTests` and `RunAndHexEditorTests.HexEditorBoundsFragmentedChangedBlockProjection`.
+The latter tests provide caller/model contracts rather than saved UI snapshots.
+
+NFC keeps the existing `ReportPagerTemplate` alias in its report dictionary and `HexEditorChangedBlockPagerTemplate` alias in the Hex Editor resource scope until all callers can use the shared keyed templates at those same deferred scopes.
+Delete only the two local pager trees after actual alias-loaded comparisons following NFC's final shared UI imports preserve exact control trees, measurements, automation, command behavior and zero changed decoded pixels.
+Keep the source row templates and all product-specific caller bindings in NFC.
+Record comparison artifact SHA-256 hashes and the common environment manifest; fragment tests do not establish full product parity.
