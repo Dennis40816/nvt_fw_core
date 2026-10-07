@@ -6,11 +6,17 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+### Dependencies
+
+- `Nvt.Core.Avalonia` depends on `CommunityToolkit.Mvvm` 8.4.2, the version NFC uses (#91).
+
 ### New modules and features
 
 - Shell: page host helpers (#77).
 - Files and Launcher: stable Windows read and launch custody (#78).
-- Message Center: refresh coordinator (#81).
+- Message Center: refresh coordinator (#81), export workflow (#83).
+- Launcher: launch and change coordination (#84), installation and inventory (#89).
+- Processes: external process runner with bounded cleanup (#88).
 
 ### Tests
 
@@ -20,7 +26,9 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 - Theme adoption uses two steps: a package PR with no visual change, then one look PR approved by the owner.
 - Conventions gain "State management".
+- State management gains "When to group state into one type".
 - This changelog.
+- Message Center documents the refresh coordinator (#90). Shell records its boundary and the seams NFC keeps (#92).
 
 ## 0.2.0 - 2026-10-07
 
