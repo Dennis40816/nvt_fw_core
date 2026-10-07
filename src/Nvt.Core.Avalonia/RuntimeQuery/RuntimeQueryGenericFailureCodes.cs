@@ -17,6 +17,9 @@ public static class RuntimeQueryGenericFailureCodes
     public const string InvalidArguments = "INVALID_ARGUMENTS";
     /// <summary>The capture destination exists and must not be replaced.</summary>
     public const string FileExists = "FILE_EXISTS";
+    /// <summary>The main window has no visible size for the default capture.</summary>
+    public const string CaptureUnavailable = "CAPTURE_UNAVAILABLE";
+
     /// <summary>The tool rejected closing.</summary>
     public const string ExitRejected = "EXIT_REJECTED";
 }

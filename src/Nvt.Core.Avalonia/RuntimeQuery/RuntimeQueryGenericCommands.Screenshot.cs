@@ -27,9 +27,15 @@ public static partial class RuntimeQueryGenericCommands
             return InvalidScreenshotPath();
         }
 
-        if (File.Exists(path))
+        if (File.Exists(path) || Directory.Exists(path))
         {
             return ScreenshotFileExists();
+        }
+
+        if (!Directory.Exists(Path.GetDirectoryName(path)))
+        {
+            return RuntimeQueryResponseEnvelope.Failure(
+                RuntimeQueryGenericFailureCodes.InvalidArguments, "The folder for '--path' does not exist.");
         }
 
         RuntimeQueryScreenshotResult result;
@@ -59,6 +65,12 @@ public static partial class RuntimeQueryGenericCommands
     private static RuntimeQueryScreenshotResult CaptureWindow(Window window, string path)
     {
         window.UpdateLayout();
+        if (window.WindowState == WindowState.Minimized || window.Bounds.Width <= 0 || window.Bounds.Height <= 0)
+        {
+            return RuntimeQueryScreenshotResult.Failure(
+                RuntimeQueryGenericFailureCodes.CaptureUnavailable, "The main window has no visible size to capture.");
+        }
+
         var dpi = new Vector(96 * window.RenderScaling, 96 * window.RenderScaling);
         using var bitmap = new RenderTargetBitmap(PixelSize.FromSizeWithDpi(window.Bounds.Size, dpi), dpi);
         bitmap.Render(window);

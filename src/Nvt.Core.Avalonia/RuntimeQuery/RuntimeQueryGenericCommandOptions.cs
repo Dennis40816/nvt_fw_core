@@ -12,7 +12,10 @@ namespace Nvt.Core.Avalonia.RuntimeQuery;
 /// <param name="GetMainWindow">Gets the current main window when focus or default capture runs.</param>
 /// <param name="Navigation">The tool's page navigation.</param>
 /// <param name="DecideExit">Synchronously decides whether closing can proceed. Must not open a dialog.</param>
-/// <param name="Close">Starts the normal close after approval. Must not cancel that approved close.</param>
+/// <param name="Close">
+/// Starts the normal close after approval. Core cannot enforce the approval: state can change between the decision and
+/// this call, for example when the user selects a file. The tool should skip its own confirmation for an approved close.
+/// </param>
 public sealed record RuntimeQueryGenericCommandOptions(
     string ToolName,
     string ToolVersion,

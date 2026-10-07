@@ -515,6 +515,7 @@ NFH maps handler failures to `IPC_ERROR` with the unchanged exception message.
 These mappings belong to the tool. Core supplies no product error text for these failures.
 
 `StopAsync` clears host ownership before disposal. A later `Start` creates a new server, as in the frozen host.
+A second `StopAsync` during a stop returns the same task, so every caller waits for the same disposal.
 The host adds no scheduling, window events, lifetime events, static instance, or options.
 The tool decides when to start it and calls `StopAsync` on exit.
 
@@ -635,7 +636,7 @@ The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
 | `ping` | `ReadOnly` | None | `{ toolName, version, processId }` | None |
 | `focus` | `ChangesState` | None | `{ focused: true }` | `NO_MAIN_WINDOW` |
 | `page` | `ChangesState` | None, or `--name <page>` | List: `{ pages, currentPage }`. Switch: `{ currentPage }` | `INVALID_ARGUMENTS`, `UNKNOWN_PAGE`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED` |
-| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`, `FILE_EXISTS`, `NO_MAIN_WINDOW`, or the replacement's unchanged failure |
+| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`, `FILE_EXISTS`, `NO_MAIN_WINDOW`, `CAPTURE_UNAVAILABLE`, or the replacement's unchanged failure |
 | `exit` | `ChangesState` | None | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`, `EXIT_REJECTED` |
 
 Help returns risk names as strings and keeps registration order.
@@ -673,9 +674,10 @@ This explicit exception keeps screenshot out of `WritesData`.
 Core requires a fully qualified path ending in `.png`, ignoring extension case.
 Core normalizes the absolute path and checks file existence before capture or window lookup.
 An invalid or missing path returns `INVALID_ARGUMENTS` with `Argument '--path' must be an absolute path ending in '.png'.`.
-An existing file returns `FILE_EXISTS` with `The screenshot file already exists.` and remains unchanged.
+An existing file or folder at the destination returns `FILE_EXISTS` with `The screenshot file already exists.` and remains unchanged.
+A missing parent folder returns `INVALID_ARGUMENTS` with `The folder for '--path' does not exist.`.
 
-Default capture updates window layout and renders a `RenderTargetBitmap` at the current window size and scaling.
+Default capture updates window layout. A minimized window or a window with no size returns `CAPTURE_UNAVAILABLE` with `The main window has no visible size to capture.`. Otherwise it renders a `RenderTargetBitmap` at the current window size and scaling.
 It writes PNG data to a temporary file in the destination folder.
 It moves that file to the final name without replacement and removes the temporary file on failure.
 If the destination appears before the move, Core returns the same `FILE_EXISTS` failure.
@@ -704,7 +706,7 @@ The tool must await `RuntimeQueryHost.StopAsync` in its close path before the pr
 The server lets the response write and flush finish within its shutdown bound.
 The tool must commit to closing after `Closing`; its close action must not veto the approved decision.
 
-The constants are `NO_MAIN_WINDOW`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED`, `UNKNOWN_PAGE`, `INVALID_ARGUMENTS`, `FILE_EXISTS`, and `EXIT_REJECTED`.
+The constants are `NO_MAIN_WINDOW`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED`, `UNKNOWN_PAGE`, `INVALID_ARGUMENTS`, `FILE_EXISTS`, `CAPTURE_UNAVAILABLE`, and `EXIT_REJECTED`.
 Tool capture failures can add their own codes without Core mappings.
 
 For example, register selected generic commands and product commands together:

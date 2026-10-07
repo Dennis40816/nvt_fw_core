@@ -105,20 +105,62 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         }
     }
 
-    /// <summary>A failed final move deletes the written temporary PNG.</summary>
-    [AvaloniaFact]
-    public async Task ScreenshotMoveFailureLeavesNoTemporaryFile()
+    /// <summary>A folder at the destination counts as an existing file and stops both capture paths.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScreenshotTreatsDestinationFolderAsExisting(bool customCapture)
     {
         using var workspace = new ScreenshotWorkspace();
         var path = workspace.PathFor("destination.png");
         Directory.CreateDirectory(path);
+        var options = Options() with
+        {
+            GetMainWindow = () => throw new InvalidOperationException("Existing folders must precede window lookup."),
+            CaptureScreenshot = customCapture
+                ? (_, _) => throw new InvalidOperationException("Existing folders must precede capture.")
+                : null
+        };
+        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path)),
+            "FILE_EXISTS", "The screenshot file already exists.");
+        Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
+        Assert.True(Directory.Exists(path));
+    }
+
+    /// <summary>A missing parent folder fails before either capture path runs.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ScreenshotRejectsMissingFolder(bool customCapture)
+    {
+        using var workspace = new ScreenshotWorkspace();
+        var path = Path.Combine(workspace.DirectoryPath, "missing", "capture.png");
+        var options = Options() with
+        {
+            GetMainWindow = () => throw new InvalidOperationException("Folder checks must precede window lookup."),
+            CaptureScreenshot = customCapture
+                ? (_, _) => throw new InvalidOperationException("Folder checks must precede capture.")
+                : null
+        };
+        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path)),
+            "INVALID_ARGUMENTS", "The folder for '--path' does not exist.");
+        Assert.False(Directory.Exists(Path.GetDirectoryName(path)));
+    }
+
+    /// <summary>The default capture refuses a minimized window and writes nothing.</summary>
+    [AvaloniaFact]
+    public async Task ScreenshotRefusesMinimizedWindow()
+    {
+        using var workspace = new ScreenshotWorkspace();
+        var path = workspace.PathFor("capture.png");
         var window = CaptureWindow();
         try
         {
             window.Show();
-            await Assert.ThrowsAnyAsync<IOException>(() => Router(Options(window)).RouteAsync("screenshot", Arg("path", path)));
+            window.WindowState = WindowState.Minimized;
+            AssertFailure(await Router(Options(window)).RouteAsync("screenshot", Arg("path", path)),
+                "CAPTURE_UNAVAILABLE", "The main window has no visible size to capture.");
             Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
-            Assert.True(Directory.Exists(path));
         }
         finally
         {

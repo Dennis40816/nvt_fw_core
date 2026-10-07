@@ -515,6 +515,7 @@ NFH 將處理委派失敗對應為 `IPC_ERROR`，保留原始例外訊息。
 這些對應由工具持有。Core 不提供這些失敗的產品錯誤文字。
 
 `StopAsync` 在釋放前清除 host 持有的伺服器。後續 `Start` 會建立新伺服器，與凍結來源一致。
+停止期間再次呼叫 `StopAsync` 會回傳同一個 task，所有呼叫者都等待同一次釋放。
 host 不加入排程、視窗事件、應用程式生命週期事件、靜態實例或選項。
 工具決定啟動時機，並在結束時呼叫 `StopAsync`。
 
@@ -635,7 +636,7 @@ Core 只回傳命令 record，不啟動伺服器。
 | `ping` | `ReadOnly` | 無 | `{ toolName, version, processId }` | 無 |
 | `focus` | `ChangesState` | 無 | `{ focused: true }` | `NO_MAIN_WINDOW` |
 | `page` | `ChangesState` | 無，或 `--name <page>` | 清單：`{ pages, currentPage }`。切換：`{ currentPage }` | `INVALID_ARGUMENTS`、`UNKNOWN_PAGE`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED` |
-| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`、`FILE_EXISTS`、`NO_MAIN_WINDOW`，或替代擷取原樣回傳的失敗 |
+| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`、`FILE_EXISTS`、`NO_MAIN_WINDOW`、`CAPTURE_UNAVAILABLE`，或替代擷取原樣回傳的失敗 |
 | `exit` | `ChangesState` | 無 | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`、`EXIT_REJECTED` |
 
 Help 以字串回傳風險名稱，並保留登錄順序。
@@ -673,9 +674,10 @@ Screenshot 不要求 `--confirm`，即使路由器已啟用確認防護。
 Core 要求完整絕對路徑，且副檔名必須為 `.png`，不區分副檔名大小寫。
 Core 先正規化絕對路徑並檢查檔案是否存在，再執行擷取或查詢主視窗。
 無效或缺少路徑時回傳 `INVALID_ARGUMENTS`，訊息為 `Argument '--path' must be an absolute path ending in '.png'.`。
-檔案已存在時回傳 `FILE_EXISTS`，訊息為 `The screenshot file already exists.`，且檔案保持不變。
+目的地已有檔案或資料夾時回傳 `FILE_EXISTS`，訊息為 `The screenshot file already exists.`，且內容保持不變。
+上層資料夾不存在時回傳 `INVALID_ARGUMENTS`，訊息為 `The folder for '--path' does not exist.`。
 
-預設擷取先更新視窗排版，再以目前視窗大小及縮放比例繪製 `RenderTargetBitmap`。
+預設擷取先更新視窗排版。視窗最小化或沒有大小時，回傳 `CAPTURE_UNAVAILABLE`，訊息為 `The main window has no visible size to capture.`。否則以目前視窗大小及縮放比例繪製 `RenderTargetBitmap`。
 PNG 先寫入目的資料夾內的暫存檔。
 Core 不覆寫地移至最終名稱，失敗時刪除暫存檔。
 若目的檔在移動前出現，Core 回傳相同的 `FILE_EXISTS` 失敗。
@@ -704,7 +706,7 @@ Core 處理以下三種結果：
 伺服器讓回應在關閉時間上限內完成寫入並清空緩衝區。
 工具回傳 `Closing` 後必須執行關閉；關閉動作不得再否決已核准的決策。
 
-常數包含 `NO_MAIN_WINDOW`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED`、`UNKNOWN_PAGE`、`INVALID_ARGUMENTS`、`FILE_EXISTS` 及 `EXIT_REJECTED`。
+常數包含 `NO_MAIN_WINDOW`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED`、`UNKNOWN_PAGE`、`INVALID_ARGUMENTS`、`FILE_EXISTS`、`CAPTURE_UNAVAILABLE` 及 `EXIT_REJECTED`。
 工具的擷取失敗可自行提供其他代碼，不需要 Core 對應。
 
 例如，將選用的通用命令與產品命令一起登錄：
