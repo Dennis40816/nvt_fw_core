@@ -8,18 +8,7 @@ This plan combines the module inventory with the accelerated assignments. NVT CO
 
 ## Roadmap
 
-These are the commander roadmap stages. They differ from the shared-CI stages 0 to 5 in the [shared-CI proposal](shared-ci/proposal.md#adoption-order).
-
-| Stage | Dates | Goal |
-|---|---|---|
-| 0 Inventory | Completed 2026-10-05 | Identify shared modules and sources. |
-| 1 Import | 2026-10-06 to 10-11 | Import the first modules and have tools adopt them. |
-| 2 Refine | 2026-10-12 to 10-18 | Finish remaining imports, refine modules, and complete acceptance. |
-| 3 Develop on Core | From 2026-10-19 | Develop shared features in Core and product features in each tool. |
-
-The accelerated scope includes every shareable inventory item, including the full Launcher, shell, console, and Message Center.
-NVT CORE, NFC, NFH, and NFU work together. Codex performs an independent first review; Claude reviews that result and high-risk work.
-The owner approves pull requests in batches.
+Dates, versions and the status of planned work are in [ROADMAP.md](../ROADMAP.md). This file records where each module lives and where it came from.
 
 ## Components
 

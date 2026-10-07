@@ -1,4 +1,4 @@
-[繁體中文](ReportList.zh-TW.md)
+[English](ReportList.md) | [中文](ReportList.zh-TW.md)
 
 # ReportList
 
