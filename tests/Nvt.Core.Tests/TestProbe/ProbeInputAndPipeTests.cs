@@ -112,7 +112,7 @@ public sealed class ProbeInputTests
         await using var workspace = new ProbeWorkspace();
         foreach (string mode in new[] { "ambient-pipe", "contained-isolation", "ready", "ready-wrong-identity",
             "ready-partial", "invalid-utf8", "oversized", "ready-tree-root", "tree-root-exit", "tree-root-wait",
-            "orphan-chain-root", "detached-descendant-root" })
+            "orphan-chain-root", "orphan-chain-exit", "detached-descendant-root" })
         {
             var process = workspace.Start(["--mode", mode]);
             await ProbeWorkspace.ExitAsync(process, 64);
@@ -248,6 +248,32 @@ public sealed class ProbePipeTests
         Assert.False(error.IsCompleted);
         await ProbeWorkspace.KillAsync(leaf);
         Assert.Empty(await output.WaitAsync(ProbeWorkspace.Bound, TestContext.Current.CancellationToken));
+        Assert.Empty(await error.WaitAsync(ProbeWorkspace.Bound, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task OrphanLeafKeepsRootTextOpenAfterRootAndMiddleExitNormally()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Orphan descendants require Windows.");
+        await using var workspace = new ProbeWorkspace();
+        string marker = workspace.PathFor("leaf.pid");
+        workspace.WatchTree(marker);
+        var process = workspace.Start(["--mode", "orphan-chain-exit", "--tree-marker", marker,
+            "--stdout-text", "before-reader-stop \u2713"]);
+        Task<string> output = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        Task<string> error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        await ProbeWorkspace.ExitAsync(process, 0);
+        Assert.True(File.Exists(marker + ".ready"));
+        var middle = int.Parse(await File.ReadAllTextAsync(marker + ".middle", TestContext.Current.CancellationToken),
+            System.Globalization.CultureInfo.InvariantCulture);
+        var leaf = await workspace.ChildAsync(marker);
+        Assert.NotEqual(middle, leaf.Id);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        Assert.False(leaf.HasExited);
+        Assert.False(output.IsCompleted);
+        Assert.False(error.IsCompleted);
+        await ProbeWorkspace.KillAsync(leaf);
+        Assert.Equal("before-reader-stop \u2713" + Environment.NewLine, await output.WaitAsync(ProbeWorkspace.Bound, TestContext.Current.CancellationToken));
         Assert.Empty(await error.WaitAsync(ProbeWorkspace.Bound, TestContext.Current.CancellationToken));
     }
 }
