@@ -183,6 +183,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - 程序或 API 錯誤只包含 `HTTP <status> <API path>`。無法取得 status 時使用 `unknown`。
 - 讀取在 status 為 unknown、429 或 5xx 時重試，最多 3 次，間隔 2 秒與 4 秒。第三次失敗後，訊息結尾加上 `(after 3 attempts)`。
 - 寫入一律不重試，因為 GitHub 可能已經套用。例如留言、更新 ref、更新分支與合併。
+- 寫入仍會重試 App token 的申請，最多 3 次。這一步在 gh 啟動前失敗，不會有任何請求送到 GitHub。
 - 所有寫入都只針對 GitHub.com 上的設定儲存庫。
 
 ## 來源與刻意的差異

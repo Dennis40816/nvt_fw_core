@@ -13,7 +13,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 ### Tools
 
 - `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
-- `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain.
+- `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry, except for the App token request, which runs before gh starts. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain.
 - `tools/nvt-sched`: tasks run under `conhost.exe --headless`, so no terminal window opens. `list`, `status` and the audit read run results from the runner state, because the headless console hides exit codes (#114).
 
 ## 0.3.0 - 2026-10-07

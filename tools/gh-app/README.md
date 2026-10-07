@@ -249,6 +249,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - An unavailable HTTP status appears as `unknown`.
 - A read retries up to three attempts, after 2 and 4 seconds, when its status is unknown, 429 or 5xx. After the third failure the message ends with `(after 3 attempts)`.
 - A write never retries, because GitHub may have applied it. Examples are comments, ref updates, branch updates and merges.
+- A write still retries its App token request up to three attempts. That step fails before gh starts, so nothing reaches GitHub.
 - Every write targets the configured repository on GitHub.com.
 
 ## Sources and intentional differences

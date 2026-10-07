@@ -93,7 +93,10 @@ InModuleScope NvtGhApp {
 param($Mode, $Owner, $Repo, $ClientId, $InstallationId, $DpapiPath)
 $record = @{ Arguments = $PSBoundParameters; TokenPresent = [bool]$env:GH_TOKEN; DebugPresent = [bool]$env:GH_DEBUG }
 [IO.File]::AppendAllText($env:NVT_GHAPP_HELPER_CALLS, (ConvertTo-Json $record -Compress) + "`n")
-if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 1 }
+# NVT_GHAPP_HELPER_FAIL is the number of calls that fail before the helper succeeds.
+if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:NVT_GHAPP_HELPER_FAIL) {
+    [Console]::Error.Write('ghs_' + 'FAKE'); exit 1
+}
 [Console]::Out.Write('ghs_' + 'FAKE')
 '@
         [IO.File]::WriteAllText($helper, $helperSource)
@@ -409,7 +412,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
     }
 
     Describe 'Token confinement and sanitized failures' {
-        BeforeEach { Reset-Fixture; Import-Fixture }
+        BeforeEach { Reset-Fixture; Import-Fixture; Mock Start-Sleep {} }
         It 'redacts a token echoed in JSON and discards token-bearing stderr' {
             Set-Responses @((New-ApiStep issues/7/comments POST -App -RawOutput '{"body":"__TOKEN__"}' -ErrorText '__TOKEN__'))
             $output = Add-GhAppComment 7 $script:BodyFile
@@ -429,11 +432,20 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             Assert-NoToken $message
         }
         It 'discards a failing helper error without starting gh' {
-            $env:NVT_GHAPP_HELPER_FAIL = '1'
+            $env:NVT_GHAPP_HELPER_FAIL = '99'
             $message = Get-Message { Add-GhAppComment 7 $script:BodyFile }
-            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/issues/7/comments (token helper exit 1)"
+            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/issues/7/comments (token helper exit 1) (after 3 attempts)"
             @(Get-Calls).Count | Should Be 0
+            @([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count | Should Be 3
             Assert-NoToken $message
+        }
+        It 'retries a failed token request for a write and starts gh once' {
+            $env:NVT_GHAPP_HELPER_FAIL = '1'
+            Set-Responses @((New-ApiStep issues/7/comments POST @{ id = 1 } -App))
+            (Add-GhAppComment 7 $script:BodyFile).id | Should Be 1
+            @(Get-Calls).Count | Should Be 1
+            @([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count | Should Be 2
+            Assert-MockCalled Start-Sleep -Times 1 -Exactly -Scope It
         }
         It 'sets the App token only in one child and preserves the parent environment' {
             $env:GH_TOKEN = 'SYNTHETIC_PARENT_TOKEN'

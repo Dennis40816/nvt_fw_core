@@ -143,6 +143,9 @@ function Invoke-GhAppGh {
     # Only reads retry. A write that fails after GitHub applied it must never repeat, for example a comment or a merge.
     $attempts = $(if ($Read) { 3 } else { 1 })
     [void]$PSBoundParameters.Remove('Read')
+    # A token failure happens before gh starts, so nothing reached GitHub and a write may retry it too.
+    # A read already retries the whole call, so its token step runs once per attempt.
+    $PSBoundParameters['TokenAttempts'] = $(if ($Read) { 1 } else { 3 })
     for ($attempt = 1; ; $attempt++) {
         try { return Invoke-GhAppGhOnce @PSBoundParameters }
         catch {
@@ -160,7 +163,8 @@ function Invoke-GhAppGh {
 
 function Invoke-GhAppGhOnce {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
-        [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound)
+        [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
+        [int]$TokenAttempts = 1)
     $process = $null
     $token = $null
     $info = $null
@@ -174,8 +178,15 @@ function Invoke-GhAppGhOnce {
         $info.Environment['GH_REPO'] = "$($Context.owner)/$($Context.repo)"
         $info.Environment['GH_PROMPT_DISABLED'] = '1'
         if ($AsApp) {
-            try { $token = Get-GhAppToken $Context $ApiPath }
-            catch { $failure = $_.Exception.Message; throw }
+            for ($attempt = 1; $null -eq $token; $attempt++) {
+                try { $token = Get-GhAppToken $Context $ApiPath }
+                catch {
+                    $failure = $_.Exception.Message
+                    if ($attempt -lt $TokenAttempts) { Start-Sleep -Seconds (2 * $attempt); continue }
+                    if ($TokenAttempts -gt 1) { $failure = "$failure (after $TokenAttempts attempts)" }
+                    throw
+                }
+            }
             $info.Environment['GH_TOKEN'] = $token
         }
         $process = [Diagnostics.Process]::Start($info)
