@@ -110,7 +110,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | --- | --- | --- | --- |
 | Files, Processes, Locale, Persistence, IO, Csv, source-file navigation, Startup, Time, Lifecycle | 1.0.0 | Merged | [components.md](docs/components.md#7-utility-functions) |
 | Process runner and its lifetime tests | 1.0.0 | Merged | [#88](https://github.com/Dennis40816/nvt_fw_core/pull/88), [#97](https://github.com/Dennis40816/nvt_fw_core/pull/97) |
-| RuntimeQuery: one pipe per window and `--pid` | 1.0.0 | Waiting for owner approval | [#99](https://github.com/Dennis40816/nvt_fw_core/pull/99) |
+| RuntimeQuery: one pipe per window and `--pid` | 1.0.0 | Merged | [#99](https://github.com/Dennis40816/nvt_fw_core/pull/99) |
 
 **8. Other shared items**
 
@@ -133,12 +133,14 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 
 Each tool adopts Core in its own pull requests. A theme change uses two steps: a package pull request with no visual change, then one look pull request with Light and Dark images that the owner approves.
 
+Each tool's own roadmap is the source for its progress. This table summarizes it.
+
 | Tool | Release line | Core version | Modules in use | Theme step 1 | Theme step 2 | Next |
 | --- | --- | --- | --- | --- | --- | --- |
-| NFH (Freeform Helper) | `1.3.x` | 0.2.0 ([NFH #50](https://github.com/Dennis40816/nvt-freeform-helper/pull/50)) | UI-thread helper ([NFH #44](https://github.com/Dennis40816/nvt-freeform-helper/pull/44)) | Not recorded | Not started | RuntimeQuery switch with zero difference, then the Console |
-| NFC (NVT FW Combiner) | `1.2.x` now; Core integration in 1.3.0 | 0.2.0 ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)) | None yet | Not started | Not started | RuntimeQuery read-only commands; then the shared modules it extracted |
-| NFU (NVT FW UTIL) | `0.2.0` | 0.2.0 ([NFU #40](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/40)) | Atomic output ([NFU #34](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/34)), CSV quoting ([NFU #35](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/35)), source-file navigation ([NFU #36](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/36)) | Not started | Not started | Theme step 1 |
+| NFH (Freeform Helper) | `1.3.x` | 0.2.0 ([NFH #50](https://github.com/Dennis40816/nvt-freeform-helper/pull/50)) | UI-thread helper ([NFH #44](https://github.com/Dennis40816/nvt-freeform-helper/pull/44)) | Done ([NFH #50](https://github.com/Dennis40816/nvt-freeform-helper/pull/50)) | Not started; after NFC and NFU | RuntimeQuery switch with zero difference, then the Console |
+| NFC (NVT FW Combiner) | `1.2.x` now; Core integration in 1.3.0 | 0.2.0 ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)), used only to download and verify the packages at build time | None yet | Done ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)) | Not started | RuntimeQuery read-only commands; the 16 planned startup options as Core commands; then the remaining Launcher steps |
+| NFU (NVT FW UTIL) | Released `v0.1.1`; development line `0.2.0` ([roadmap](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/41)) | 0.2.0 ([NFU #40](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/40)) | Atomic output ([NFU #34](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/34)), CSV quoting ([NFU #35](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/35)), source-file navigation ([NFU #36](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/36)) | Done ([NFU #40](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/40)) | In progress | Theme step 2, then the move to Core 1.0.0 |
 
-Each tool keeps its own fix lane. Core adoption on a tool's development line never blocks that tool's hotfix. For example, NFC 1.2.2 starts from `v1.2.1` and carries only its fix, while Core integration goes to NFC 1.3.0.
+Each tool keeps its own fix lane. Core adoption on a tool's development line never blocks that tool's hotfix. For example, NFC 1.2.2 starts from `v1.2.1` without Core integration, and later 1.2.x releases carry only fixes. Core integration goes to NFC 1.3.0.
 
 Each tool session updates its own row in the same pull request that changes its adoption.
