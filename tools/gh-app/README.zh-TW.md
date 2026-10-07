@@ -86,19 +86,26 @@ Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
 `Merge-GhAppApprovedPullRequest` 依序處理 PR。已關閉或合併的 PR 會略過。
 遇到第一個不安全操作或失敗請求時，整批處理停止。
 owner 最新一筆會改變狀態的 review 必須對目前 head 給予 `APPROVED`。之後的 COMMENTED review 不會取消核准。
-模組依提交時間排序 review，同時間以 review ID 排序。Owner 的 pending review 會禁止合併。
-Owner 後續留言、要求修改或撤銷 review 都會取代先前批准。
-落後分支透過 App 更新，並核對 `expected_head_sha`。更新後會再次檢查批准是否保留。
-批准未保留、需要人工解衝突，或三次更新後仍落後，都會停止。
+模組依提交時間排序 review，同時間以 review ID 排序。
+Owner 的 pending review 會禁止合併。這是刻意的，因為模組看不到草稿內容。
+Owner 後續要求修改或撤銷 review,會取代先前批准。
+模組不會更新分支。更新會產生新的 head,而 owner 的核准仍留在舊 head 上。
+分支落後 base、head 改變，或需要人工解衝突時，都會停止。
 模組等待必要 checks 通過及 merge state 為 clean，並在合併前再核對 head 和批准。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
-合併確認後，只有 ref 未改變且 `main` 已包含該 head 時才刪除分支。
-Base、已改變、不存在或未被 `main` 包含的分支會保留。
-`-LogPath` 的目錄必須已存在。紀錄會附加 UTC 時間、head SHA、merge SHA、更新及分支處理結果。
+合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支。
+有指定時，以下條件全部成立才刪除:
+
+- 分支名稱以該 prefix 開頭;
+- 分支不是 `main`,也不是 PR 的 base;
+- ref 仍指向合併的 head;
+- PR 的 base 已包含該 head。
+
+`-LogPath` 的目錄必須已存在。紀錄會附加 UTC 時間、head SHA、merge SHA 及分支處理結果。
 
 ```powershell
-Merge-GhAppApprovedPullRequest -Numbers 7,8 -LogPath .\merge.log
+Merge-GhAppApprovedPullRequest -Numbers 7,8 -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
 ```
 
 `Close-GhAppPullRequest` 先留言，再關閉 PR。留言失敗時不會關閉。
@@ -127,6 +134,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - 模組只讀取設定與呼叫端指定的內容檔案，不讀取 private key 或 DPAPI 內容。
 - 只有 owner 安裝的 helper 取得 token。每次寫入取得的新 token 只留在記憶體。
 - 只有一個 `gh` 子程序透過 `GH_TOKEN` 取得 token。父程序環境不變。
+- 設定檔、helper、DPAPI 檔和 `gh` 都必須在所有 repository 之外。helper 失敗時，錯誤訊息只多加 helper 的結束碼。
 - 請求內容透過 stdin 傳遞，不建立暫存 payload 檔案。
 - 意外回顯的 token 會替換為 `[redacted]`。捕捉的錯誤內容不會傳給呼叫端或紀錄。
 - 程序或 API 錯誤只包含 `HTTP <status> <API path>`。無法取得 status 時使用 `unknown`。
@@ -147,6 +155,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - `Invoke-GhAppRead` 回傳 UTF-8 文字，並去掉結尾換行。NFC 的版本回傳原始位元組。支援的讀取指令只輸出 JSON 或文字。
 - 合併時，owner 最新一筆會改變狀態的 review 必須是對目前 head 的 APPROVED。之後的 COMMENTED review 不會取消核准，和 GitHub 的規則相同。
 - Core 的合併腳本只要 head 上有任何一筆核准就合併。模組在核准之後出現 CHANGES_REQUESTED 或 DISMISSED 時會停下。
+- Core 的合併腳本會更新落後的分支，並一律刪除合併後的分支。模組遇到落後分支會停下，只有指定 prefix 時才刪除分支。
 - 審查紀錄一律是 COMMENT review,並鎖定預期的 head。
 
 導入的 repository 退役舊腳本之前，要用同一組合成 PR 比較新舊兩邊的 API 呼叫、request body、log 與停止訊息。

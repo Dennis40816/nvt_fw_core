@@ -51,6 +51,10 @@ function Import-GhAppConfig {
     if ([IO.Path]::GetExtension($config.tokenHelperPath) -ine '.ps1' -or -not [IO.File]::Exists($config.tokenHelperPath)) {
         throw "Config field 'tokenHelperPath' must name an installed PowerShell script."
     }
+    # A helper or key inside a repository could be changed by repository work, then run with App rights.
+    foreach ($field in @('tokenHelperPath', 'dpapiPath')) {
+        if (Test-GhAppRepositoryPath $config[$field]) { throw "Config field '$field' must be outside every repository." }
+    }
     # Copy only the defined fields. The returned object cannot change the active configuration.
     $script:Configuration = @{}
     foreach ($field in $fields) { $script:Configuration[$field] = $config[$field] }
@@ -106,7 +110,11 @@ function Get-GhAppToken {
         $null = $errorTask.GetAwaiter().GetResult()
         if ($process.ExitCode -ne 0 -or $token -cnotmatch '^[\x21-\x7e]+\z') { throw 'Invalid helper result.' }
         return $token
-    } catch { throw "HTTP unknown $ApiPath" }
+    } catch {
+        # Report only the helper's exit code. Its output and error text may hold secrets.
+        $code = $(if ($null -ne $process -and $process.HasExited) { $process.ExitCode } else { 'none' })
+        throw "HTTP unknown $ApiPath (token helper exit $code)"
+    }
     finally {
         if ($null -ne $process) { $process.Dispose() }
         $token = $null
@@ -122,12 +130,15 @@ function Invoke-GhAppGh {
     $failure = "HTTP unknown $ApiPath"
     try {
         $executable = (Get-Command gh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+        # gh receives the App token, so a copy that repository work could change is refused.
+        if (Test-GhAppRepositoryPath $executable) { throw 'gh inside a repository.' }
         $info = New-GhAppProcessInfo $executable $Arguments
         $info.Environment['GH_HOST'] = 'github.com'
         $info.Environment['GH_REPO'] = "$($Context.owner)/$($Context.repo)"
         $info.Environment['GH_PROMPT_DISABLED'] = '1'
         if ($AsApp) {
-            $token = Get-GhAppToken $Context $ApiPath
+            try { $token = Get-GhAppToken $Context $ApiPath }
+            catch { $failure = $_.Exception.Message; throw }
             $info.Environment['GH_TOKEN'] = $token
         }
         $process = [Diagnostics.Process]::Start($info)
@@ -413,38 +424,29 @@ function Wait-GhAppApprovedHead {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$LogPath, [int]$TimeoutSeconds, [int]$PollSeconds)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
     $deadline = (Get-GhAppUtcNow).AddSeconds($TimeoutSeconds)
-    $updates = 0
     while ($true) {
         if ($Pr.state -cne 'OPEN') { throw "#$Number stop: state $($Pr.state)." }
         $current = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-        if (-not (Test-GhAppOwnerApproval $Context $Number $current)) {
-            if ($current -cne $head) { throw "#$Number stop: approval did not carry to $current." }
-            throw "#$Number stop: no owner approval on $current."
-        }
-        if ($current -cne $head) { Write-GhAppMergeLog $LogPath "#$Number updated $head -> $current; approval kept"; $head = $current }
-        if ($Pr.mergeStateStatus -ceq 'DIRTY') { throw "#$Number stop: merge conflict with main; manual resolution requires owner approval." }
+        if ($current -cne $head) { throw "#$Number stop: head changed to $current." }
+        if (-not (Test-GhAppOwnerApproval $Context $Number $current)) { throw "#$Number stop: no owner approval on $current." }
+        if ($Pr.mergeStateStatus -ceq 'DIRTY') { throw "#$Number stop: merge conflict with $($Pr.baseRefName); manual resolution requires owner approval." }
+        # An update would create a new head while the owner's approval stays on the old one.
+        if ($Pr.mergeStateStatus -ceq 'BEHIND') { throw "#$Number stop: behind $($Pr.baseRefName); update the branch, then the owner approves the new head." }
         if ((Get-GhAppUtcNow) -ge $deadline) { throw "#$Number stop: timed out in state $($Pr.mergeStateStatus)." }
-        if ($Pr.mergeStateStatus -ceq 'BEHIND') {
-            if ($updates -ge 3) { throw "#$Number stop: still behind after 3 updates." }
-            Write-GhAppMergeLog $LogPath "#$Number update-branch from $head"
-            $null = Invoke-GhAppApi $Context PUT "pulls/$Number/update-branch" @{ expected_head_sha = $head } -AsApp
-            $updates++
-        } else {
-            $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number/checks"
-            $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)", '--required', '--json', 'name,bucket,state')
-            $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8)
-            try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
-            catch { throw "HTTP unknown $path" }
-            if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: required checks failed." }
-            $pending = @($checks | Where-Object { $_.bucket -notin @('pass', 'skipping') }).Count -gt 0
-            if (-not $pending -and $result.ExitCode -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
-                # Recheck both the head and the latest owner review after checking CI.
-                $fresh = Get-GhAppPullRequest $Context $Number
-                if ($fresh.headRefOid -ceq $head -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN' -and
-                    (Test-GhAppOwnerApproval $Context $Number $head)) { return $fresh }
-                $Pr = $fresh
-                continue
-            }
+        $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number/checks"
+        $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)", '--required', '--json', 'name,bucket,state')
+        $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8)
+        try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
+        catch { throw "HTTP unknown $path" }
+        if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: required checks failed." }
+        $pending = @($checks | Where-Object { $_.bucket -notin @('pass', 'skipping') }).Count -gt 0
+        if (-not $pending -and $result.ExitCode -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
+            # Recheck both the head and the latest owner review after checking CI.
+            $fresh = Get-GhAppPullRequest $Context $Number
+            if ($fresh.headRefOid -ceq $head -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN' -and
+                (Test-GhAppOwnerApproval $Context $Number $head)) { return $fresh }
+            $Pr = $fresh
+            continue
         }
         Start-Sleep -Seconds $PollSeconds
         $Pr = Get-GhAppPullRequest $Context $Number
@@ -452,10 +454,16 @@ function Wait-GhAppApprovedHead {
 }
 
 function Remove-GhAppMergedBranch {
-    param([hashtable]$Context, [int]$Number, $Pr, [string]$Head, [string]$LogPath)
+    param([hashtable]$Context, [int]$Number, $Pr, [string]$Head, [string]$LogPath, [string]$Prefix)
     $branch = $Pr.headRefName
+    $base = $Pr.baseRefName
     $encoded = [Uri]::EscapeDataString($branch)
-    if ($branch -ceq 'main' -or $branch -ceq $Pr.baseRefName) {
+    # Deletion is opt-in by prefix, so release and other long-lived branches are never deleted.
+    if (-not $Prefix -or -not $branch.StartsWith($Prefix, [StringComparison]::Ordinal)) {
+        Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; no matching delete prefix"
+        return
+    }
+    if ($branch -ceq 'main' -or $branch -ceq $base) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; base branch"
         return
     }
@@ -464,9 +472,9 @@ function Remove-GhAppMergedBranch {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed or absent"
         return
     }
-    $comparison = Invoke-GhAppApi $Context GET "compare/main...$Head"
+    $comparison = Invoke-GhAppApi $Context GET "compare/$([Uri]::EscapeDataString($base))...$Head"
     if ($comparison.status -notin @('behind', 'identical') -or $comparison.ahead_by -ne 0) {
-        Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; main does not contain $Head"
+        Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; $base does not contain $Head"
         return
     }
     $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp
@@ -477,8 +485,11 @@ function Merge-GhAppApprovedPullRequest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int[]]$Numbers,
         [Parameter(Mandatory)][Alias('Log')][string]$LogPath, [ValidateRange(1, 3600)][int]$TimeoutSeconds = 1200,
-        [ValidateRange(1, 60)][int]$PollSeconds = 15, [Alias('Repo')][string]$Repository)
+        [ValidateRange(1, 60)][int]$PollSeconds = 15, [string]$DeleteBranchPrefix, [Alias('Repo')][string]$Repository)
     $context = Get-GhAppContext $Repository
+    if ($PSBoundParameters.ContainsKey('DeleteBranchPrefix') -and [string]::IsNullOrWhiteSpace($DeleteBranchPrefix)) {
+        throw 'DeleteBranchPrefix must be nonempty when given.'
+    }
     $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
     foreach ($number in $Numbers) {
         try {
@@ -493,7 +504,7 @@ function Merge-GhAppApprovedPullRequest {
             $pr = Get-GhAppPullRequest $context $number
             if ($pr.state -cne 'MERGED') { throw "#$number stop: merge was not confirmed." }
             Write-GhAppMergeLog $LogPath "#$number merged $head -> $mergeSha"
-            Remove-GhAppMergedBranch $context $number $pr $head $LogPath
+            Remove-GhAppMergedBranch $context $number $pr $head $LogPath $DeleteBranchPrefix
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
             throw

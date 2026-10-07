@@ -130,11 +130,10 @@ It stops the batch at the first unsafe operation or failed request.
 
 The owner's latest state-changing review must be `APPROVED` on the current head. A later COMMENTED review does not cancel it.
 Submission time orders reviews, and review IDs break ties.
-A pending owner review blocks merging.
-A later owner comment, change request, or dismissal supersedes an earlier approval.
-The function updates a behind branch through the App with `expected_head_sha`.
-It checks approval again after the head changes.
-It stops when approval does not carry, conflicts require manual resolution, or three updates leave the branch behind.
+A pending owner review blocks merging. This is deliberate: the module cannot see what the draft will say.
+A later owner change request or dismissal supersedes an earlier approval.
+The function never updates a branch. An update creates a new head, and the owner's approval stays on the old head.
+It stops when the branch is behind its base, when the head changes, or when conflicts need manual resolution.
 
 The function waits for required checks and a clean merge state.
 It rechecks the head and owner approval before merging with the exact head SHA.
@@ -142,13 +141,20 @@ Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.
 Use `-TimeoutSeconds` and `-PollSeconds` to change those limits.
 
-After confirming the merge, it deletes the head branch when its ref still matches and `main` contains that head.
-It keeps changed, absent, base, and uncontained branches.
+Branch deletion after a merge is opt-in through `-DeleteBranchPrefix`.
+Without it, every head branch is kept, including release branches.
+With it, the function deletes the head branch only when all of these hold:
+
+- the branch name starts with the prefix;
+- the branch is not `main` or the PR base;
+- its ref still matches the merged head;
+- the PR base contains that head.
+
 The caller supplies an existing directory for `-LogPath`.
-The function appends UTC timestamps, head SHAs, merge SHAs, updates, and branch outcomes.
+The function appends UTC timestamps, head SHAs, merge SHAs, and branch outcomes.
 
 ```powershell
-Merge-GhAppApprovedPullRequest -Numbers 7,8 -LogPath .\merge.log
+Merge-GhAppApprovedPullRequest -Numbers 7,8 -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
 ```
 
 ## Close-GhAppPullRequest
@@ -192,7 +198,8 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - Request bodies travel through stdin, without temporary payload files.
 - Captured output replaces an accidentally echoed token with `[redacted]`.
 - Captured error text never reaches callers or logs.
-- Process and API failures report only `HTTP <status> <API path>`.
+- Process and API failures report only `HTTP <status> <API path>`. A helper failure adds only the helper's exit code.
+- The config file, the helper, the DPAPI file and `gh` must all be outside every repository.
 - An unavailable HTTP status appears as `unknown`.
 - Every write targets the configured repository on GitHub.com.
 
@@ -211,6 +218,7 @@ These differences are intentional:
 - `Invoke-GhAppRead` returns UTF-8 text without trailing line breaks. The NFC runner returned raw bytes. The supported reads return JSON or text only.
 - A merge needs the owner's latest state-changing review to be APPROVED on the current head. A later COMMENTED review does not cancel the approval, as on GitHub.
 - The Core merge script accepted any approval on the head. The module also stops when a later CHANGES_REQUESTED or DISMISSED review follows it.
+- The Core merge script updated a behind branch and always deleted the merged branch. The module stops on a behind branch and deletes only with a prefix.
 - Review records are always COMMENT reviews pinned to the expected head.
 
 An adopting repository compares its old script output with these functions before it retires the old copy.

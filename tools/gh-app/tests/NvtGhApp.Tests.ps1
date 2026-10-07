@@ -162,6 +162,20 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             } finally { [IO.File]::Delete($marker) }
             @(Get-Calls).Count | Should Be 0
         }
+        foreach ($pathField in @('tokenHelperPath', 'dpapiPath')) {
+            It "rejects a $pathField inside a repository" {
+                $repository = Join-Path $script:FixtureRoot "repo-$pathField"
+                [void][IO.Directory]::CreateDirectory((Join-Path $repository '.git'))
+                $inside = Join-Path $repository 'file.ps1'
+                [IO.File]::Copy($script:ConfigValues.tokenHelperPath, $inside, $true)
+                $script:ConfigValues[$pathField] = $inside
+                [IO.File]::WriteAllText($script:FixtureConfig, (ConvertTo-Json $script:ConfigValues))
+                try {
+                    Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be "Config field '$pathField' must be outside every repository."
+                } finally { [IO.Directory]::Delete($repository, $true) }
+                @(Get-Calls).Count | Should Be 0
+            }
+        }
         It 'rejects malformed JSON and clears any earlier configuration' {
             $null = Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName
             [IO.File]::WriteAllText($script:FixtureConfig, '{')
@@ -307,7 +321,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         It 'discards a failing helper error without starting gh' {
             $env:NVT_GHAPP_HELPER_FAIL = '1'
             $message = Get-Message { Add-GhAppComment 7 $script:BodyFile }
-            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/issues/7/comments"
+            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/issues/7/comments (token helper exit 1)"
             @(Get-Calls).Count | Should Be 0
             Assert-NoToken $message
         }
@@ -580,7 +594,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
     }
     function Invoke-MergeFixture {
         param([int[]]$Numbers = @(7), [int]$TimeoutSeconds = 1200)
-        Merge-GhAppApprovedPullRequest -Numbers $Numbers -LogPath $script:LogFile -PollSeconds 1 -TimeoutSeconds $TimeoutSeconds
+        Merge-GhAppApprovedPullRequest -Numbers $Numbers -LogPath $script:LogFile -PollSeconds 1 -TimeoutSeconds $TimeoutSeconds -DeleteBranchPrefix 'test/'
     }
 
     Describe 'Owner-approved merges' {
@@ -607,7 +621,7 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         It 'appends a relative log in the current PowerShell location' {
             Set-Responses @(New-MergeSteps)
             Push-Location -LiteralPath $script:FixtureRoot
-            try { Merge-GhAppApprovedPullRequest -Numbers 7 -LogPath '.\merge.log' } finally { Pop-Location }
+            try { Merge-GhAppApprovedPullRequest -Numbers 7 -LogPath '.\merge.log' -DeleteBranchPrefix 'test/' } finally { Pop-Location }
             [IO.File]::ReadAllText($script:LogFile) | Should Match '#7 merged'
             Assert-NoToken
         }
@@ -622,14 +636,30 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
                 @(Get-Calls).Count | Should Be 2
             }
         }
-        It 'updates a behind branch through the App and checks approval on the new head' {
-            $steps = @((New-PrStep -Pr (New-Pr -MergeState BEHIND)), (New-ReviewStep),
-                (New-ApiStep pulls/7/update-branch PUT @{} -App)) + @(New-MergeSteps -Head $script:NextSha)
-            Set-Responses $steps
-            Invoke-MergeFixture
-            (ConvertFrom-Json @(Get-Calls)[2].Input).expected_head_sha | Should Be $script:HeadSha
-            [IO.File]::ReadAllText($script:LogFile) | Should Match 'approval kept'
-            Assert-NoToken
+        It 'stops on a behind branch without updating it' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -MergeState BEHIND)), (New-ReviewStep))
+            Get-Message { Invoke-MergeFixture } | Should Be '#7 stop: behind main; update the branch, then the owner approves the new head.'
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'keeps the merged branch when no delete prefix is given' {
+            Set-Responses @(@(New-MergeSteps)[0..6])
+            Merge-GhAppApprovedPullRequest -Numbers 7 -LogPath $script:LogFile -PollSeconds 1
+            @(Get-Calls).Count | Should Be 7
+            [IO.File]::ReadAllText($script:LogFile) | Should Match 'kept branch test/module; no matching delete prefix'
+        }
+        It 'keeps a release branch that does not match the delete prefix' {
+            $steps = @(New-MergeSteps)
+            foreach ($index in @(0, 3)) { $steps[$index] = New-PrStep -Pr (New-Pr -Branch '1.2.2') }
+            $steps[6] = New-PrStep -Pr (New-Pr -Branch '1.2.2' -State MERGED)
+            Set-Responses @($steps[0..6])
+            Merge-GhAppApprovedPullRequest -Numbers 7 -LogPath $script:LogFile -PollSeconds 1 -DeleteBranchPrefix 'feature/'
+            @(Get-Calls).Count | Should Be 7
+            [IO.File]::ReadAllText($script:LogFile) | Should Match 'kept branch 1.2.2; no matching delete prefix'
+        }
+        It 'rejects an empty delete prefix before any call' {
+            Get-Message { Merge-GhAppApprovedPullRequest -Numbers 7 -LogPath $script:LogFile -DeleteBranchPrefix ' ' } |
+                Should Be 'DeleteBranchPrefix must be nonempty when given.'
+            @(Get-Calls).Count | Should Be 0
         }
         It 'uses submission order when a lower review ID requests changes last' {
             $reviews = @((New-Review -State CHANGES_REQUESTED -Id 1 -SubmittedAt '2026-01-01T01:00:00Z'),
@@ -653,32 +683,10 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             Get-Message { Invoke-MergeFixture } | Should Be "#7 stop: no owner approval on $script:HeadSha."
             @(Get-Calls).Count | Should Be 2
         }
-        It 'stops after an update when approval did not carry' {
-            Set-Responses @((New-PrStep -Pr (New-Pr -MergeState BEHIND)), (New-ReviewStep),
-                (New-ApiStep pulls/7/update-branch PUT @{} -App), (New-PrStep -Pr (New-Pr -Head $script:NextSha)), (New-ReviewStep))
-            Get-Message { Invoke-MergeFixture } | Should Be "#7 stop: approval did not carry to $script:NextSha."
-            @(Get-Calls).Count | Should Be 5
-        }
         It 'requires manual conflict resolution and owner approval' {
             Set-Responses @((New-PrStep -Pr (New-Pr -MergeState DIRTY)), (New-ReviewStep))
             Get-Message { Invoke-MergeFixture } | Should Be '#7 stop: merge conflict with main; manual resolution requires owner approval.'
             @(Get-Calls).Count | Should Be 2
-        }
-        It 'stops on a failed update with only the HTTP status and API path' {
-            Set-Responses @((New-PrStep -Pr (New-Pr -MergeState BEHIND)), (New-ReviewStep),
-                (New-ApiStep pulls/7/update-branch PUT -App -ExitCode 1 -ErrorText 'HTTP 422 private conflict details __TOKEN__'))
-            Get-Message { Invoke-MergeFixture } | Should Be "HTTP 422 /repos/$script:RepositoryName/pulls/7/update-branch"
-            Assert-NoToken ([IO.File]::ReadAllText($script:LogFile))
-        }
-        It 'stops after three updates that leave the branch behind' {
-            $steps = @((New-PrStep -Pr (New-Pr -MergeState BEHIND)))
-            for ($index = 0; $index -lt 3; $index++) {
-                $steps += @((New-ReviewStep), (New-ApiStep pulls/7/update-branch PUT @{} -App), (New-PrStep -Pr (New-Pr -MergeState BEHIND)))
-            }
-            $steps += New-ReviewStep
-            Set-Responses $steps
-            Get-Message { Invoke-MergeFixture } | Should Be '#7 stop: still behind after 3 updates.'
-            @(Get-Calls).Count | Should Be 11
         }
         It 'waits for pending required checks before merging' {
             $steps = @(New-MergeSteps)
@@ -723,8 +731,8 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
         }
         It 'rechecks the head after checks and refuses a stale approval' {
             Set-Responses @((New-PrStep), (New-ReviewStep), (New-ChecksStep), (New-PrStep -Pr (New-Pr -Head $script:NextSha)), (New-ReviewStep))
-            Get-Message { Invoke-MergeFixture } | Should Be "#7 stop: approval did not carry to $script:NextSha."
-            @(Get-Calls).Count | Should Be 5
+            Get-Message { Invoke-MergeFixture } | Should Be "#7 stop: head changed to $script:NextSha."
+            @(Get-Calls).Count | Should Be 4
         }
         It 'does not delete a branch when the merge response says merged false' {
             $steps = @(New-MergeSteps)
