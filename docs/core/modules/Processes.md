@@ -16,9 +16,13 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ProcessLaunchGateTests.cs` (all eight scenarios and helper behavior).
 - `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs` (temporary path, byte-writing, and bounded cleanup support; product prefix and repository path adapter stay in NFC).
 
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.cs` (complete runner, cleanup timing, schedule, capacity, phases, and seams; helper types split into separate Core files).
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.Invocation.cs` (complete invocation custody and terminal cleanup).
+- `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerTests.cs` (all six scenarios and process identity/exit assertions; child fixtures use the shared test probe).
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
+The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts and command execution, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
 
 ## API
 
@@ -45,6 +49,13 @@ public static class ProcessLaunchGate
 public interface IExternalProcessRunner
 {
     ValueTask<ExternalProcessResult> RunAsync(
+        ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
+}
+
+public sealed partial class SystemExternalProcessRunner : IExternalProcessRunner
+{
+    public SystemExternalProcessRunner();
+    public ValueTask<ExternalProcessResult> RunAsync(
         ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
 }
 
@@ -85,7 +96,7 @@ public sealed class ExternalProcessStartFailedException : Exception
 
 The internal API for contained-launch and external-runner consumers is `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`, `DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`, and `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`. `BoundedProcessOutput` is an internal readonly record struct with `string Text` and `bool ReachedEndOfStream`. `WindowsSynchronousReadCancellation` remains internal, sealed, partial, disposable, and annotated `[SupportedOSPlatform("windows")]`.
 
-The frozen assigned source defines no product-specific path, argument, or invocation-admission ceiling. It defines the fixed reader bounds below and the five-second suspended-child termination confirmation bound. The launch request's only positive numeric parameter is `timeout`; the capacity exception reports its supplied integers without validating them. Product admission policy remains with the host application and the external runner contract.
+The frozen assigned source defines no product-specific path or argument ceiling. Production invocation capacity is a fixed mechanism bound of eight, shared by all default runner instances. The reader bounds, terminal timing, and five-second suspended-child termination confirmation bound remain fixed. The launch request's only positive numeric parameter is `timeout`; the capacity exception reports its supplied integers without validating them. Product admission policy remains with the host application.
 
 ## Preserved behavior
 
@@ -212,7 +223,59 @@ Every frozen launch-gate scenario retains its name in `ProcessLaunchGateTests`. 
 
 `WindowsContainedProcessStarterContractTests` pins empty and nonempty command lines, raw arguments, zero/one/two backslashes, space/tab/quote/newline edges, Unicode, ordinal case-insensitive environment sorting, null omission, empty values, zero/one/two environment entries, and exact terminators. It pins the fixed 5,000-ms confirmation constant; that deadline has no caller-supplied below/above input. The native post-create scenario proves a suspended child cannot run and its physical pipe closes within the original two-second threshold.
 
-`OptionalPowerShellQuotedArguments` separately exercises `two words`, `quote"inside`, and `trail\` through PowerShell, with its ten-minute checkpoint. An unavailable executable or different PowerShell argument interpretation reports a skip and does not alter the contained starter.
+`OptionalPowerShellQuotedArguments` separately exercises `two words`, `quote"inside`, and `trail\` through PowerShell. An unavailable executable or different PowerShell argument interpretation reports a skip and does not alter the contained starter.
+
+## External command execution
+
+`SystemExternalProcessRunner` is the sole owner of one external command invocation. Creation uses only `ProcessLaunchGate.Start(CreateProcessStartInfo(startInfo))`; output uses the existing `BoundedProcessOutputReader.DrainProcessStreamAsync`. Launcher owns READY, ADMITTED, protocol Jobs, and admission deadlines separately.
+
+`RunAsync` checks null input, caller cancellation, then atomically reserves capacity before creating a process. Capacity refusal starts no process and reports the count observed during reservation. All start failures release the slot. `Win32Exception` becomes `ExternalProcessStartFailedException`; other failures propagate unchanged. A null process retains `External process did not start.`. Start information preserves the executable, working directory, and every ordered `ArgumentList` entry, with shell execution disabled, no console window, and both output streams redirected.
+
+| Mechanism | Frozen runner contract |
+| --- | --- |
+| Production capacity | Eight invocations across all default instances, including detached cleanup; no public capacity setting. |
+| Total terminal deadline | Five seconds from the terminal signal, shared by every terminal wait. |
+| Held-output grace | Two seconds after natural exit. |
+| Reader-stop reserve | Final one second inside the total deadline. |
+| Cancellation callback | Signals only; it performs no OS termination or resource disposal. |
+| Termination | One background work item per invocation using `Kill(entireProcessTree: true)`. |
+| Exit and output | Observe `WaitForExitAsync` and drain both streams concurrently, retaining bounded partial output. |
+| Production observer | Null; ordering and fault seams are internal. |
+
+Both streams and exit observation start before cancellation registration and `Started`. Caller cancellation observed at terminal selection wins over a simultaneous exit or timeout. Natural exit waits for streams or cancellation until the grace point; a still-open stream starts termination, and `OutputHeldAfterExit` records grace expiration without cancellation. Other terminal signals start termination immediately. Termination, exit, and stream settlement share the reader-stop point. Unsettled readers receive `CancelAsync`, and all terminal work plus cancellation dispatch share the final deadline.
+
+Cleanup priority remains `TerminationUnconfirmed`, `OutputStreamHeldOpen`, `OutputReadFailed`, then `Complete`. Aggregate, Win32, invalid-operation, and unsupported termination failures use the existing external cleanup outcome. Timeout returns exit code -1 and `TimedOut == true`; natural exit retains the direct child's exit code. Cancellation throws with the caller's token and exact text `The external process run was canceled; observed cleanup: {cleanup}.`.
+
+`Release` retains the original capacity reservation while any tracked work remains. After settlement, every late fault is observed, stdout, stderr, process, reader-stop source, and exit-observation source are each disposed independently, then capacity returns. Successful disposal publishes `ResourcesReleased`; any disposal failure publishes `ResourcesReleaseFailed`. The net8.0 port uses a private `object` for the invocation gate and retains both lock statements. No launcher Job or READY state enters this runner. A descendant holding neither redirected stream remains outside its observation contract.
+
+The internal contract consists of `ExternalProcessCleanupTiming`, `CleanupSchedule`, `ExternalProcessCapacity`, `ExternalProcessRunnerPhase`, and `ExternalProcessRunnerSeams`. Timing validation retains this order: positive deadline, positive grace, positive reserve, grace plus reserve no greater than deadline, then deadline no greater than `int.MaxValue` milliseconds. A sum violation has `ParamName == "HeldOutputGrace"`. Scheduling retains `(long)(span.TotalSeconds * Stopwatch.Frequency)` and absolute timestamps from the terminal signal. Internal test capacity must be positive; production remains eight.
+
+## Runner tests and source mapping
+
+All six frozen scenarios retain their names, assertions, and execution/exit observation thresholds in `SystemExternalProcessRunnerTests`. The frozen class has no collection attribute; that choice is retained. The shared probe contract is [the probe README](../../../tests/Nvt.Core.TestProbe/README.md). No private child harness or probe change is needed.
+
+| Frozen scenario and Core method | Shared probe and retained evidence |
+| --- | --- |
+| `CreateProcessStartInfoIsHeadlessAndShellFree` | No child; flags, executable, working directory, and argument order. |
+| `RunAsyncTranslatesOperatingSystemStartFailureToTypedExceptionAndReleasesCapacity` | Missing executable, then `exit`; typed Win32 failure, zero capacity, successful reuse. |
+| `RunAsyncCancellationKillsChildProcessBeforeThrowing` | `tree-root-wait`; capture root and child PID/start-time identity before cancellation, 30-second execution timeout, three-second exit observation for each process. |
+| `RunAsyncTimeoutKillsChildProcessBeforeReturning` | `tree-root-wait`; identities before a ten-second timeout, timeout flag, exit -1, and three-second exit observation. |
+| `RunAsyncBoundsAndDrainsBothOutputStreams` | `dual-output-exit`; 131,072 characters on each stream plus `OUT-END`/`ERR-END`, ten-second timeout, exact capture length, prefix, truncation marker, and suffix assertions. |
+| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`; 131,072 characters per stream plus `OUT-PARTIAL-END`/`ERR-PARTIAL-END`, ten-second timeout (NFC used two seconds; a loaded host can need more than one second to start the probe, and the probe still waits 30 seconds), exit -1, timeout flag, exact bounded lengths and suffixes. |
+
+`SystemExternalProcessRunnerBoundaryTests` adds 23 methods and 56 statically enumerated cases:
+
+- Default timing, eight-slot production capacity, null observer, and every phase name/value.
+- Exact `Schedule(1000)` timestamps and fractional tick conversion, including the maximum compatible deadline.
+- Zero and negative values for each positive timing field and private capacity parameter; minimum positive timing; validation order and source overflow behavior.
+- One tick below/at/above grace-plus-reserve and maximum deadline boundaries; constructor timing validation.
+- Private capacities one, seven, eight, nine, and `int.MaxValue`, including exact admission, refusal, observed count, release, and reuse.
+- Null seams, null-input precedence, already-canceled input with empty/full capacity, and a private one-slot refusal before attempting a missing executable.
+- Exact launch arguments/working directory; native `exit --exit-code 7`, phase ordering, and capacity release observed within five seconds.
+- Separate real stdout/stderr routing and capture lengths 65,535/65,536/65,537.
+- Shared OS termination failures classified as `TerminationUnconfirmed`, one termination work item, and private capacity release.
+
+Tests use synthetic data, unique temporary folders for tree markers, and test-context cancellation tokens. Native cases execute Windows processes and report an xUnit skip on unsupported systems. Marker polling retries only transient sharing violations inside its fixture bound; PID plus start time prevents emergency cleanup from killing a reused PID. These tests establish external-command behavior; long-lived Job evidence belongs to Launcher.
 
 ## NFC ownership and adoption
 
@@ -220,10 +283,10 @@ NFC keeps `ExternalProcessCleanupText`, its issue codes and product wording, the
 
 NFC adopts this module in its own pull request, separate from this extraction. All contained launcher callers use `StartContained(startInfo, inheritedHandles, validateImmediatelyBeforeStart)`; ordinary external-tool starts use `Start(startInfo)`. Raw process creation stays in Processes rather than Launcher. Lifetime evidence must pass before the adoption closes.
 
-NFC deletes its generic reader, synchronous cancellation, launch gate, inherited-handle record, and contained-starter copies only after every caller uses the verified Processes package and the adoption proves zero difference: frozen behavior, native lifetime, and the required UI evidence. NFC removes its Platform copy only after its remaining Platform callers move and the host structure trial passes. NFC keeps its historical executor evidence.
+NFC deletes its generic external runner, invocation helpers, reader, synchronous cancellation, launch gate, inherited-handle record, and contained-starter copies only after every caller uses the verified Processes package and the adoption proves zero difference: frozen behavior, native lifetime, and the required UI evidence. NFC removes its Platform copy only after its remaining Platform callers move and the host structure trial passes. NFC keeps its historical executor evidence.
 
 The UI comparisons use the shared environment manifest and require zero changed decoded pixels. Where they apply, the comparisons also cover the complete output bytes and the event traces and record each artifact's SHA-256. The eight legacy font values stay unchanged.
 
 NFC downloads verified, versioned nupkg files at build time through its `core-packages.json` and uses exact `[x]` versions, source mapping, lock files, and locked restore. The manifest records each package's Release tag and SHA-256. NFC owns its package references, version pins, source mapping, and lock files. NFC never adds a ProjectReference to a Core checkout.
 
-Core and NFC keep independent versioned releases. Both independent review stages cover the exact heads of the extraction pull request and the adoption pull request.
+Core and NFC keep independent versioned releases.

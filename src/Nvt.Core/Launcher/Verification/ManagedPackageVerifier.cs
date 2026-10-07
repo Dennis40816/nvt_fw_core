@@ -69,10 +69,12 @@ public sealed class ManagedPackageVerifier
     }
 
     // A successful plan owns the ZIP reader, never the caller's held package stream.
+    // Installation propagates read failures so its own catch keeps the frozen install categories.
     internal async ValueTask<ManagedPackagePlanResult> CreatePlanAsync(
         Stream package,
         UpdateCatalogVersionSnapshot candidate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool propagateReadFailures = false)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(candidate);
@@ -111,7 +113,8 @@ public sealed class ManagedPackageVerifier
         {
             throw;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception exception) when (!propagateReadFailures &&
+            exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             return Failure(ManagedVersionInstallIssue.PackageUnavailable);
         }

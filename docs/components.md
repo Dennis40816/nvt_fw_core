@@ -78,7 +78,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Message Center and diagnostic presentation | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/MessageCenter/` | 2 | View-model state merged into `main`; product providers, reports, and export stay in NFC. |
 | Report lists and history presentation | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/ReportList/` | 1 → 2 | Indexed read-only lists merged into `main`; product schemas and export policy stay in NFC. |
 | Console | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Console/` | 2 | NFH trial first; full shared import planned by 10-18. |
-| Shell, navigation, and workspace | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Shell/` | 2 | Navigation history merged into `main`; the page host, guards, and shortcuts stay in NFC. |
+| Shell, navigation, and workspace | NFC | NFC | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Shell/`; `src/Nvt.Core.Avalonia/Shell/` | 2 | Navigation history (#54) and the page host helpers (#77) merged into `main`; guards and shortcuts stay in NFC. |
 | Localization and accessibility resources | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Locale/` | 1 → 2 | Common text merged into `main`; only common strings are shared. |
 
 ### 6. Launcher

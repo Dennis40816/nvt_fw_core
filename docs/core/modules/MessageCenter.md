@@ -29,8 +29,9 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 | `MessageCenterActivityFilter` | Static `Apply(IEnumerable<MessageCenterActivity> activities, MessageActivityFilter filter, bool includeDebug)` returns materialized rows. |
 | `MessageCenterSession` | Read-only `IsOpen`, `IsActivitySelected`, `ExportContextGeneration`; `Open(Action? beforeOpen = null)`, `Close(Action? beforeClose = null)`, `SelectActivity(bool selected, Action? beforeSelect = null)`, and `IsExportContextCurrent(long generation)`. |
 | `MessageCenterExportWorkflow` | Constructor `(MessageCenterSession session, Func<string, CancellationToken, Task> export, Action succeeded, Action failed)`; `Task ExportAsync(string destinationPath, CancellationToken cancellationToken)`; `Task ExportWithPickerAsync(Func<Task<string?>> pickPathAsync, Func<bool> isViewContextCurrent)`. |
+| `MessageCenterRefreshCoordinator` | Constructor `(Func<bool, CancellationToken, Task> refresh)`; `Task RefreshAsync(bool reloadSources, CancellationToken cancellationToken)`; `Task RefreshAfterCurrentAsync(bool reloadSources, CancellationToken cancellationToken)`. |
 
-The implementation is in [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs), [IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs), [MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs), [MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs), and [MessageCenterExportWorkflow.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterExportWorkflow.cs).
+The implementation is in [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs), [IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs), [MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs), [MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs), [MessageCenterExportWorkflow.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterExportWorkflow.cs), and [MessageCenterRefreshCoordinator.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterRefreshCoordinator.cs).
 
 ## Preserved display behavior
 
@@ -87,6 +88,18 @@ The host identity delegate compares the current view context to the context capt
 
 Close/reopen, repeated open, and actual pane changes invalidate the captured generation. Same-pane selection does not. Host language changes and refresh do not advance generation. After picker acceptance, write completion uses generation alone, so later view replacement by itself does not suppress publication. Closing a session never cancels or deletes an already running write. Await continuations retain the caller's context; hosts keep session operations and callbacks on their existing serialized context. Core adds no dispatcher, locking, shutdown timeout, dispose API, or cancellation policy.
 
+## Preserved refresh coordination behavior
+
+`MessageCenterRefreshCoordinator` comes from NFC's `MessageCenterViewModel` (#81). The host supplies the refresh delegate, which receives the admitted strength (`reloadSources`) and the owner's token.
+
+- With no incomplete refresh, `RefreshAsync` starts the delegate with the caller's token and records it as the active refresh.
+- A request joins incomplete active work when it is compatible: an observation joins anything, and a reload joins an active reload. A joining caller waits with its own token. Its cancellation does not cancel the owner.
+- A reload request behind an active observation waits for it, ignores an unrelated failure or cancellation of that work, then starts a fresh full reload. Compatible reload requests can join that new attempt.
+- `RefreshAfterCurrentAsync` always waits for the current incomplete work, then applies normal admission. The current task alone does not satisfy it. Caller cancellation while waiting propagates.
+- Completion cleanup clears only the task the coordinator recorded. Completed work is never joined.
+- Admission is not thread-safe. The host serializes calls and continuations, as NFC does on the UI thread. Core adds no dispatcher, lock or cancellation policy. Publication, readiness and latest-publication policy stay in the host.
+- `Lifecycle.CoalescedRefresh` schedules callbacks and does not replace this asynchronous joiner.
+
 ## Ownership and consumer contract
 
 Core owns the row contract, passive filter/projection order, modal generation mechanism, and picker/export publication workflow. NFC retains message sources, history, diagnostic transition registration, path-token validation, vocabulary, localization/time formatting, report history, refresh policy, storage pickers, export bytes/schema/paths, and its composition template. NFC's frozen **128-entry activity ceiling** stays in NFC. The display and export contracts have no Core history, path, or size ceiling and no positive limit parameter; the session's fixed generation bound remains `long.MaxValue`.
@@ -97,7 +110,7 @@ NFC downloads verified versioned packages at build time through `core-packages.j
 
 ## Source-to-Core test map
 
-The suites use xunit.v3 and synthetic in-memory values in [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs), [SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs), and [ExportWorkflowTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs). Workflow tests use no filesystem or actual picker and assert complete destination/token logs and ordered picker, identity, exporter, and status callback traces.
+The suites use xunit.v3 and synthetic in-memory values in [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs), [SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs), [ExportWorkflowTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs), and [RefreshCoordinatorTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/RefreshCoordinatorTests.cs). Workflow tests use no filesystem or actual picker and assert complete destination/token logs and ordered picker, identity, exporter, and status callback traces.
 
 | Frozen evidence | Core tests and preserved assertions |
 | --- | --- |
