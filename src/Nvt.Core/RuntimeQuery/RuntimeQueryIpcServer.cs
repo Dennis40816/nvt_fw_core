@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using System.Diagnostics;
 using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
@@ -21,11 +22,23 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
     private readonly Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>> _handler;
     private readonly CancellationTokenSource _lifecycleCts = new();
     private readonly object _sync = new();
-    private NamedPipeServerStream? _activePipe;
+    // _sync protects connection state and the run-loop and disposal tasks.
+    private ConnectionState? _activeConnection;
     private Task? _runLoopTask;
     private Task? _disposeTask;
 
-    internal NamedPipeServerStream? ActivePipe => Volatile.Read(ref _activePipe);
+    private sealed record ConnectionState(NamedPipeServerStream Pipe, bool RequestRead);
+
+    internal NamedPipeServerStream? ActivePipe
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _activeConnection?.Pipe;
+            }
+        }
+    }
 
     /// <summary>Creates a server with caller-owned identity, limits, errors, diagnostics and handling.</summary>
     /// <param name="pipeName">The local named-pipe name.</param>
@@ -77,24 +90,31 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         _diagnostic?.Invoke(RuntimeQueryDiagnostic.Started, null);
     }
 
-    /// <summary>Cancels connection, read, handler and write waits within the supplied shutdown bound.</summary>
+    /// <summary>Stops accepting requests and lets an already-read request finish within the supplied shutdown bound.</summary>
     public ValueTask DisposeAsync()
     {
+        var startedAt = Stopwatch.GetTimestamp();
         lock (_sync)
         {
-            _disposeTask ??= StopAsync();
+            _disposeTask ??= StopAsync(startedAt);
             return new ValueTask(_disposeTask);
         }
     }
 
-    private async Task StopAsync()
+    private async Task StopAsync(long startedAt)
     {
-        var cancellationTask = _lifecycleCts.CancelAsync();
-        Volatile.Read(ref _activePipe)?.Dispose();
+        // DisposeAsync holds _sync. Only an already-read request can keep its pipe open.
+        var cancellationTask = Task.CompletedTask;
+        if (_activeConnection is not { RequestRead: true })
+        {
+            cancellationTask = _lifecycleCts.CancelAsync();
+            _activeConnection?.Pipe.Dispose();
+        }
         var stopTask = _runLoopTask is null ? cancellationTask : Task.WhenAll(cancellationTask, _runLoopTask);
         try
         {
-            await stopTask.WaitAsync(TimeSpan.FromMilliseconds(_shutdownTimeoutMs)).ConfigureAwait(false);
+            var remaining = TimeSpan.FromMilliseconds(_shutdownTimeoutMs) - Stopwatch.GetElapsedTime(startedAt);
+            await stopTask.WaitAsync(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -106,6 +126,11 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         }
         catch (TimeoutException ex)
         {
+            _ = _lifecycleCts.CancelAsync();
+            lock (_sync)
+            {
+                _activeConnection?.Pipe.Dispose();
+            }
             _diagnostic?.Invoke(RuntimeQueryDiagnostic.ShutdownTimedOut, ex);
         }
         catch (Exception ex)
@@ -123,7 +148,16 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
             NamedPipeServerStream createdPipe;
             try
             {
-                createdPipe = CreatePipe();
+                lock (_sync)
+                {
+                    if (_disposeTask is not null)
+                    {
+                        break;
+                    }
+
+                    createdPipe = CreatePipe();
+                    _activeConnection = new ConnectionState(createdPipe, RequestRead: false);
+                }
             }
             catch (Exception) when (cancellationToken.IsCancellationRequested)
             {
@@ -135,42 +169,50 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
                 break;
             }
 
-            await using var pipe = createdPipe;
-            Volatile.Write(ref _activePipe, pipe);
-
             try
             {
-                await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-            catch (Exception) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _diagnostic?.Invoke(RuntimeQueryDiagnostic.ConnectionFailed, ex);
-                continue;
-            }
+                await using var pipe = createdPipe;
+                try
+                {
+                    await pipe.WaitForConnectionAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _diagnostic?.Invoke(RuntimeQueryDiagnostic.ConnectionFailed, ex);
+                    continue;
+                }
 
-            try
-            {
-                await HandleConnectionAsync(pipe, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await HandleConnectionAsync(pipe, cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _diagnostic?.Invoke(RuntimeQueryDiagnostic.RequestFailed, ex);
+                }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            finally
             {
-                break;
-            }
-            catch (Exception) when (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _diagnostic?.Invoke(RuntimeQueryDiagnostic.RequestFailed, ex);
+                lock (_sync)
+                {
+                    _activeConnection = null;
+                }
             }
         }
 
@@ -227,6 +269,12 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
             await WriteResponseAsync(writer, Failure(RuntimeQueryFailure.RequestTimeout), cancellationToken)
                 .ConfigureAwait(false);
             return;
+        }
+
+        lock (_sync)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _activeConnection = new ConnectionState(pipe, RequestRead: true);
         }
 
         if (string.IsNullOrWhiteSpace(requestJson))
