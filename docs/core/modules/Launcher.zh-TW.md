@@ -185,6 +185,7 @@ Core 與凍結的 NFC verifier 有三處不同。每一處都是拒絕原始碼�
 
 - `VerifyAsync` 在讀取前先檢查套件 stream 可讀取且可 seek，並檢查候選套件大小不超過 `MaximumPackageBytes`。任一項不符時回傳 `PackageUnavailable`。
 - 讀取途中套件內容改變時，結果是 `PackageUnavailable`。原始碼回傳 `PackageMismatch`。
+- internal plan 步驟有一個 `propagateReadFailures` 旗標。預設為 `false` 時，讀取套件期間的 `IOException`、`UnauthorizedAccessException` 與 `InvalidDataException` 回傳 `PackageUnavailable`，與 `VerifyAsync` 的說明一致。repository 安裝傳入 `true`，讓同樣的例外交給安裝自己的處理程序。該處理程序保留凍結的安裝分類：套件不存在或長度改變為 `PackageUnavailable`，資料格式錯誤為 `InvalidPayload`，其他 I/O 或存取失敗為 `PromotionFailed`。
 - manifest 的檔案項目若名為 `RELEASE-MANIFEST.json` 或 `SHA256SUMS.txt`，會以 `InvalidPayload` 拒絕。
 
 ## Raw state access 與精確 writer custody
@@ -327,3 +328,60 @@ Install 保留 prepare-save、repository promotion、完整 inventory、retentio
 NFC 保留嚴格 state／manifest／catalog codec、product identity／payload policy、source／registry policy、discovery／session／UI composition、retention advice、consent、firmware、信任與發行權限。Adapter 提供 validated state／selected package、精確 state-store writer、product-bound process／repository 介面及 presentation path。完整 engine behavior 必須將 native process、physical repository implementation 與這些 owner 組合。
 
 NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並以精確 `[x]` 套件版本、locked restore 與限定至下載資料夾的來源對應使用 Core。清單記錄每個套件的 Release 標籤與 SHA-256。只有 adapter 使用 Core，且原有完整值、process／writer trace、durable bytes 與 recovery assertion 不變時，NFC 才刪除已移轉的 supervisor 及 journal／mutation 本體。影響 UI 的採用另須相同環境下 decoded pixels 不變，並保持八個 legacy font 值；此抽取不授予套件發布或 Bootstrap package-wiring 權限。
+
+## 封閉安裝與已安裝清單
+
+`Nvt.Core.Launcher.Repository` 新增 `FileSystemManagedVersionRepository`、`FileSystemInstalledLauncherRepository`、`FileSystemLauncherInstallationSelfTest`、`IManagedVersionAdmissionCodec` 與 `InstalledApplicationMetadata`。Repository 必須接收 `ProductDescriptor`、必要的 `IProductPackagePolicy`、明確的 `PackageVerificationLimits` 及嚴格 admission codec。沒有產品預設建構式或寬鬆 codec。呼叫端為每次操作提供 managed root、update-source root 與精確 catalog／installed admission。
+
+本節在前述凍結 baseline 擷取的來源片段：
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.cs`：來源檔 admission、inventory、精確受保護刪除及 application lease 編排；產品 JSON 與 executable role 留在 adapter。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.Installation.cs`：staging、reservation、解壓後 proof、不覆蓋 promotion、冪等性及精確 cleanup；產品進度呈現留在呼叫端。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPackageVerifier.cs`：只有 installed proof 與預期 installed-file 清單。ZIP verification、checksum grammar 及實際位元組 accounting 使用既有 Verification collaborator。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemInstalledLauncherRepository.cs`：owner-bound identity、封閉 topology 及 launcher／application 個別內容 proof。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemLauncherInstallationSelfTest.cs`：依序執行的唯讀 observation 與最後 durable snapshot 比對；產品 state path 與嚴格 state reader 由呼叫端提供。
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherInstallationSelfTest.cs`：query port 與正規化唯讀 result。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs`：repository source confinement、精確 version child 與 bounded-read result mapping；安全 payload grammar 使用 Contracts validated receipt 與必要的產品 callback。
+
+`InstallAsync`、`InventoryAsync`、`DeleteAsync`、`VerifyPackageAsync` 與 `AcquireApplicationLaunchLeaseAsync` 保留既有 `IManagedVersionRepository` 簽章。`FileSystemInstalledLauncherRepository` 實作既有 owner-bound verification 與 launch-lease port。ZIP plan、解壓 destination、native handle 與 fault gate 保持 internal。Files 擁有 relative write creation、ancestor／tree custody、held promotion 與精確 cleanup。Repository 不新增 native custody partial，也不使用一般 AtomicOutput 寫入 payload tree。
+
+安裝先取得已存在 managed root 的 held custody，才 admission 來源。已驗證 package plan 保留精確 payload-file 數量、implicit directory 與實際 expanded bytes，再加入 admission document。解壓使用 plan 的 bounded reader 及 admission 後內容 digest；Repository 透過同一 relative write tree 寫入嚴格 adapter 的有界 admission bytes，檢查實體 reservation 與 topology，在 held volume 上不覆蓋地 promotion，擷取精確 promoted immutable tree，並重新驗證完整 installed payload。只有通過此 proof 的相同 admission 才具冪等性；同版不同 identity 絕不取代既有 tree。精確 cleanup 成功時傳遞取消；foreign child 或被替換的 identity 阻止 cleanup 時，回傳 `CleanupIncomplete` 並保留 foreign content。
+
+NFC 明確提供凍結上限：**4,096 archive entries**、**4,097 installed files**、**4,096 installed directories**、**134,217,728 compressed package bytes**、**536,870,912 actual expanded bytes**、**1,048,576 manifest／checksum bytes**、**4,096 admission bytes** 及 **200,000,000 launcher／Bootstrap executable bytes**。Held installed tree 包含 admission 的總上限為 **536,875,008 bytes**。Contracts path receipt 保留 **512 個 relative-path 字元**。Repository 透過既有 verifier 重新檢查 copied positive limits，並使用 Files reservation limits；不為其他 application 放寬任何上限。
+
+Installed proof 先比較嚴格解碼的精確 admission，再檢查 manifest digest 與產品解碼，接著驗證 checksum、實際總內容及封閉檔案清單。Missing、modified、unexpected、unreadable 與 activation-failed observation 保留 typed damage category。完整 directory enumeration 失敗或 unadmitted observation 中的目錄消失時，回傳 `Unavailable`，不發布部分 inventory。健康 self-admission 在呼叫端提交 application state 前，仍只是 unadmitted observation。刪除先檢查取消與 active protection，再套用原有 safe-tree 及精確 admission guard，才移除該精確 version child。
+
+Application lease acquisition 驗證完整 package，並選擇 descriptor 的精確 application path，再把 Files custody 移交既有 executable lease。Launcher lease acquisition 驗證自己的 bytes，並持有完整 declared topology；完整 application activation 負責其他 payload bytes。Self-test 載入嚴格 application／launcher state，檢查精確 root、active、owner 與 transaction predicate，驗證 active launcher，觀察 descriptor 指定且有界的 Bootstrap，並重新讀取兩個 durable snapshot。最後 authority 有變動時，以 `StateChanged` 丟棄兩項 observation；query 不寫 state，也不啟動 process。
+
+`ReadInstalledApplicationAsync(managedRoot, admission, displayName, launchEntryPoint, iconRelativePath, token)` 回傳 installed version、product identity、display name、精確 executable path、呼叫端提供且 fully qualified 的穩定 launch entry point，以及已驗證的 installed icon path。觀察過程需要 application proof 與存活 custody。Display name、launch routing 與 icon selection 屬於呼叫端。回傳 metadata 不授予 launch authority，也不建立或移除桌面捷徑。第二個合成 application 透過同一 repository API 提供不同 descriptor 與 presentation path；process start 仍走既有 contained-process 與 READY 路徑。
+
+### Repository 測試對照
+
+凍結測試位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`，Core 對應測試位於 `tests/Nvt.Core.Tests/Launcher/Repository/`。
+
+| 凍結來源案例 | Core 案例 |
+| --- | --- |
+| `FileSystemManagedVersionRepositoryTests:21 InstallPromotesClosedPayloadAndInventoryDetectsTamper` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `WriteCustody:46 InstallRejectsNestedJunctionRaceWithoutOutsideWriteOrPromotion` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:88 InstallBlocksVerifiedFileRewriteAndRejectsLateChildBeforePromotion` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:119 InstallReportsCleanupIncompleteWhenForeignChildPreventsExactCleanup` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:189 InstallPromotionNeverReplacesLateDestination` | `RepositoryWriteCustodyTests` 同名方法 |
+| `InventoryRead:13 InventoryEnumerationFailureReturnsUnavailableWithoutPartialFacts` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `Security:364 IdenticalInstallIsIdempotentButChangedIdentityConflicts` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `Security:507 UnadmittedDirectoryIsDamagedAndForgedDeleteIsBlocked` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| Inventory disappearing-directory、精確 damage 與 deletion 案例 | `RepositoryInventoryReadTests` 與 `FileSystemManagedVersionRepositoryTests` 對應方法 |
+| Application lease 與 installed-launcher content／custody 斷言 | `InstalledApplicationTests` 對應方法 |
+
+`RepositoryBoundaryTests` 涵蓋 archive、installed-file、directory、admission 與實體 expanded-byte 的精確上限和相鄰值，以及 copied parameter 的零／負值。`RepositoryVerificationBoundaryTests` 從來源檔 repository 入口檢查 compressed-package、manifest／checksum、relative-path 與 executable-parameter 上限及相鄰值。`RepositoryWriteCustodyTests` 新增實體 short write、post-plan tamper denial、underreported ZIP length、ZIP64 overflow、確定性的 staging／promotion 取消及 foreign staging replacement 保留。`RepositoryCrashTests` 在 verified staging 或 promotion 後停止真實 child，並於 restart 檢查實體 prefix 與 unadmitted observation。`LauncherInstallationSelfTestTests` 涵蓋 read 順序、最後 snapshot 變動、唯讀語意及 Bootstrap 上限。Windows custody 或必要 ancestor access 不可用時，native 案例明確 skip；link 與 crash 案例也會明確指出缺少的平台功能。所有 fixture content 均為合成資料，runtime fixture 使用唯一的系統 temporary folder。
+
+### Repository 採用規則
+
+NFC 保留嚴格 manifest／admission／state schema、wire codec、產品必要 member 與 role、source／release trust、firmware data、default path、retention、confirmation 及 notification policy。Adapter 必須提供全部 identity、path policy 與凍結上限；mutation caller 在 journal、repository 與 admission publication 期間，持有既有精確 application-state writer。Repository self-admission 不是 committed state authority。桌面捷徑仍由上層負責。
+
+NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並以精確 `[x]` 套件版本、locked restore 與限定至下載資料夾的來源對應使用 Core。清單記錄每個套件的 Release 標籤與 SHA-256，不新增指向 Core checkout 的 ProjectReference。原有產品 schema、精確 issue／message、完整值、trace、output bytes 與 crash／recovery 斷言透過 adapter 通過後，NFC 才刪除各已移轉的 repository／proof／query 本體。必要 UI 比較在相同 recorded environment 保留 decoded pixels 與八個 legacy font 值。Core 合成測試不能證明產品或 pixel 一致性，也不授權 Bootstrap package wiring。
+
+### 安裝失敗分類
+
+來源檔 verification 將損壞 ZIP 或讀取失敗回傳為 `PackageUnavailable`。安裝保留個別的終止分類順序：已 admission 的 package 消失時為 `PackageUnavailable`、無效 ZIP 或 payload data 為 `InvalidPayload`、其他 I/O 或 access failure 為 `PromotionFailed`；精確 cleanup 失敗時，`CleanupIncomplete` 優先。共用 plan creation 必須為安裝呼叫端保留原始失敗脈絡，同時維持 verification 的 result mapping。
+
+凍結 `FileSystemManagedVersionRepositoryTests.Security.cs` 中的 `MalformedZipFailsWithoutPartialInstallation` 對應 Core `FileSystemManagedVersionRepositoryTests` 的同名方法，檢查兩種不同 result，以及沒有部分 target 或 staging payload。
