@@ -4,7 +4,7 @@
 
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
-- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：第 15 行的歷史初始化、第 47 行的 `CanGoBack`、第 115 行的上一頁目標，以及第 171–203 行的完成導覽與回復機制。第 74–85 與 107–119 行的命令流程界定轉接邊界；其中的防護條件與捷徑保留在 NFC。
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：第 15 行的 `_pageHistory` 初始化、第 47 行的 `CanGoBack`、第 115 行的前一筆項目運算式（公開為 `BackTarget`），以及第 171–203 行含啟用失敗回復的 `CompleteNavigation`。
 - `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：僅擷取第 758–764 行的 `LoadContent`，改名為 `EnsureContent`。頁面註冊與 `ApplyDeferredShellContent` 呼叫端保留在 NFC。
 - `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.StartupWarmup.cs`：僅擷取第 42–59 行的 `MaterializeContent`。暖機清單、排程、執行閒置檢查、進度及追蹤包裝保留在 NFC。
 
@@ -16,6 +16,20 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 Shell 邊界涵蓋導覽歷史、啟用失敗回復及此頁面承載介面。呼叫端註冊自己的頁面，
 並提供識別、承載控制項、範本與順序；API 不假定任何產品頁面清單。
 工作區組合與預載排程由宿主應用程式負責。
+
+已接受的 Shell 範圍為導覽歷史與既有 PageHost 介面。下列保留接縫是在此範圍內
+由產品負責的功能。此清冊不新增執行階段 API、控制項採用或可執行測試。
+
+## Core 契約來源
+
+| 契約 | Core 來源 | 合併來源 |
+| --- | --- | --- |
+| `NavigationHistory<TPage>` | `src/Nvt.Core/Shell/NavigationHistory.cs` | Core #54，合併提交 `d21934353a87926fb0ab4720f7a5921c48644c76`。 |
+| `PageHost.EnsureContent` 與 `PageHost.MaterializeContent` | `src/Nvt.Core.Avalonia/Shell/PageHost.cs` | Core #77，合併提交 `968c14c8d3abcd814cb78d376c6d35475bb66160`。 |
+
+凍結來源 `ShellNavigationViewModel.cs:74–85` 的前進命令與 `107–119` 的返回命令
+界定歷史完成方法的呼叫端。NFC 保留同頁捷徑、返回許可與受防護的請求。
+Core 接收擷取的目標、返回旗標及選用的完成動作；開頭列出的來源片段是已擷取的機制。
 
 ## 公開 API
 
@@ -149,8 +163,13 @@ PageHost 測試透過既有連結來源的 `AvaloniaTestHost` 及測試組件的
 `ShellPreloadSessionTests.Presentation.cs`、`ShellPreloadSessionTests.Cancellation.cs`、
 `WindowLifetimeTests.Ready.cs` 及 `ShellScreenInventoryTests.cs` 的產品預載、取消、
 視窗生命週期、頁面組合、版面、焦點及像素斷言保留在 NFC。
-其中門檻與排程預算不屬於 PageHost。Core 新增已擷取方法的可執行特性測試，
+其中門檻與排程預算不屬於 PageHost。Core 以特性測試描述已擷取的方法，
 不移轉這些產品測試套件。
+
+不可變的 NFC 父版本證據涵蓋導覽、防護與確認重入、焦點、延遲內容識別、暖機順序
+及啟動區段。NFC 採用時透過實際產品轉接層，比較歷史與 PageHost，使用固定的
+父版本觀察值及不變的情境驅動程式。保留接縫仍由產品測試負責；方法證據不認證
+更廣的工作區框架。
 
 ## 驗證
 
@@ -163,33 +182,87 @@ dotnet test Nvt.Core.sln --no-build
 
 Core 測試涵蓋歷史與 PageHost 機制。NFC 在採用時對凍結父版本證明產品與像素一致。
 
-## NFC 所有權與採用
+## NFC 保留的工作區與預載清冊
 
-NFC 保留 `ShellPage`、頁面識別與工廠、韌體防護、首頁返回不動作政策、同頁命令捷徑、
-確認與離開狀態、來源清除政策、文字、命令、麵包屑、啟動包裝及 MessageCenter facade。
-`MainWindowViewModel.Context.cs` 保留產品頁面啟用與成功時的
-`Navigation.UpdateState()` 更新；`MainWindowViewModel.Construction.cs` 保留產品組合。
+下列每個路徑都相對於開頭指定的凍結 NFC 儲存庫。「NFC 擁有者」欄列出負責該接縫
+的保留元件。所有判斷式、限制、訊息及產品測試預期值都由原有擁有者保留。
+NFC 保留韌體、產品文字、schema、信任及發行權限。
 
-`MainWindow.axaml` 保留視覺承載控制項、頁面範本、版面及資源位置。
-`MainWindow.axaml.cs` 保留頁面註冊與載入許可政策。
-`DeferredShellState.cs` 保留設定及編輯器工廠與快取的產品狀態。
-`MainWindow.StartupWarmup.cs` 保留暖機頁面清單、執行閒置與世代檢查、進度、
-排程及啟動追蹤包裝。`ShellPreloadSession.cs` 保留預載許可、重試、取消與工作預算。
-NFC 也保留 App、DesktopApplication 及 MainWindow 啟動包裝、報告組合與持續化
-轉接層、韌體、文字、schema、信任與發行權限，包括 MessageCenter facade 及範本。
+| 保留接縫 | NFC 擁有者 | 來源路徑與片段 | 保留在 NFC 的原因 |
+| --- | --- | --- | --- |
+| 韌體防護與命令許可 | NFC 導覽轉接層：`ShellNavigationViewModel` 與 `MainWindowViewModel` | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：`NavigateToPage`、`GoBack`、`RequestNavigation`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Navigation.cs`：`HasPageSelectedFiles`。 | 已選韌體／編輯器輸入、不符狀態失效、同頁捷徑及首頁返回不動作都是產品政策。 |
+| 確認、離開、來源清除與關閉通知重入 | NFC `ShellNavigationViewModel` | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：`RequestExitConfirmation`、`RefreshConfirmation`、`ConfirmNavigationAndClear`、`CancelNavigationClear`、`PendingNavigation`。 | NFC 在確認前擷取目的地，在關閉確認前擷取清除動作的來源，並負責忽略後續請求、離開覆蓋、取消時重新啟用、文字及通知。Core 在重入後完成傳入目的地。 |
+| 麵包屑、標籤與命令 | NFC 導覽呈現 | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationViewModel.cs`：`RefreshNavigationTrail`、`NavigationPath`、`UpdateState`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellNavigationEntryViewModel.cs`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Navigation.cs`：`PageLabel`。 | 首頁／目前頁面的路徑、標籤驗證、在地化標籤、Toolkit 命令及命令通知都是產品呈現。 |
+| 頁面識別與工廠 | NFC Shell 組合 | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.cs`：`ShellPage`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellViewModelFactory.cs`：`Create`；`src/NvtFwCombiner.Presentation.Avalonia/MainWindow.StartupFactory.cs`：`CreateStartupViewModel`。 | NFC 定義自己的頁面、宿主服務、版本標籤、啟動語言及偏好套用；Core 接受宿主定義的識別。 |
+| 產品頁面組合與啟用 | NFC `MainWindowViewModel` | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Construction.cs`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Context.cs`：`ApplySelectedPage`。 | 此處組合韌體／工作流程服務、報告、設定、執行工作階段及 MessageCenter。產品啟用負責驗證與還原工作流程內容，並在成功時執行 `Navigation.UpdateState()`。 |
+| 工作區版面與產品範本 | NFC `MainWindow` XAML | `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml`：資源引入、Shell 網格、頁面範本、動作列、載入／狀態表面及模態承載控制項。 | 幾何、祖先結構、可見性、資源位置、手勢、焦點及可及性都是 NFC 不變的 UI 契約。 |
+| 頁面承載註冊與延遲載入許可 | NFC `MainWindow` | `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：第 734–756 行的 `ApplyDeferredShellContent` 與 `ViewModel_OnPropertyChanged`。 | NFC 選擇每個承載控制項、內容物件及產品可見性條件。只有第 758–764 行的 `LoadContent` 移至 `PageHost.EnsureContent`。 |
+| 延遲設定與保留的編輯器狀態 | NFC `DeferredShellState` 與 Shell 轉接層 | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/DeferredShellState.cs`：`EnsureSettings`、`GetHexEditorWorkspace`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Navigation.cs`：`OpenSettings`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.HexEditor.cs`：`ShowHexEditor`。 | NFC 負責設定載入時機、快取的編輯器識別、檔案工作階段工廠、訂閱及保留輸入。 |
+| 預載工作階段與排程政策 | NFC `ShellPreloadSession` | `src/NvtFwCombiner.Presentation.Avalonia/ShellPreloadSession.cs`：階段／嘗試記錄、`RunCatalogAsync`、`RunOptionalStagesCoreAsync`、報告與環境／診斷鏈、重試／略過／取消／排空、進度驗證及發布。 | 必要目錄載入許可、選用相依性、世代、工作預算、排空逾時、減少動態效果及在地化狀態都是產品生命週期政策。 |
+| 啟動預載工作與就緒 | NFC `MainWindow` 與啟動組合 | `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：`RunStartupPreloadAsync`、`RunRequiredPreloadAsync`、`PresentPreloadStage`、`ApplyPreloadStage`、重試／略過／取消處理常式及 `ApplyShellInteractionState`。 | NFC 提供歷史／報告／診斷／檢視工作，在必要狀態發布後啟用 Shell、套用啟動選項，並負責狀態與焦點。 |
+| 暖機頁面清單與執行閒置排程 | NFC `MainWindow` 暖機 | `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.StartupWarmup.cs`：第 10–40 行的 `WarmDeferredShellAsync` 與第 61–142 行的排程／計時包裝。 | 五個承載控制項的順序、內容物件、進度、UI dispatcher 優先序、執行閒置等待、世代檢查、取消及追蹤名稱保留在本地。只有第 42–59 行的 `MaterializeContent` 移轉。 |
+| 應用程式啟動包裝 | NFC `App` | `src/NvtFwCombiner.Presentation.Avalonia/App.axaml.cs`：`SetStartup`、`Initialize`、`OnFrameworkInitializationCompleted`。 | NFC 負責啟動狀態、編譯應用程式資源、偏好、桌面生命週期、主視窗建立及擷取結束政策。 |
+| 桌面啟動包裝 | NFC `DesktopApplication` | `src/NvtFwCombiner.Presentation.Avalonia/DesktopApplication.cs`：`Run`、`DispatchLaunch`、`PrepareStartup`、`BuildAvaloniaApp`。 | 命令列驗證、公開請求完成、受保護啟動輸入、本地狀態組合、追蹤選用、字型及桌面生命週期都是應用程式選擇。 |
+| 視窗啟動與生命週期包裝 | NFC `MainWindow` | `src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：建構式、`OnOpened`、`RunStartupAfterOpenedAsync`、`OnClosing`、`OnClosed`、`Dispose`。 | NFC 負責首幀延後、視窗發布／許可、輸入載入、離開確認、取消及關閉／排空協調。 |
+| 啟動區段建構與計時轉接層 | NFC 啟動診斷 | `src/NvtFwCombiner.Presentation.Avalonia/StartupTraceSession.cs`：`Create`、`MarkProfileAdmission`、`Mark`、`Complete` 及提供者轉接層；`src/NvtFwCombiner.Presentation.Avalonia/StartupTraceFileSink.cs`：`TryWrite`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.SystemActivity.cs`：`RecordStartupDuration`。 | NFC 提供里程碑／profile 對應、結束與預載區段、診斷 schema、時間／配置量轉接層及活動文字。這些包裝不屬於 Shell 的兩個內容方法。 |
+| MessageCenter 型別化 facade | NFC `MessageCenterViewModel` | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MessageCenterViewModel.cs`：型別化服務／報告繫結、在地化投影、啟動更新、環境發布及匯出內容。 | facade 串接產品診斷、韌體就緒、報告所有權、文字及命令，不將這些概念加入 Shell API。 |
+| MessageCenter 產品範本與文字 | NFC `MessageCenterModal` 與 `ShellTextResources` | `src/NvtFwCombiner.Presentation.Avalonia/Views/MessageCenterModal.axaml`；`src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml`：`MessageCenterModalHost`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellTextResources.MessageCenter.cs`；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ShellTextResources.Localized.cs`：MessageCenter 標籤。 | 報告表格、儲存挑選器事件、活動版面、產品標籤／格式化方法、模態祖先結構及可及性保留在 NFC。 |
+| 報告組合與檔案挑選器轉接層 | NFC 報告呈現與 `MainWindow` | `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Construction.cs`：`Reports` 建構；`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MainWindowViewModel.Report.cs`；`src/NvtFwCombiner.Presentation.Avalonia/MainWindow.Report.cs`：`LoadReportJsonCoreAsync`、`ApplyStartupReportAsync`、`ApplyLaunchPage`。 | 報告語意、模態／toast 整合、檔案許可、啟動參數、投影世代及焦點返回都是產品行為。 |
+| 報告與偏好持續化轉接層 | NFC 本地狀態儲存與視窗組合 | `src/NvtFwCombiner.Presentation.Avalonia/ReportHistoryFileStore.cs`；`src/NvtFwCombiner.Presentation.Avalonia/ShellPreferenceFileStore.cs`；`src/NvtFwCombiner.Presentation.Avalonia/MainWindow.axaml.cs`：持續化建構、`Reports_OnPropertyChanged`、`PostLocalStateSaveOutcome` 及偏好儲存繫結。 | NFC 負責 schema、路徑、位元組／保留預算、備援、快照擷取、重試通知及關閉儲存政策。泛型編解碼／儲存協調有獨立的 Persistence 邊界。 |
 
-剩餘工作區的所有權清冊是獨立的採用門檻。任何更廣的工作區移轉都需要明確範圍
-與來源清冊；歷史／PageHost 證據只涵蓋此介面。既有 Panels 元件必須有獨立的
-採用範圍及 NFC 像素證據，才能取代 NFC 工作區標記。
+韌體回呼仍由 NFC 的 `WorkflowSessionPresentationViewModel` 負責：
+`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowSessionPresentationViewModel.Slots.cs`
+包含 `HasSelectedInputs` 與 `ClearSelectedInputs`；
+`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowSessionPresentationViewModel.FirmwareNumberMismatch.cs`
+包含 `InvalidateFirmwareNumberMismatch`；
+`src/NvtFwCombiner.Presentation.Avalonia/ViewModels/WorkflowSessionPresentationViewModel.WorkflowContext.cs`
+包含 `ValidatePageActivation` 及工作流程啟用／還原。導覽繫結與 `ApplySelectedPage`
+委派給這些產品擁有者。
 
-NFC 以自己的獨立 PR 採用本模組。建置時透過 `core-packages.json` 下載已驗證且具
+保留的預載證據為
+`tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.cs`、
+`tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.Presentation.cs` 及
+`tests/NvtFwCombiner.UiSmoke.Tests/ShellPreloadSessionTests.Cancellation.cs`。
+這些測試涵蓋型別化結束發布、必要階段互動、相依性、重試世代、取消、遲到進度，
+以及有界排空後的實際完成。其來源與上述導覽、視窗生命週期、組合、版面及焦點
+套件一起保留為 NFC 證據。
+
+## 既有 Panels 比較
+
+比較來源為 Core 快取的 `origin/main`，完整提交
+`b98099a43553f4d04f084a3a33bc027bd9a8c95c`，其中包含 Core #30 的 Panels
+合併（`2af6b30f181a1c0006d6070339edc90366afbf1e`）。其控制項、樣式、測試及
+[Panels 模組契約](Panels.zh-TW.md) 是 NFC 保留組合的比較候選。
+
+| 候選 | 比較提交的來源 | 適用契約與比較限制 |
+| --- | --- | --- |
+| `Panels.WorkspaceShell` | `src/Nvt.Core.Avalonia/Panels/WorkspaceShell.cs`；`src/Nvt.Core.Avalonia/Panels/PanelsStyles.axaml`；`tests/Nvt.Core.Avalonia.Tests/Panels/WorkspaceShellTests.cs`。 | 以範本配置標題、摘要、工具列、兩個主要欄位及頁尾，內容由呼叫端提供；預設欄寬為 `2.2*` 與 `*`。測試描述各插槽、列順序及即時欄寬更新。此版面不提供 NFC 頁面識別、防護、延遲承載控制項、覆蓋層或預載排程。 |
+| `Panels.CollapsiblePanel` | `src/Nvt.Core.Avalonia/Panels/CollapsiblePanel.cs`；`src/Nvt.Core.Avalonia/Panels/PanelsStyles.axaml`；`tests/Nvt.Core.Avalonia.Tests/Panels/CollapsiblePanelTests.cs`。 | 平面切換標題與本文：未設定的初始展開使用 `DefaultExpanded`，明確值優先，停用摺疊時強制展開。測試描述鍵盤／指標切換、可見性及標題樣式。其幾何、向量箭頭與樣式選擇不證明等同 NFC 的產品面板或預載狀態 `Expander`。 |
+
+Shell 不採用 Panels 控制項，也不替換 NFC 工作區標記。日後採用 Panels 時，
+必須另有明確範圍，並對相同凍結 NFC 父版本證明行為、物件識別、焦點、可及性、
+版面及解碼 UI 像素零差異。Panels 來源與合成測試無法提供該產品證據；其原宿主
+接受視覺差異的政策不放寬 NFC 不變的快照契約。
+
+## NFC 採用規則
+
+歷史與 PageHost 是已接受的目前移轉。更廣的移轉需要新的明確擁有者範圍，並在
+實作前固定來源片段、寫入路徑及相依性。此清冊保留產品所有權，不授權更廣刪除。
+共用專案、根目錄計畫、元件清單、版本、參照及鎖定檔由既有整合擁有者負責。
+
+NFC 以自己的獨立 PR 採用本模組。建置時透過 `core-packages.json`（Core #61）下載已驗證且具
 版本的 `Nvt.Core` 與 `Nvt.Core.Avalonia` nupkg，使用精確 `[x]` 版本、鎖定還原
-及限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256；
-Release 的 `SOURCE.md` 識別其 Core 來源。Core 與 NFC 維持各自的版本化發行。
+及限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。
+Core 與 NFC 維持各自的版本化發行。
 共用套件參照、版本、來源對應及鎖定檔由 NFC 擁有，不加入指向 Core checkout 的 ProjectReference。
+
+NFC 在改接這些方法前，須取得確切已審查模組套件的來源與行為證據。Core 擷取與 NFC
+採用各自保留模組 PR 及獨立發行；NFC 採用目標為下一個相容的 1.2.x 修補版本。
+此清冊不改變套件閉包。
 
 NFC 改接兩個方法的呼叫端；只有套件來源及完整可執行值、物件識別與事件軌跡符合
 凍結父版本後，才刪除本地兩個方法本體、泛型歷史儲存及完成回復方法本體。
 NFC 保留產品轉接層，並在相同記錄的 OS、解析字型、DPI、主題、renderer、viewport、
 motion、輸入、時間及 IDs 下證明解碼 UI 像素零差異，記錄比較產物的 SHA-256。
 八個舊字型值保持不變；新的 Core 字型角色不屬於此次採用。
+像素比較要求相同解碼尺寸及最大通道差異為零，不使用裁切、遮罩、正規化或容差。
