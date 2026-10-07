@@ -19,6 +19,41 @@ Installation embeds `-CommanderDir` in the runner arguments. Use the same folder
 A legacy root task keeps the source action, which has no `-CommanderDir`. Its runner reads `COMMANDER_DIR` and exits with code 2 if it is unset.
 The host executable and local record folders come from Windows system folders.
 
+## Headless scheduled action
+
+Scheduled actions use `conhost.exe --headless` to run PowerShell without a terminal window.
+Windows Terminal can open a window even when PowerShell receives `-WindowStyle Hidden`.
+The headless console avoids that window, so the action omits `-WindowStyle`.
+
+`--headless` is an undocumented conhost option that requires Windows 10 version 1809 or later.
+Microsoft documents that minimum for the underlying [pseudoconsole API](https://learn.microsoft.com/en-us/windows/console/createpseudoconsole).
+On older systems, the task may fail to start or open a console window.
+Check the version and build in Settings > System > About before installation.
+Windows 10 version 1809 uses build 17763.
+After an owner-authorized run, check `list` for `Result` and `ResultSource`, and confirm that no console window appeared.
+
+nvt-sched reads the runner state for the headless `\NVT\commander-tick` action.
+conhost discards the child exit code and normally leaves Scheduler's `LastTaskResult` at 0.
+The [upstream report](https://github.com/microsoft/terminal/issues/17178) describes this behavior.
+
+- Resolve `conhost.exe` from `[Environment]::SystemDirectory` and validate it with `Assert-NvtPath`.
+- Resolve `pwsh.exe` from `Program Files\PowerShell\7`, never PATH or a caller-supplied executable.
+- Validate the fixed runner and keep the working directory equal to the allowlisted tick directory.
+
+The action arguments have this form:
+
+```text
+--headless "<pwsh path>" -NoLogo -NoProfile -NonInteractive -File "<runner>" -Id commander-tick -TaskPath \NVT\ -CommanderDir "<commander folder>"
+```
+
+The action uses no password, encoded command, or execution policy switch.
+`list` and `status` report the previous `pwsh.exe -WindowStyle Hidden` action as `DefinitionOutdated`.
+`run` and `remove` reject that outdated definition with code 4.
+`install` and `add` replace it only when every other field matches the requested allowlisted definition.
+Updating requires the runner lock, confirmed worker exit, and a ready task.
+The tool verifies the exported headless definition before cleaning up any legacy task.
+Other definition changes and disabled tasks remain refused.
+
 ## Re-register in one command
 
 Set `COMMANDER_DIR` to the reviewed commander folder, then run this command from the repository root:
@@ -35,8 +70,9 @@ The description template lives in the required `Description` field in `allowlist
 without it, Task Scheduler cannot explain the job's purpose, cadence or maintainer.
 Changing the interval updates its text.
 The principal remains the current user's SID with InteractiveToken/LeastPrivilege.
-`install` and the compatible `add` command have the same behavior. A different or
-disabled existing definition is refused rather than overwritten or re-enabled.
+`install` and the compatible `add` command have the same behavior.
+They update the exact outdated action described above.
+They refuse other definition changes and disabled tasks.
 
 Installation registers the new task, exports it and validates execution settings,
 SID, author and description. Only then does it verify, disable and remove the old
@@ -66,14 +102,27 @@ pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 remove -Id commander-tick
 `list`/`status` are identical read-only queries. They show `\NVT\` tasks and current
 SID legacy tasks at root. Root leftovers have `Legacy: True`, are `Unmanaged`, and
 are not run/removed by normal commands. `Installed`, `DefinitionMismatch`,
-`NotInstalled` and `Unmanaged` retain their previous meanings. JSON is always an
-array. Added `TaskPath` prevents ambiguity between folders; `Legacy` identifies
+`NotInstalled` and `Unmanaged` retain their previous meanings.
+`DefinitionOutdated` identifies the previous action. JSON is always an array.
+Added `TaskPath` prevents ambiguity between folders; `Legacy` identifies
 remaining old names. Existing completion fields and the newest five history
 entries remain, with unknown/unreadable evidence shown as null and never repaired.
 Query errors return nonzero with sanitized stderr, without partial JSON or writes.
 `run` only submits a request; use `list` for completion. `remove` targets `\NVT\`,
 disables first and only unregisters after confirmed worker exit; it never kills a
 process or deletes records. Reused PIDs are compared by process start time.
+
+`Result` shows the effective result, and `ResultSource` identifies its evidence:
+
+- `RunnerState`: Use a completed state's integer `ExitCode` when `UpdatedAtUtc` is fresh enough for Scheduler's `LastRunTime`.
+- `Scheduler`: Use `LastTaskResult` for running code 267009, never-run code 267011, legacy tasks, and actions without conhost's headless option.
+- `Unknown`: The headless task lacks readable, completed state or valid timestamps, or its state predates the latest run beyond the tolerance.
+
+The freshness check converts Scheduler's local time to UTC and allows state timestamps up to five seconds before `LastRunTime`.
+This tolerance covers timestamp precision and small clock differences.
+An earlier timestamp returns `Unknown`, even when retained state records success.
+`LastTaskResult`, `ExitCode`, and existing completion fields remain unchanged for compatibility.
+`status` and both JSON and text output include the same effective fields.
 
 `EveryMinutes` (1–44640, default 20), `DataDir` and `DryRun` apply only to
 `install`/`add`. `DataDir` must equal the allowlisted tick's directory. `Json` is
@@ -86,14 +135,19 @@ DryRun prints TaskPath, TaskName and XML without Scheduler or state IO.
 pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 audit
 ```
 
-`audit` only reads Scheduler metadata, excluding `\Microsoft\` and its children.
-It writes `%LOCALAPPDATA%\NVT\sched\audit\audit-<yyyyMMdd>.md` and `latest.json`,
-then prints the report path. The Traditional Chinese mobile report starts with a
-one-line conclusion and groups attention items, ours, and vendors. It includes
-path, name, state, last run/result, next run, author and description. Flags: failed
-(result not 0, 267009 or 267011), never run, disabled, missing author and ours
-(`\NVT\`, including children). The first snapshot establishes a baseline; later
-reports compare full path+name for additions/deletions. Microsoft-like vendor
+`audit` reads Scheduler metadata and headless runner state, excluding `\Microsoft\` and its children.
+It writes `%LOCALAPPDATA%\NVT\sched\audit\audit-<yyyyMMdd>.md` and `latest.json`, then prints the report path.
+The Traditional Chinese mobile report starts with a conclusion and groups attention items, ours, and vendors.
+It includes path, name, state, last run, effective result, result source, next run, author, and description.
+
+- Failed: Flag nonzero runner results and `Unknown` as failures. Exempt Scheduler codes 0, 267009, and 267011.
+- Never run: Use Scheduler code 267011 or an absent or initial `LastRunTime`.
+- Disabled: Flag disabled tasks.
+- Missing author: Flag tasks without an author.
+- Ours: Include `\NVT\` and its children.
+
+The first snapshot establishes a baseline.
+Later reports compare full path+name for additions/deletions. Microsoft-like vendor
 folders such as `\MicrosoftVendor\` are still included. Suggestions only cover
 ready vendor tasks that never ran and lack an author, with a reason and a reminder
 to confirm their purpose. Legacy tasks are excluded from suggestions. No task is
@@ -116,6 +170,7 @@ and bounded history files remain unchanged; completed attempts retain the newest
 50 lines, and queries show five. Raw tick output and exception contents are not
 stored. Tick exit 0/10 means success. `latest.json` contains only `At` (needed to
 identify the ISO week) and `Tasks` (the required metadata needed for comparisons).
+Each task now includes `Result` and `ResultSource` alongside its unchanged `LastTaskResult`.
 It also supplies the exclusive audit lock. The dated Markdown is the owner-readable
 weekly list. `snapshot.json` adds `weekly_task_audit_week` to acknowledge successful
 logging; without it a crash after report creation could lose the notification or
@@ -179,10 +234,10 @@ Every imported script adds the owner-required copyright notice. Text changes use
 
 - `allowlist.psd1`: Adds a copyright header. Keeps the fixed tick filename and resolves its directory through the existing parameter.
 - `nvt-sched-runner.ps1`: Adds a copyright header. Requires CommanderDir through the argument or environment and forwards it to the CLI.
-- `nvt-sched.ps1`: Adds a copyright header. Retains CommanderDir parameterization, required-folder checks and Windows argument escaping. Adds no scheduler behavior beyond the source.
+- `nvt-sched.ps1`: Adds a copyright header. Retains CommanderDir parameterization, required-folder checks and Windows argument escaping. Adds the headless action and exact outdated-definition migration.
 - `README.md`: Uses repository-relative commands and path parameters. Removes local deployment details. Adds source hashes and the external tick verification limit.
 - `README.zh-TW.md`: Uses repository-relative commands and path parameters. Removes local deployment details. Adds source hashes and the external tick verification limit.
-- `registered-task.fixture.xml`: Replaces account, host, runner and working-directory values with placeholders. Keeps synthetic SID and exported omissions.
+- `registered-task.fixture.xml`: Uses the headless action with account, console, host, runner, and directory placeholders. Keeps synthetic SID and exported omissions.
 - `test-nvt-sched.ps1`: Adds a copyright header. Retains parameter tests and derives local path negatives from fixtures. Uses account placeholders and a synthetic external tick caller.
 
 To verify zero difference, compare source hashes first. Review each listed transformation, then run every imported suite from the repository root.
