@@ -244,7 +244,7 @@ This task changes no tool repository.
 | `RuntimeQueryProtocol.CompactJsonOptions` | Camel-case property names, explicit nulls, default JSON escaping, case-sensitive deserialization, no indentation. Dictionary keys retain their casing. |
 | `RuntimeQueryProtocol.PrettyJsonOptions` | The same settings with two-space indentation and the serializer's default platform line endings. Used for caller output, not pipe messages. |
 | `RuntimeQueryIpcServer(...)` | An instance configured with pipe name, protocol version, positive read and shutdown timeouts in milliseconds, error callback, diagnostic callback, and request handler. |
-| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal closes the active pipe, cancels transport and handler waits, and bounds the wait for cancellation callbacks and the run loop. |
+| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal stops new connections and cancels a connection that has no request line. A request that was already read can finish and write its response within the shutdown bound. After the bound, disposal cancels the handler wait and closes the pipe. |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | Synchronously sends one request with a positive total connection/write/read budget. Connection elapsed time is deducted before the write/read timer, retaining the source's integer millisecond rounding and minimum remaining budget of one millisecond. |
 
 The server handler is `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`. It receives the deserialized request, configured protocol version and shutdown token. Empty lines and malformed JSON are rejected by the transport; a JSON null literal and version mismatches reach the handler, exactly as in the frozen transport. Core now provides null/version checks and command routing. The tool keeps its handler table, product parsers, command line, and UI dispatch. Transport tests also pin the original null and version error envelopes.
@@ -515,8 +515,13 @@ NFH maps handler failures to `IPC_ERROR` with the unchanged exception message.
 These mappings belong to the tool. Core supplies no product error text for these failures.
 
 `StopAsync` clears host ownership before disposal. A later `Start` creates a new server, as in the frozen host.
+A second `StopAsync` during a stop returns the same task, so every caller waits for the same disposal.
 The host adds no scheduling, window events, lifetime events, static instance, or options.
 The tool decides when to start it and calls `StopAsync` on exit.
+
+`StopAsync` stops new connections immediately and cancels connections that have no request line.
+An already-read request can finish its handler and flush its response within the server's shutdown bound.
+After that bound, the server cancels the handler wait, closes the pipe, and reports `ShutdownTimedOut`.
 
 ### Tool startup and exit
 
@@ -602,5 +607,137 @@ Use the already-restored packages for Core verification:
 $env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+## Generic commands
+
+Tools can register six generic commands beside their product commands.
+This is new behavior, no source baseline.
+Core returns command records and starts no server.
+All six records have startup phase `None` and define no startup option.
+The tool keeps `--page`, `--help`, and all other startup arguments.
+
+The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
+
+| Public type | Contract |
+| --- | --- |
+| `RuntimeQueryGenericCommands` | `Create(options)` returns a read-only list in the order below. The tool selects which records to register. |
+| `RuntimeQueryGenericCommandOptions` | An immutable record with tool identity, command lookup, window lookup, navigation, exit decision, and close action. |
+| `IRuntimeQueryNavigation` | Supplies `Pages`, `CurrentPage`, and synchronous `SwitchPage(name)`. |
+| `RuntimeQueryPageResult` | Defines `Switched`, `NeedsConfirmation`, and `Rejected`. |
+| `RuntimeQueryExitResult` | Defines `Closing`, `NeedsConfirmation`, and `Rejected`. |
+| `RuntimeQueryScreenshotResult` | `Success(pixelWidth, pixelHeight, fileSize)` or `Failure(code, message)` for replacement capture. File size uses bytes. |
+| `RuntimeQueryGenericFailureCodes` | Constants for the failure codes below, including the shared `INVALID_ARGUMENTS` code. `USER_CONFIRMATION_REQUIRED` differs from the router's `CONFIRMATION_REQUIRED`: adding `--confirm` does not help, because the tool needs a person to confirm. |
+
+| Name | Risk | Arguments | Success data | Failure codes |
+| --- | --- | --- | --- | --- |
+| `help` | `ReadOnly` | None | `{ commands: [{ name, risk }] }`, or the tool's unchanged text as data | None |
+| `ping` | `ReadOnly` | None | `{ toolName, version, processId }` | None |
+| `focus` | `ChangesState` | None | `{ focused: true }` | `NO_MAIN_WINDOW` |
+| `page` | `ChangesState` | None, or `--name <page>` | List: `{ pages, currentPage }`. Switch: `{ currentPage }` | `INVALID_ARGUMENTS`, `UNKNOWN_PAGE`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED` |
+| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`, `FILE_EXISTS`, `NO_MAIN_WINDOW`, `CAPTURE_UNAVAILABLE`, or the replacement's unchanged failure |
+| `exit` | `ChangesState` | None | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`, `EXIT_REJECTED` |
+
+Help returns risk names as strings and keeps registration order.
+The tool supplies `GetCommands` because registration finishes after factory creation.
+Set `HelpText` to return that string unchanged, including whitespace or empty text.
+FreeformHelper can keep its own help text this way.
+Ping uses the supplied tool name and version, plus `Environment.ProcessId`.
+
+The tool supplies `GetMainWindow` for focus and default capture.
+Focus restores a minimized window to `Normal`, then calls `Activate()`.
+The client grants foreground permission before sending the request.
+A missing window returns `NO_MAIN_WINDOW` with `The main window is not available.`.
+
+The tool supplies page names in its own order and owns the current page.
+Core compares names with `StringComparer.Ordinal` and asks `SwitchPage` to perform navigation.
+Core assumes no page names or startup targets.
+For example, NVT FW Combiner can omit settings because settings opens as a dialog.
+The tool returns these decisions:
+
+- `Switched`: return the new current page. A request for the current page succeeds and changes nothing.
+- `NeedsConfirmation`: leave the page unchanged and return `USER_CONFIRMATION_REQUIRED`. The tool must not open a dialog.
+- `Rejected`: return `PAGE_REJECTED`, for example when a dialog prevents navigation.
+
+A blank or null supplied name returns `INVALID_ARGUMENTS` with `Argument '--name' requires a page name.`.
+An unknown name returns `UNKNOWN_PAGE` with `Unknown page '{name}'. Valid pages: {names}.`.
+The valid names use the tool's order, separated by a comma and a space.
+The existing query parser sends a valueless option as the string "true".
+The handler cannot distinguish a valueless --name from an explicit page name of true.
+`query page --name` returns `UNKNOWN_PAGE` unless the tool has a page named `true`.
+Confirmation uses `Page switching requires confirmation.`. Rejection uses `The page switch was rejected.`.
+
+Screenshot needs no `--confirm`, even when the router enables confirmation.
+The owner assigned `ChangesState` because capture accepts only an absolute path and never overwrites a file.
+This explicit exception keeps screenshot out of `WritesData`.
+Core requires a fully qualified path ending in `.png`, ignoring extension case.
+Core normalizes the absolute path and checks file existence before capture or window lookup.
+An invalid or missing path returns `INVALID_ARGUMENTS` with `Argument '--path' must be an absolute path ending in '.png'.`.
+An existing file or folder at the destination returns `FILE_EXISTS` with `The screenshot file already exists.` and remains unchanged.
+A missing parent folder returns `INVALID_ARGUMENTS` with `The folder for '--path' does not exist.`.
+
+Default capture updates window layout. A minimized window or a window with no size returns `CAPTURE_UNAVAILABLE` with `The main window has no visible size to capture.`. Otherwise it renders a `RenderTargetBitmap` at the current window size and scaling.
+It writes PNG data to a temporary file in the destination folder.
+It moves that file to the final name without replacement and removes the temporary file on failure.
+If the destination appears before the move, Core returns the same `FILE_EXISTS` failure.
+Other capture exceptions escape the handler.
+
+Set `CaptureScreenshot` to use the tool's own asynchronous capture.
+NVT FW Combiner can use its production capture this way.
+The delegate receives the normalized absolute path and `CancellationToken.None` because command handlers currently have no token.
+The delegate owns frame waits, layout, capture, and writing without replacement.
+Core does not update layout or obtain the main window before this delegate runs.
+Return `RuntimeQueryScreenshotResult.Success` with the saved image dimensions and file size.
+Return `Failure` to preserve the tool's exact code and message, such as `PROTECTED_PATH` or `FILE_EXISTS`.
+The delegate's no-replace move must handle a destination that appears after Core's existence check.
+Delegate exceptions escape unchanged.
+
+The tool supplies synchronous `DecideExit` and its normal `Close` action.
+The decision must not open a dialog.
+Core handles the three results:
+
+- `Closing`: produce `{ closing: true }` and post `Close` to the UI dispatcher at Background priority.
+- `NeedsConfirmation`: return `USER_CONFIRMATION_REQUIRED` with `Exit requires confirmation.`. Do not close or open a dialog.
+- `Rejected`: return `EXIT_REJECTED` with `Exit was rejected.`. Do not close.
+
+Posting defers closing so the handler produces its response first.
+The tool must await `RuntimeQueryHost.StopAsync` in its close path before the process ends.
+The server lets the response write and flush finish within its shutdown bound.
+The tool must commit to closing after `Closing`; its close action must not veto the approved decision.
+
+The constants are `NO_MAIN_WINDOW`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED`, `UNKNOWN_PAGE`, `INVALID_ARGUMENTS`, `FILE_EXISTS`, `CAPTURE_UNAVAILABLE`, and `EXIT_REJECTED`.
+Tool capture failures can add their own codes without Core mappings.
+
+For example, register selected generic commands and product commands together:
+
+```csharp
+IReadOnlyList<RuntimeQueryCommand> registered = [];
+var options = new RuntimeQueryGenericCommandOptions(
+    "Example tool", "1.0", () => registered, () => mainWindow,
+    navigation, DecideExit, CloseNormally)
+{
+    CaptureScreenshot = CaptureProductionAsync
+};
+var generic = RuntimeQueryGenericCommands.Create(options);
+registered = [.. generic.Where(command => command.Name != "help"), .. productCommands];
+var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
+var handler = RuntimeQueryUiThread.Wrap(
+    (request, version, _) => router.ExecuteAsync(request, version), MapTransportError);
+```
+
+This example selects five generic commands and leaves help with the tool.
+To register generic help, include its record and optionally set `HelpText`.
+The completed `registered` list includes every product command and its risk.
+Use the wrapped handler in the tool's existing server setup.
+
+Headless tests check exact response data, messages, navigation decisions, and deferred closing through a confirmation-enabled router.
+Fixed window content verifies PNG dimensions at two scaling values and temporary-file cleanup after success and failure.
+Tests also verify path checks before replacement capture, delegate-owned layout, and unchanged tool failures and exceptions.
+
+Use the already-restored packages with `AVALONIA_TELEMETRY_OPTOUT=1`:
+
+```text
+dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
 ```

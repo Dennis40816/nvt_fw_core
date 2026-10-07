@@ -244,7 +244,7 @@ Core 只回傳問題及回應，不定義結束代碼常數。
 | `RuntimeQueryProtocol.CompactJsonOptions` | 屬性名稱採 camelCase、保留 null、使用預設 JSON 跳脫規則、反序列化區分大小寫、不縮排。字典鍵保留原本大小寫。 |
 | `RuntimeQueryProtocol.PrettyJsonOptions` | 相同設定，另使用兩個空白縮排與序列化器預設的平台換行字元。用於呼叫端輸出，不用於管道訊息。 |
 | `RuntimeQueryIpcServer(...)` | 實例接收管道名稱、協定版本、以毫秒計的正數讀取與關閉逾時、錯誤回呼、診斷回呼及請求處理委派。 |
-| `Start()` / `DisposeAsync()` | 啟動一次；執行期間重複啟動與重複釋放皆不產生額外作用。釋放後啟動會擲回例外。釋放會關閉作用中的管道、取消傳輸與處理委派的等待，並限制等待取消回呼與執行迴圈的時間。 |
+| `Start()` / `DisposeAsync()` | 啟動一次；執行期間重複啟動與重複釋放皆不產生額外作用。釋放後啟動會擲回例外。釋放會停止接受新連線，並取消尚未送出請求行的連線。已讀到請求的連線可在關閉時間上限內完成處理並寫出回應。超過上限後，釋放會取消處理委派的等待並關閉管道。 |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | 同步送出一筆請求，使用涵蓋連線、寫入與讀取的正數總逾時預算。開始寫入／讀取計時前扣除連線耗時，保留來源的整數毫秒取整與至少一毫秒的剩餘預算。 |
 
 伺服器處理委派為 `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`。接收反序列化後的請求、設定的協定版本與關閉 token。空白行與格式錯誤的 JSON 由傳輸層拒絕；JSON null 與版本不符的請求會交給處理委派，與凍結傳輸一致。Core 現在提供 null／版本檢查與命令路由。工具保留處理委派表、產品解析器、命令列與 UI 派送。傳輸測試同時固定原有的 null 與版本錯誤封套。
@@ -515,8 +515,13 @@ NFH 將處理委派失敗對應為 `IPC_ERROR`，保留原始例外訊息。
 這些對應由工具持有。Core 不提供這些失敗的產品錯誤文字。
 
 `StopAsync` 在釋放前清除 host 持有的伺服器。後續 `Start` 會建立新伺服器，與凍結來源一致。
+停止期間再次呼叫 `StopAsync` 會回傳同一個 task，所有呼叫者都等待同一次釋放。
 host 不加入排程、視窗事件、應用程式生命週期事件、靜態實例或選項。
 工具決定啟動時機，並在結束時呼叫 `StopAsync`。
+
+`StopAsync` 立即停止接受新連線，並取消尚未讀到請求行的連線。
+已讀到請求的連線可在伺服器的關閉時間上限內完成處理委派、寫出並清空回應緩衝區。
+超過上限後，伺服器取消處理委派等待、關閉管道，並回報 `ShutdownTimedOut`。
 
 ### 工具啟動與結束
 
@@ -602,5 +607,137 @@ Core 驗證使用已還原的套件：
 $env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+## Generic commands
+
+工具可將六個通用命令與產品命令一起登錄。
+這是新增行為，沒有來源基準（new behavior, no source baseline）。
+Core 只回傳命令 record，不啟動伺服器。
+六個命令的啟動階段皆為 `None`，沒有啟動選項。
+`--page`、`--help` 及其他啟動引數仍由工具持有。
+
+公開型別皆位於 `Nvt.Core.Avalonia.RuntimeQuery`：
+
+| 公開型別 | 契約 |
+| --- | --- |
+| `RuntimeQueryGenericCommands` | `Create(options)` 依下表順序回傳唯讀清單。工具選擇要登錄的 record。 |
+| `RuntimeQueryGenericCommandOptions` | 不可變 record，包含工具識別、命令查詢、視窗查詢、導覽、結束決策與關閉動作。 |
+| `IRuntimeQueryNavigation` | 提供 `Pages`、`CurrentPage` 及同步的 `SwitchPage(name)`。 |
+| `RuntimeQueryPageResult` | 定義 `Switched`、`NeedsConfirmation` 與 `Rejected`。 |
+| `RuntimeQueryExitResult` | 定義 `Closing`、`NeedsConfirmation` 與 `Rejected`。 |
+| `RuntimeQueryScreenshotResult` | 替代擷取回傳 `Success(pixelWidth, pixelHeight, fileSize)` 或 `Failure(code, message)`。檔案大小以位元組計。 |
+| `RuntimeQueryGenericFailureCodes` | 下列失敗代碼常數，包含共用的 `INVALID_ARGUMENTS`。`USER_CONFIRMATION_REQUIRED` 與路由器的 `CONFIRMATION_REQUIRED` 不同：加上 `--confirm` 無效，因為工具需要由使用者確認。 |
+
+| 名稱 | 風險 | 引數 | 成功資料 | 失敗代碼 |
+| --- | --- | --- | --- | --- |
+| `help` | `ReadOnly` | 無 | `{ commands: [{ name, risk }] }`，或工具原樣提供的文字資料 | 無 |
+| `ping` | `ReadOnly` | 無 | `{ toolName, version, processId }` | 無 |
+| `focus` | `ChangesState` | 無 | `{ focused: true }` | `NO_MAIN_WINDOW` |
+| `page` | `ChangesState` | 無，或 `--name <page>` | 清單：`{ pages, currentPage }`。切換：`{ currentPage }` | `INVALID_ARGUMENTS`、`UNKNOWN_PAGE`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED` |
+| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`、`FILE_EXISTS`、`NO_MAIN_WINDOW`、`CAPTURE_UNAVAILABLE`，或替代擷取原樣回傳的失敗 |
+| `exit` | `ChangesState` | 無 | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`、`EXIT_REJECTED` |
+
+Help 以字串回傳風險名稱，並保留登錄順序。
+工具透過 `GetCommands` 提供清單，因為登錄會在建立命令後才完成。
+設定 `HelpText` 即可原樣回傳文字，包含空白及空字串。
+FreeformHelper 可用此方式保留自己的說明文字。
+Ping 使用工具提供的名稱與版本，並加入 `Environment.ProcessId`。
+
+工具以 `GetMainWindow` 提供 focus 與預設擷取使用的主視窗。
+Focus 先將最小化視窗還原為 `Normal`，再呼叫 `Activate()`。
+用戶端在送出請求前授予前景權限。
+沒有主視窗時回傳 `NO_MAIN_WINDOW`，訊息為 `The main window is not available.`。
+
+工具依自身順序提供頁面名稱，並持有目前頁面。
+Core 使用 `StringComparer.Ordinal` 比較名稱，再要求 `SwitchPage` 執行導覽。
+Core 不預設頁面名稱或啟動目標。
+例如 NVT FW Combiner 可省略 settings，因為 settings 開啟的是對話框。
+工具回傳以下決策：
+
+- `Switched`：回傳新的目前頁面。請求目前頁面時成功，且不改變狀態。
+- `NeedsConfirmation`：頁面保持不變，回傳 `USER_CONFIRMATION_REQUIRED`。工具不得開啟對話框。
+- `Rejected`：回傳 `PAGE_REJECTED`，例如已有對話框阻止導覽。
+
+已提供的 name 值為空白或 null 時，回傳 `INVALID_ARGUMENTS`，訊息為 `Argument '--name' requires a page name.`。
+未知名稱回傳 `UNKNOWN_PAGE`，訊息為 `Unknown page '{name}'. Valid pages: {names}.`。
+有效名稱保留工具順序，以逗號及一個空白分隔。
+現有 query 解析器會將沒有值的選項編碼為字串 "true"。
+處理委派無法區分沒有值的 --name 與明確指定的 true 頁面名稱。
+`query page --name` 會回傳 `UNKNOWN_PAGE`，除非工具有名為 `true` 的頁面。
+確認訊息為 `Page switching requires confirmation.`。拒絕訊息為 `The page switch was rejected.`。
+
+Screenshot 不要求 `--confirm`，即使路由器已啟用確認防護。
+擁有者將其指定為 `ChangesState`，因為擷取只接受絕對路徑，且永不覆寫檔案。
+此明確例外讓 screenshot 不屬於 `WritesData`。
+Core 要求完整絕對路徑，且副檔名必須為 `.png`，不區分副檔名大小寫。
+Core 先正規化絕對路徑並檢查檔案是否存在，再執行擷取或查詢主視窗。
+無效或缺少路徑時回傳 `INVALID_ARGUMENTS`，訊息為 `Argument '--path' must be an absolute path ending in '.png'.`。
+目的地已有檔案或資料夾時回傳 `FILE_EXISTS`，訊息為 `The screenshot file already exists.`，且內容保持不變。
+上層資料夾不存在時回傳 `INVALID_ARGUMENTS`，訊息為 `The folder for '--path' does not exist.`。
+
+預設擷取先更新視窗排版。視窗最小化或沒有大小時，回傳 `CAPTURE_UNAVAILABLE`，訊息為 `The main window has no visible size to capture.`。否則以目前視窗大小及縮放比例繪製 `RenderTargetBitmap`。
+PNG 先寫入目的資料夾內的暫存檔。
+Core 不覆寫地移至最終名稱，失敗時刪除暫存檔。
+若目的檔在移動前出現，Core 回傳相同的 `FILE_EXISTS` 失敗。
+其他擷取例外會向外傳遞。
+
+設定 `CaptureScreenshot` 可使用工具自己的非同步擷取流程。
+NVT FW Combiner 可用此方式接上正式擷取。
+委派接收正規化後的絕對路徑與 `CancellationToken.None`，因為命令處理委派目前沒有 token。
+委派負責等待影格、排版、擷取及不覆寫的寫入。
+Core 在呼叫委派前不更新排版，也不取得主視窗。
+成功時回傳 `RuntimeQueryScreenshotResult.Success`，包含已儲存影像的像素尺寸及檔案大小。
+失敗時回傳 `Failure`，原樣保留工具的代碼及訊息，例如 `PROTECTED_PATH` 或 `FILE_EXISTS`。
+委派必須以不覆寫的移動處理 Core 檢查後才出現的目的檔。
+委派例外原樣向外傳遞。
+
+工具提供同步的 `DecideExit` 及正常關閉動作 `Close`。
+決策不得開啟對話框。
+Core 處理以下三種結果：
+
+- `Closing`：產生 `{ closing: true }`，並將 `Close` 以 Background 優先序排入 UI dispatcher。
+- `NeedsConfirmation`：回傳 `USER_CONFIRMATION_REQUIRED`，訊息為 `Exit requires confirmation.`。不關閉，也不開啟對話框。
+- `Rejected`：回傳 `EXIT_REJECTED`，訊息為 `Exit was rejected.`。不關閉。
+
+排程會延後關閉，讓處理委派先產生回應。
+工具必須在關閉流程中等待 `RuntimeQueryHost.StopAsync` 完成，才能結束程序。
+伺服器讓回應在關閉時間上限內完成寫入並清空緩衝區。
+工具回傳 `Closing` 後必須執行關閉；關閉動作不得再否決已核准的決策。
+
+常數包含 `NO_MAIN_WINDOW`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED`、`UNKNOWN_PAGE`、`INVALID_ARGUMENTS`、`FILE_EXISTS`、`CAPTURE_UNAVAILABLE` 及 `EXIT_REJECTED`。
+工具的擷取失敗可自行提供其他代碼，不需要 Core 對應。
+
+例如，將選用的通用命令與產品命令一起登錄：
+
+```csharp
+IReadOnlyList<RuntimeQueryCommand> registered = [];
+var options = new RuntimeQueryGenericCommandOptions(
+    "Example tool", "1.0", () => registered, () => mainWindow,
+    navigation, DecideExit, CloseNormally)
+{
+    CaptureScreenshot = CaptureProductionAsync
+};
+var generic = RuntimeQueryGenericCommands.Create(options);
+registered = [.. generic.Where(command => command.Name != "help"), .. productCommands];
+var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
+var handler = RuntimeQueryUiThread.Wrap(
+    (request, version, _) => router.ExecuteAsync(request, version), MapTransportError);
+```
+
+此範例選用五個通用命令，help 留在工具。
+若要登錄通用 help，加入其 record，並可設定 `HelpText`。
+完成的 `registered` 清單包含每個產品命令與風險。
+工具將包裝後的處理委派交給既有伺服器設定。
+
+Headless 測試透過啟用確認防護的路由器，驗證完整回應資料、訊息、導覽決策及延後關閉。
+固定視窗內容驗證兩種縮放比例的 PNG 尺寸，以及成功和失敗後的暫存檔清理。
+測試也驗證替代擷取前的路徑檢查、委派自行排版，以及工具失敗與例外的原樣傳遞。
+
+使用已還原的套件，設定 `AVALONIA_TELEMETRY_OPTOUT=1` 後執行：
+
+```text
+dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
 ```

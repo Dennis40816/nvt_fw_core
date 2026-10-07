@@ -152,4 +152,17 @@ public sealed class RuntimeQueryHostTests
             await host.StopAsync().WaitAsync(RuntimeQueryTestValues.ShutdownBound, TestContext.Current.CancellationToken);
         }
     }
+
+    /// <summary>A second stop during the first one returns the same task, so no caller continues early.</summary>
+    [Fact]
+    public async Task StopAsyncWhenCalledTwiceReturnsTheSameStop()
+    {
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        var host = new RuntimeQueryHost(() => RuntimeQueryTestValues.CreateServer(pipeName));
+        host.Start();
+        var first = host.StopAsync();
+        var second = host.StopAsync();
+        Assert.Same(first, second);
+        await first.WaitAsync(RuntimeQueryTestValues.ShutdownBound, TestContext.Current.CancellationToken);
+    }
 }
