@@ -128,6 +128,7 @@ internal static class PresentationTestValues
         private NotificationScope? _notificationScope;
 
         internal void NotifyHostLanguageChanged() => InNotificationScope(NotificationBatch.Language, ApplyLanguageChanged);
+        internal void NotifyDiagnosticsOutsideScope() => NotifyDiagnosticsChanged();
         internal void NotifyHostDiagnosticsChanged() => InNotificationScope(NotificationBatch.Diagnostics, NotifyDiagnosticsChanged);
 
         private void InNotificationScope(NotificationBatch batch, Action notify)

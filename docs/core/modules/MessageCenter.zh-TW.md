@@ -142,7 +142,7 @@ NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並
 | 被動投影 | `Text`、`ActivityItems`、`HasActivityItems`、`HasNoActivityItems`、`ActiveBadgeCount`、`HasActiveDiagnostics`、`HasNoActiveDiagnostics`、`SessionActivitySummary`、`DebugActivityActionLabel`、`MessageCenterAccessibleName`、`SystemStatusAnnouncement`、`RefreshActionLabel`。 |
 | 主程式 facade 狀態 | `IsRefreshInProgress`、`ExportStatus`、`HasExportFailure` 保留 protected setter 與 Toolkit 通知。 |
 | 命令 | `IRelayCommand`：`OpenCommand`、`CloseCommand`、`OpenRunReportsCommand`、`ShowRunReportsCommand`、`ShowSystemInformationCommand`、`ShowImportantActivityCommand`、`ShowWarningActivityCommand`、`ShowErrorActivityCommand`、`ToggleDebugActivityCommand`；`IAsyncRelayCommand RefreshCommand`。 |
-| 操作 | `Task ExportAsync(string destinationPath, CancellationToken cancellationToken)`、`Task ExportWithPickerAsync(Func<Task<string?>> pickPathAsync, Func<bool> isViewContextCurrent)`、`void ReportExportFailure()`、`void ApplyLanguageChanged()`、`void NotifyActivityChanged()`、`void NotifyDiagnosticsChanged()`。 |
+| 操作 | `Task ExportAsync(string destinationPath, CancellationToken cancellationToken)`、`Task ExportWithPickerAsync(Func<Task<string?>> pickPathAsync, Func<bool> isViewContextCurrent)`、`void ReportExportFailure()`、`void ApplyLanguageChanged()`、`void NotifyActivityChanged()`；protected `void NotifyDiagnosticsChanged()`。三個 public 方法在 NFC 都有 view model 以外的呼叫者：modal 畫面的 code-behind 在選擇器失敗時呼叫 `ReportExportFailure`，shell view model 呼叫 `ApplyLanguageChanged` 和 `NotifyActivityChanged`。衍生的主程式 view model 在診斷重新整理完成後呼叫 `NotifyDiagnosticsChanged`。 |
 
 ## 保留的展示行為
 

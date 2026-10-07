@@ -242,7 +242,8 @@ public partial class MessageCenterViewModel : ObservableObject
     }
 
     /// <summary>Notifies committed diagnostic counts and announcements, then activity projections.</summary>
-    public void NotifyDiagnosticsChanged()
+    /// <remarks>A derived host view model calls this after its diagnostic refresh commits.</remarks>
+    protected void NotifyDiagnosticsChanged()
     {
         Observe(() => OnPropertyChanged(nameof(ActiveBadgeCount)));
         Observe(() => OnPropertyChanged(nameof(HasActiveDiagnostics)));

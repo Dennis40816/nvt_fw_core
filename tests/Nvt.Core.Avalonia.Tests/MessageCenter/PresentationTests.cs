@@ -427,7 +427,7 @@ public sealed class PresentationTests
         vm.NotifyActivityChanged();
         fixture.AssertTrace(ActivityTrace);
         fixture.Trace.Clear();
-        vm.NotifyDiagnosticsChanged();
+        vm.NotifyDiagnosticsOutsideScope();
         fixture.AssertTrace(DiagnosticTrace);
         Assert.Equal(0, fixture.Provider.Captures);
         Assert.Equal(0, vm.ExportContextGeneration);
