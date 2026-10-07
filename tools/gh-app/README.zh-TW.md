@@ -42,6 +42,7 @@ Owner 負責審查 helper、安裝於儲存庫之外，並限制 token 只能操
 `Push-GhAppBranch` 把本機 `LocalBase..HEAD` 的樹差異重建為一個遠端 commit。
 它處理二進位檔案、Unicode 檔名、檔案模式、symlink、gitlink 和刪除。
 未提交的工作目錄變更不會進入 commit。
+HEAD 必須包含 `LocalBase`。否則從較舊 base 切出的分支，會把 base 之後新增的檔案全部刪掉。函式在任何 `gh` 呼叫前檢查這點，所以請先 rebase 到遠端 base。
 本機 base tree 必須等於遠端 parent tree。所有 SHA 必須是 40 個小寫十六進位字元。
 更新 ref 前，產生的 tree 必須等於本機 HEAD tree。既有 ref 只允許非強制前進。
 只有 HTTP 404 允許建立缺少的 ref。`-ExtraParent` 加入第二個 parent。
@@ -180,6 +181,9 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - 請求內容透過 stdin 傳遞，不建立暫存 payload 檔案。
 - 意外回顯的 token 會替換為 `[redacted]`。捕捉的錯誤內容不會傳給呼叫端或紀錄。
 - 程序或 API 錯誤只包含 `HTTP <status> <API path>`。無法取得 status 時使用 `unknown`。
+- 讀取在 status 為 unknown、429 或 5xx 時重試，最多 3 次，間隔 2 秒與 4 秒。第三次失敗後，訊息結尾加上 `(after 3 attempts)`。
+- 寫入一律不重試，因為 GitHub 可能已經套用。例如留言、更新 ref、更新分支與合併。
+- 寫入仍會重試 App token 的申請，最多 3 次。這一步在 gh 啟動前失敗，不會有任何請求送到 GitHub。
 - 所有寫入都只針對 GitHub.com 上的設定儲存庫。
 
 ## 來源與刻意的差異
