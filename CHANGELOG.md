@@ -6,6 +6,10 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-07
+
+Tag `core-v0.3.0` on the merge commit of the version pull request. No breaking changes since 0.2.0.
+
 ### Dependencies
 
 - `Nvt.Core.Avalonia` depends on `CommunityToolkit.Mvvm` 8.4.2, the version NFC uses (#91).
@@ -17,7 +21,9 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - Message Center: refresh coordinator (#81), export workflow (#83).
 - Launcher: launch and change coordination (#84), installation and inventory (#89).
 - Processes: external process runner with bounded cleanup (#88).
-- ReportList: windowed and load-more paging models with host-supplied labels (#96).
+- ReportList: windowed and load-more paging models with host-supplied labels (#96), and the two pager templates (#103).
+- Message Center: Avalonia presentation view model (#100).
+- RuntimeQuery: one pipe per window and `--pid` (#99), and generic commands for Avalonia tools: help, ping, focus, page, screenshot and exit (#102).
 
 ### Fixes
 
@@ -28,6 +34,11 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - RuntimeQuery: the disconnected-peer client test reads one byte before it disconnects, so it no longer fails under load (#80).
 - Test probe: `orphan-chain-exit` mode (#95).
 - Processes: 25 of NFC's 26 runner lifetime tests (#97).
+- Core-linked test child for Launcher process tests, with a self-check mode (#105).
+
+### Tools
+
+- `tools/gh-app`: one PowerShell module for every GitHub write as the repository's GitHub App (#104).
 
 ### Docs
 
