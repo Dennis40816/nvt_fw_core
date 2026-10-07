@@ -12,9 +12,10 @@ param(
 )
 
 # Also dot-sourced by the fixed runner and the offline tests; no work on import.
-function Stop-Nvt([int]$Code, [string]$Message) {
+function Stop-Nvt([int]$Code, [string]$Message, [switch]$Outdated) {
     $errorObject = [InvalidOperationException]::new($Message)
     $errorObject.Data['NvtCode'] = $Code
+    if ($Outdated) { $errorObject.Data['NvtDefinitionOutdated'] = $true }
     throw $errorObject
 }
 
@@ -67,6 +68,11 @@ function Get-NvtEntry([string]$TaskId) {
 function Get-NvtHostPath {
     # Do not resolve pwsh from PATH or accept a caller-supplied executable.
     Assert-NvtPath (Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'PowerShell\7\pwsh.exe')
+}
+
+function Get-NvtConsolePath {
+    # Resolve the console from Windows, never PATH or a caller-supplied executable.
+    Assert-NvtPath (Join-Path ([Environment]::SystemDirectory) 'conhost.exe')
 }
 
 function Get-NvtDataRoot { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'NVT\sched' }
@@ -219,10 +225,11 @@ function New-NvtDefinition([string]$TaskId, [int]$Minutes = 20, [string]$Directo
     # Current tick reads/writes beside itself; DataDir cannot redirect code or data.
     if ($Directory -ine $scriptDirectory) { Stop-Nvt 3 'DataDir must be the allowlisted tick directory.' }
     $hostPath = Get-NvtHostPath
+    $consolePath = Get-NvtConsolePath
     $runner = Assert-NvtPath (Join-Path $PSScriptRoot 'nvt-sched-runner.ps1')
     $sid = Get-NvtSid
-    $arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -File "' + $runner + '" -Id ' + $TaskId
-    # Legacy definitions are only matched, never registered: keep the source generator's exact action.
+    $arguments = '--headless "' + $hostPath + '" -NoLogo -NoProfile -NonInteractive -File "' + $runner + '" -Id ' + $TaskId
+    # Legacy definitions are only matched and omit the routing arguments.
     if (-not $Legacy) {
         $arguments += ' -TaskPath \NVT\'
         $arguments += ' -CommanderDir "' + ($script:CommanderDir -replace '(\\+)$', '$1$1') + '"'
@@ -253,10 +260,23 @@ function New-NvtDefinition([string]$TaskId, [int]$Minutes = 20, [string]$Directo
     <AllowStartOnDemand>true</AllowStartOnDemand><Enabled>$($Enabled.ToString().ToLowerInvariant())</Enabled><Hidden>false</Hidden>
     <RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>false</WakeToRun><ExecutionTimeLimit>PT5M</ExecutionTimeLimit><Priority>7</Priority>
   </Settings>
-  <Actions Context="CurrentUser"><Exec><Command>$(& $escape $hostPath)</Command><Arguments>$(& $escape $arguments)</Arguments><WorkingDirectory>$(& $escape $Directory)</WorkingDirectory></Exec></Actions>
+  <Actions Context="CurrentUser"><Exec><Command>$(& $escape $consolePath)</Command><Arguments>$(& $escape $arguments)</Arguments><WorkingDirectory>$(& $escape $Directory)</WorkingDirectory></Exec></Actions>
 </Task>
 "@
     return [pscustomobject]@{ TaskPath = if ($Legacy) { '\' } else { '\NVT\' }; TaskName = Get-NvtName $TaskId -Legacy:$Legacy; Xml = $xml }
+}
+
+function ConvertTo-NvtPreviousAction([xml]$Definition) {
+    # Match the previous action exactly; retain every other allowlisted setting.
+    $definition = [xml]$Definition.CloneNode($true)
+    $hostPath = Get-NvtHostPath
+    $prefix = '--headless "' + $hostPath + '" -NoLogo -NoProfile -NonInteractive '
+    $arguments = [string]$definition.Task.Actions.Exec.Arguments
+    if ([string]$definition.Task.Actions.Exec.Command -cne (Get-NvtConsolePath) -or
+        -not $arguments.StartsWith($prefix, [StringComparison]::Ordinal)) { throw 'Expected the headless action.' }
+    $definition.Task.Actions.Exec.Command = $hostPath
+    $definition.Task.Actions.Exec.Arguments = '-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden ' + $arguments.Substring($prefix.Length)
+    return ,$definition
 }
 
 function ConvertTo-NvtXml([string]$Text) {
@@ -349,7 +369,7 @@ function Get-NvtXmlShape([xml]$Document) {
     return (($rows | Sort-Object -CaseSensitive) -join "`n")
 }
 
-function Assert-NvtDefinition([string]$TaskId, [string]$Xml, [string]$ExpectedXml, [switch]$Legacy) {
+function Assert-NvtDefinition([string]$TaskId, [string]$Xml, [string]$ExpectedXml, [switch]$Legacy, [switch]$PreviousAction) {
     try {
         $document = ConvertTo-NvtNormalizedXml (ConvertTo-NvtXml $Xml)
         if (-not $ExpectedXml) {
@@ -360,6 +380,7 @@ function Assert-NvtDefinition([string]$TaskId, [string]$Xml, [string]$ExpectedXm
             $ExpectedXml = (New-NvtDefinition $TaskId ([int]$minutes) -Enabled ($enabled -ceq 'true') -Legacy:$Legacy).Xml
         }
         $expected = ConvertTo-NvtNormalizedXml (ConvertTo-NvtXml $ExpectedXml)
+        if ($PreviousAction) { $expected = ConvertTo-NvtPreviousAction $expected }
         if (-not $Legacy) {
             foreach ($field in 'Author', 'Description') {
                 if ([string]::IsNullOrWhiteSpace([string]$document.Task.RegistrationInfo.$field) -or
@@ -368,7 +389,19 @@ function Assert-NvtDefinition([string]$TaskId, [string]$Xml, [string]$ExpectedXm
         }
         if ((Get-NvtXmlShape $document) -cne (Get-NvtXmlShape $expected)) { throw 'different' }
         return $document
-    } catch { Stop-Nvt 4 'Task definition differs from the allowlisted definition; refusing to overwrite or execute it.' }
+    } catch {
+        if (-not $PreviousAction) {
+            $outdated = $false
+            try {
+                $null = Assert-NvtDefinition $TaskId $Xml $ExpectedXml -Legacy:$Legacy -PreviousAction
+                $outdated = $true
+            } catch { }
+            if ($outdated) {
+                Stop-Nvt 4 'Task definition is outdated; use install or add to register the headless action.' -Outdated
+            }
+        }
+        Stop-Nvt 4 'Task definition differs from the allowlisted definition; refusing to overwrite or execute it.'
+    }
 }
 
 function Get-NvtTask([string]$TaskId, [switch]$Legacy) {
@@ -383,7 +416,50 @@ function Get-NvtTask([string]$TaskId, [switch]$Legacy) {
 
 function Get-NvtOwnedDefinition([string]$TaskId, [switch]$Legacy) {
     $path = if ($Legacy) { '\' } else { '\NVT\' }
-    Assert-NvtDefinition $TaskId (Export-ScheduledTask -TaskName (Get-NvtName $TaskId -Legacy:$Legacy) -TaskPath $path -ErrorAction Stop) -Legacy:$Legacy
+    $xml = Export-ScheduledTask -TaskName (Get-NvtName $TaskId -Legacy:$Legacy) -TaskPath $path -ErrorAction Stop
+    try { Assert-NvtDefinition $TaskId $xml -Legacy:$Legacy }
+    catch {
+        # Explicit legacy migration/runner calls still recognize the original root action.
+        if (-not $Legacy -or -not $_.Exception.Data['NvtDefinitionOutdated']) { throw }
+        Assert-NvtDefinition $TaskId $xml -Legacy -PreviousAction
+    }
+}
+
+function Test-NvtHeadlessTask($Task) {
+    # Only the allowlisted task in its current folder has runner state to resolve.
+    if ($Task.TaskPath -ine '\NVT\' -or $Task.TaskName -ine 'commander-tick') { return $false }
+    $actions = @($Task.Actions)
+    return ($actions.Count -eq 1 -and
+        $actions[0].Execute -ieq (Join-Path ([Environment]::SystemDirectory) 'conhost.exe') -and
+        $actions[0].Arguments -match '^--headless(?:\s|$)')
+}
+
+function Get-NvtRunResult($Task, $Info, $State, $Current = $null) {
+    $unknown = [pscustomobject]@{ Result = 'Unknown'; ResultSource = 'Unknown' }
+    if ($null -eq $Info) { return $unknown }
+    # These are Scheduler facts, not child exit codes. They override retained state.
+    if ($Info.LastTaskResult -in 267009, 267011 -or -not (Test-NvtHeadlessTask $Task)) {
+        return [pscustomobject]@{ Result = $Info.LastTaskResult; ResultSource = 'Scheduler' }
+    }
+    # The action looks headless. Trust runner state only when the whole definition is the allowlisted one.
+    # Callers that already compared the definition pass the outcome in Current to avoid a second export.
+    if ($null -ne $Current) { if (-not $Current) { return $unknown } }
+    else { try { $null = Get-NvtOwnedDefinition 'commander-tick' } catch { return $unknown } }
+    if ($State -isnot [Collections.IDictionary] -or $State.Status -notin 'Succeeded', 'Failed' -or
+        ($State.ExitCode -isnot [int] -and $State.ExitCode -isnot [long]) -or -not $Info.LastRunTime) { return $unknown }
+    try {
+        # Scheduler supplies local DateTime; runner timestamps carry their UTC offset.
+        $lastRunUtc = ([datetime]$Info.LastRunTime).ToUniversalTime()
+        if ($lastRunUtc.Year -le 1900) { return $unknown }
+        $updated = if ($State.UpdatedAtUtc -is [datetime] -or $State.UpdatedAtUtc -is [DateTimeOffset]) {
+            [DateTimeOffset]$State.UpdatedAtUtc
+        } else {
+            [DateTimeOffset]::ParseExact($State.UpdatedAtUtc, 'o', [Globalization.CultureInfo]::InvariantCulture)
+        }
+        # Five seconds allow for timestamp precision and small clock differences.
+        if ($updated.UtcDateTime -lt $lastRunUtc.AddSeconds(-5)) { return $unknown }
+    } catch { return $unknown }
+    return [pscustomobject]@{ Result = $State.ExitCode; ResultSource = 'RunnerState' }
 }
 
 function Get-NvtList {
@@ -411,12 +487,13 @@ function Get-NvtList {
                 try { $null = Get-NvtOwnedDefinition 'commander-tick' }
                 catch {
                     if ($_.Exception.Data['NvtCode'] -ne 4) { throw }
-                    $status = 'DefinitionMismatch'
+                    $status = if ($_.Exception.Data['NvtDefinitionOutdated']) { 'DefinitionOutdated' } else { 'DefinitionMismatch' }
                 }
             }
             $state = Read-NvtState 'commander-tick'
             $history = Read-NvtHistory 'commander-tick'
         }
+        $runResult = Get-NvtRunResult $task $info $state ($managed -and $installed -and $status -notin 'DefinitionMismatch', 'DefinitionOutdated')
         [pscustomobject][ordered]@{
             TaskPath = $task.TaskPath
             TaskName = $task.TaskName
@@ -426,6 +503,7 @@ function Get-NvtList {
             Worker = if ($managed) { Get-NvtLiveness $state } else { $null }
             LastSuccessUtc = $state.LastSuccessUtc; ExitCode = $state.ExitCode
             LastTaskResult = $info.LastTaskResult; NextRunTime = $info.NextRunTime
+            Result = $runResult.Result; ResultSource = $runResult.ResultSource
             History = $history
         }
     }
@@ -434,7 +512,7 @@ function Get-NvtList {
 function Format-NvtList([object[]]$Tasks) {
     foreach ($task in $Tasks) {
         # Explicit formatting keeps nested history visible in terminals and pipes.
-        ($task | Select-Object TaskPath, TaskName, Legacy, Status, State, Worker, LastSuccessUtc, ExitCode, LastTaskResult, NextRunTime |
+        ($task | Select-Object TaskPath, TaskName, Legacy, Status, State, Worker, LastSuccessUtc, ExitCode, Result, ResultSource, LastTaskResult, NextRunTime |
             Format-List | Out-String).TrimEnd()
         if ($null -eq $task.History) { 'History: Unknown (unreadable, invalid or busy)' }
         elseif ($task.History.Count -eq 0) { 'History: (none)' }
@@ -486,7 +564,22 @@ function Invoke-NvtCommand([string]$Operation, [string]$TaskId, [int]$Minutes = 
         if ($Preview) { return "TaskPath: \NVT\`nTaskName: $name`n$($definition.Xml)" }
         $existing = Get-NvtTask $TaskId
         if ($existing) {
-            $null = Assert-NvtDefinition $TaskId (Export-ScheduledTask -TaskName $name -TaskPath '\NVT\' -ErrorAction Stop) $definition.Xml
+            try {
+                $null = Assert-NvtDefinition $TaskId (Export-ScheduledTask -TaskName $name -TaskPath '\NVT\' -ErrorAction Stop) $definition.Xml
+            } catch {
+                if (-not $_.Exception.Data['NvtDefinitionOutdated']) { throw }
+                $handle = Open-NvtRunLock $TaskId
+                try {
+                    # Read Scheduler state again under the lock; the earlier read can be stale.
+                    $current = Get-NvtTask $TaskId
+                    if ((Get-NvtLiveness (Read-NvtState $TaskId)) -ne 'Exited' -or -not $current -or [string]$current.State -cne 'Ready') {
+                        Stop-Nvt 5 'Previous worker or Scheduler state is active or unknown; refusing to update.'
+                    }
+                    # Recheck under the runner lock before replacing this exact previous definition.
+                    $null = Assert-NvtDefinition $TaskId (Export-ScheduledTask -TaskName $name -TaskPath '\NVT\' -ErrorAction Stop) $definition.Xml -PreviousAction
+                    $null = Register-ScheduledTask -TaskName $name -TaskPath '\NVT\' -Xml $definition.Xml -Force -ErrorAction Stop
+                } finally { $handle.Dispose() }
+            }
         } else {
             # Preserve previous evidence and refuse to lose track of a still-live worker.
             $old = Read-NvtState $TaskId
@@ -550,7 +643,10 @@ function Read-NvtAuditSnapshot($Stream) {
 }
 
 function Get-NvtAuditFlags($Task) {
-    if ($null -ne $Task.LastTaskResult -and $Task.LastTaskResult -notin 0, 267009, 267011) { '失敗' }
+    $result = if ($Task.ResultSource) { $Task.Result } else { $Task.LastTaskResult }
+    if ($Task.ResultSource -eq 'Unknown' -or
+        ($Task.ResultSource -eq 'RunnerState' -and $result -ne 0) -or
+        ($null -ne $result -and $result -notin 0, 267009, 267011)) { '失敗' }
     if ($Task.LastTaskResult -eq 267011 -or -not $Task.LastRunTime -or ([datetime]$Task.LastRunTime).Year -le 1900) { '從沒跑過' }
     if ($Task.State -eq 'Disabled') { '已停用' }
     if ([string]::IsNullOrWhiteSpace($Task.Author)) { '沒有作者' }
@@ -573,10 +669,13 @@ function Invoke-NvtAudit([DateTimeOffset]$At = [DateTimeOffset]::Now) {
             foreach ($task in (Get-ScheduledTask -ErrorAction Stop | Sort-Object TaskPath, TaskName)) {
                 if ($task.TaskPath -eq '\Microsoft\' -or $task.TaskPath.StartsWith('\Microsoft\', [StringComparison]::OrdinalIgnoreCase)) { continue }
                 $info = Get-ScheduledTaskInfo -TaskName $task.TaskName -TaskPath $task.TaskPath -ErrorAction Stop
+                $state = if (Test-NvtHeadlessTask $task) { Read-NvtState 'commander-tick' } else { $null }
+                $runResult = Get-NvtRunResult $task $info $state
                 [pscustomobject][ordered]@{
                     TaskPath = [string]$task.TaskPath; TaskName = [string]$task.TaskName; State = [string]$task.State
                     LastRunTime = if ($null -ne $info.LastRunTime) { ([datetime]$info.LastRunTime).ToString('o') } else { $null }
                     LastTaskResult = if ($null -ne $info.LastTaskResult) { [long]$info.LastTaskResult } else { $null }
+                    Result = $runResult.Result; ResultSource = $runResult.ResultSource
                     NextRunTime = if ($null -ne $info.NextRunTime) { ([datetime]$info.NextRunTime).ToString('o') } else { $null }
                     Author = [string]$task.Author; Description = [string]$task.Description
                 }
@@ -600,7 +699,7 @@ function Invoke-NvtAudit([DateTimeOffset]$At = [DateTimeOffset]::Now) {
             foreach ($name in $pair[1]) { $lines.Add("- $($pair[0])：$(ConvertTo-NvtAuditText $name)") }
         }
         foreach ($task in $attention) {
-            $lines.Add("- $(ConvertTo-NvtAuditText ($task.TaskPath + $task.TaskName))：$((Get-NvtAuditFlags $task) -join '、')；結果 $($task.LastTaskResult)。")
+            $lines.Add("- $(ConvertTo-NvtAuditText ($task.TaskPath + $task.TaskName))：$((Get-NvtAuditFlags $task) -join '、')；結果 $($task.Result)；來源 $($task.ResultSource)。")
         }
         if ($previous -and $attention.Count -eq 0 -and $added.Count -eq 0 -and $removed.Count -eq 0) { $lines.Add('沒有新增、刪除或異常標記。') }
         $lines.Add('')
@@ -623,9 +722,9 @@ function Invoke-NvtAudit([DateTimeOffset]$At = [DateTimeOffset]::Now) {
                 $flags = @(Get-NvtAuditFlags $task)
                 $lines.Add("- **$(ConvertTo-NvtAuditText ($task.TaskPath + $task.TaskName))**")
                 $lines.Add("  狀態：$(ConvertTo-NvtAuditText $task.State)；標記：$(if ($flags.Count) { $flags -join '、' } else { '無' })。")
-                $lines.Add("  上次：$(ConvertTo-NvtAuditText $task.LastRunTime)；結果：$($task.LastTaskResult)；下次：$(ConvertTo-NvtAuditText $task.NextRunTime)。")
+                $lines.Add("  上次：$(ConvertTo-NvtAuditText $task.LastRunTime)；結果：$($task.Result)；來源：$($task.ResultSource)；下次：$(ConvertTo-NvtAuditText $task.NextRunTime)。")
                 $lines.Add("  作者：$(ConvertTo-NvtAuditText $task.Author)。說明：$(ConvertTo-NvtAuditText $task.Description)")
-                if ($group -eq '我們的' -and $task.TaskName -eq 'commander-tick' -and $task.LastTaskResult -eq 10) {
+                if ($group -eq '我們的' -and $task.TaskName -eq 'commander-tick' -and $task.Result -eq 10) {
                     $lines.Add('  注意：依稽核規則，非零結果 10 標記失敗；此 tick 的 10 表示有新變化，runner 視為成功。')
                 }
                 $lines.Add('')
@@ -699,15 +798,20 @@ function Invoke-NvtRunner([string]$TaskId, [switch]$Legacy) {
         $errorCode = if ($_.Exception.Data.Contains('NvtCode')) { [int]$_.Exception.Data['NvtCode'] } else { 9 }
         try { Write-NvtError $TaskId 'runner' $errorCode } catch { }
     } finally {
-        if ($null -ne $state) {
-            $state.ExitCode = $code
-            $state.UpdatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
-            try { Write-NvtJson $statePath $state } catch { $code = 1 }
-        }
+        # Settle the history outcome first, so the published state never shows success for a failed run.
         try { Add-NvtHistory $TaskId $started ([DateTimeOffset]::UtcNow.ToString('o')) $code }
         catch {
             $code = 1
             try { Write-NvtError $TaskId 'runner' 9 } catch { }
+        }
+        if ($null -ne $state) {
+            if ($code -ne 0 -and $state.Status -eq 'Succeeded' -and $code -notin $entry.SuccessExitCodes) {
+                $state.Status = 'Failed'; $state.LastSuccessUtc = $previous.LastSuccessUtc
+            }
+            $state.ExitCode = $code
+            $state.UpdatedAtUtc = [DateTimeOffset]::UtcNow.ToString('o')
+            # A failed state write leaves older state, which queries report as Unknown.
+            try { Write-NvtJson $statePath $state } catch { $code = 1 }
         }
         if ($null -ne $handle) { $handle.Dispose() }
     }

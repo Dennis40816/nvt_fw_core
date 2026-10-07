@@ -21,6 +21,7 @@ $script:fakeState = $null
 $script:taskState = 'Ready'
 $script:probe = @{ Kind = 'Missing' }
 $script:denyLock = $false
+$script:onLock = $null
 $script:denyDisable = $false
 $script:schedulerUnavailable = $false
 $script:extraTasks = @()
@@ -35,8 +36,8 @@ $realProbe = ${function:Get-NvtProcessProbe}
 $realLock = ${function:Open-NvtRunLock}
 $realEntry = ${function:Get-NvtEntry}
 
-# Frozen from the source generator's legacy output (EveryMinutes 20, enabled); machine values are placeholders.
-# Built independently of New-NvtDefinition so migration tests catch drift from the source action.
+# Independent legacy headless fixture (EveryMinutes 20, enabled); machine values are placeholders.
+# Previous-action fixtures below also exercise the original root action during migration.
 $frozenLegacyTemplate = @'
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -58,15 +59,27 @@ $frozenLegacyTemplate = @'
     <AllowStartOnDemand>true</AllowStartOnDemand><Enabled>true</Enabled><Hidden>false</Hidden>
     <RunOnlyIfIdle>false</RunOnlyIfIdle><WakeToRun>false</WakeToRun><ExecutionTimeLimit>PT5M</ExecutionTimeLimit><Priority>7</Priority>
   </Settings>
-  <Actions Context="CurrentUser"><Exec><Command>{{HOST}}</Command><Arguments>-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -File &quot;{{RUNNER}}&quot; -Id commander-tick</Arguments><WorkingDirectory>{{DIR}}</WorkingDirectory></Exec></Actions>
+  <Actions Context="CurrentUser"><Exec><Command>{{CONSOLE}}</Command><Arguments>--headless &quot;{{HOST}}&quot; -NoLogo -NoProfile -NonInteractive -File &quot;{{RUNNER}}&quot; -Id commander-tick</Arguments><WorkingDirectory>{{DIR}}</WorkingDirectory></Exec></Actions>
 </Task>
 '@
-function Get-FrozenLegacyXml {
+function Get-PreviousActionXml([string]$Xml) {
+    # Build historical fixtures independently of the production compatibility matcher.
+    $document = ConvertTo-NvtXml $Xml
+    $document.Task.Actions.Exec.Command = Get-NvtHostPath
+    $arguments = [string]$document.Task.Actions.Exec.Arguments
+    $arguments = $arguments -replace '^--headless "[^"]+" ', ''
+    $document.Task.Actions.Exec.Arguments = $arguments.Replace('-NonInteractive -File ', '-NonInteractive -WindowStyle Hidden -File ')
+    return $document.OuterXml
+}
+function Get-FrozenLegacyXml([switch]$PreviousAction) {
     $escape = { param($value) [Security.SecurityElement]::Escape([string]$value) }
-    $frozenLegacyTemplate.Replace('{{SID}}', (& $escape (Get-NvtSid))).
+    $xml = $frozenLegacyTemplate.Replace('{{SID}}', (& $escape (Get-NvtSid))).
+        Replace('{{CONSOLE}}', (& $escape (Get-NvtConsolePath))).
         Replace('{{HOST}}', (& $escape (Get-NvtHostPath))).
         Replace('{{RUNNER}}', (& $escape (Join-Path $PSScriptRoot 'nvt-sched-runner.ps1'))).
         Replace('{{DIR}}', (& $escape (Split-Path (Get-NvtEntry 'commander-tick').Script -Parent)))
+    if ($PreviousAction) { return Get-PreviousActionXml $xml }
+    return $xml
 }
 
 function Get-NvtSid { 'S-1-5-21-100-200-300-1001' }
@@ -82,6 +95,7 @@ function Open-NvtRunLock {
     param($TaskId)
     $script:calls.Add('lock')
     if ($script:denyLock) { Stop-Nvt 7 'Fake busy runner.' }
+    if ($script:onLock) { & $script:onLock }
     return [IO.MemoryStream]::new()
 }
 function Get-ScheduledTask {
@@ -89,7 +103,13 @@ function Get-ScheduledTask {
     $script:calls.Add('get')
     Assert (-not $TaskPath) 'Enumerate and explicitly filter Scheduler paths.'
     if ($script:schedulerUnavailable) { throw 'Fake service failure.' }
-    if ($script:taskXml) { [pscustomobject]@{ TaskName = Get-NvtName 'commander-tick'; TaskPath = '\NVT\'; State = $script:taskState; Author = 'commander'; Description = 'mock' } }
+    if ($script:taskXml) {
+        $document = ConvertTo-NvtXml $script:taskXml
+        $actions = @($document.Task.Actions.Exec | ForEach-Object {
+            [pscustomobject]@{ Execute = [string]$_.Command; Arguments = [string]$_.Arguments }
+        })
+        [pscustomobject]@{ TaskName = Get-NvtName 'commander-tick'; TaskPath = '\NVT\'; State = $script:taskState; Author = 'commander'; Description = 'mock'; Actions = $actions }
+    }
     if ($script:legacyXml) { [pscustomobject]@{ TaskName = Get-NvtName 'commander-tick' -Legacy; TaskPath = '\'; State = 'Ready' } }
     $script:extraTasks
 }
@@ -102,10 +122,12 @@ function Export-ScheduledTask {
     return $script:taskXml
 }
 function Register-ScheduledTask {
-    [CmdletBinding()]param($TaskName, $TaskPath, $Xml)
+    [CmdletBinding()]param($TaskName, $TaskPath, $Xml, [switch]$Force)
     $script:calls.Add('register')
     $script:targets.Add("register|$TaskPath$TaskName")
     Assert ($TaskPath -ceq '\NVT\' -and $TaskName -ceq 'commander-tick') 'Register exact new target.'
+    Assert ([bool]$Force -eq [bool]$script:taskXml) 'Force only replaces an existing definition.'
+    if ($Force) { $script:calls.Add('force') }
     if ($script:denyRegister) { throw 'Fake registration failure.' }
     $script:taskXml = $Xml
     if ($script:badRegistration) { $script:taskXml = $Xml.Replace('commander</Author>', 'other</Author>') }
@@ -160,6 +182,7 @@ function Test([string]$Name, [scriptblock]$Action) {
     $script:fakeState = @{ Status = 'Running'; ProcessId = 43210; StartTimeUtc = '2026-10-05T00:00:00.0000000Z'; LastSuccessUtc = $null; ExitCode = $null }
     $script:probe = @{ Kind = 'Missing' }
     $script:denyLock = $false
+    $script:onLock = $null
     $script:denyDisable = $false
     $script:schedulerUnavailable = $false
     $script:extraTasks = @()
@@ -197,6 +220,27 @@ function Invoke-MockCli([string]$Scenario, [switch]$AsJson) {
     [pscustomobject]@{ Code = $LASTEXITCODE; Text = ($output | Out-String).Trim() }
 }
 
+function Set-MockRunResult([int]$Code) {
+    $lastRun = [datetime]::SpecifyKind([datetime]'2026-10-05T04:00:00', [DateTimeKind]::Utc)
+    $script:infoByKey['\NVT\commander-tick'] = [pscustomobject]@{
+        LastRunTime = $lastRun.ToLocalTime(); LastTaskResult = 0; NextRunTime = $lastRun.AddMinutes(20).ToLocalTime()
+    }
+    $script:fakeState = @{
+        Status = if ($Code -in 0, 10) { 'Succeeded' } else { 'Failed' }
+        ProcessId = 43210; StartTimeUtc = $lastRun.ToString('o')
+        UpdatedAtUtc = $lastRun.AddSeconds(2).ToString('o'); ExitCode = $Code; LastSuccessUtc = $null
+    }
+}
+
+function Invoke-MockResultAudit {
+    $resultAuditRoot = Join-Path $testRoot ('result-audit-' + [guid]::NewGuid().ToString('N'))
+    $null = New-Item -ItemType Directory -Path $resultAuditRoot
+    function Get-NvtDataRoot { Join-Path $resultAuditRoot 'NVT\sched' }
+    $audit = Invoke-NvtAudit ([DateTimeOffset]'2026-10-05T08:30:00+08:00')
+    $snapshot = Get-Content -LiteralPath (Join-Path (Split-Path $audit.Path -Parent) 'latest.json') -Raw | ConvertFrom-Json -AsHashtable
+    [pscustomobject]@{ Tasks = $snapshot.Tasks; Report = Get-Content -LiteralPath $audit.Path -Raw }
+}
+
 try {
     # Exercise the real CLI formatter, JSON and error/exit handling in a child
     # process, with every Scheduler entry point replaced and all IO isolated.
@@ -220,7 +264,11 @@ function Get-ScheduledTask {
     if ($TaskPath) { throw 'Wrong path.' }
     if ($Scenario -eq 'Failure') { throw 'discard-this-service-error' }
     if ($Scenario -ne 'Missing') {
-        [pscustomobject]@{ TaskName = 'commander-tick'; TaskPath = '\NVT\'; State = 'Ready' }
+        $document = ConvertTo-NvtXml (New-NvtDefinition 'commander-tick').Xml
+        if ($Scenario -eq 'Outdated') { $document = ConvertTo-NvtPreviousAction $document }
+        if ($Scenario -eq 'Mismatch') { $document.Task.Actions.Exec.Command = 'cmd.exe' }
+        $action = [pscustomobject]@{ Execute = [string]$document.Task.Actions.Exec.Command; Arguments = [string]$document.Task.Actions.Exec.Arguments }
+        [pscustomobject]@{ TaskName = 'commander-tick'; TaskPath = '\NVT\'; State = 'Ready'; Actions = @($action) }
     }
     if ($Scenario -eq 'Unmanaged') {
         [pscustomobject]@{ TaskName = 'old-tick'; TaskPath = '\NVT\'; State = 'Disabled' }
@@ -229,7 +277,8 @@ function Get-ScheduledTask {
 function Get-ScheduledTaskInfo {
     [CmdletBinding()]param($TaskName, $TaskPath)
     if ($Scenario -eq 'InfoFailure') { throw 'discard-this-info-error' }
-    [pscustomobject]@{ LastTaskResult = 10; NextRunTime = [datetime]'2026-10-05T12:20:00' }
+    $lastRun = [datetime]::SpecifyKind([datetime]'2026-10-05T04:00:00', [DateTimeKind]::Utc).ToLocalTime()
+    [pscustomobject]@{ LastRunTime = $lastRun; LastTaskResult = 0; NextRunTime = $lastRun.AddMinutes(20) }
 }
 function Deny-Mutation {
     Set-Content -LiteralPath (Join-Path $PSScriptRoot 'forbidden-mutation') -Value forbidden
@@ -243,13 +292,23 @@ function Export-ScheduledTask {
     if ($TaskPath -cne '\NVT\' -or $TaskName -cne (Get-NvtName 'commander-tick')) { throw 'Wrong export target.' }
     if ($Scenario -eq 'ExportFailure') { throw 'discard-this-export-error' }
     $expected = ConvertTo-NvtXml (New-NvtDefinition 'commander-tick').Xml
-    $registered = ConvertTo-NvtXml (Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'registered-task.fixture.xml') -Raw)
+    $fixture = Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'registered-task.fixture.xml') -Raw
+    $bindings = @{
+        '{{CONHOST_PATH}}' = Get-NvtConsolePath; '{{PWSH_PATH}}' = Get-NvtHostPath
+        '{{RUNNER_PATH}}' = Join-Path (Split-Path $PSScriptRoot -Parent) 'nvt-sched-runner.ps1'
+        '{{COMMANDER_DIR}}' = $script:CommanderDir
+        '{{WORKING_DIR}}' = Split-Path (Get-NvtEntry 'commander-tick').Script -Parent
+    }
+    foreach ($key in $bindings.Keys) { $fixture = $fixture.Replace($key, [Security.SecurityElement]::Escape([string]$bindings[$key])) }
+    $registered = ConvertTo-NvtXml $fixture
     $registered.Task.Principals.Principal.UserId = Get-NvtSid
     foreach ($node in $expected.Task.RegistrationInfo.ChildNodes) {
         $null = $registered.Task.RegistrationInfo.AppendChild($registered.ImportNode($node, $true))
     }
-    foreach ($field in 'Command', 'Arguments', 'WorkingDirectory') {
-        $registered.Task.Actions.Exec.$field = $expected.Task.Actions.Exec.$field
+    if ($Scenario -eq 'Outdated') {
+        $registered.Task.Actions.Exec.Command = Get-NvtHostPath
+        $arguments = [string]$registered.Task.Actions.Exec.Arguments -replace '^--headless "[^"]+" ', ''
+        $registered.Task.Actions.Exec.Arguments = $arguments.Replace('-NonInteractive -File ', '-NonInteractive -WindowStyle Hidden -File ')
     }
     if ($Scenario -eq 'Mismatch') { $registered.Task.Actions.Exec.Command = 'cmd.exe' }
     $registered.OuterXml
@@ -264,14 +323,19 @@ function Stop-ScheduledTask { Deny-Mutation }
 Invoke-NvtCli -Command list -Json:$AsJson
 '@
     $script:baseline = (New-NvtDefinition 'commander-tick').Xml
-    $registered = ConvertTo-NvtXml (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'registered-task.fixture.xml') -Raw)
+    $fixture = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'registered-task.fixture.xml') -Raw
+    $bindings = @{
+        '{{CONHOST_PATH}}' = Get-NvtConsolePath; '{{PWSH_PATH}}' = Get-NvtHostPath
+        '{{RUNNER_PATH}}' = Join-Path $PSScriptRoot 'nvt-sched-runner.ps1'
+        '{{COMMANDER_DIR}}' = $commanderRoot
+        '{{WORKING_DIR}}' = $commanderRoot
+    }
+    foreach ($key in $bindings.Keys) { $fixture = $fixture.Replace($key, [Security.SecurityElement]::Escape([string]$bindings[$key])) }
+    $registered = ConvertTo-NvtXml $fixture
     $expected = ConvertTo-NvtXml $script:baseline
-    # Upgrade only registration metadata/action paths; retain execution defaults/account omissions.
+    # Fill registration metadata and literal paths; retain execution defaults/account omissions.
     foreach ($node in $expected.Task.RegistrationInfo.ChildNodes) {
         $null = $registered.Task.RegistrationInfo.AppendChild($registered.ImportNode($node, $true))
-    }
-    foreach ($field in 'Command', 'Arguments', 'WorkingDirectory') {
-        $registered.Task.Actions.Exec.$field = $expected.Task.Actions.Exec.$field
     }
     $script:registered = $registered.OuterXml
     Test 'name uses injected SID and exact allowlisted ID' {
@@ -386,14 +450,19 @@ Invoke-NvtCli -Command list -Json:$AsJson
     }
     Test 'mock CLI missing and installed queries exit zero and preserve array JSON' {
         $before = Get-FixtureSnapshot
-        foreach ($scenario in 'Missing', 'Installed', 'Unmanaged', 'Mismatch') {
+        foreach ($scenario in 'Missing', 'Installed', 'Unmanaged', 'Mismatch', 'Outdated') {
             $plain = Invoke-MockCli $scenario
             $jsonResult = Invoke-MockCli $scenario -AsJson
             Assert ($plain.Code -eq 0 -and $jsonResult.Code -eq 0)
             $parsed = ConvertFrom-Json -InputObject $jsonResult.Text -NoEnumerate
             Assert ($parsed -is [array]) 'JSON must always be an array, even with one result.'
             Assert ($parsed[0].History -is [array] -and $parsed[0].History.Count -eq 0)
-            $expected = if ($scenario -eq 'Missing') { 'NotInstalled' } elseif ($scenario -eq 'Mismatch') { 'DefinitionMismatch' } else { 'Installed' }
+            $expected = switch ($scenario) {
+                'Missing' { 'NotInstalled' }
+                'Mismatch' { 'DefinitionMismatch' }
+                'Outdated' { 'DefinitionOutdated' }
+                default { 'Installed' }
+            }
             Assert ($parsed[0].Status -ceq $expected -and $plain.Text.Contains($expected))
             if ($scenario -eq 'Unmanaged') { Assert ($parsed.Count -eq 2 -and $parsed[1].Status -ceq 'Unmanaged') }
             if ($ShowExamples -and $scenario -in 'Missing', 'Mismatch') {
@@ -431,8 +500,9 @@ Invoke-NvtCli -Command list -Json:$AsJson
         Assert ($doc.Task.Settings.AllowHardTerminate -eq 'true')
         Assert ($doc.Task.Settings.WakeToRun -eq 'false')
         Assert ($doc.Task.Settings.DisallowStartIfOnBatteries -eq 'false')
-        Assert ($doc.Task.Actions.Exec.Command -eq (Get-NvtHostPath))
-        Assert ($doc.Task.Actions.Exec.Arguments -match '-NoProfile -NonInteractive -WindowStyle Hidden -File "')
+        Assert ($doc.Task.Actions.Exec.Command -ceq (Join-Path ([Environment]::SystemDirectory) 'conhost.exe'))
+        Assert ($doc.Task.Actions.Exec.Arguments.StartsWith('--headless "' + (Get-NvtHostPath) + '" -NoLogo -NoProfile -NonInteractive -File "'))
+        Assert ($doc.Task.Actions.Exec.Arguments -notmatch '-WindowStyle')
         Assert ($doc.Task.Actions.Exec.Arguments -notmatch 'Password|EncodedCommand|ExecutionPolicy')
         Assert ($doc.Task.Actions.Exec.Arguments.EndsWith('-CommanderDir "' + $commanderRoot + '"'))
         Assert ($script:calls.Count -eq 0)
@@ -477,6 +547,100 @@ Invoke-NvtCli -Command list -Json:$AsJson
     Test 'same settings do not register again' {
         $null = Invoke-NvtCommand add 'commander-tick'
         Assert ('register' -notin $script:calls)
+    }
+    Test 'previous pwsh-hidden action is outdated and cannot run or remove as current' {
+        foreach ($xml in $script:baseline, $script:registered) {
+            $script:taskXml = Get-PreviousActionXml $xml
+            $before = Get-FixtureSnapshot
+            $result = Invoke-NvtCommand list 'commander-tick'
+            Assert ($result.Status -ceq 'DefinitionOutdated' -and $result.LastTaskResult -eq 10)
+            Assert ((Get-FixtureSnapshot) -ceq $before)
+            $caught = $null
+            try { $null = Assert-NvtDefinition 'commander-tick' $script:taskXml } catch { $caught = $_ }
+            Assert ($caught.Exception.Data['NvtCode'] -eq 4 -and $caught.Exception.Data['NvtDefinitionOutdated'])
+            Assert ($caught.Exception.Message -match 'outdated.*install or add')
+            Reject { Invoke-NvtCommand run 'commander-tick' } 4
+            Reject { Invoke-NvtCommand remove 'commander-tick' } 4
+        }
+        Assert (@($script:calls | Where-Object { $_ -in 'register', 'start', 'disable', 'unregister' }).Count -eq 0)
+    }
+    Test 'add and install replace only the exact previous action and retain records' {
+        foreach ($operation in 'add', 'install') {
+            $script:calls.Clear()
+            $script:taskXml = Get-PreviousActionXml $script:registered
+            $before = Get-FixtureSnapshot
+            $null = Invoke-NvtCommand $operation 'commander-tick'
+            Assert (@($script:calls | Where-Object { $_ -eq 'register' }).Count -eq 1)
+            Assert ('force' -in $script:calls -and $script:calls.IndexOf('lock') -lt $script:calls.IndexOf('register'))
+            $null = Assert-NvtDefinition 'commander-tick' $script:taskXml $script:baseline
+            Assert ((Get-FixtureSnapshot) -ceq $before) 'Update must retain state and history bytes.'
+            $null = Invoke-NvtCommand $operation 'commander-tick'
+            Assert (@($script:calls | Where-Object { $_ -eq 'register' }).Count -eq 1)
+            Assert ((Invoke-NvtCommand list 'commander-tick').Status -ceq 'Installed')
+        }
+    }
+    Test 'previous action with modified settings is a mismatch and cannot be replaced' {
+        foreach ($pair in @(
+            @('PT20M', 'PT30M'),
+            @('<Enabled>true</Enabled><Hidden>', '<Enabled>false</Enabled><Hidden>'),
+            @('nvt-sched-runner.ps1', 'other.ps1'),
+            @('LeastPrivilege', 'HighestAvailable'),
+            @('InteractiveToken', 'Password'),
+            @('<ExecutionTimeLimit>PT5M', '<ExecutionTimeLimit>PT6M'),
+            @('commander</Author>', 'other</Author>'),
+            @('-WindowStyle Hidden', '-WindowStyle Hidden -NoExit'),
+            @('</Actions>', '<Exec><Command>cmd.exe</Command></Exec></Actions>')
+        )) {
+            $script:taskXml = (Get-PreviousActionXml $script:baseline).Replace($pair[0], $pair[1])
+            $original = $script:taskXml
+            Reject { Invoke-NvtCommand add 'commander-tick' } 4
+            Assert ($script:taskXml -ceq $original)
+        }
+        Assert ('register' -notin $script:calls -and 'disable' -notin $script:calls)
+        $script:taskXml = (Get-PreviousActionXml $script:baseline).Replace('nvt-sched-runner.ps1', 'other.ps1')
+        Assert ((Invoke-NvtCommand list 'commander-tick').Status -ceq 'DefinitionMismatch')
+    }
+    Test 'outdated update refuses active or unknown workers and unavailable locks' {
+        $script:taskXml = Get-PreviousActionXml $script:baseline
+        $original = $script:taskXml
+        $script:probe = @{ Kind = 'Found'; StartTimeUtc = $script:fakeState.StartTimeUtc }
+        Reject { Invoke-NvtCommand add 'commander-tick' } 5
+        $script:probe = @{ Kind = 'Unknown' }
+        Reject { Invoke-NvtCommand add 'commander-tick' } 5
+        $script:probe = @{ Kind = 'Missing' }
+        $script:taskState = 'Running'
+        Reject { Invoke-NvtCommand add 'commander-tick' } 5
+        $script:taskState = 'Ready'
+        $script:denyLock = $true
+        Reject { Invoke-NvtCommand add 'commander-tick' } 7
+        Assert ('register' -notin $script:calls -and $script:taskXml -ceq $original)
+    }
+    Test 'outdated update rereads Scheduler state under the runner lock' {
+        $script:taskXml = Get-PreviousActionXml $script:baseline
+        $original = $script:taskXml
+        $script:probe = @{ Kind = 'Missing' }
+        $script:onLock = { $script:taskState = 'Running' }
+        Reject { Invoke-NvtCommand add 'commander-tick' } 5
+        Assert ('register' -notin $script:calls -and $script:taskXml -ceq $original)
+    }
+    Test 'failed outdated registration preserves the previous definition and legacy task' {
+        $script:taskXml = Get-PreviousActionXml $script:baseline
+        $script:legacyXml = Get-FrozenLegacyXml -PreviousAction
+        $original = $script:taskXml
+        $legacyBefore = $script:legacyXml
+        $script:denyRegister = $true
+        Reject { Invoke-NvtCommand install 'commander-tick' }
+        Assert ($script:taskXml -ceq $original -and $script:legacyXml -ceq $legacyBefore)
+        Assert ('disable' -notin $script:calls -and 'unregister' -notin $script:calls)
+    }
+    Test 'failed outdated update verification preserves legacy and returns an error' {
+        $script:taskXml = Get-PreviousActionXml $script:baseline
+        $script:legacyXml = Get-FrozenLegacyXml -PreviousAction
+        $legacyBefore = $script:legacyXml
+        $script:badRegistration = $true
+        Reject { Invoke-NvtCommand install 'commander-tick' } 4
+        Assert ($script:legacyXml -ceq $legacyBefore)
+        Assert ('disable' -notin $script:calls -and 'unregister' -notin $script:calls)
     }
     Test 'different interval is not overwritten' {
         Reject { Invoke-NvtCommand add 'commander-tick' 30 } 4
@@ -719,6 +883,18 @@ Invoke-NvtCli -Command list -Json:$AsJson
             Assert ((Get-Content -LiteralPath (Get-NvtStatePath 'commander-tick' 'history.jsonl') -Raw) -notmatch 'discard-this')
         }
     }
+    Test 'runner history failure publishes the same failed code it returns' {
+        $fixture = Join-Path $testRoot 'fixture-tick.ps1'
+        function Get-NvtEntry { param($TaskId) @{ Script = $fixture; SuccessExitCodes = @(0, 10) } }
+        function Get-NvtOwnedDefinition { param($TaskId) ConvertTo-NvtXml $script:taskXml }
+        function Add-NvtHistory { throw 'history unavailable' }
+        Set-Content -LiteralPath $fixture -Value 'exit 0'
+        $script:fakeState.LastSuccessUtc = '2026-10-04T00:00:00.0000000Z'
+        $returned = Invoke-NvtRunner 'commander-tick'
+        $state = & $realReadState 'commander-tick'
+        Assert ($returned -eq 1 -and $state.ExitCode -eq $returned) "Returned $returned; state shows $($state.ExitCode)."
+        Assert ($state.Status -eq 'Failed' -and $state.LastSuccessUtc -eq $script:fakeState.LastSuccessUtc)
+    }
     Test 'runner exception stores only an error code and preserves last success' {
         $fixture = Join-Path $testRoot 'fixture-tick.ps1'
         function Get-NvtEntry { param($TaskId) @{ Script = $fixture; SuccessExitCodes = @(0, 10) } }
@@ -816,9 +992,11 @@ Invoke-NvtCli -Command list -Json:$AsJson
         $jsonResult = Invoke-MockCli 'Unmanaged' -AsJson
         Assert ($plain.Code -eq 0 -and $jsonResult.Code -eq 0)
         Assert ($plain.Text -match 'History \(latest 5, newest first\)' -and $plain.Text -match 'StartTimeUtc\s+EndTimeUtc\s+ExitCode')
+        Assert ($plain.Text -match 'Result\s+: 10' -and $plain.Text -match 'ResultSource\s+: RunnerState')
         $parsed = ConvertFrom-Json -InputObject $jsonResult.Text -NoEnumerate
         Assert ($parsed.Count -eq 2 -and $parsed[0].History -is [array] -and $parsed[0].History.Count -eq 1)
         Assert ($parsed[0].History[0].ExitCode -eq 10 -and $parsed[0].ExitCode -eq 10)
+        Assert ($parsed[0].Result -eq 10 -and $parsed[0].ResultSource -ceq 'RunnerState' -and $parsed[0].LastTaskResult -eq 0)
         Assert ($parsed[1].History -is [array] -and $parsed[1].History.Count -eq 0)
         Assert ((Get-FixtureSnapshot) -ceq $before)
         if ($ShowExamples) {
@@ -842,7 +1020,7 @@ Invoke-NvtCli -Command list -Json:$AsJson
             Reject { Assert-NvtDefinition 'commander-tick' $changed.OuterXml $definition.Xml } 4
         }
     }
-    Test 'legacy definition reproduces the source action without TaskPath or CommanderDir' {
+    Test 'legacy headless definition matches its fixture without TaskPath or CommanderDir' {
         $legacy = New-NvtDefinition 'commander-tick' -Legacy
         $frozen = Get-FrozenLegacyXml
         Assert ($legacy.TaskPath -ceq '\' -and $legacy.TaskName -ceq (Get-NvtName 'commander-tick' -Legacy))
@@ -854,9 +1032,17 @@ Invoke-NvtCli -Command list -Json:$AsJson
         $withDir = $frozen.Replace(' -Id commander-tick<', ' -Id commander-tick -CommanderDir &quot;X&quot;<')
         Reject { Assert-NvtDefinition 'commander-tick' $withDir -Legacy } 4
     }
+    Test 'original legacy action remains recognizable only through explicit legacy calls' {
+        $script:legacyXml = Get-FrozenLegacyXml -PreviousAction
+        $null = Get-NvtOwnedDefinition 'commander-tick' -Legacy
+        $foreign = $script:legacyXml.Replace('nvt-sched-runner.ps1', 'other.ps1')
+        $script:legacyXml = $foreign
+        Reject { Get-NvtOwnedDefinition 'commander-tick' -Legacy } 4
+        Assert ('disable' -notin $script:calls -and 'unregister' -notin $script:calls)
+    }
     Test 'install exports and validates the new task before removing legacy and retains all records' {
         $script:taskXml = $null
-        $script:legacyXml = (Get-FrozenLegacyXml)
+        $script:legacyXml = (Get-FrozenLegacyXml -PreviousAction)
         $statePath = Get-NvtStatePath 'commander-tick' -Create
         $stateBefore = [IO.File]::ReadAllText($statePath)
         $historyPath = Get-NvtStatePath 'commander-tick' 'history.jsonl'
@@ -931,7 +1117,153 @@ Invoke-NvtCli -Command list -Json:$AsJson
         Disable-ScheduledTask -TaskName (Get-NvtName 'commander-tick' -Legacy) -TaskPath '\'
         Assert ((Invoke-NvtRunner 'commander-tick' -Legacy) -eq 1)
     }
+    Test 'headless list and status use fresh runner success despite Scheduler zero' {
+        Set-MockRunResult 0
+        $before = Get-FixtureSnapshot
+        foreach ($operation in 'list', 'status') {
+            $tasks = ConvertFrom-Json -InputObject (Invoke-NvtCommand $operation 'commander-tick' -Json) -NoEnumerate
+            Assert ($tasks[0].Result -eq 0 -and $tasks[0].ResultSource -ceq 'RunnerState')
+            Assert ($tasks[0].LastTaskResult -eq 0 -and $tasks[0].Status -ceq 'Installed')
+        }
+        Assert ((Get-FixtureSnapshot) -ceq $before) 'Result queries must remain read-only.'
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].Result -eq 0 -and $audit.Tasks[0].ResultSource -ceq 'RunnerState')
+        Assert ('失敗' -notin @(Get-NvtAuditFlags $audit.Tasks[0]))
+    }
+    Test 'headless runner failure appears in list and audit despite Scheduler zero' {
+        Set-MockRunResult 7
+        $task = Invoke-NvtCommand list 'commander-tick'
+        Assert ($task.Result -eq 7 -and $task.ResultSource -ceq 'RunnerState' -and $task.LastTaskResult -eq 0)
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].Result -eq 7 -and $audit.Tasks[0].LastTaskResult -eq 0)
+        Assert ('失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+        Assert ($audit.Report -match '結果 7；來源 RunnerState' -and $audit.Report -match '需要注意 1 個')
+    }
+    Test 'headless commander tick result ten keeps its audit explanation despite Scheduler zero' {
+        Set-MockRunResult 10
+        $task = Invoke-NvtCommand status 'commander-tick'
+        Assert ($task.Result -eq 10 -and $task.ResultSource -ceq 'RunnerState' -and $task.LastTaskResult -eq 0)
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].Result -eq 10 -and $audit.Tasks[0].LastTaskResult -eq 0)
+        Assert ('失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+        Assert ($audit.Report -match '結果 10' -and $audit.Report -match 'runner 視為成功')
+    }
+    Test 'headless runner exit one, as in the 2026-10-07 incident, is a failure despite Scheduler zero' {
+        Set-MockRunResult 1
+        $task = Invoke-NvtCommand list 'commander-tick'
+        Assert ($task.Result -eq 1 -and $task.ResultSource -ceq 'RunnerState' -and $task.LastTaskResult -eq 0)
+        $audit = Invoke-MockResultAudit
+        Assert ('失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+    }
+    Test 'a headless-looking action with another child never borrows runner state' {
+        Set-MockRunResult 0
+        $script:taskXml = $script:baseline.Replace('nvt-sched-runner.ps1', 'other.ps1')
+        $task = Invoke-NvtCommand list 'commander-tick'
+        Assert ($task.Status -ceq 'DefinitionMismatch')
+        Assert ($task.Result -ceq 'Unknown' -and $task.ResultSource -ceq 'Unknown' -and $task.LastTaskResult -eq 0)
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].Result -ceq 'Unknown' -and '失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+    }
+    Test 'state older than the latest headless run returns Unknown and audit failure' {
+        Set-MockRunResult 0
+        $script:fakeState.UpdatedAtUtc = ([DateTimeOffset]'2026-10-05T03:59:00Z').ToString('o')
+        $task = Invoke-NvtCommand list 'commander-tick'
+        Assert ($task.Result -ceq 'Unknown' -and $task.ResultSource -ceq 'Unknown' -and $task.LastTaskResult -eq 0)
+        Assert ($task.ExitCode -eq 0) 'Retain the raw runner field for compatibility.'
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].Result -ceq 'Unknown' -and '失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+        Assert ($audit.Report -match '結果 Unknown；來源 Unknown')
+        Assert ($audit.Report -notmatch 'runner 視為成功')
+    }
+    Test 'missing state file after a headless run returns Unknown without creating query evidence' {
+        Set-MockRunResult 0
+        function Get-NvtDataRoot { Join-Path $testRoot 'missing-result\NVT\sched' }
+        function Read-NvtState { param($TaskId) & $realReadState $TaskId }
+        $before = Get-FixtureSnapshot
+        Assert ($null -eq (Get-NvtStatePath 'commander-tick'))
+        $task = Invoke-NvtCommand status 'commander-tick'
+        Assert ($task.Result -ceq 'Unknown' -and $task.ResultSource -ceq 'Unknown' -and $task.LastTaskResult -eq 0)
+        Assert ((Get-FixtureSnapshot) -ceq $before)
+        $audit = Invoke-MockResultAudit
+        Assert ($audit.Tasks[0].ResultSource -ceq 'Unknown' -and '失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+    }
+    Test 'headless freshness converts local Scheduler time to UTC with an inclusive five second tolerance' {
+        Set-MockRunResult 0
+        foreach ($seconds in 0, 4, 5) {
+            $script:fakeState.UpdatedAtUtc = ([DateTimeOffset]'2026-10-05T04:00:00Z').AddSeconds(-$seconds).ToString('o')
+            $task = Invoke-NvtCommand list 'commander-tick'
+            Assert ($task.Result -eq 0 -and $task.ResultSource -ceq 'RunnerState') "Accept $seconds seconds of clock tolerance."
+        }
+        $script:fakeState.UpdatedAtUtc = ([DateTimeOffset]'2026-10-05T03:59:55Z').AddMilliseconds(-1).ToString('o')
+        $task = Invoke-NvtCommand list 'commander-tick'
+        Assert ($task.ResultSource -ceq 'Unknown') 'Reject state more than five seconds older than the latest run.'
+    }
+    Test 'incomplete or invalid headless state cannot turn Scheduler zero into success' {
+        foreach ($change in @(
+            { $script:fakeState.Status = 'Running'; $script:fakeState.ExitCode = $null },
+            { $script:fakeState.Status = 'NeverRun' },
+            { $script:fakeState.ExitCode = '0' },
+            { $script:fakeState.ExitCode = $null },
+            { $script:fakeState.UpdatedAtUtc = 'invalid' },
+            { $null = $script:fakeState.Remove('UpdatedAtUtc') },
+            { $script:infoByKey['\NVT\commander-tick'].LastRunTime = $null },
+            { $script:fakeState = $null }
+        )) {
+            Set-MockRunResult 0
+            & $change
+            $task = Invoke-NvtCommand list 'commander-tick'
+            Assert ($task.Result -ceq 'Unknown' -and $task.ResultSource -ceq 'Unknown')
+            $audit = Invoke-MockResultAudit
+            Assert ('失敗' -in @(Get-NvtAuditFlags $audit.Tasks[0]))
+        }
+    }
+    Test 'Scheduler never-run and running facts override every retained headless state' {
+        foreach ($schedulerCode in 267011, 267009) {
+            foreach ($stateCode in 0, 7, 10) {
+                Set-MockRunResult $stateCode
+                $script:infoByKey['\NVT\commander-tick'].LastTaskResult = $schedulerCode
+                $task = Invoke-NvtCommand list 'commander-tick'
+                Assert ($task.Result -eq $schedulerCode -and $task.ResultSource -ceq 'Scheduler')
+                $audit = Invoke-MockResultAudit
+                Assert ($audit.Tasks[0].Result -eq $schedulerCode -and $audit.Tasks[0].ResultSource -ceq 'Scheduler')
+                $flags = @(Get-NvtAuditFlags $audit.Tasks[0])
+                Assert ('失敗' -notin $flags)
+                Assert (('從沒跑過' -in $flags) -eq ($schedulerCode -eq 267011))
+                Assert ($audit.Report -notmatch 'runner 視為成功')
+            }
+        }
+    }
+    Test 'legacy and outdated definitions retain Scheduler failures despite fresh successful runner state' {
+        Set-MockRunResult 0
+        $script:taskXml = Get-PreviousActionXml $script:baseline
+        $script:legacyXml = Get-FrozenLegacyXml -PreviousAction
+        $script:infoByKey['\NVT\commander-tick'].LastTaskResult = 7
+        $script:infoByKey['\' + (Get-NvtName 'commander-tick' -Legacy)] = [pscustomobject]@{
+            LastRunTime = [datetime]'2026-10-05T12:00:00'; LastTaskResult = 9; NextRunTime = $null
+        }
+        foreach ($legacyXml in (Get-FrozenLegacyXml -PreviousAction), (Get-FrozenLegacyXml)) {
+            $script:legacyXml = $legacyXml
+            $tasks = @(Invoke-NvtCommand list 'commander-tick')
+            Assert ($tasks[0].Status -ceq 'DefinitionOutdated' -and $tasks[0].Result -eq 7 -and $tasks[0].ResultSource -ceq 'Scheduler')
+            Assert ($tasks[1].Legacy -and $tasks[1].Result -eq 9 -and $tasks[1].ResultSource -ceq 'Scheduler')
+            $audit = Invoke-MockResultAudit
+            foreach ($task in $audit.Tasks) {
+                Assert ($task.Result -eq $task.LastTaskResult -and $task.ResultSource -ceq 'Scheduler')
+                Assert ('失敗' -in @(Get-NvtAuditFlags $task))
+            }
+        }
+    }
+    Test 'runner exit codes never masquerade as Scheduler running or never-run facts' {
+        foreach ($code in 267009, 267011) {
+            Set-MockRunResult $code
+            $audit = Invoke-MockResultAudit
+            $task = $audit.Tasks[0]
+            Assert ($task.Result -eq $code -and $task.ResultSource -ceq 'RunnerState')
+            Assert ('失敗' -in @(Get-NvtAuditFlags $task) -and '從沒跑過' -notin @(Get-NvtAuditFlags $task))
+        }
+    }
     Test 'audit excludes Microsoft and classifies failures, never-run, disabled, author and ours' {
+        Set-MockRunResult 10
         function Get-NvtDataRoot { Join-Path $testRoot 'audit-classify\NVT\sched' }
         $null = New-Item -ItemType Directory -Path (Join-Path $testRoot 'audit-classify')
         $script:extraTasks = @(
@@ -963,7 +1295,7 @@ Invoke-NvtCli -Command list -Json:$AsJson
         Assert ($report -match '建議可停用' -and $report -match '從沒跑過且沒有作者' -and $report -notmatch '<b>')
         Assert ($report -match '結果 10' -and $report -match 'runner 視為成功')
         Assert ($snapshot.Count -eq 2 -and $snapshot.Tasks.Count -eq 7)
-        Assert ($snapshot.Tasks[0].Count -eq 8)
+        Assert ($snapshot.Tasks[0].Count -eq 10)
         Assert ('register' -notin $script:calls -and 'disable' -notin $script:calls -and 'unregister' -notin $script:calls)
     }
     Test 'audit differences use full path and name and retain dated reports' {
