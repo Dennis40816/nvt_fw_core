@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nvt.Core.Avalonia\Nvt.Core.Avalonia.csproj" />
+    <ProjectReference Include="..\..\src\Nvt.Core.Fonts\Nvt.Core.Fonts.csproj" />
     <Compile Include="..\..\src\Nvt.Core.Avalonia\Testing\AvaloniaTestHost.cs"
              Link="Testing\AvaloniaTestHost.cs" />
   </ItemGroup>
@@ -22,5 +23,8 @@
     <EmbeddedResource Include="Theme\Baseline\*.xml" />
     <EmbeddedResource Include="..\..\src\Nvt.Core.Avalonia\Theme\*.axaml"
                       LogicalName="Nvt.Core.Avalonia.Tests.Theme.Source.%(Filename).xml" />
+    <EmbeddedResource Include="Icons\codepoints-subset.txt" />
+    <EmbeddedResource Include="..\..\src\Nvt.Core.Avalonia\Icons\*.axaml"
+                      LogicalName="Nvt.Core.Avalonia.Tests.Icons.Source.%(Filename).xml" />
   </ItemGroup>
 </Project>
