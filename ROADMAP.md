@@ -20,9 +20,11 @@ Core follows SemVer. 1.x makes no breaking changes, so every public API is revie
 | --- | --- | --- | --- |
 | 0.1.0 | 2026-10-06 | First modules | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.1.0) |
 | 0.2.0 | 2026-10-07 | Everything merged after 0.1.0 | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.2.0) |
-| 0.3.0 | 2026-10-11 | Everything merged by 10-11 | Planned |
+| 0.3.0 | 2026-10-07 | Everything merged after 0.2.0, released early for NFC | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.3.0) |
 | 0.9.0 | 2026-10-13 | Feature freeze. After it, only fixes. | Planned |
-| 1.0.0 | 2026-10-15 | All three tools adopted and their screens confirmed by the owner | Planned |
+| 1.0.0 | 2026-10-15 | All three tools adopted and their screens confirmed by the owner. For NFC, the integration branch counts. | Planned |
+
+For NFC, the owner chose on 2026-10-07 that its integration branch `feature/1.3.1/core-integration` counts. NFC meets the 1.0.0 condition when that branch uses Core and the owner confirms its screens in a development build. Core 1.0.0 does not wait for the NFC 1.3.1 release.
 
 A tool does not need every version. It adopts with zero difference on 0.2.0, takes its new look on 0.9.0, and moves to 1.0.0 last.
 
@@ -87,13 +89,13 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Fonts with the Chinese fallback | 1.0.0 | Merged | [#47](https://github.com/Dennis40816/nvt_fw_core/pull/47) |
 | Shell page host | 1.0.0 | Merged | [#77](https://github.com/Dennis40816/nvt_fw_core/pull/77) |
 | Report list paging models | 1.0.0 | Merged | [#96](https://github.com/Dennis40816/nvt_fw_core/pull/96) |
-| Report list paging templates | 1.0.0 | Planned (NFC) | — |
-| Message Center presentation view model | 1.0.0 | Waiting for owner approval | [#100](https://github.com/Dennis40816/nvt_fw_core/pull/100) |
-| RuntimeQuery generic commands: help, ping, focus, page, screenshot, exit | 1.0.0 | In progress | — |
+| Report list paging templates | 1.0.0 | Merged | [#103](https://github.com/Dennis40816/nvt_fw_core/pull/103) |
+| Message Center presentation view model | 1.0.0 | Merged | [#100](https://github.com/Dennis40816/nvt_fw_core/pull/100) |
+| RuntimeQuery generic commands: help, ping, focus, page, screenshot, exit | 1.0.0 | Merged | [#102](https://github.com/Dennis40816/nvt_fw_core/pull/102) |
 | Basic controls, set 1: tooltip wrapping, text and number input, combo box, toggle switch, tab control | 1.0.0 | Planned (NFH ports) | — |
-| Basic controls, set 2: toggle button | 1.0.0 | Planned | — |
+| Basic controls, set 2: toggle button | 1.0.0 | In progress; the owner picks from comparison images | — |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Planned | — |
-| Icons from the Material Symbols font | 1.0.0 | Planned | — |
+| Icons from the Material Symbols font | 1.0.0 | In progress | — |
 | Console: redesigned shared control, adopted by NFH | 1.0.0 | Design proposal open | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82) |
 | Number scrubber holds one drag session | 1.0.0 | Open | [#86](https://github.com/Dennis40816/nvt_fw_core/issues/86) |
 
@@ -118,6 +120,9 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | --- | --- | --- | --- |
 | Background job lifecycle and progress | 1.0.0 | Merged | [Progress](docs/core/modules/Progress.md) |
 | Test probe for process tests | 1.0.0 | Merged | [Test probe](tests/Nvt.Core.TestProbe/README.md) |
+| Core-linked test child for Launcher process tests | 1.0.0 | Merged | [#105](https://github.com/Dennis40816/nvt_fw_core/pull/105) |
+| GitHub App module with the review ledger | 1.0.0 | Merged | [#104](https://github.com/Dennis40816/nvt_fw_core/pull/104), [#108](https://github.com/Dennis40816/nvt_fw_core/pull/108) |
+| Public API review before 0.9.0 | 0.9.0 | In progress | — |
 
 ### After 1.0.0
 
@@ -138,9 +143,9 @@ Each tool's own roadmap is the source for its progress. This table summarizes it
 | Tool | Release line | Core version | Modules in use | Theme step 1 | Theme step 2 | Next |
 | --- | --- | --- | --- | --- | --- | --- |
 | NFH (Freeform Helper) | `1.3.x` | 0.2.0 ([NFH #50](https://github.com/Dennis40816/nvt-freeform-helper/pull/50)) | UI-thread helper ([NFH #44](https://github.com/Dennis40816/nvt-freeform-helper/pull/44)) | Done ([NFH #50](https://github.com/Dennis40816/nvt-freeform-helper/pull/50)) | Not started; after NFC and NFU | RuntimeQuery switch with zero difference, then the Console |
-| NFC (NVT FW Combiner) | `1.2.x` now; Core integration in 1.3.0 | 0.2.0 ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)), used only to download and verify the packages at build time | None yet | Done ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)) | Not started | RuntimeQuery read-only commands; the 16 planned startup options as Core commands; then the remaining Launcher steps |
+| NFC (NVT FW Combiner) | `1.2.x` now; Core integration in 1.3.1 on `feature/1.3.1/core-integration` | 0.2.0 ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)), used only to download and verify the packages at build time | None yet | Done ([NFC #580](https://github.com/Dennis40816/nvt_fw_combiner/pull/580)) | Not started | RuntimeQuery read-only commands; the 16 planned startup options as Core commands; then the remaining Launcher steps |
 | NFU (NVT FW UTIL) | Released `v0.1.1`; development line `0.2.0` ([roadmap](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/41)) | 0.2.0 ([NFU #40](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/40)) | Atomic output ([NFU #34](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/34)), CSV quoting ([NFU #35](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/35)), source-file navigation ([NFU #36](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/36)) | Done ([NFU #40](https://github.com/Dennis40816/nvt-event-buffer-replay/pull/40)) | In progress | Theme step 2, then the move to Core 1.0.0 |
 
-Each tool keeps its own fix lane. Core adoption on a tool's development line never blocks that tool's hotfix. For example, NFC 1.2.2 starts from `v1.2.1` without Core integration, and later 1.2.x releases carry only fixes. Core integration goes to NFC 1.3.0.
+Each tool keeps its own fix lane. Core adoption on a tool's development line never blocks that tool's hotfix. For example, NFC 1.2.2 starts from `v1.2.1` without Core integration, and later 1.2.x releases carry only fixes. Core integration goes to NFC 1.3.1.
 
 Each tool session updates its own row in the same pull request that changes its adoption.

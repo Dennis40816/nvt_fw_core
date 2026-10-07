@@ -6,9 +6,13 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+### Tools
+
+- `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
+
 ## 0.3.0 - 2026-10-07
 
-Tag `core-v0.3.0` on the merge commit of the version pull request. No breaking changes since 0.2.0.
+Tag `core-v0.3.0` on commit `dfdf61c461a3132c120d99f3bd41b5abc45d45bf` (#109). No breaking changes since 0.2.0.
 
 ### Dependencies
 
