@@ -184,7 +184,7 @@ python tools/repo-checks/doc_sync.py --repo . --config tools/repo-checks/doc-syn
 字形使用 `Nvt.Core.Fonts` 的 Material Symbols Outlined 2.973。
 字型為上游提交 `737e3324305806514d7909874fa1818ae1808232` 產生的靜態實例。
 固定軸值為 FILL 0、GRAD 0、opsz 24 與 wght 400。
-[Fonts 模組](Fonts.zh-TW.md) 記錄來源與縮減細節。
+[Fonts 模組](Fonts.zh-TW.md#固定的上游基準) 記錄來源與縮減細節。
 
 Material Symbols 採用 Apache License 2.0。
 發佈字型時，附上其 [LICENSE](../../../src/Nvt.Core.Fonts/licenses/MaterialSymbolsOutlined/LICENSE) 與 [NOTICE](../../../src/Nvt.Core.Fonts/licenses/MaterialSymbolsOutlined/NOTICE)。
