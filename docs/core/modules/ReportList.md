@@ -1,4 +1,4 @@
-[English](ReportList.md) | [中文](ReportList.zh-TW.md)
+[繁體中文](ReportList.zh-TW.md)
 
 # ReportList
 
@@ -6,6 +6,8 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportIndexedReadOnlyLists.cs`
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ResettableObservableCollection.cs`
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportWindowedListViewModel.cs`
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportPagedListViewModel.cs`
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
@@ -14,6 +16,10 @@ The namespace is `Nvt.Core.ReportList`.
 It targets .NET 8.
 It depends only on the BCL.
 It owns all four generic collection types below.
+The paging models live in `src/Nvt.Core.Avalonia/ReportList/`, namespace `Nvt.Core.Avalonia.ReportList`, targeting .NET 10.
+They use CommunityToolkit.Mvvm 8.4.2 and the shared collections, with no Locale dependency.
+The internal non-copying `ObjectReadOnlyList<T>` adapter comes from `ReportIndexedReadOnlyLists.cs:105-126`.
+The two model algorithms are extracted in full; NFC retains their language mapping and supplies labels.
 
 ## Public API
 
@@ -79,6 +85,61 @@ Enumeration failure leaves the added prefix without replacement notifications.
 Observer exceptions propagate at the notification that throws.
 The inherited reentrancy rule is preserved.
 
+### Paging models and labels
+
+`ReportListLabels` is a sealed record containing immutable `NoItems`, `PreviousPage`, `NextPage`, and `AllItemsLoaded` strings.
+Its `WindowStatus(first, last, total)`, `PagedStatus(visible, total)`, and `LoadMore(next, remaining)` delegates supply formatting.
+The host supplies stable formatters. Both models reject a null label or formatter at construction with `ArgumentNullException`.
+There is no mutable relocalization API.
+
+Both sealed view models inherit Toolkit `ObservableObject` and expose:
+
+```csharp
+Create<T>(IReadOnlyList<T> items, int pageSize, ReportListLabels labels,
+    bool loadInitialPage = true)
+```
+
+Each retains the supplied list without copying or enumerating it.
+The host must keep its count stable and perform model access, commands and notifications on its UI thread.
+Initial loading uses indexed reads only; deferred construction reads no rows.
+`Items` is a stable `ReadOnlyObservableCollection<object>`.
+Reference rows retain their source identity; value rows are boxed and null elements pass through.
+`TotalCount` reads the source count; `VisibleCount` reads the visible collection count.
+`pageSize` must be positive and has no fixed upper ceiling in either frozen model.
+NFC supplies 8, 24 and 40 for accumulating report batches and 64 for changed-block windows; these policies remain host parameters.
+Creation checks `items`, then `pageSize`, then the injected `labels` argument.
+Invalid sizes retain the `pageSize` parameter name and actual value in `ArgumentOutOfRangeException`.
+
+`ReportWindowedListViewModel` keeps one fixed window using `ResettableObservableCollection<object>.ReplaceAll`.
+It exposes `PageIndex`, `PageCount`, `HasPreviousPage`, `HasNextPage`, `HasMultiplePages`, `PageStatus`, `PreviousPageLabel`, and `NextPageLabel`.
+`PreviousPageCommand` and `NextPageCommand` are stable `IRelayCommand` instances.
+The next command can load the first deferred window.
+Empty sources have zero pages and use `NoItems`; a deferred nonempty window also uses `NoItems` until loaded.
+`ShowItemAt(index)` rejects an index outside `[0, TotalCount)` using the frozen unsigned comparison.
+The exception names `index` without storing its actual value.
+It selects only the containing page and does no work when that page is already visible.
+Row creation finishes before changing the page or replacing the window.
+The new `PageIndex` is assigned before collection notifications.
+Notification order is collection `Count`, `Item[]`, one `Reset`; model `VisibleCount`, `PageIndex`, `HasPreviousPage`, `HasNextPage`, `HasMultiplePages`, `PageStatus`; previous-command availability, then next-command availability.
+There is no generated observable setter for `PageIndex`, because that would change this order.
+
+`ReportPagedListViewModel` accumulates every loaded row and exposes `RemainingCount`, `HasMoreItems`, `PageStatus`, `LoadMoreLabel`, and a stable `IRelayCommand` named `LoadMoreCommand`.
+`EnsureInitialPage()` loads only when `VisibleCount == 0 && TotalCount > 0`.
+It is idempotent once any row is visible.
+Status always uses `PagedStatus`, including empty sources.
+The next label uses the minimum of page size and remaining count; the end label is `AllItemsLoaded`.
+Every appended row raises collection `Count`, `Item[]`, and `Add` before the model raises `VisibleCount`, `RemainingCount`, `HasMoreItems`, `PageStatus`, `LoadMoreLabel`, then command availability.
+Consumers see the growing prefix during each Add.
+Source or observer failures retain the already appended prefix and propagate before later notifications.
+Toolkit `RelayCommand.Execute` does not enforce `CanExecute`: direct end execution still performs the frozen checked addition and model notifications when it succeeds.
+Window commands retain their own boundary predicates and do nothing at either end.
+
+All frozen checked arithmetic and expression order remain unchanged.
+Window end addition and cumulative batch addition are checked before clamping to the total count.
+Window status retains the intermediate `first + VisibleCount - 1` overflow, including the final one-row window of an `int.MaxValue` source.
+No model stores derived counts or availability flags; the window page index is the only independent mutable position.
+Collection contents and page position have one model owner and UI-thread-only access.
+
 ## Tests and provenance
 
 Tests live in `tests/Nvt.Core.Tests/ReportList/`.
@@ -101,22 +162,31 @@ They cover all `IList` mutation refusals and `CopyTo` failures.
 They cover reset notification order and reentrancy.
 They cover enumeration and observer failures.
 
+Paging tests live in `tests/Nvt.Core.Avalonia.Tests/ReportList/` and use synthetic rows and literal injected labels.
+
+| Frozen source assertion | Core mapping |
+| --- | --- |
+| `ReportWindowedListViewModelTests.NavigationReplacesTheCurrentFixedSizeWindow` | Same class and method; 64-row windows, 130 total rows, final two-row window, labels, commands and one Reset are retained. |
+| `ReportWindowedListViewModelTests.DirectItemNavigationShowsOnlyTheContainingWindow` | Same class and method; 10,000 rows, direct index 9,999, 16-row final window, 80 factory calls and no work on reselection are retained. |
+| `ReportWindowedListViewModelTests.NavigationLabelsFollowTheSelectedShellLanguage` | `ReportWindowedListViewModelTests.NavigationLabelsFollowTheInjectedLabels`; the exact bilingual assertions use injected values. |
+| `ReportProjectionConcurrencyTests.ReportPerformance.cs:105-172` | `ReportListMechanismTests.LargeIndexedProjectionUsesBoundedDeferredAndMemoizedPages`; 1,000 rows, 40 groups, 8-row summaries, deferred 24-of-25 detail rows, cached identity and cumulative 16-group loading. Report JSON and product verdict assertions remain in NFC. |
+| Shared memory Reset publication and observed-state identity | Existing `Nvt.Core.Tests.ReportList.ResettableObservableCollectionTests` retains the collection assertions and notification bounds. |
+
+Direct `ReportPagedListViewModelTests` cover empty and deferred input, page size one, exact and partial pages, multiple loads, end commands, idempotence, source identity and failures.
+Both model test classes cover zero and negative page sizes, the positive lower boundary, `int.MaxValue` and its neighbour, and argument validation order.
+Window tests cover invalid indices, both valid index bounds, page-boundary neighbours and empty-list indices.
+Count cases straddle host sizes 8, 24, 40 and 64, including second-page boundaries.
+Overflow tests exercise intermediate addition below, at and above `int.MaxValue` without allocating enormous lists.
+Tests assert complete notification traces, per-Add state, one Reset per replacement, no-op reselection, command and collection identity, and zero source enumeration.
+`ReportListMechanismTests` also covers null elements, memoized window revisits, immutable label choices and null label members.
+Custom labels differ from both frozen languages.
+
 After packages are restored, run from the repository root:
 
 ```text
 dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build
 ```
-
-Verification used the local working tree based on Core `b98099a43553f4d04f084a3a33bc027bd9a8c95c`.
-The build passed.
-It reported 0 warnings.
-It reported 0 errors.
-All 84 ReportList test cases passed in the full solution run.
-The Core test project passed 377 tests.
-The Avalonia test project passed 260 tests.
-No tests failed.
-No tests were skipped.
 
 ## Known differences
 
@@ -126,8 +196,11 @@ Their constructors and required members become public.
 The implementation is split into four source files.
 Copyright headers and XML API documentation are added.
 The predicates, literals, messages and method bodies retain the frozen behavior.
-`ObjectReadOnlyList<T>` is reserved for the later Avalonia model extraction.
-This module adds no UI.
+`ObjectReadOnlyList<T>` is internal to the Avalonia paging models and adds no public collection owner.
+The two models and their creation/navigation members become public in `Nvt.Core.Avalonia.ReportList`.
+Language branches become immutable injected labels and formatters; null labels and null label members are rejected after frozen item and page-size validation.
+The frozen model notification sequence and Toolkit command behavior remain intact.
+Pager templates are separate from these models.
 
 ## NFC ownership and adoption
 
@@ -138,9 +211,16 @@ It also serves `ReplaceCoverageSegments` and `CtrlRamOverview`.
 MessageCenter's passive activity projection stays outside this module.
 Later consumers must use one shared reset implementation.
 NFC adoption must pin the exact reviewed Core revision or package version.
-Delete NFC's local copies only after all four generic collection consumers use that revision.
-Keep the reserved object view until its separate extraction is adopted.
+NFC downloads verified versioned packages at build time through `core-packages.json` (Core #61).
+Use exact `[x]` versions, locked restore, and source mapping restricted to the package download folder.
+The manifest records each package's Release tag and SHA-256; Core and NFC retain independent versioned releases.
+Delete NFC's local generic collections, paging models and object adapter only after all their callers use the reviewed packages and equivalent executable checks preserve the frozen values, identities, materialization and notifications.
+Retarget every report and shared memory Reset consumer to the single collection owner.
+NFC keeps its separate label factory, ShellLanguage mapping, row factories, report DTOs, schema, export, async providers, report history and product navigation policy.
+MessageCenter keeps its separate report history table.
 Run NFC's existing functional and publication tests against the frozen baseline.
 Compare complete values, row identity, materialization and notifications.
 NFC UI adoption still requires zero changed decoded pixels.
 Core tests alone do not establish that UI result.
+Compare under the same OS, resolved fonts, DPI, theme, renderer, viewport, motion, input, time and IDs, and record each artifact's SHA-256.
+Compare complete values, event traces and output bytes where applicable, and preserve the eight legacy font values.
