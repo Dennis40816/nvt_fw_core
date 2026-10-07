@@ -71,6 +71,9 @@
   <Style Selector="Border.toggleSegmentGroup > StackPanel > ToggleButton.toggleSegment:nth-last-child(1)">
     <Setter Property="CornerRadius" Value="{ReflectionBinding CornerRadius, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource Nvt.Toggle.SegmentCornerConverter}, ConverterParameter=last}"/>
   </Style>
+  <Style Selector="Border.toggleSegmentGroup > StackPanel > ToggleButton.toggleSegment:nth-child(1):nth-last-child(1)">
+    <Setter Property="CornerRadius" Value="{ReflectionBinding CornerRadius, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource Nvt.Toggle.SegmentCornerConverter}, ConverterParameter=only}"/>
+  </Style>
   <Style Selector="ToggleButton.toggleSegment:checked">
     <Setter Property="ZIndex" Value="1"/>
   </Style>

@@ -1,4 +1,5 @@
 <!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<!-- Frozen "Before" record of Tool A at source commit 6b3390e. It covers only the toggle roles in the comparison. Disclosure, expander and choice-list roles are not included. -->
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Styles.Resources>
     <ResourceDictionary>
@@ -251,6 +252,13 @@
   </Style>
   <Style Selector="ToggleButton.toolAPill:disabled">
     <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="Path.toolAStateGlyph">
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="Stroke" Value="{DynamicResource ToolA.Value21}" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="StrokeThickness" Value="1.8" />
   </Style>
   <Style Selector="ToggleButton.toolAPill.checking Path.toolAStateGlyph, ToggleButton.toolAPill.inspected Path.toolAStateGlyph">
     <Setter Property="Stroke" Value="{DynamicResource ToolA.Value03}" />

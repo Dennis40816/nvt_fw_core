@@ -98,6 +98,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
 
     /// <summary>Overlaps each shared stroke once and rounds only the first and last exterior corners.</summary>
     [AvaloniaTheory]
+    [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
@@ -127,12 +128,18 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     var button = buttons[index];
                     Assert.Equal(new Thickness(1), button.BorderThickness);
                     Assert.Equal(index == 0 ? new Thickness(0) : new Thickness(-1, 0, 0, 0), button.Margin);
-                    Assert.Equal(index == 0 ? new CornerRadius(8, 0, 0, 8)
+                    Assert.Equal(count == 1 ? new CornerRadius(8) : index == 0 ? new CornerRadius(8, 0, 0, 8)
                         : index == count - 1 ? new CornerRadius(0, 8, 8, 0) : new CornerRadius(0), button.CornerRadius);
                     Assert.Equal(button.CornerRadius, ToggleTestHost.Part(button, "ToggleBody").CornerRadius);
                     if (index != 0) Assert.Equal(buttons[index - 1].Bounds.Right - 1, button.Bounds.Left);
                 }
                 group.CornerRadius = new CornerRadius(6);
+                if (count == 1)
+                {
+                    Assert.Equal(new CornerRadius(6), buttons[0].CornerRadius);
+                    continue;
+                }
+
                 Assert.Equal(new CornerRadius(6, 0, 0, 6), buttons[0].CornerRadius);
                 Assert.Equal(new CornerRadius(0, 6, 6, 0), buttons[^1].CornerRadius);
                 panel.Children.RemoveAt(0);
