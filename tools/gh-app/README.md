@@ -143,6 +143,8 @@ Use `-TimeoutSeconds` and `-PollSeconds` to change those limits.
 
 Branch deletion after a merge is opt-in through `-DeleteBranchPrefix`.
 Without it, every head branch is kept, including release branches.
+Pass only a branch category that the owner has authorized for deletion.
+Before deleting any other branch, send its name and head to the owner for confirmation.
 With it, the function deletes the head branch only when all of these hold:
 
 - the branch name starts with the prefix;

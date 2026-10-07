@@ -95,6 +95,7 @@ Owner 後續要求修改或撤銷 review,會取代先前批准。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
 合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支。
+只能傳 owner 已授權可刪除的分支類別。刪除其他分支前，要先把分支名稱和 head 送 owner 確認。
 有指定時，以下條件全部成立才刪除:
 
 - 分支名稱以該 prefix 開頭;
