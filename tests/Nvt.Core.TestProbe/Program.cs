@@ -27,8 +27,8 @@ namespace Nvt.Core.TestProbe
                 if (mode is not ("ambient-pipe" or "contained-isolation" or "arguments-environment" or
                     "ready" or "ready-wrong-identity" or "ready-partial" or "invalid-utf8" or "oversized" or
                     "ready-tree-root" or "silent-wait" or "exit" or "tree-grandchild" or "tree-root-exit" or
-                    "tree-root-wait" or "orphan-chain-root" or "detached-descendant-root" or "hold-lock" or
-                    "dual-output-exit" or "dual-output-wait"))
+                    "tree-root-wait" or "orphan-chain-root" or "orphan-chain-exit" or "detached-descendant-root" or
+                    "hold-lock" or "dual-output-exit" or "dual-output-wait"))
                 {
                     throw new ProbeInputException("Unknown mode.");
                 }
@@ -151,12 +151,12 @@ namespace Nvt.Core.TestProbe
             string marker = inputs.Required("tree-marker");
             int exitCode = mode == "tree-root-exit" ? inputs.Integer("exit-code", 0) : 0;
             string? stdout = inputs.Optional("stdout-text");
-            if (mode == "tree-root-exit" && stdout is not null)
+            if (mode is "tree-root-exit" or "orphan-chain-exit" && stdout is not null)
             {
                 Console.Out.WriteLine(stdout);
                 Console.Out.Flush();
             }
-            bool chain = mode == "orphan-chain-root";
+            bool chain = mode is "orphan-chain-root" or "orphan-chain-exit";
             using var child = WindowsProcess.StartDescendant(
                 chain ? "tree-root-exit" : "tree-grandchild", marker,
                 holdStandardPipes: mode != "detached-descendant-root");

@@ -62,7 +62,8 @@ public sealed class WindowsStableRelativeWriteTreeEdgesTests
         string foreign = Path.Combine(tree.StagingPath, "foreign");
         Assert.Equal(WindowsStableCustodyIssue.Changed, tree.PrepareForPromotion(staging =>
             File.WriteAllText(Path.Combine(staging, "foreign"), "foreign")));
-        Assert.Equal(WindowsStableCustodyIssue.Unavailable, tree.Promote());
+        var phaseError = Assert.Throws<InvalidOperationException>(() => tree.Promote());
+        Assert.Equal("Cannot Promote while the write tree is in the Writing phase.", phaseError.Message);
         Assert.Equal(WindowsStableCustodyIssue.Changed, tree.Cleanup());
         Assert.Equal("foreign", File.ReadAllText(foreign));
         Assert.False(File.Exists(payload));

@@ -261,6 +261,19 @@ The caller supplies both directory names, an exact file/directory/byte reservati
 
 `CapturePromotedImmutableTree` captures the same held root and compares every snapshot identity. `TryTransitionPromotedTreeToImmutableCustody` retains a read bridge while changing delete-capable promotion custody into immutable custody over the same identity. Rename structures retain 32-bit and 64-bit layouts, with filename offsets 12 and 20 respectively. `Cleanup` and `RollbackPromotionAndCleanup` remove only owned identities; added foreign entries or substituted descendants survive and produce `Changed`. A reused staging name is never treated as the promoted tree. Cleanup is idempotent and does not let cancellation discard exact rollback responsibility.
 
+The write tree stores one closed lifecycle phase: `Writing`, `Prepared`, `Promoted`, `CleanedUp` or `Disposed`. The owned snapshot belongs to `Prepared` and `Promoted`; the cached cleanup result belongs to `CleanedUp`. Successful preparation changes `Writing` to `Prepared`, and successful promotion changes `Prepared` to `Promoted`. Failed preparation or promotion retains the current phase. Cleanup (including rollback) changes any owning phase to `CleanedUp`; repeated cleanup returns its cached result. Disposal cleans up a `Writing` or `Prepared` tree before entering `Disposed`, releases a `Promoted` tree without deleting it, and releases the parents of a `CleanedUp` tree. Repeated disposal is harmless. The valid-sequence native call order, reservation checks, result values and existing IO error messages remain unchanged.
+
+| Member | Allowed phases |
+| --- | --- |
+| `StagingPath` | Any phase except `Disposed` |
+| `CreateFile`, `PrepareForPromotion` | `Writing` |
+| `Promote` | `Prepared` |
+| `CapturePromotedImmutableTree` | `Promoted` |
+| `Cleanup`, `RollbackPromotionAndCleanup` | `Writing`, `Prepared`, `Promoted`, `CleanedUp` |
+| `Dispose` | All phases; idempotent in `Disposed` |
+
+Every operation checks its phase before accessing handles or invoking callbacks. A wrong live phase throws `InvalidOperationException` naming the current phase and attempted operation. After disposal, every member except `Dispose` throws `ObjectDisposedException`, including `StagingPath` and both cleanup methods.
+
 ### Custody test mapping
 
 Source filenames below are under `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`; Core Files tests are under `tests/Nvt.Core.Tests/Files/Windows/`.
