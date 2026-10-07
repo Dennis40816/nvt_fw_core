@@ -22,6 +22,7 @@ It runs from any folder under any executable name.
 | `tree-root-exit` | `tree-marker`; optional `stdout-text`, `exit-code` | Writes the optional output line. Starts a pipe-holding child. Exits after its marker appears. | Requested code or 25 |
 | `tree-root-wait` | `tree-marker` | Starts a pipe-holding child. Waits 30 seconds after its marker appears. | 0 or 25 |
 | `orphan-chain-root` | `tree-marker` | Starts a pipe-holding middle process. Writes `.middle` and `.ready` markers. Waits with an exited middle process and a live leaf. | 0 or 25 |
+| `orphan-chain-exit` | `tree-marker`; optional `stdout-text` | Writes the optional output line. Runs the `orphan-chain-root` chain, then exits after the `.ready` marker. The live leaf keeps the inherited standard streams open after the root and middle processes exit. | 0 or 25 |
 | `detached-descendant-root` | `tree-marker` | Starts a child without inherited standard streams. Exits after its marker appears. | 0 or 25 |
 | `hold-lock` | `lock-path`, `lock-ready` | Writes `STARTED`. Opens an exclusive read/write file. Writes the ready marker and `LOCK_HELD`. Holds the file for 30 seconds. | 0 or 1 |
 | `dual-output-exit` | Optional `out-char`, `out-count`, `out-suffix`, `err-char`, `err-count`, `err-suffix` | Writes the repeated character and the suffix to standard output, then to standard error. Writes no newline. Flushes each stream. Exits immediately. | 0 |
