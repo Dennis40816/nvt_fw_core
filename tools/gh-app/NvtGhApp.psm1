@@ -9,11 +9,26 @@ function Get-GhAppConfigPath {
 }
 
 function Test-GhAppRepositoryPath {
-    param([string]$Path)
+    param([string]$Path, [Collections.Generic.HashSet[string]]$Visited)
+    if ($null -eq $Visited) { $Visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase) }
+    $Path = [IO.Path]::GetFullPath($Path)
+    if (-not $Visited.Add($Path)) { return $false }
+    $file = [IO.FileInfo]::new($Path)
+    if ($file.LinkTarget) {
+        $target = $file.ResolveLinkTarget($true)
+        if ($null -eq $target -or (Test-GhAppRepositoryPath $target.FullName $Visited)) { return $true }
+    }
     $directory = [IO.DirectoryInfo]::new([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Path)))
     while ($null -ne $directory) {
         $marker = Join-Path $directory.FullName '.git'
         if ([IO.File]::Exists($marker) -or [IO.Directory]::Exists($marker)) { return $true }
+        if ([IO.File]::Exists((Join-Path $directory.FullName 'HEAD')) -and
+            [IO.File]::Exists((Join-Path $directory.FullName 'config')) -and
+            [IO.Directory]::Exists((Join-Path $directory.FullName 'objects'))) { return $true }
+        if ($directory.LinkTarget) {
+            $target = $directory.ResolveLinkTarget($true)
+            if ($null -eq $target -or (Test-GhAppRepositoryPath (Join-Path $target.FullName '.gh-app-path-check') $Visited)) { return $true }
+        }
         $directory = $directory.Parent
     }
     return $false
@@ -232,7 +247,7 @@ function Get-GhAppPullRequest {
     param([hashtable]$Context, [int]$Number)
     $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number"
     $arguments = @('pr', 'view', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)",
-        '--json', 'state,headRefOid,headRefName,baseRefName,mergeStateStatus,isCrossRepository,mergeCommit')
+        '--json', 'state,headRefOid,headRefName,baseRefName,baseRefOid,mergeStateStatus,isCrossRepository,mergeCommit,isDraft,author')
     $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path
     try { $pr = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
     catch { throw "HTTP unknown $path" }
@@ -242,12 +257,86 @@ function Get-GhAppPullRequest {
     $pr
 }
 
-function Test-GhAppOwnerApproval {
-    param([hashtable]$Context, [int]$Number, [string]$Head)
+function Test-GhAppBotAuthor {
+    param([hashtable]$Context, $Author)
+    # REST reports the App as "<name>[bot]". gh pr view reports it as "app/<name>" with is_bot set.
+    if ($null -eq $Author) { return $false }
+    if ([string]$Author.login -ceq $Context.botLogin) { return $true }
+    $appLogin = 'app/' + ($Context.botLogin -creplace '\[bot\]\z', '')
+    return ($Author.is_bot -eq $true -and [string]$Author.login -ceq $appLogin)
+}
+
+function Get-GhAppLedgerPath {
+    param([hashtable]$Context, [string]$LedgerPath)
+    if (-not $LedgerPath) {
+        $LedgerPath = Join-Path (Split-Path (Get-GhAppConfigPath $Context.owner $Context.repo)) 'review-ledger.jsonl'
+    }
+    $LedgerPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LedgerPath)
+    if (Test-GhAppRepositoryPath $LedgerPath) { throw 'The review ledger must be outside every repository.' }
+    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), $Context.tokenHelperPath, $Context.dpapiPath)) {
+        if ([string]::Equals($LedgerPath, [IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'The review ledger must not name a config, helper, or DPAPI file.'
+        }
+    }
+    $LedgerPath
+}
+
+function Request-GhAppOwnerReview {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [string]$LedgerPath, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
+    $pr = Get-GhAppPullRequest $context $Number
+    if ($pr.state -cne 'OPEN' -or $pr.isDraft) { throw "#$Number must be open and not a draft before requesting owner review." }
+    if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
+    Assert-GhAppBranch $pr.baseRefName
+    $entry = [pscustomobject][ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number;
+        head = (Assert-GhAppSha "head of #$Number" $pr.headRefOid);
+        requestedAt = (Get-GhAppUtcNow).ToUniversalTime().ToString('o'); base = $pr.baseRefName }
+    try {
+        $line = ConvertTo-Json -InputObject $entry -Compress
+        [IO.File]::AppendAllText($LedgerPath, $line + "`n", [Text.UTF8Encoding]::new($false))
+    } catch { throw 'The review ledger could not be appended.' }
+    $entry
+}
+
+function Get-GhAppReviewRequest {
+    param([hashtable]$Context, [int]$Number, [string]$LedgerPath)
+    $latest = $null
+    if ([IO.File]::Exists($LedgerPath)) {
+        $reader = $null
+        try {
+            $reader = [IO.StreamReader]::new($LedgerPath, [Text.UTF8Encoding]::new($false, $true))
+            while ($null -ne ($line = $reader.ReadLine())) {
+                # Keep timestamps as JSON strings on every supported PowerShell version.
+                $document = [Text.Json.JsonDocument]::Parse($line)
+                try {
+                    $entry = $document.RootElement
+                    if ($entry.GetProperty('owner').GetString() -cne $Context.owner -or
+                        $entry.GetProperty('repo').GetString() -cne $Context.repo -or $entry.GetProperty('number').GetInt32() -ne $Number) { continue }
+                    $head = Assert-GhAppSha 'review request head' $entry.GetProperty('head').GetString()
+                    $base = $entry.GetProperty('base').GetString()
+                    Assert-GhAppBranch $base
+                    $stamp = $entry.GetProperty('requestedAt').GetString()
+                    if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|\+00:00)$') { throw 'Expected UTC ISO 8601.' }
+                    $time = [DateTimeOffset]::Parse($stamp, [Globalization.CultureInfo]::InvariantCulture)
+                    $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base }
+                } finally { $document.Dispose() }
+            }
+        } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
+        finally { if ($null -ne $reader) { $reader.Dispose() } }
+    }
+    if ($null -eq $latest) { throw "#$Number stop: no review ledger entry; send the head to the owner and record a review request." }
+    $latest
+}
+
+function Get-GhAppOwnerApproval {
+    param([hashtable]$Context, [int]$Number, [DateTimeOffset]$RequestedAt)
     # A COMMENTED review does not change approval on GitHub, so only state-changing reviews count.
     $reviews = @(Get-GhAppItems $Context "pulls/$Number/reviews" | Where-Object {
         $_.user.login -ieq $Context.owner -and $_.state -cin @('APPROVED', 'CHANGES_REQUESTED', 'DISMISSED', 'PENDING') })
-    if ($reviews.Count -eq 0) { return $false }
+    if ($reviews.Count -eq 0) { return $null }
     $ranked = foreach ($review in $reviews) {
         try {
             $id = [long]$review.id
@@ -258,25 +347,40 @@ function Test-GhAppOwnerApproval {
         [pscustomobject]@{ Review = $review; Time = $time; Id = $id }
     }
     # A draft can receive its ID before a later review, then be submitted last.
-    $latest = ($ranked | Sort-Object -Property Time, Id | Select-Object -Last 1).Review
-    return ($latest.state -ceq 'APPROVED' -and $latest.commit_id -ceq $Head)
+    $latest = $ranked | Sort-Object -Property Time, Id | Select-Object -Last 1
+    if ($latest.Review.state -ceq 'APPROVED' -and $latest.Time -gt $RequestedAt) { return $latest.Review }
+    return $null
 }
 
 function Invoke-GhAppGit {
-    param([string]$Worktree, [string[]]$Arguments, [switch]$Bytes)
+    param([string]$Worktree, [string[]]$Arguments, [switch]$Bytes, [switch]$OwnerCredentials,
+        [int[]]$AllowedExitCodes = @(0), [switch]$Result)
     $process = $null
     $buffer = [IO.MemoryStream]::new()
     try {
         $Worktree = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Worktree)
         $executable = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-        $process = [Diagnostics.Process]::Start((New-GhAppProcessInfo $executable (@('-C', $Worktree) + $Arguments)))
+        $info = New-GhAppProcessInfo $executable (@('--no-replace-objects', '-C', $Worktree) + $Arguments)
+        # Fetch uses the owner's normal Git credential setup, never an App token.
+        if ($OwnerCredentials) {
+            foreach ($item in Get-ChildItem Env:) {
+                if ($item.Name -match '^(GCM_|GIT_CONFIG_)' -or $item.Name -in @('GIT_ASKPASS', 'SSH_ASKPASS', 'GIT_TERMINAL_PROMPT')) {
+                    $info.Environment[$item.Name] = $item.Value
+                }
+            }
+        }
+        foreach ($name in @('GIT_DIR', 'GIT_WORK_TREE', 'GIT_COMMON_DIR', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES')) {
+            [void]$info.Environment.Remove($name)
+        }
+        $process = [Diagnostics.Process]::Start($info)
         $process.StandardInput.Close()
         $outputTask = $process.StandardOutput.BaseStream.CopyToAsync($buffer)
         $errorTask = $process.StandardError.ReadToEndAsync()
         $process.WaitForExit()
         $null = $outputTask.GetAwaiter().GetResult()
         $null = $errorTask.GetAwaiter().GetResult()
-        if ($process.ExitCode -ne 0) { throw 'Local git command failed.' }
+        if ($process.ExitCode -notin $AllowedExitCodes) { throw 'Local git command failed.' }
+        if ($Result) { return [pscustomobject]@{ Output = [Text.Encoding]::UTF8.GetString($buffer.ToArray()); ExitCode = $process.ExitCode } }
         if ($Bytes) { return ,$buffer.ToArray() }
         return [Text.Encoding]::UTF8.GetString($buffer.ToArray())
     } catch { throw 'Local git command failed.' }
@@ -420,19 +524,129 @@ function Write-GhAppMergeLog {
 # The one clock read by the merge wait. Tests replace it to control time.
 function Get-GhAppUtcNow { [DateTimeOffset]::UtcNow }
 
-function Wait-GhAppApprovedHead {
-    param([hashtable]$Context, [int]$Number, $Pr, [string]$LogPath, [int]$TimeoutSeconds, [int]$PollSeconds)
+function Sync-GhAppReviewCommits {
+    param([hashtable]$Context, [string]$Worktree, [string[]]$Commits)
+    if ((Invoke-GhAppGit $Worktree @('rev-parse', '--is-inside-work-tree')).Trim() -cne 'true') {
+        throw 'Worktree must name a local Git clone.'
+    }
+    if ((Invoke-GhAppGit $Worktree @('rev-parse', '--is-shallow-repository')).Trim() -cne 'false') {
+        throw 'Review proof requires a complete clone; shallow history is refused.'
+    }
+    $url = "https://github.com/$($Context.owner)/$($Context.repo).git"
+    $null = Invoke-GhAppGit -Worktree $Worktree -OwnerCredentials -Arguments (@('-c', 'fetch.writeCommitGraph=false',
+        'fetch', '--no-tags', '--no-prune', '--refmap=', '--no-write-fetch-head', '--no-auto-maintenance',
+        '--recurse-submodules=no', $url) + @($Commits | Select-Object -Unique))
+}
+
+function Assert-GhAppReviewHistory {
+    param([hashtable]$Context, [int]$Number, [string]$Worktree, $Pr, $Request)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
+    if ($Pr.baseRefName -cne $Request.Base) { throw "#$Number stop: review request base changed; owner approval and a new review request required." }
+    # Returns the proven chain from the current head back to the review request head, both included.
+    if ($head -ceq $Request.Head) { return ,@($head) }
+    $base = Assert-GhAppSha "base of #$Number" $Pr.baseRefOid
+    Sync-GhAppReviewCommits $Context $Worktree @($head, $Request.Head, $base)
+    $version = Invoke-GhAppGit $Worktree @('--version')
+    if ($version -notmatch '^git version (\d+)\.(\d+)' -or [version]"$($Matches[1]).$($Matches[2])" -lt [version]'2.38') {
+        throw "#$Number stop: clean merge proof needs Git 2.38 or later for merge-tree --write-tree."
+    }
+    $chain = [Collections.Generic.List[string]]::new()
+    $current = $head
+    for ($count = 0; $current -cne $Request.Head; $count++) {
+        $chain.Add($current)
+        if ($count -ge 20) { throw "#$Number stop: review request $($Request.Head) was not reached within 20 first-parent commits from $head." }
+        $parents = (Invoke-GhAppGit $Worktree @('rev-list', '--parents', '-n', '1', $current)).Trim().Split(' ')
+        if ($parents.Length -ne 3) {
+            throw "#$Number stop: head $head adds commits after review request $($Request.Head); owner approval and a new review request required."
+        }
+        $first = Assert-GhAppSha 'first parent' $parents[1]
+        $second = Assert-GhAppSha 'second parent' $parents[2]
+        $contained = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $second, $base) -AllowedExitCodes @(0, 1) -Result
+        if ($contained.ExitCode -ne 0) { throw "#$Number stop: second parent $second is not contained in $($Pr.baseRefName); owner approval and a new review request required." }
+        # Every merge is recomputed. A blob comparison alone would accept a conflict resolved
+        # wholly to either parent, so no shortcut is taken.
+        # merge-tree writes only objects: it leaves the index, worktree, and refs untouched.
+        $result = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-tree', '--write-tree', $first, $second) -AllowedExitCodes @(0, 1) -Result
+        if ($result.ExitCode -ne 0) { throw "#$Number stop: recomputed merge conflicts; manual resolution requires owner approval." }
+        $tree = Assert-GhAppSha 'recomputed merge tree' ($result.Output.Split("`n")[0].Trim())
+        $actual = (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', "$current^{tree}")).Trim()
+        if ($tree -cne $actual) { throw "#$Number stop: merge tree differs from the clean automatic merge; manual resolution requires owner approval." }
+        $current = $first
+    }
+    $chain.Add($Request.Head)
+    return ,$chain.ToArray()
+}
+
+function Get-GhAppTimelineObservation {
+    param([hashtable]$Context, [int]$Number, $Approval)
+    # Timeline order is an observation only. Commit timestamps can predate a push.
+    $query = 'query($owner:String!,$repo:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){timelineItems(first:100,after:$cursor,itemTypes:[PULL_REQUEST_COMMIT,PULL_REQUEST_REVIEW]){nodes{__typename ... on PullRequestCommit{commit{oid}} ... on PullRequestReview{fullDatabaseId}} pageInfo{hasNextPage endCursor}}}}}'
+    $cursor = $null
+    $lastCommit = 'none'
+    try {
+        for ($page = 0; $page -lt 1000; $page++) {
+            $body = @{ query = $query; variables = @{ owner = $Context.owner; repo = $Context.repo; number = $Number; cursor = $cursor } }
+            $result = Invoke-GhAppGh -Context $Context -Arguments @('api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '--input', '-') `
+                -ApiPath '/graphql' -InputText (ConvertTo-Json $body -Depth 10 -Compress)
+            $data = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop
+            if ($data.PSObject.Properties['errors']) { return 'unavailable' }
+            $timeline = $data.data.repository.pullRequest.timelineItems
+            foreach ($node in $timeline.nodes) {
+                if ($node.__typename -ceq 'PullRequestCommit') { $lastCommit = Assert-GhAppSha 'timeline commit' $node.commit.oid }
+                elseif ($node.__typename -ceq 'PullRequestReview' -and [string]$node.fullDatabaseId -ceq [string]$Approval.id) { return $lastCommit }
+            }
+            if (-not $timeline.pageInfo.hasNextPage) { return 'unavailable' }
+            $cursor = $timeline.pageInfo.endCursor
+        }
+    } catch { return 'unavailable' }
+    return 'unavailable'
+}
+
+function Get-GhAppApprovedReviewRequest {
+    param([hashtable]$Context, [int]$Number, [string]$Worktree, $Pr, [string]$LedgerPath)
+    $request = Get-GhAppReviewRequest $Context $Number $LedgerPath
+    $approval = Get-GhAppOwnerApproval $Context $Number $request.RequestedAt
+    if ($null -eq $approval) { throw "#$Number stop: no owner approval after review request $($request.Head)." }
+    $chain = Assert-GhAppReviewHistory $Context $Number $Worktree $Pr $request
+    # The ledger time comes from this machine's clock. Binding the approval to the proven chain means a
+    # skewed clock can never let an approval of an older head count for the request.
+    if ([string]$approval.commit_id -cnotin $chain) {
+        throw "#$Number stop: owner approval is on $($approval.commit_id), not on review request $($request.Head) or a clean base merge after it."
+    }
+    [pscustomobject]@{ Request = $request; Approval = $approval }
+}
+
+function Wait-GhAppApprovedHead {
+    param([hashtable]$Context, [int]$Number, $Pr, [string]$Worktree, [string]$LedgerPath, [int]$TimeoutSeconds, [int]$PollSeconds)
     $deadline = (Get-GhAppUtcNow).AddSeconds($TimeoutSeconds)
+    $updates = 0
+    $updatingHead = $null
     while ($true) {
         if ($Pr.state -cne 'OPEN') { throw "#$Number stop: state $($Pr.state)." }
+        if ($Pr.isDraft -or -not (Test-GhAppBotAuthor $Context $Pr.author)) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
         $current = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-        if ($current -cne $head) { throw "#$Number stop: head changed to $current." }
-        if (-not (Test-GhAppOwnerApproval $Context $Number $current)) { throw "#$Number stop: no owner approval on $current." }
         if ($Pr.mergeStateStatus -ceq 'DIRTY') { throw "#$Number stop: merge conflict with $($Pr.baseRefName); manual resolution requires owner approval." }
-        # An update would create a new head while the owner's approval stays on the old one.
-        if ($Pr.mergeStateStatus -ceq 'BEHIND') { throw "#$Number stop: behind $($Pr.baseRefName); update the branch, then the owner approves the new head." }
         if ((Get-GhAppUtcNow) -ge $deadline) { throw "#$Number stop: timed out in state $($Pr.mergeStateStatus)." }
+        # While an update is pending the head has not moved, so skip the proof until it does.
+        # A PR that is no longer behind needs no new head, so stop waiting for one.
+        if ($updatingHead -ceq $current -and $Pr.mergeStateStatus -ceq 'BEHIND') {
+            Start-Sleep -Seconds $PollSeconds
+            $Pr = Get-GhAppPullRequest $Context $Number
+            continue
+        }
+        $updatingHead = $null
+        $null = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $Pr $LedgerPath
+        if ($updates -ge 3 -and $Pr.mergeStateStatus -ceq 'BEHIND') { throw "#$Number stop: still behind $($Pr.baseRefName) after three updates." }
+        if ($Pr.mergeStateStatus -ceq 'BEHIND') {
+            try { $null = Invoke-GhAppApi $Context PUT "pulls/$Number/update-branch" @{ expected_head_sha = $current } -AsApp }
+            catch { throw "#$Number stop: branch update failed; manual resolution requires owner approval." }
+            $updates++
+            $updatingHead = $current
+            # The update is asynchronous. Poll readiness and prove any new head before checking it.
+            Start-Sleep -Seconds $PollSeconds
+            $Pr = Get-GhAppPullRequest $Context $Number
+            continue
+        }
         $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number/checks"
         $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)", '--required', '--json', 'name,bucket,state')
         $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8)
@@ -443,8 +657,12 @@ function Wait-GhAppApprovedHead {
         if (-not $pending -and $result.ExitCode -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
             # Recheck both the head and the latest owner review after checking CI.
             $fresh = Get-GhAppPullRequest $Context $Number
-            if ($fresh.headRefOid -ceq $head -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN' -and
-                (Test-GhAppOwnerApproval $Context $Number $head)) { return $fresh }
+            if ($fresh.headRefOid -ceq $current -and $fresh.baseRefOid -ceq $Pr.baseRefOid -and
+                $fresh.baseRefName -ceq $Pr.baseRefName -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN') {
+                if ($fresh.isDraft -or -not (Test-GhAppBotAuthor $Context $fresh.author)) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
+                $evidence = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $fresh $LedgerPath
+                return [pscustomobject]@{ Pr = $fresh; Request = $evidence.Request; Approval = $evidence.Approval }
+            }
             $Pr = $fresh
             continue
         }
@@ -484,19 +702,22 @@ function Remove-GhAppMergedBranch {
 function Merge-GhAppApprovedPullRequest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int[]]$Numbers,
-        [Parameter(Mandatory)][Alias('Log')][string]$LogPath, [ValidateRange(1, 3600)][int]$TimeoutSeconds = 1200,
+        [Parameter(Mandatory)][string]$Worktree, [Parameter(Mandatory)][Alias('Log')][string]$LogPath,
+        [string]$LedgerPath, [ValidateRange(1, 3600)][int]$TimeoutSeconds = 1200,
         [ValidateRange(1, 60)][int]$PollSeconds = 15, [string]$DeleteBranchPrefix, [Alias('Repo')][string]$Repository)
     $context = Get-GhAppContext $Repository
     if ($PSBoundParameters.ContainsKey('DeleteBranchPrefix') -and [string]::IsNullOrWhiteSpace($DeleteBranchPrefix)) {
         throw 'DeleteBranchPrefix must be nonempty when given.'
     }
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
     $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
     foreach ($number in $Numbers) {
         try {
             Write-GhAppMergeLog $LogPath "#$number start"
             $pr = Get-GhAppPullRequest $context $number
             if ($pr.state -cne 'OPEN') { Write-GhAppMergeLog $LogPath "#$number skip: state $($pr.state)"; continue }
-            $pr = Wait-GhAppApprovedHead $context $number $pr $LogPath $TimeoutSeconds $PollSeconds
+            $evidence = Wait-GhAppApprovedHead $context $number $pr $Worktree $LedgerPath $TimeoutSeconds $PollSeconds
+            $pr = $evidence.Pr
             $head = Assert-GhAppSha "head of #$number" $pr.headRefOid
             $merged = Invoke-GhAppApi $context PUT "pulls/$number/merge" @{ merge_method = 'merge'; sha = $head } -AsApp
             if (-not $merged.merged) { throw "#$number stop: merge failed." }
@@ -504,6 +725,10 @@ function Merge-GhAppApprovedPullRequest {
             $pr = Get-GhAppPullRequest $context $number
             if ($pr.state -cne 'MERGED') { throw "#$number stop: merge was not confirmed." }
             Write-GhAppMergeLog $LogPath "#$number merged $head -> $mergeSha"
+            $approvedAt = ([DateTimeOffset]$evidence.Approval.submitted_at).ToUniversalTime().ToString('o')
+            Write-GhAppMergeLog $LogPath "#$number review requested at $($evidence.Request.Head); approved $approvedAt; merged head $head; differences only from $($evidence.Request.Base)"
+            $observation = Get-GhAppTimelineObservation $context $number $evidence.Approval
+            Write-GhAppMergeLog $LogPath "#$number timeline observation only: last PullRequestCommit before approval $observation"
             Remove-GhAppMergedBranch $context $number $pr $head $LogPath $DeleteBranchPrefix
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
@@ -604,5 +829,5 @@ function Invoke-GhAppRead {
 }
 
 Export-ModuleMember -Function Import-GhAppConfig, Push-GhAppBranch, New-GhAppPullRequest,
-    Set-GhAppPullRequestBody, Add-GhAppComment, Add-GhAppReviewRecord,
+    Set-GhAppPullRequestBody, Add-GhAppComment, Add-GhAppReviewRecord, Request-GhAppOwnerReview,
     Merge-GhAppApprovedPullRequest, Close-GhAppPullRequest, Invoke-GhAppRead

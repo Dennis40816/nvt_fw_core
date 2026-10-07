@@ -2,7 +2,7 @@
 
 This PowerShell module sends repository writes through the repository's GitHub App.
 It adds a shared interface without removing existing scripts.
-It requires PowerShell 7.4 or later, Git, GitHub CLI, and an owner-installed token helper.
+It requires PowerShell 7.4 or later, Git 2.38 or later for merge proof, GitHub CLI, and an owner-installed token helper.
 The offline tests require Windows and Pester 3.4.0.
 
 ## Configure one repository
@@ -122,21 +122,61 @@ Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
 ```
 
+## Request-GhAppOwnerReview
+
+Call this function when a session sends a PR to the owner for review.
+It reads the current head and appends an external review request record.
+The PR must be open, not a draft, in the configured repository, and authored by `botLogin`.
+It makes no GitHub write and returns the recorded entry.
+A new head sent for review needs a new call.
+
+The default ledger is `~/.nvt/gh-app/review-ledger.jsonl`, beside the repository config.
+Both this ledger and any optional `-LedgerPath` must be outside every repository.
+Writes append one JSON object per line in UTF-8 without a BOM.
+Each object contains `owner`, `repo`, `number`, `head` (a 40-character SHA), `requestedAt` (UTC ISO 8601), and `base` (the branch name).
+Keep this file private and retain earlier entries.
+Use the same optional `-LedgerPath` when recording requests and merging.
+
+```powershell
+Request-GhAppOwnerReview -Number 7
+```
+
 ## Merge-GhAppApprovedPullRequest
 
 This function processes PR numbers in the caller's order.
 It skips closed or merged PRs.
 It stops the batch at the first unsafe operation or failed request.
 
-The owner's latest state-changing review must be `APPROVED` on the current head. A later COMMENTED review does not cancel it.
-Submission time orders reviews, and review IDs break ties.
-A pending owner review blocks merging. This is deliberate: the module cannot see what the draft will say.
-A later owner change request or dismissal supersedes an earlier approval.
-The function never updates a branch. An update creates a new head, and the owner's approval stays on the old head.
-It stops when the branch is behind its base, when the head changes, or when conflicts need manual resolution.
+The 10-05 rule preserves approval after a clean merge of the base branch, once required checks pass.
+Manual conflict resolution requires owner approval and a new review request.
+GitHub can move a review's `commit_id` to a newer head, so that field cannot prove which head the owner reviewed.
+The module trusts the head recorded when the session sent the PR to the owner.
+
+All three approval conditions must hold:
+
+1. The latest appended ledger entry for this owner, repository, and PR supplies requested head S and request time T.
+2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED`, `DISMISSED`, and `PENDING` block merging. The approval's `commit_id` must also be S or a proven merge after S. T comes from this machine's clock, so this binding stops an approval of an older head from counting when the clock runs behind GitHub.
+3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request.
+
+Every merge after the review request is recomputed with `git merge-tree --write-tree P1 P2`.
+It must report no conflicts and produce exactly the merge commit's tree.
+This proof requires Git 2.38 or later; older Git stops with a clear message.
+A blob comparison is not enough: a conflict resolved wholly to the base's file can match its blob and mode, while a conflict resolved wholly to the first parent can leave an empty diff.
+Both resolutions still require owner approval.
+
+`-Worktree` is mandatory and names a local clone with complete history.
+The module fetches the needed commit objects from the configured repository using the owner's normal Git credentials.
+It leaves local refs, `FETCH_HEAD`, the index, and working files untouched.
+Recomputation writes tree objects into the clone's object database.
+A non-merge commit after S, an unrelated second parent, a changed merge tree, or a longer walk stops merging.
+
+For `BEHIND`, the App calls `PUT pulls/{n}/update-branch` with `expected_head_sha` equal to H.
+It makes at most three updates per PR.
+Update failure or `DIRTY` stops with “manual resolution requires owner approval”.
+After an update, the module proves the new head and waits for its required checks.
 
 The function waits for required checks and a clean merge state.
-It rechecks the head and owner approval before merging with the exact head SHA.
+It rechecks the ledger, approval, and history after checks before merging with `sha` equal to H.
 Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.
 Use `-TimeoutSeconds` and `-PollSeconds` to change those limits.
@@ -154,9 +194,12 @@ With it, the function deletes the head branch only when all of these hold:
 
 The caller supplies an existing directory for `-LogPath`.
 The function appends UTC timestamps, head SHAs, merge SHAs, and branch outcomes.
+Its approval record reads `#N review requested at <S>; approved <time>; merged head <H>; differences only from <base>`.
+It also logs the last GraphQL timeline `PullRequestCommit` before the approval as an observation only.
+That observation never allows a merge: commit times can predate pushes. An unavailable timeline is logged as unavailable.
 
 ```powershell
-Merge-GhAppApprovedPullRequest -Numbers 7,8 -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
+Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
 ```
 
 ## Close-GhAppPullRequest
@@ -191,7 +234,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 
 ## Token rules
 
-- The module reads the config file and caller-supplied body files.
+- The module reads the config file, review ledger, and caller-supplied body files.
 - The module never reads private keys or DPAPI contents.
 - Only the owner-installed helper obtains installation tokens.
 - Each write receives a fresh token in memory.
@@ -201,7 +244,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - Captured output replaces an accidentally echoed token with `[redacted]`.
 - Captured error text never reaches callers or logs.
 - Process and API failures report only `HTTP <status> <API path>`. A helper failure adds only the helper's exit code.
-- The config file, the helper, the DPAPI file and `gh` must all be outside every repository.
+- The config file, review ledger, helper, DPAPI file and `gh` must all be outside every repository.
 - An unavailable HTTP status appears as `unknown`.
 - Every write targets the configured repository on GitHub.com.
 
@@ -218,9 +261,11 @@ The module replaces per-repository copies of the same behavior:
 These differences are intentional:
 
 - `Invoke-GhAppRead` returns UTF-8 text without trailing line breaks. The NFC runner returned raw bytes. The supported reads return JSON or text only.
-- A merge needs the owner's latest state-changing review to be APPROVED on the current head. A later COMMENTED review does not cancel the approval, as on GitHub.
-- The Core merge script accepted any approval on the head. The module also stops when a later CHANGES_REQUESTED or DISMISSED review follows it.
-- The Core merge script updated a behind branch and always deleted the merged branch. The module stops on a behind branch and deletes only with a prefix.
+- A merge uses the latest external review request and an owner approval submitted after it. Review `commit_id` and the GraphQL timeline cannot authorize a merge. A later COMMENTED review does not cancel approval.
+- The Core merge script accepted any approval on the head. The module stops when the latest state-changing owner review is CHANGES_REQUESTED, DISMISSED, or PENDING.
+- The 10-05 rule allows only proven clean base merges after the recorded head. The module proves first-parent history and recomputes every merge with Git 2.38 or later using `merge-tree`.
+- The module updates a behind branch at most three times, rechecks required checks and approval, and deletes a merged branch only with a prefix. The Core script always deleted the merged branch.
+- Sessions record review requests with `Request-GhAppOwnerReview` before relying on an owner approval.
 - Review records are always COMMENT reviews pinned to the expected head.
 
 An adopting repository compares its old script output with these functions before it retires the old copy.
@@ -236,7 +281,7 @@ This addition leaves the existing scripts intact.
 3. Replace branch pushes with `Push-GhAppBranch`.
 4. Replace PR creation and description edits with the matching PR functions.
 5. Replace comments and review records with their matching functions.
-6. Replace approved merges with `Merge-GhAppApprovedPullRequest`.
+6. Record heads sent to the owner with `Request-GhAppOwnerReview`; replace approved merges with `Merge-GhAppApprovedPullRequest` and supply `-Worktree`.
 7. Use `Invoke-GhAppRead` for supported owner-authenticated reads.
 8. Run offline tests and review the adoption before retiring old copies.
 
@@ -258,6 +303,7 @@ The fake records arguments, request bodies, and redacted environment values.
 An equality flag proves that the child received the fake App token without recording the token.
 The fake helper never reads credentials or calls GitHub.
 Local Git object fixtures cover binary data, Unicode filenames, modes, deletions, and merge parents.
+Review fixtures cover external ledger records, approval timing, repeated branch updates, clean merge recomputation, altered merge trees, conflicts resolved wholly to either parent, and the 20-commit limit.
 The runner removes its temporary directory after execution.
 
 Exit code `0` means all executed tests passed.
@@ -266,3 +312,5 @@ Exit code `2` means the runner could not execute a valid supported suite.
 
 Endpoint behavior follows the [GitHub pull request API](https://docs.github.com/en/rest/pulls/pulls).
 Required check polling uses the [GitHub CLI check command](https://cli.github.com/manual/gh_pr_checks).
+Clean merge recomputation follows [Git merge-tree](https://git-scm.com/docs/git-merge-tree).
+Timeline observations use the [GitHub GraphQL pull request schema](https://docs.github.com/en/graphql/reference/pulls).
