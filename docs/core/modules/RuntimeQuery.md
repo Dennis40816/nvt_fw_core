@@ -140,7 +140,9 @@ It has no source tool baseline or extracted source paths.
 
 | Public API | Contract |
 | --- | --- |
-| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. |
+| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. `BeforeFirstFrameAndRuntime` permits early startup and runtime requests. |
+| `RuntimeQueryInvocation` | Identifies `Startup` or `Runtime` invocation timing. |
+| `RuntimeQueryCommand.InvocationHandler` | Optional init property with type `Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>?`. Replaces `Handler` when set. |
 | `RuntimeQueryCommand.StartupPhase` | Optional metadata. The default is `None`, so existing registrations keep their behavior. |
 | `RuntimeQueryCommand.StartupValueKey` | Optional argument key for one startup value. The default is null, which defines a flag with null handler arguments. |
 | `RuntimeQueryCommand.StartupValidator` | Optional validator with type `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`. Returns null for valid arguments or a failure. |
@@ -235,6 +237,99 @@ Run the tool's existing startup parser tests on both lists.
 Compare parse results and exact error messages, including existing `page`, `help`, and report options.
 Registering startup phases adds behavior and requires separate tool tests before adoption.
 This task changes no tool repository.
+
+### Before the first frame and at runtime
+
+Use `BeforeFirstFrameAndRuntime` for a command that also runs before the first layout.
+The new enum member follows the existing members and preserves their numeric values.
+Both early phase values select the same before-first-frame pass.
+Mixed early commands keep command-line order.
+Run this pass before showing the window or starting any layout.
+
+Set `InvocationHandler` when the handler needs timing information.
+It receives `RuntimeQueryInvocation.Startup` from the startup runner and `RuntimeQueryInvocation.Runtime` from either runtime entry point.
+The constructor still requires `Handler`.
+When set, `InvocationHandler` replaces `Handler` after the existing routing and confirmation checks.
+Without it, Core calls `Handler` as before.
+`ReceivesConfirmation` also controls runtime arguments delivered to `InvocationHandler`.
+Startup validators still run during parsing without invoking either handler.
+
+The startup parser recognizes the new phase through the existing option, value-key, validator, and confirmation rules.
+Generic help includes these commands in registration order.
+A startup option listing selects commands whose `StartupPhase` differs from `None`.
+
+For a `--window-size` command, validate dimensions once and reuse that validator in the handler.
+This Avalonia example sets Width and Height before Show.
+It updates layout only when the invocation runs at runtime.
+
+```csharp
+RuntimeQueryResponseEnvelope? ValidateWindowSize(IReadOnlyDictionary<string, string>? values)
+{
+    if (RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out var error)
+        && dimensions.Count == 2)
+    {
+        return null;
+    }
+
+    return error ?? RuntimeQueryResponseEnvelope.Failure("INVALID_ARGUMENTS", "Use width,height with two positive dimensions.");
+}
+
+Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
+    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values)
+{
+    if (ValidateWindowSize(values) is { } failure)
+    {
+        return Task.FromResult(failure);
+    }
+
+    _ = RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out _);
+    mainWindow.Width = dimensions[0];
+    mainWindow.Height = dimensions[1];
+    if (invocation == RuntimeQueryInvocation.Runtime)
+    {
+        mainWindow.UpdateLayout();
+    }
+
+    return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
+}
+
+var windowSize = new RuntimeQueryCommand(
+    "window-size", RuntimeQueryCommandRisk.ChangesState,
+    values => ApplyWindowSizeAsync(RuntimeQueryInvocation.Runtime, values),
+    StartupPhase: RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime,
+    StartupValueKey: "size",
+    StartupValidator: ValidateWindowSize)
+{
+    InvocationHandler = ApplyWindowSizeAsync
+};
+var router = new RuntimeQueryCommandRouter([windowSize], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+if (startup.Issues.Count > 0)
+{
+    return;
+}
+
+var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+if (before.Any(result => !result.Response.Ok))
+{
+    return;
+}
+
+mainWindow.Show();
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup);
+```
+
+Both forms use the `size` argument key:
+
+```text
+--window-size 1280,720
+query window-size --size 1280,720
+```
+
+The caller owns the window and dispatches runtime requests on the UI thread.
+`BeforeFirstFrame` remains startup-only and still returns `STARTUP_ONLY` at runtime.
+`AfterStartup` keeps its later startup pass and runtime routing.
+`None` keeps runtime routing without adding a startup option.
 
 ## Public API
 

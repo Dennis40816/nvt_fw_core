@@ -132,6 +132,8 @@ public sealed partial class RuntimeQueryCommandRouter
             }
         }
 
-        return handler(args);
+        return _commands?.GetValueOrDefault(command)?.InvocationHandler is { } invocationHandler
+            ? invocationHandler(isStartup ? RuntimeQueryInvocation.Startup : RuntimeQueryInvocation.Runtime, args)
+            : handler(args);
     }
 }
