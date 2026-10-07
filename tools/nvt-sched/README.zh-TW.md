@@ -18,6 +18,30 @@
 根目錄的舊排程保留來源的動作，沒有 `-CommanderDir`。它的 runner 讀 `COMMANDER_DIR`，沒設定時以代碼 2 結束。
 host 執行檔與本機紀錄資料夾由 Windows 系統資料夾推導。
 
+## 無視窗排程動作
+
+排程使用 `conhost.exe --headless` 啟動 PowerShell，不開終端機視窗。
+即使 PowerShell 指定 `-WindowStyle Hidden`，Windows Terminal 仍可能開啟視窗。
+headless console 避免這個視窗，因此 action 不再使用 `-WindowStyle`。
+
+- 從 `[Environment]::SystemDirectory` 取得 `conhost.exe`，並用 `Assert-NvtPath` 檢查。
+- 從 `Program Files\PowerShell\7` 取得 `pwsh.exe`，不查 PATH，也不接受呼叫者指定執行檔。
+- 檢查固定 runner，工作目錄仍只接受白名單 tick 所在的資料夾。
+
+action 引數格式如下：
+
+```text
+--headless "<pwsh path>" -NoLogo -NoProfile -NonInteractive -File "<runner>" -Id commander-tick -TaskPath \NVT\ -CommanderDir "<commander folder>"
+```
+
+不使用密碼、encoded command 或 execution policy switch。
+`list`／`status` 將舊的 `pwsh.exe -WindowStyle Hidden` action 標為 `DefinitionOutdated`。
+`run`／`remove` 以代碼 4 拒絕這個過期定義。
+`install`／`add` 只在其餘欄位完全符合要求的白名單定義時重新註冊。
+更新須取得 runner 鎖、確認程序已退出，且排程狀態為 Ready。
+重新匯出並確認 headless 定義後，才清理根目錄舊排程。
+其他定義改動與已停用工作仍拒絕處理。
+
 ## owner 重新註冊的一行指令
 
 先將 `COMMANDER_DIR` 設為已審核的 commander 資料夾，再於 repository 根目錄執行：
@@ -37,7 +61,8 @@ pwsh -NoProfile -File tools/nvt-sched/nvt-sched.ps1 install -Id commander-tick -
 執行腳本與維護者。說明模板放在 `allowlist.psd1` 的必要欄位 `Description`；少了它，
 排程器畫面無法說明用途、週期及維護者。週期會填入實際分鐘數。
 Principal 仍是目前使用者 SID，採 `InteractiveToken`／`LeastPrivilege`。
-`install` 與相容的 `add` 做同一件事；已存在但設定不同或停用的排程，不覆寫、不啟用。
+`install` 與相容的 `add` 做同一件事，只更新上述完全相符的過期 action。
+已存在但有其他設定改動或停用的排程，不覆寫、不啟用。
 
 先註冊新工作，再重新匯出核對 action、SID、設定、作者與說明；成功後才核對、
 停用並移除根目錄舊工作 `\NVT-S-<SID>-commander-tick`。新註冊／驗證失敗會報錯，
@@ -63,6 +88,7 @@ pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 remove -Id commander-tick
 `list`／`status` 是同一個唯讀查詢：顯示 `\NVT\` 工作及根目錄本 SID 的舊名稱。
 舊名稱標 `Legacy: True`、`Unmanaged`，一般 run／remove 不操作它們。
 原有 `Installed`、`DefinitionMismatch`、`NotInstalled`、`Unmanaged` 意義不變；
+新增的 `DefinitionOutdated` 表示舊 action 尚未更新。
 定義不符仍可查完成紀錄，但不能執行。`-Json` 固定輸出陣列；新增 `TaskPath` 是為了
 區分資料夾，`Legacy` 是為了指出遷移殘留。最近成功、退出碼、排程結果、下次時間及
 最近五筆歷史照舊。證據讀不到即顯示未知，不修復檔案。查詢失敗回非零，不落錯誤紀錄，
@@ -158,10 +184,10 @@ suite 保留搬移、工作 metadata、每週 audit、報告重用與通知重�
 
 - `allowlist.psd1`: 新增版權標頭；保留固定 tick 檔名，由既有參數解析資料夾。
 - `nvt-sched-runner.ps1`: 新增版權標頭；由參數或環境取得必填 CommanderDir，再傳給 CLI。
-- `nvt-sched.ps1`: 新增版權標頭；保留 CommanderDir 參數化、資料夾必填檢查與 Windows 引數跳脫，不新增來源以外的排程行為。
+- `nvt-sched.ps1`: 新增版權標頭；保留 CommanderDir 參數化、資料夾必填檢查與 Windows 引數跳脫，新增 headless action 與過期定義的精確搬移。
 - `README.md`: 改用 repository 相對指令與路徑參數；移除本機部署細節，新增來源 hash 及外部 tick 驗證限制。
 - `README.zh-TW.md`: 改用 repository 相對指令與路徑參數；移除本機部署細節，新增來源 hash 及外部 tick 驗證限制。
-- `registered-task.fixture.xml`: 帳號、host、runner 與工作資料夾改用佔位符，保留合成 SID 與匯出省略形狀。
+- `registered-task.fixture.xml`: 改用 headless action，帳號、console、host、runner 與資料夾均用佔位符，保留合成 SID 與匯出省略形狀。
 - `test-nvt-sched.ps1`: 新增版權標頭；保留參數測試，從 fixture 推導路徑負例；使用帳號佔位符與合成外部 tick 呼叫端。
 
 零差異驗證先比對來源 hash，再逐項審核上述轉換，最後從 repository 根目錄執行全部匯入 suite。

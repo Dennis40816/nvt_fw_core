@@ -19,6 +19,30 @@ Installation embeds `-CommanderDir` in the runner arguments. Use the same folder
 A legacy root task keeps the source action, which has no `-CommanderDir`. Its runner reads `COMMANDER_DIR` and exits with code 2 if it is unset.
 The host executable and local record folders come from Windows system folders.
 
+## Headless scheduled action
+
+Scheduled actions use `conhost.exe --headless` to run PowerShell without a terminal window.
+Windows Terminal can open a window even when PowerShell receives `-WindowStyle Hidden`.
+The headless console avoids that window, so the action omits `-WindowStyle`.
+
+- Resolve `conhost.exe` from `[Environment]::SystemDirectory` and validate it with `Assert-NvtPath`.
+- Resolve `pwsh.exe` from `Program Files\PowerShell\7`, never PATH or a caller-supplied executable.
+- Validate the fixed runner and keep the working directory equal to the allowlisted tick directory.
+
+The action arguments have this form:
+
+```text
+--headless "<pwsh path>" -NoLogo -NoProfile -NonInteractive -File "<runner>" -Id commander-tick -TaskPath \NVT\ -CommanderDir "<commander folder>"
+```
+
+The action uses no password, encoded command, or execution policy switch.
+`list` and `status` report the previous `pwsh.exe -WindowStyle Hidden` action as `DefinitionOutdated`.
+`run` and `remove` reject that outdated definition with code 4.
+`install` and `add` replace it only when every other field matches the requested allowlisted definition.
+Updating requires the runner lock, confirmed worker exit, and a ready task.
+The tool verifies the exported headless definition before cleaning up any legacy task.
+Other definition changes and disabled tasks remain refused.
+
 ## Re-register in one command
 
 Set `COMMANDER_DIR` to the reviewed commander folder, then run this command from the repository root:
@@ -35,8 +59,9 @@ The description template lives in the required `Description` field in `allowlist
 without it, Task Scheduler cannot explain the job's purpose, cadence or maintainer.
 Changing the interval updates its text.
 The principal remains the current user's SID with InteractiveToken/LeastPrivilege.
-`install` and the compatible `add` command have the same behavior. A different or
-disabled existing definition is refused rather than overwritten or re-enabled.
+`install` and the compatible `add` command have the same behavior.
+They update the exact outdated action described above.
+They refuse other definition changes and disabled tasks.
 
 Installation registers the new task, exports it and validates execution settings,
 SID, author and description. Only then does it verify, disable and remove the old
@@ -66,8 +91,9 @@ pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 remove -Id commander-tick
 `list`/`status` are identical read-only queries. They show `\NVT\` tasks and current
 SID legacy tasks at root. Root leftovers have `Legacy: True`, are `Unmanaged`, and
 are not run/removed by normal commands. `Installed`, `DefinitionMismatch`,
-`NotInstalled` and `Unmanaged` retain their previous meanings. JSON is always an
-array. Added `TaskPath` prevents ambiguity between folders; `Legacy` identifies
+`NotInstalled` and `Unmanaged` retain their previous meanings.
+`DefinitionOutdated` identifies the previous action. JSON is always an array.
+Added `TaskPath` prevents ambiguity between folders; `Legacy` identifies
 remaining old names. Existing completion fields and the newest five history
 entries remain, with unknown/unreadable evidence shown as null and never repaired.
 Query errors return nonzero with sanitized stderr, without partial JSON or writes.
@@ -179,10 +205,10 @@ Every imported script adds the owner-required copyright notice. Text changes use
 
 - `allowlist.psd1`: Adds a copyright header. Keeps the fixed tick filename and resolves its directory through the existing parameter.
 - `nvt-sched-runner.ps1`: Adds a copyright header. Requires CommanderDir through the argument or environment and forwards it to the CLI.
-- `nvt-sched.ps1`: Adds a copyright header. Retains CommanderDir parameterization, required-folder checks and Windows argument escaping. Adds no scheduler behavior beyond the source.
+- `nvt-sched.ps1`: Adds a copyright header. Retains CommanderDir parameterization, required-folder checks and Windows argument escaping. Adds the headless action and exact outdated-definition migration.
 - `README.md`: Uses repository-relative commands and path parameters. Removes local deployment details. Adds source hashes and the external tick verification limit.
 - `README.zh-TW.md`: Uses repository-relative commands and path parameters. Removes local deployment details. Adds source hashes and the external tick verification limit.
-- `registered-task.fixture.xml`: Replaces account, host, runner and working-directory values with placeholders. Keeps synthetic SID and exported omissions.
+- `registered-task.fixture.xml`: Uses the headless action with account, console, host, runner, and directory placeholders. Keeps synthetic SID and exported omissions.
 - `test-nvt-sched.ps1`: Adds a copyright header. Retains parameter tests and derives local path negatives from fixtures. Uses account placeholders and a synthetic external tick caller.
 
 To verify zero difference, compare source hashes first. Review each listed transformation, then run every imported suite from the repository root.

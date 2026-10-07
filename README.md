@@ -68,7 +68,6 @@ Task 0 has no behavior tests or tool adoption, so runtime zero-difference verifi
 Each module document records its frozen source baseline and how a tool verifies zero difference.
 
 - `Nvt.Core.Avalonia.Theme`: [Theme](docs/core/modules/Theme.md)
-- `Nvt.Core.Avalonia.Icons`: [Icons](docs/core/modules/Icons.md)
 - `Nvt.Core.Lifecycle`: [Lifecycle](docs/core/modules/Lifecycle.md)
 - `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
 - `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)

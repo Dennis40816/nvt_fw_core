@@ -62,7 +62,6 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 |---|---|---|---|---|---|---|
 | Theme tokens and button states | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Font set | NFC baseline; Core role table | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Theme/` | 1 → 2 | Role table decided; NFC's legacy font resources in an open pull request. |
-| Shared icon names and style | Core | Core | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Icons/` | 1 → 2 | Shared [icon names and style](core/modules/Icons.md) added. Applications adopt separately. |
 | Reveal focus and tooltips | NFC | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Focus/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Loading, progress, and cancellation surface | NFC; NFH; NFU | NVT CORE | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Progress/` | 1 → 2 | Part of the Progress module; UI controls follow the data and job tasks. NFC adopts first. |
 | Cards, dialogs, and input controls | NFH | NFH | `Nvt.Core.Avalonia` | `src/Nvt.Core.Avalonia/Primitives/`; `src/Nvt.Core.Avalonia/Inputs/`; `src/Nvt.Core.Avalonia/Panels/`; `src/Nvt.Core.Avalonia/Dialogs/` | 1 → 2 | Pull requests open; NFH adoption follows its Avalonia 12 upgrade. |

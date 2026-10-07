@@ -302,13 +302,6 @@
           "Nvt.Core": "[0.2.0, )"
         }
       },
-      "nvt.core.fonts": {
-        "type": "Project",
-        "dependencies": {
-          "Avalonia": "[12.1.1, )",
-          "Avalonia.Fonts.Inter": "[12.1.1, )"
-        }
-      },
       "Avalonia": {
         "type": "CentralTransitive",
         "requested": "[12.1.1, )",
