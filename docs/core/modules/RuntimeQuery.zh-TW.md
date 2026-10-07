@@ -115,10 +115,11 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 ```
 
 訊息使用正規化後的命令名稱。發生上述任一錯誤時，處理委派不會執行。
-對每個風險等級，啟用的防護會先以 ordinal 規則移除 `confirm` 鍵，再呼叫處理委派。
+預設情況下，啟用的防護會先以 ordinal 規則移除各風險等級命令的 `confirm` 鍵，再呼叫處理委派。
 其他鍵與值保持原樣，複製至新的 ordinal 字典。
 沒有剩餘鍵時，處理委派接收 null。null 引數保持 null。
-啟用防護後，處理委派不再接收 `confirm` 鍵。
+設定 `ReceivesConfirmation = true` 的命令保留原始執行期間引數，包含 `confirm`。
+此屬性預設為 false，不改變 `WritesData` 檢查或啟動引數處理。
 現有命令列語法已將 `--confirm` 轉為 `"confirm": "true"`。
 
 `RuntimeQueryConfirmationCases` 集中保存新增輸入與字面預期值。
@@ -128,7 +129,8 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 
 要達成零差異，NFH 必須保持防護關閉，並執行下方現有的 NFH 切換檢查。
 比較測試結果、stdout 與 stderr 位元組、管道框架、錯誤代碼與訊息，以及程序結束代碼。
-獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`，且處理委派引數不含 `confirm`。
+獨立的防護變更須預期未確認的 `WritesData` 命令回傳 `CONFIRMATION_REQUIRED`。
+除非命令透過 `ReceivesConfirmation` 選擇接收，處理委派引數不含 `confirm`。
 
 ## Startup entry
 
@@ -618,6 +620,13 @@ Core 只回傳命令 record，不啟動伺服器。
 六個命令的啟動階段皆為 `None`，沒有啟動選項。
 `--page`、`--help` 及其他啟動引數仍由工具持有。
 
+通用 exit 設定 `RuntimeQueryCommand.ReceivesConfirmation` 為 true，讓處理委派在兩種路由器設定下都收到 `confirm`。
+此 init 屬性位於 `Nvt.Core.RuntimeQuery`，其他命令的預設值為 false。
+要求確認時，路由器仍先驗證 `WritesData`，再呼叫處理委派。
+未選擇接收的命令仍會移除 `confirm`。
+關閉確認防護時，路由器對兩種 `ReceivesConfirmation` 設定都原樣傳遞全部引數。
+此屬性不改變啟動解析或執行。
+
 公開型別皆位於 `Nvt.Core.Avalonia.RuntimeQuery`：
 
 | 公開型別 | 契約 |
@@ -627,8 +636,9 @@ Core 只回傳命令 record，不啟動伺服器。
 | `IRuntimeQueryNavigation` | 提供 `Pages`、`CurrentPage` 及同步的 `SwitchPage(name)`。 |
 | `RuntimeQueryPageResult` | 定義 `Switched`、`NeedsConfirmation` 與 `Rejected`。 |
 | `RuntimeQueryExitResult` | 定義 `Closing`、`NeedsConfirmation` 與 `Rejected`。 |
+| `RuntimeQueryExitRequest(Confirmed)` | 將解析後的確認值傳給工具的結束決策。缺少或空白確認值表示 false。 |
 | `RuntimeQueryScreenshotResult` | 替代擷取回傳 `Success(pixelWidth, pixelHeight, fileSize)` 或 `Failure(code, message)`。檔案大小以位元組計。 |
-| `RuntimeQueryGenericFailureCodes` | 下列失敗代碼常數，包含共用的 `INVALID_ARGUMENTS`。`USER_CONFIRMATION_REQUIRED` 與路由器的 `CONFIRMATION_REQUIRED` 不同：加上 `--confirm` 無效，因為工具需要由使用者確認。 |
+| `RuntimeQueryGenericFailureCodes` | 下列失敗代碼常數，包含共用的 `INVALID_ARGUMENTS`。`USER_CONFIRMATION_REQUIRED` 表示工具的決策。路由器的 `WritesData` 防護使用 `CONFIRMATION_REQUIRED`。 |
 
 | 名稱 | 風險 | 引數 | 成功資料 | 失敗代碼 |
 | --- | --- | --- | --- | --- |
@@ -637,7 +647,7 @@ Core 只回傳命令 record，不啟動伺服器。
 | `focus` | `ChangesState` | 無 | `{ focused: true }` | `NO_MAIN_WINDOW` |
 | `page` | `ChangesState` | 無，或 `--name <page>` | 清單：`{ pages, currentPage }`。切換：`{ currentPage }` | `INVALID_ARGUMENTS`、`UNKNOWN_PAGE`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED` |
 | `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`、`FILE_EXISTS`、`NO_MAIN_WINDOW`、`CAPTURE_UNAVAILABLE`，或替代擷取原樣回傳的失敗 |
-| `exit` | `ChangesState` | 無 | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`、`EXIT_REJECTED` |
+| `exit` | `ChangesState` | 設定 `DecideExitRequest` 時可選用 `--confirm` | `{ closing: true }` | `INVALID_ARGUMENTS`、`USER_CONFIRMATION_REQUIRED`、`EXIT_REJECTED` |
 
 Help 以字串回傳風險名稱，並保留登錄順序。
 工具透過 `GetCommands` 提供清單，因為登錄會在建立命令後才完成。
@@ -693,18 +703,38 @@ Core 在呼叫委派前不更新排版，也不取得主視窗。
 委派必須以不覆寫的移動處理 Core 檢查後才出現的目的檔。
 委派例外原樣向外傳遞。
 
-工具提供同步的 `DecideExit` 及正常關閉動作 `Close`。
-決策不得開啟對話框。
+設定 `DecideExitRequest`，讓同步的結束決策讀取 `RuntimeQueryExitRequest.Confirmed`。
+設定後，Core 呼叫此委派，取代 `DecideExit`。
+未設定時，Core 呼叫既有 `DecideExit`，忽略全部引數，包含無效的 `confirm` 值。
+既有建構子簽章及舊版結束決策保持不變。
+兩個委派都必須直接決策，不得開啟對話框。
+
+使用 `DecideExitRequest` 時，Core 透過 `RuntimeQueryArgumentParser.TryGetBoolArg` 解析 `confirm`，並忽略其他引數。
+缺少或空白確認值表示 `Confirmed = false`。
+命令列解析器將 `--confirm` 轉為 `confirm=true`，表示 `Confirmed = true`。
+明確指定 `confirm=false` 表示 `Confirmed = false`。
+布林解析器也接受 1、0、on、off、yes 及 no，不區分大小寫。
+無效值原樣回傳路由器的 `INVALID_ARGUMENTS` 封套，且不呼叫任一委派。
+`requireConfirmation` 為 true 或 false 時，這些值及回應都相同。
+
+NVT FW Combiner 可依下列規則實作結束決策：
+
+- 未確認：回傳 `NeedsConfirmation`，不開啟對話框。
+- 已確認：回傳 `Closing`，略過工具自身的關閉確認。
+- 已在關閉中，或開啟了模態對話框：回傳 `Rejected`。
+
 Core 處理以下三種結果：
 
 - `Closing`：產生 `{ closing: true }`，並將 `Close` 以 Background 優先序排入 UI dispatcher。
 - `NeedsConfirmation`：回傳 `USER_CONFIRMATION_REQUIRED`，訊息為 `Exit requires confirmation.`。不關閉，也不開啟對話框。
 - `Rejected`：回傳 `EXIT_REJECTED`，訊息為 `Exit was rejected.`。不關閉。
 
-排程會延後關閉，讓處理委派先產生回應。
+委派回傳 `Closing` 後，Core 先回傳回應，再於 UI 執行緒執行排程中的 `Close` 動作。
 工具必須在關閉流程中等待 `RuntimeQueryHost.StopAsync` 完成，才能結束程序。
 伺服器讓回應在關閉時間上限內完成寫入並清空緩衝區。
-工具回傳 `Closing` 後必須執行關閉；關閉動作不得再否決已核准的決策。
+這讓 Core 在程序結束前送出回應，避免關閉流程截斷回應。
+工具回傳 `Closing` 後必須執行關閉。
+關閉動作必須略過自身的確認，且不得再否決已核准的決策。
 
 常數包含 `NO_MAIN_WINDOW`、`USER_CONFIRMATION_REQUIRED`、`PAGE_REJECTED`、`UNKNOWN_PAGE`、`INVALID_ARGUMENTS`、`FILE_EXISTS`、`CAPTURE_UNAVAILABLE` 及 `EXIT_REJECTED`。
 工具的擷取失敗可自行提供其他代碼，不需要 Core 對應。
@@ -717,6 +747,7 @@ var options = new RuntimeQueryGenericCommandOptions(
     "Example tool", "1.0", () => registered, () => mainWindow,
     navigation, DecideExit, CloseNormally)
 {
+    DecideExitRequest = request => DecideExitWithConfirmation(request.Confirmed),
     CaptureScreenshot = CaptureProductionAsync
 };
 var generic = RuntimeQueryGenericCommands.Create(options);
@@ -731,7 +762,8 @@ var handler = RuntimeQueryUiThread.Wrap(
 完成的 `registered` 清單包含每個產品命令與風險。
 工具將包裝後的處理委派交給既有伺服器設定。
 
-Headless 測試透過啟用確認防護的路由器，驗證完整回應資料、訊息、導覽決策及延後關閉。
+Headless 測試驗證完整回應資料、訊息、導覽決策及延後關閉。
+Exit 測試涵蓋兩種路由器設定、委派優先順序、解析失敗、舊版決策，以及回應先於 `Close` 執行。
 固定視窗內容驗證兩種縮放比例的 PNG 尺寸，以及成功和失敗後的暫存檔清理。
 測試也驗證替代擷取前的路徑檢查、委派自行排版，以及工具失敗與例外的原樣傳遞。
 

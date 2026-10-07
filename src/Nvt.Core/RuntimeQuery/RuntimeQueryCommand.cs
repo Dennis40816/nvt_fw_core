@@ -15,4 +15,12 @@ public sealed record RuntimeQueryCommand(
     Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>> Handler,
     RuntimeQueryStartupPhase StartupPhase = RuntimeQueryStartupPhase.None,
     string? StartupValueKey = null,
-    Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>? StartupValidator = null);
+    Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>? StartupValidator = null)
+{
+    /// <summary>Whether the runtime handler receives the confirm argument when the router requires confirmation.</summary>
+    /// <remarks>
+    /// Defaults to false. Commands that write data still require confirmation before their handlers run.
+    /// This property does not change startup argument handling.
+    /// </remarks>
+    public bool ReceivesConfirmation { get; init; }
+}

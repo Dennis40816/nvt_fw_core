@@ -6,6 +6,10 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+### New modules and features
+
+- RuntimeQuery: generic exit gains `DecideExitRequest` and `RuntimeQueryExitRequest`, while `ReceivesConfirmation` lets handlers receive `--confirm` without changing legacy behavior.
+
 ### Tools
 
 - `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
