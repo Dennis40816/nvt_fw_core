@@ -17,10 +17,17 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - Message Center: refresh coordinator (#81), export workflow (#83).
 - Launcher: launch and change coordination (#84), installation and inventory (#89).
 - Processes: external process runner with bounded cleanup (#88).
+- ReportList: windowed and load-more paging models with host-supplied labels (#96).
+
+### Fixes
+
+- Files: the stable write tree uses one phase value. Wrong-order calls fail with `InvalidOperationException` instead of an unrelated exception (#94, issue #85).
 
 ### Tests
 
 - RuntimeQuery: the disconnected-peer client test reads one byte before it disconnects, so it no longer fails under load (#80).
+- Test probe: `orphan-chain-exit` mode (#95).
+- Processes: 25 of NFC's 26 runner lifetime tests (#97).
 
 ### Docs
 
@@ -29,6 +36,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - State management gains "When to group state into one type".
 - This changelog.
 - Message Center documents the refresh coordinator (#90). Shell records its boundary and the seams NFC keeps (#92).
+- `ROADMAP.md` holds the fix lane, product features and tool adoption.
 
 ## 0.2.0 - 2026-10-07
 
