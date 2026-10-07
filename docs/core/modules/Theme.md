@@ -74,10 +74,12 @@ No informative text sits directly on the scrim; dialogs use opaque surfaces. Com
 
 ### Tool accents
 
-Core defaults to NFC. An accent is one color expressed as seven `NfcAccent*` keys; a tool sets all seven below in application-scope Light/Dark resources. Adoption follows two steps:
+Core defaults to NFC. An accent is one color expressed as seven `NfcAccent*` keys; a tool sets all seven below in application-scope Light/Dark resources. Adoption follows two steps (owner decision 2026-10-07):
 
-1. In the adoption PR, a tool may override any `Nfc*` color, size and radius key and the `Nvt.Button.*` and `Nvt.Focus.*` keys at application scope with its current values, including `Nvt.Button.PrimaryLabelBrush`, to prove the screens do not change.
-2. In a later color PR approved by the owner, the tool removes those overrides and keeps only the seven `NfcAccent*` keys for its accent.
+1. Package PR: the tool pins the Core packages to the new version and changes no screen.
+2. Look PR, approved by the owner: the tool loads `ThemeTokens`, `ButtonStyles` and `ScrollStyles`, sets only the seven `NfcAccent*` keys for its accent, moves its buttons to the Core roles, and deletes its local styles with the same purpose. Heights, corner radii and focus rings change in this same PR. The PR attaches before-and-after images in Light and Dark.
+
+Overrides cannot restore a tool's old look. Some Core values are fixed, such as the 14 px scroll lane and the 14,0 button padding. Several states also share one key, such as the primary button background and border.
 
 Tools do not override basic control styles locally. Core adds a role when a tool needs a variant. Focus colors are independent of accents.
 
@@ -482,10 +484,10 @@ The gallery uses Fluent, ThemeTokens, ButtonStyles and ScrollStyles to compare f
 
 ### Adoption
 
-Each tool follows two separate PRs:
+Each tool follows two separate PRs (owner decision 2026-10-07, which replaces the 2026-10-06 zero-difference-then-color plan):
 
-1. Adoption PR: use application-scope overrides for any `Nfc*` color, size and radius key and the `Nvt.Button.*` and `Nvt.Focus.*` keys, including `Nvt.Button.PrimaryLabelBrush`, with the tool's current values. Before-and-after images prove the screens do not change.
-2. Later color PR, approved by the owner: remove those overrides and keep only the seven `NfcAccent*` keys for the tool's accent. An accent is one color expressed as seven keys; set all seven.
+1. Package PR: pin the Core packages to the new version. The screens do not change.
+2. Look PR, approved by the owner: adopt `ThemeTokens`, `ButtonStyles` and `ScrollStyles` in one change. Keep only the seven `NfcAccent*` keys for the tool's accent; set all seven. Move buttons to the Core roles and delete local styles with the same purpose. Do not add compatibility variants to Core to restore an old look. Before-and-after images cover every main screen in Light and Dark.
 
 Images cover Light/Dark, English/Traditional Chinese, states, DPI and long labels. Product behavior and data colors stay in tools.
 
@@ -532,10 +534,10 @@ Checks:
 - The test project references `Avalonia.Themes.Fluent` 12.1.1 for these checks. Scroll tests and the temporary palette gallery load `FluentTheme` in their own windows. The packages gain no dependency.
 - The same seven runtime cases for NFC's rules passed against a temporary copy of the full frozen NFC file. The copy left out three styles that select an NFC view type, because Core cannot compile them. The copy is not retained.
 
-For adoption with the shared palette:
+For adoption with the shared palette, each tool loads the scroll styles in its look PR:
 
 - NFC replaces lines 117-185 with the include at the same position. Geometry stays the same; the shared palette changes the thumb colors. Run its UI smoke tests and attach before and after captures with the same OS, fonts, DPI and theme for owner review.
-- NFH will look and behave differently. The owner must approve the change in NFH's adoption PR, which attaches before and after screenshots. Its non-UI tests must keep the same list and outcomes.
+- NFH will look and behave differently. The owner approves the change in NFH's look PR, which attaches before and after screenshots. Its non-UI tests must keep the same list and outcomes.
 - NFH keeps `scrollV2`, `scrollDevCandidate`, `workspaceDataList`, `workspaceGroupStripScroll` and `DevScrollPreviewHeight`.
 
 What changes in NFH on adoption:

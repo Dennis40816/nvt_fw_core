@@ -4,15 +4,17 @@
 
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
-- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MessageCenterViewModel.cs`: activity filter, row severity flags and accessible text, passive counts, initial modal state, export-context predicate, and generation/commit order in `Open`, `Close`, and `SelectSystemInformation`. Refresh, export, recording, report composition, and product formatting remain in NFC.
+- `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/MessageCenterViewModel.cs`: activity filter, row severity flags and accessible text, passive counts, initial modal state, export-context predicate, generation/commit order in `Open`, `Close`, and `SelectSystemInformation`, and generation checks and exception/callback scope in `ExportAsync`. Refresh, bundle capture, activity recording, status text, report composition, and product formatting remain in NFC.
+- `src/NvtFwCombiner.Presentation.Avalonia/Views/MessageCenterModal.axaml.cs`: `ExportWithPickerAsync` acceptance, cancellation, and failure predicates. The actual storage picker, local-path conversion and its failure message, default filename, layout, focus, and report composition remain in NFC.
 - `src/NvtFwCombiner.Application/Diagnostics/SystemInformationModels.cs`: importance/severity enums and sequence/disclosure/severity metadata from immutable `SystemActivityEntry`. Categories, codes, drafts, diagnostics, snapshots, and bundles remain in NFC.
 - `tests/NvtFwCombiner.UiSmoke.Tests/ShellNavigationSystemTests.MessageCenter.Startup.cs`: the disclosure and host-text reprojection assertions in `ActivityHistoryUsesTwoDisclosureLevels`.
 - `tests/NvtFwCombiner.UiSmoke.Tests/ShellScreenInventoryTests.cs`: row selection/order from `SystemActivityContentFitsAndFilters` and passive history preservation from `SystemActivitySelectionsPreserveNavigationAndHistory`. Layout, rendering, navigation, and focus assertions remain in NFC.
-- `tests/NvtFwCombiner.UiSmoke.Tests/ShellNavigationSystemTests.MessageCenter.cs`: session context assertions from `DiagnosticsPickerRejectsClosedAndReopenedContext`, `DiagnosticsExportCompletionRejectsReopenedContext`, and pane selection from `MessageCenterKeepsSystemLifecycleSeparateFromRunReports`. Picker, exporter, diagnostics, and report assertions remain in NFC.
+- `tests/NvtFwCombiner.UiSmoke.Tests/ShellNavigationSystemTests.MessageCenter.cs`: session and synthetic workflow assertions from `DiagnosticsPickerRejectsClosedAndReopenedContext`, `DiagnosticsPickerFailureIsVisibleAndRetryable`, and `DiagnosticsExportCompletionRejectsReopenedContext`, plus pane selection from `MessageCenterKeepsSystemLifecycleSeparateFromRunReports`. Actual picker, bundle, diagnostics, and report assertions remain in NFC.
+- `tests/NvtFwCombiner.UiSmoke.Tests/DiagnosticsExportFailureGuidanceTests.cs`: generic failure/success callback observations. Localized guidance, activity metadata, status reset, layout, and visibility assertions remain in NFC.
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.MessageCenter` supplies a passive display contract and a modal session in `Nvt.Core`, targeting `net8.0` with BCL dependencies only. The host supplies admitted activity entries, display strings, counts, and callbacks.
+`Nvt.Core.MessageCenter` supplies a passive display contract, modal session, and export workflow in `Nvt.Core`, targeting `net8.0` with BCL dependencies only. The host supplies admitted activity entries, display strings, counts, view identity, export I/O, and status callbacks.
 
 ## Public API
 
@@ -26,8 +28,10 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 | `IMessageCenterProvider` | Passive `ActiveDiagnosticCount`, unfiltered `ActivityCount`, and `IReadOnlyList<MessageCenterActivity> CaptureActivity()`. |
 | `MessageCenterActivityFilter` | Static `Apply(IEnumerable<MessageCenterActivity> activities, MessageActivityFilter filter, bool includeDebug)` returns materialized rows. |
 | `MessageCenterSession` | Read-only `IsOpen`, `IsActivitySelected`, `ExportContextGeneration`; `Open(Action? beforeOpen = null)`, `Close(Action? beforeClose = null)`, `SelectActivity(bool selected, Action? beforeSelect = null)`, and `IsExportContextCurrent(long generation)`. |
+| `MessageCenterExportWorkflow` | Constructor `(MessageCenterSession session, Func<string, CancellationToken, Task> export, Action succeeded, Action failed)`; `Task ExportAsync(string destinationPath, CancellationToken cancellationToken)`; `Task ExportWithPickerAsync(Func<Task<string?>> pickPathAsync, Func<bool> isViewContextCurrent)`. |
+| `MessageCenterRefreshCoordinator` | Constructor `(Func<bool, CancellationToken, Task> refresh)`; `Task RefreshAsync(bool reloadSources, CancellationToken cancellationToken)`; `Task RefreshAfterCurrentAsync(bool reloadSources, CancellationToken cancellationToken)`. |
 
-The implementation is in [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs), [IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs), [MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs), and [MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs).
+The implementation is in [MessageCenterActivity.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivity.cs), [IMessageCenterProvider.cs](../../../src/Nvt.Core/MessageCenter/IMessageCenterProvider.cs), [MessageCenterActivityFilter.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterActivityFilter.cs), [MessageCenterSession.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterSession.cs), [MessageCenterExportWorkflow.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterExportWorkflow.cs), and [MessageCenterRefreshCoordinator.cs](../../../src/Nvt.Core/MessageCenter/MessageCenterRefreshCoordinator.cs).
 
 ## Preserved display behavior
 
@@ -67,31 +71,58 @@ Callbacks see the advanced generation and the old committed visibility and selec
 
 The fixed mechanism bound is `long.MaxValue`: attempting another advance throws `OverflowException` before any callback or state commit and leaves the generation unchanged. Selecting the current pane remains a no-op at that bound. Overflow tests use an internal constructor; no public generation setter is exposed. The session invokes callbacks synchronously and adds no dispatcher or synchronization mechanism.
 
+## Preserved export workflow behavior
+
+The export delegate is the sole I/O operation. Direct export captures `ExportContextGeneration` before invoking the delegate and passes the destination and cancellation token unchanged. It performs no path validation, normalization, visibility check, or pane check. After the delegate finishes, equal generation permits the success callback. Only `IOException`, `UnauthorizedAccessException`, and `ArgumentException` (including derived exceptions) enter the expected-failure catch; equal generation permits the failure callback. Generation mismatch suppresses either publication without interrupting the write.
+
+The success callback remains inside that catch scope: its expected exception can invoke failure, with generation checked again. The failure callback runs inside the catch body and its faults propagate without another catch. Unexpected exporter/success faults and cancellation propagate, including for stale generations. Concurrent exports with the same generation do not supersede one another; each may publish in completion order.
+
+Picker handling preserves this order:
+
+1. Validate `pickPathAsync`, then the required identity delegate `isViewContextCurrent`. A closed session returns without calling either delegate. An open session on another pane still starts a picker.
+2. Capture generation before invoking and awaiting the picker.
+3. Return silently for `OperationCanceledException`. For any other picker exception, check view identity first, then `IsExportContextCurrent(capturedGeneration)`, and publish failure only if both pass.
+4. For a result, require a non-null, non-whitespace path first, then view identity, then the same open activity generation. Accepted paths pass unchanged to direct export with `CancellationToken.None`.
+
+The host identity delegate compares the current view context to the context captured before the workflow call, preserving DataContext-replacement rejection. Identity and failure callback exceptions are outside the picker try body and propagate. Null, blank, and canceled selections preserve the old host status without invoking a status callback. The workflow adds null guards for its new required constructor and identity inputs; the picker guard retains the original `pickPathAsync` parameter name.
+
+Close/reopen, repeated open, and actual pane changes invalidate the captured generation. Same-pane selection does not. Host language changes and refresh do not advance generation. After picker acceptance, write completion uses generation alone, so later view replacement by itself does not suppress publication. Closing a session never cancels or deletes an already running write. Await continuations retain the caller's context; hosts keep session operations and callbacks on their existing serialized context. Core adds no dispatcher, locking, shutdown timeout, dispose API, or cancellation policy.
+
+## Preserved refresh coordination behavior
+
+`MessageCenterRefreshCoordinator` comes from NFC's `MessageCenterViewModel` (#81). The host supplies the refresh delegate, which receives the admitted strength (`reloadSources`) and the owner's token.
+
+- With no incomplete refresh, `RefreshAsync` starts the delegate with the caller's token and records it as the active refresh.
+- A request joins incomplete active work when it is compatible: an observation joins anything, and a reload joins an active reload. A joining caller waits with its own token. Its cancellation does not cancel the owner.
+- A reload request behind an active observation waits for it, ignores an unrelated failure or cancellation of that work, then starts a fresh full reload. Compatible reload requests can join that new attempt.
+- `RefreshAfterCurrentAsync` always waits for the current incomplete work, then applies normal admission. The current task alone does not satisfy it. Caller cancellation while waiting propagates.
+- Completion cleanup clears only the task the coordinator recorded. Completed work is never joined.
+- Admission is not thread-safe. The host serializes calls and continuations, as NFC does on the UI thread. Core adds no dispatcher, lock or cancellation policy. Publication, readiness and latest-publication policy stay in the host.
+- `Lifecycle.CoalescedRefresh` schedules callbacks and does not replace this asynchronous joiner.
+
 ## Ownership and consumer contract
 
-Core owns only the row contract, passive filter/projection order, and modal generation mechanism. NFC retains message sources, history, diagnostic transition registration, path-token validation, vocabulary, localization/time formatting, report history, refresh policy, storage pickers, export bytes/schema/paths, and its composition template. NFC's frozen **128-entry activity ceiling** stays in NFC. This slice has no Core history, path, or size ceiling and no positive limit parameter.
+Core owns the row contract, passive filter/projection order, modal generation mechanism, and picker/export publication workflow. NFC retains message sources, history, diagnostic transition registration, path-token validation, vocabulary, localization/time formatting, report history, refresh policy, storage pickers, export bytes/schema/paths, and its composition template. NFC's frozen **128-entry activity ceiling** stays in NFC. The display and export contracts have no Core history, path, or size ceiling and no positive limit parameter; the session's fixed generation bound remains `long.MaxValue`.
 
-NFC downloads verified versioned packages at build time through `core-packages.json` and uses exact `[x]` package versions, locked restore, and source mapping restricted to the download folder. The manifest records each package's Release tag and SHA-256. Consumer adoption is a separate change: retarget the extracted filter, row, and session bodies, then delete their local executable copies after complete value/event-trace parity and identical decoded UI pixels pass under the same recorded environment. Keep the narrow typed alias and all retained product owners. Core tests alone do not establish NFC visual or product parity.
+NFC captures its current diagnostics bundle inside the export delegate at invocation and calls its existing `ISystemDiagnosticsExporter`. The exporter, JSON schema and serializer context, privacy allowlist, filename, directory rules, atomic write and cleanup behavior, actual `StorageProvider`, and picker wording stay in NFC. Core writes no file and creates no directory; this extraction does not route diagnostics export through `AtomicOutput` or create report history.
+
+NFC downloads verified versioned packages at build time through `core-packages.json` and uses exact `[x]` package versions, locked restore, and source mapping restricted to the download folder. The manifest records each package's Release tag and SHA-256. Consumer adoption is a separate change: retarget the extracted filter, row, session, and export workflow bodies, then delete their local executable copies only after complete value/event-trace and exported-byte parity, retained JSON privacy assertions, and identical decoded UI pixels pass under the same recorded environment. Capture view identity before picker delegation and keep the narrow typed alias and all retained product owners. Core tests alone do not establish NFC visual or product parity.
 
 ## Source-to-Core test map
 
-The suites use xunit.v3 and synthetic in-memory values in [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs) and [SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs).
+The suites use xunit.v3 and synthetic in-memory values in [DisplayContractTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/DisplayContractTests.cs), [SessionTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/SessionTests.cs), [ExportWorkflowTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs), and [RefreshCoordinatorTests.cs](../../../tests/Nvt.Core.Tests/MessageCenter/RefreshCoordinatorTests.cs). Workflow tests use no filesystem or actual picker and assert complete destination/token logs and ordered picker, identity, exporter, and status callback traces.
 
 | Frozen evidence | Core tests and preserved assertions |
 | --- | --- |
 | `ActivityHistoryUsesTwoDisclosureLevels` | `ActivityHistoryUsesTwoDisclosureLevelsAndReprojectsHostText`: debug hidden by default, important success retained, expansion reveals debug, and a second visibly distinct text set reprojects every field. `BadgeAndSummaryCountsAndCaptureNeedNoRowProjection` preserves passive counts. |
 | `SystemActivityContentFitsAndFilters` | `InventoryFiltersPreserveRowsAndHostHistory`: the same warning/error selection and descending debug/important order, warning/error row flags, unchanged host entries after pane changes, and the original 110-character synthetic detail examples. `FiltersProjectOnlyRetainedRowsInExactOrder` covers all six filter/disclosure combinations and callback traces. |
 | `SystemActivitySelectionsPreserveNavigationAndHistory` | Empty-filter, disclosure, capture-mutation, and pane-selection tests preserve the passive subset. Product navigation, IC selection, report history, and rendering remain NFC assertions. |
-| `DiagnosticsPickerRejectsClosedAndReopenedContext` and `DiagnosticsExportCompletionRejectsReopenedContext` | `ClosedAndReopenedContextRejectsOldGeneration` and `DelayedObservationRejectsReopenedContext` preserve stale-context rejection. The delayed test uses deterministic gates and the source's ten-second wait threshold. Actual picker acceptance and I/O completion remain NFC assertions. |
+| `DiagnosticsPickerRejectsClosedAndReopenedContext` | `ExportWorkflowTests.DiagnosticsPickerRejectsClosedAndReopenedContext`: the old picker produces no export or status, then the current picker exports and publishes success with `CancellationToken.None`. `SessionTests.ClosedAndReopenedContextRejectsOldGeneration` preserves the underlying predicate. |
+| `DiagnosticsPickerFailureIsVisibleAndRetryable` | The same-named workflow test preserves failure publication and unchanged failure after a null retry, and adds a successful retry. `CanceledPickerPreservesOldFailure` covers both synchronous cancellation and canceled tasks. |
+| `DiagnosticsExportCompletionRejectsReopenedContext` | The same-named workflow test preserves actual synthetic write completion with empty status after reopen, using deterministic gates and the source's ten-second wait threshold. `SessionTests.DelayedObservationRejectsReopenedContext` preserves delayed predicate observation. |
+| `DiagnosticsExportFailureGuidanceTests` callback observations | `ExpectedDirectFaultPublishesFailure`, `DirectCompletionRequiresOnlyUnchangedGeneration`, and the retry regression cover generic failure/success publication. Exact localized messages, activity metadata, layout, and reset assertions stay in NFC adoption tests. |
 | `MessageCenterKeepsSystemLifecycleSeparateFromRunReports` | `OpenAndClosePreserveTheSelectedPane`, `PaneChangesPreservePropertyChangingTiming`, and current-context tests cover modal/pane behavior. Diagnostic transitions, Build blockers, and report lifecycle remain NFC assertions. |
 
 Additional characterization covers complete accessible strings including empty fields, a behavior-free binding alias, shuffled sequences and stable ties at signed `long` boundaries, zero hidden projections, projection/enumeration fault order, undefined enum values and deferred invalid-filter checks, null inputs, repeated visibility operations, same-pane no-ops, pre-commit state observation, and callback failures. Generation boundary tests cover `long.MaxValue - 1`, `long.MaxValue`, an attempted increment above it, failure at the maximum, and same-pane no-ops at the maximum for both panes. No native process, handle, or Job behavior is part of this module.
 
-## Verification commands
-
-The host verifies the prepared source after locked dependency provisioning, using default `bin` and `obj` output:
-
-```text
-dotnet build Nvt.Core.sln --no-restore
-dotnet test Nvt.Core.sln --no-build
-```
+Export characterization additionally covers all expected exception types and derived exceptions, synchronous versus asynchronous faults, cancellation propagation, closed starts, empty/Unicode-whitespace and edge-character destinations, other-pane starts, pane round trips, replaced view identity, stale picker/write failures, generation capture before delegate invocation, identity-before-session ordering, callback fault scope, concurrent completion order, and an accepted write continuing after close with an uncanceled `None` token. Direct exports consume zero, negative, and signed generation extremes without advancing; tests cover `long.MaxValue - 1` and `long.MaxValue`, plus picker acceptance at the maximum. The existing session tests cover the attempt above that fixed bound. No additional workflow limit is introduced.
