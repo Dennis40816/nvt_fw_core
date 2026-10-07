@@ -5,7 +5,7 @@ namespace Nvt.Core.RuntimeQuery;
 /// <summary>A runtime query command with its risk and handler.</summary>
 /// <param name="Name">The trimmed, lowercase invariant command name.</param>
 /// <param name="Risk">The command's effect on state, files or data.</param>
-/// <param name="Handler">The caller's command handler.</param>
+/// <param name="Handler">The caller's command handler, used when InvocationHandler is not set.</param>
 /// <param name="StartupPhase">When the tool can run this command at startup.</param>
 /// <param name="StartupValueKey">The argument key for one startup value, or null for a flag.</param>
 /// <param name="StartupValidator">Checks startup arguments without running the handler or causing side effects.</param>
@@ -17,6 +17,10 @@ public sealed record RuntimeQueryCommand(
     string? StartupValueKey = null,
     Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>? StartupValidator = null)
 {
+    /// <summary>The timing-aware handler, used instead of Handler when set.</summary>
+    /// <remarks>Startup and runtime invocations use the same routing and confirmation checks as Handler.</remarks>
+    public Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>? InvocationHandler { get; init; }
+
     /// <summary>Whether the runtime handler receives the confirm argument when the router requires confirmation.</summary>
     /// <remarks>
     /// Defaults to false. Commands that write data still require confirmation before their handlers run.

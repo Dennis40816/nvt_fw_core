@@ -18,6 +18,7 @@ public sealed class RuntimeQueryStartupTests
         Assert.Equal(RuntimeQueryStartupPhase.None, command.StartupPhase);
         Assert.Null(command.StartupValueKey);
         Assert.Null(command.StartupValidator);
+        Assert.Null(command.InvocationHandler);
     }
 
     /// <summary>Runtime requests check null, version, unknown name, startup-only status, then confirmation.</summary>

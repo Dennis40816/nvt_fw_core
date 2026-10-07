@@ -107,7 +107,10 @@ public sealed partial class RuntimeQueryCommandRouter
     }
 
     /// <summary>Runs one startup phase in command-line order and stops after the first failed response.</summary>
-    /// <remarks>The tool checks parse issues and cross-option rules before calling this method.</remarks>
+    /// <remarks>
+    /// The tool checks parse issues and cross-option rules before calling this method.
+    /// BeforeFirstFrame also runs BeforeFirstFrameAndRuntime commands. Both phase values select the same pass.
+    /// </remarks>
     public async Task<IReadOnlyList<RuntimeQueryStartupCallResult>> ExecuteStartupPhaseAsync(
         IReadOnlyList<RuntimeQueryStartupCall> calls, RuntimeQueryStartupPhase phase)
     {
@@ -115,7 +118,7 @@ public sealed partial class RuntimeQueryCommandRouter
         var results = new List<RuntimeQueryStartupCallResult>();
         foreach (var call in calls)
         {
-            if (call.Phase != phase || phase == RuntimeQueryStartupPhase.None)
+            if (GetStartupPass(call.Phase) != GetStartupPass(phase) || phase == RuntimeQueryStartupPhase.None)
             {
                 continue;
             }
@@ -130,4 +133,7 @@ public sealed partial class RuntimeQueryCommandRouter
 
         return results.AsReadOnly();
     }
+
+    private static RuntimeQueryStartupPhase GetStartupPass(RuntimeQueryStartupPhase phase) =>
+        phase == RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime ? RuntimeQueryStartupPhase.BeforeFirstFrame : phase;
 }

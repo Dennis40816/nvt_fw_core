@@ -140,7 +140,9 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 
 | 公開 API | 契約 |
 | --- | --- |
-| `RuntimeQueryStartupPhase` | `None` 不新增啟動選項。`BeforeFirstFrame` 僅供啟動使用。`AfterStartup` 也接受 RuntimeQuery 請求。 |
+| `RuntimeQueryStartupPhase` | `None` 不新增啟動選項。`BeforeFirstFrame` 僅供啟動使用。`AfterStartup` 也接受 RuntimeQuery 請求。`BeforeFirstFrameAndRuntime` 同時接受早期啟動與執行期間的請求。 |
+| `RuntimeQueryInvocation` | 識別 `Startup` 或 `Runtime` 呼叫時機。 |
+| `RuntimeQueryCommand.InvocationHandler` | 可省略的 init 屬性，型別為 `Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>?`。設定後取代 `Handler`。 |
 | `RuntimeQueryCommand.StartupPhase` | 可省略的中繼資料。預設為 `None`，現有登錄維持原有行為。 |
 | `RuntimeQueryCommand.StartupValueKey` | 一個啟動值的引數鍵。預設為 null，表示旗標，處理委派接收 null 引數。 |
 | `RuntimeQueryCommand.StartupValidator` | 可省略的驗證委派，型別為 `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`。有效時回傳 null，無效時回傳失敗。 |
@@ -235,6 +237,99 @@ Core 只回傳問題及回應，不定義結束代碼常數。
 比較解析結果及完整錯誤訊息，包含既有的 `page`、`help` 與報告選項。
 登錄啟動階段會新增行為，工具須另行測試後才採用。
 本任務不修改任何工具儲存庫。
+
+### 第一個畫面之前及執行期間
+
+命令若需要在第一次排版之前執行，也需要在執行期間使用，請選擇 `BeforeFirstFrameAndRuntime`。
+新的列舉成員附加於既有成員之後，保留原有數值。
+兩個早期階段值都選擇相同的第一個畫面之前執行批次。
+混合的早期命令保留命令列順序。
+呼叫端須在顯示視窗或開始任何排版之前執行此批次。
+
+處理委派需要時機資訊時，設定 `InvocationHandler`。
+啟動執行器傳入 `RuntimeQueryInvocation.Startup`，兩個執行期間入口都傳入 `RuntimeQueryInvocation.Runtime`。
+建構子仍要求提供 `Handler`。
+設定 `InvocationHandler` 後，Core 完成既有路由及確認檢查，再以它取代 `Handler`。
+未設定時，Core 仍呼叫原有的 `Handler`。
+`ReceivesConfirmation` 也控制執行期間傳給 `InvocationHandler` 的引數。
+啟動驗證委派仍在解析期間執行，不呼叫任一處理委派。
+
+啟動解析器依既有的選項、值鍵、驗證及確認規則辨識新階段。
+通用 help 依登錄順序列出這些命令。
+啟動選項清單選取 `StartupPhase` 不是 `None` 的命令。
+
+`--window-size` 命令可在處理委派內重用尺寸驗證委派。
+此 Avalonia 範例在 Show 之前設定 Width 及 Height。
+只有執行期間的呼叫才更新排版。
+
+```csharp
+RuntimeQueryResponseEnvelope? ValidateWindowSize(IReadOnlyDictionary<string, string>? values)
+{
+    if (RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out var error)
+        && dimensions.Count == 2)
+    {
+        return null;
+    }
+
+    return error ?? RuntimeQueryResponseEnvelope.Failure("INVALID_ARGUMENTS", "Use width,height with two positive dimensions.");
+}
+
+Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
+    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values)
+{
+    if (ValidateWindowSize(values) is { } failure)
+    {
+        return Task.FromResult(failure);
+    }
+
+    _ = RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out _);
+    mainWindow.Width = dimensions[0];
+    mainWindow.Height = dimensions[1];
+    if (invocation == RuntimeQueryInvocation.Runtime)
+    {
+        mainWindow.UpdateLayout();
+    }
+
+    return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
+}
+
+var windowSize = new RuntimeQueryCommand(
+    "window-size", RuntimeQueryCommandRisk.ChangesState,
+    values => ApplyWindowSizeAsync(RuntimeQueryInvocation.Runtime, values),
+    StartupPhase: RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime,
+    StartupValueKey: "size",
+    StartupValidator: ValidateWindowSize)
+{
+    InvocationHandler = ApplyWindowSizeAsync
+};
+var router = new RuntimeQueryCommandRouter([windowSize], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+if (startup.Issues.Count > 0)
+{
+    return;
+}
+
+var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+if (before.Any(result => !result.Response.Ok))
+{
+    return;
+}
+
+mainWindow.Show();
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup);
+```
+
+兩種形式都使用 `size` 引數鍵：
+
+```text
+--window-size 1280,720
+query window-size --size 1280,720
+```
+
+呼叫端持有視窗，並在 UI 執行緒派送執行期間的請求。
+`BeforeFirstFrame` 仍只供啟動使用，執行期間仍回傳 `STARTUP_ONLY`。
+`AfterStartup` 保留較晚的啟動批次及執行期間路由。
+`None` 保留執行期間路由，不新增啟動選項。
 
 ## 公開 API
 

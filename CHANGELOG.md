@@ -8,6 +8,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ### New modules and features
 
+- RuntimeQuery: `BeforeFirstFrameAndRuntime` runs one command before the first layout and at runtime, with timing supplied through `InvocationHandler`.
 - RuntimeQuery: generic exit gains `DecideExitRequest` and `RuntimeQueryExitRequest`, while `ReceivesConfirmation` lets handlers receive `--confirm` without changing legacy behavior.
 
 ### Tools
