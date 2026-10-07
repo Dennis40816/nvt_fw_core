@@ -289,7 +289,7 @@ Windows 上的 .NET 8.0.31 測試確認此組合遭拒，並驗證連續兩個�
 第一個伺服器仍可回應請求。釋放仍受設定的關閉時間上限約束。
 
 同一位使用者的呼叫端不會看到請求或回應位元組的改變。其他使用者的程序無法再連線。
-名稱衝突現在會產生一次診斷事件。管道名稱、實例探索、選項及封套格式不變。
+名稱衝突現在會產生一次診斷事件。執行多個副本時，請參閱 [Per-window pipes](#per-window-pipes)。
 
 ## Command line
 
@@ -371,6 +371,63 @@ if (RuntimeQueryCommandLine.TryHandleQueryCommand(
 工具的 `INSTANCE_NOT_RUNNING` 文字繼續由其用戶端錯誤對應提供。
 Core 繼續使用既有的用戶端傳輸與 JSON 選項。
 本次工作不變更來源工具。
+
+## Per-window pipes
+
+每視窗模式讓每個執行中的工具程序持有自己的管道。
+owner 在 2026-10-06 核准這項行為。
+由 host 建立的 commit 訊息須包含 `new behavior, no source baseline`。
+
+| 公開成員 | 契約 |
+| --- | --- |
+| `RuntimeQueryWindowPipes.BuildName(baseName, processId)` | 回傳 `{baseName}.{processId}`，使用 invariant 十進位數字。拒絕 null 或空白基底名稱，以及非正數程序 ID。 |
+| `RuntimeQueryCommandLine.TryHandlePerWindowQueryCommand(args, baseName, protocolVersion, supportedCommands, error, output, out exitCode)` | 先選擇執行中的視窗，再呼叫既有用戶端。其他參數與 `TryHandleQueryCommand` 相同。 |
+| `RuntimeQueryFailure.ServerNotFound` | 找不到視窗時，以 null detail 呼叫工具的錯誤對應。命令列回傳結束代碼 1。 |
+
+例如，兩個視窗分別使用 `sample.runtime.v1.123` 與 `sample.runtime.v1.456`。
+若程序 456 啟動較晚，`sample query help` 會選擇其管道。
+使用 `sample query help --pid 123` 可選擇另一條管道。
+
+探索只在 Windows 執行，列舉 `\\.\pipe\`。
+候選名稱必須以 `{baseName}.` 開頭，並以正十進位程序 ID 結尾，後方不得有其他字元。
+探索忽略 `{baseName}.12x`、`{baseName}.` 及 `{baseName}x.1` 等名稱。
+程序已結束或無法讀取啟動時間時，跳過該候選。
+其他系統不回傳候選。
+
+選擇規則只使用程序 ID 與啟動時間：
+
+- 未指定 `--pid` 時，選擇啟動時間最晚的程序。
+- 啟動時間相同時，選擇較大的程序 ID。
+- 指定 `--pid` 時，只選擇該程序 ID。找不到時回傳 `ServerNotFound`，不改選其他視窗。
+- 沒有候選時，回傳 `ServerNotFound`。
+
+新入口接受 `--pid 123` 與 `--pid=123`，如同 `--timeout-ms`，只供用戶端使用。
+其值必須為正整數。
+缺少值或值無效時，輸出格式化的 `INVALID_ARGUMENTS` JSON，結束代碼為 2。
+精確訊息為 `--pid must be a positive process ID.`。
+請求不包含 `--pid` 與 `--timeout-ms`。
+其他解析、輸出格式、回應處理及結束代碼皆保留固定名稱模式的行為。
+
+固定名稱模式不變。
+`TryHandleQueryCommand` 仍傳送至指定管道，並將 `--pid` 視為一般命令引數。
+第二個伺服器使用相同固定名稱時，仍回報 `PipeCreationFailed`，第一個伺服器繼續回應。
+NFH 先以固定名稱模式零差異採用 Core。
+後續另一個 pull request 才切換每視窗模式，執行以下變更：
+
+1. 使用 `RuntimeQueryWindowPipes.BuildName(baseName, Environment.ProcessId)` 建立各伺服器名稱，再傳入既有伺服器建構函式。
+2. 將命令列呼叫改為 `TryHandlePerWindowQueryCommand`，並提供相同基底名稱。
+3. 加入工具自己的 `ServerNotFound` 錯誤對應，並測試新的視窗選擇行為。
+
+在 Windows 上，兩個用戶端入口處理 `focus` 時，都使用已連線管道的伺服器程序 ID。
+用戶端透過 [GetNamedPipeServerProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getnamedpipeserverprocessid) 讀取該 ID。
+寫入請求前，先對該程序呼叫 [AllowSetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-allowsetforegroundwindow)。
+Windows 呼叫失敗不會停止請求。
+請求位元組與回應處理皆不變。
+
+測試涵蓋純函式選擇規則、精確命令列輸出、真正的 Windows 管道，以及透過內部測試接點觀察前景權限呼叫。
+舊入口仍執行全部 40 個凍結命令列案例及既有邊界案例。
+管道測試使用唯一名稱、有時間上限的等待，以及既有停用平行執行的 collection。
+雙程序探索測試使用共用 test probe 的 `silent-wait` 模式，並在 `finally` 終止子程序。
 
 ## 凍結來源
 
