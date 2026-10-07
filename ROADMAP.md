@@ -20,7 +20,7 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 - Core follows SemVer. 1.x makes no breaking changes, so every public API is reviewed before 0.9.0.
 - The owner's approval of a version pull request also approves its tag. The tag points to the commit that merges that pull request.
 - A fix to a released version starts from its tag. See the [fix lane](#1-fix-lane).
-- Internal group tags, such as `dev/<trunk>/g<number>-<name>`, are optional for Core. They never get a Release.
+- Internal group tags are optional for Core. They never get a Release. Their format follows the shared rule once the owner decides it.
 
 | Version | Date | Content | Status |
 | --- | --- | --- | --- |
