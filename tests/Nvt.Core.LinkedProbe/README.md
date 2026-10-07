@@ -61,12 +61,13 @@ Dispatch discovers static `Task<int> RunAsync(ProbeContext)` methods marked with
 `ProbeContext` supplies inputs, payload arguments, protocol names, and a cancellation token.
 Mode names use ordinal comparison.
 Duplicate names fail before any mode runs.
+A mode method with another signature fails at run time. Run `ModeTableContainsSelfCheckWithoutDuplicateNames` after adding a mode.
 Only `linked-self-check` runs outside Windows.
 The dispatcher joins no Job.
 
 | Mode | Inputs | Behavior | Exit |
 | --- | --- | --- | --- |
-| `linked-self-check` | `marker`, optional `protocol-prefix` | Writes the Core assembly name, informational version, and 13 protocol names in record order as 15 lines. | 0 |
+| `linked-self-check` | `marker`, optional `protocol-prefix` | Writes the Core assembly name, informational version, 13 protocol names in record order, and the folder Core loaded from, as 16 lines. | 0 |
 
 ## Test location
 

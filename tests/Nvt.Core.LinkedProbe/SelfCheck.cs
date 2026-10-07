@@ -33,6 +33,7 @@ internal static class SelfCheck
             names.LifetimeStatePath,
             names.LifetimeKind,
             names.BootstrapIdentity,
+            Path.GetDirectoryName(core.Location) ?? string.Empty,
         ], context.CancellationToken);
         return ProbeExitCodes.Success;
     }

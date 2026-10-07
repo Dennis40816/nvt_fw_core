@@ -26,7 +26,7 @@ public sealed class LinkedProbeTests
         "CORE_TEST_BOOTSTRAP_IDENTITY",
     ];
 
-    /// <summary>Checks that the renamed apphost reports the same Core identity as the parent.</summary>
+    /// <summary>Checks that the renamed apphost loads Core from its own folder and reports the parent's Core identity.</summary>
     [Fact]
     public async Task CopiedAndRenamedSelfCheckReportsCoreAssemblyIdentity()
     {
@@ -35,9 +35,11 @@ public sealed class LinkedProbeTests
         Assert.True(File.Exists(Path.Combine(Path.GetDirectoryName(workspace.Executable)!, "Nvt.Core.dll")));
         string[] lines = await SelfCheckAsync(workspace, "identity.txt");
         Assembly core = typeof(LauncherProtocolNames).Assembly;
-        Assert.Equal(15, lines.Length);
+        Assert.Equal(16, lines.Length);
         Assert.Equal(core.GetName().Name, lines[0]);
         Assert.Equal(core.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion, lines[1]);
+        // The child loaded Core from its own renamed folder, not from the test output.
+        Assert.Equal(Path.GetDirectoryName(Path.GetFullPath(workspace.Executable)), lines[15], StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Checks the exact R05 synthetic names in protocol record order.</summary>
@@ -46,8 +48,8 @@ public sealed class LinkedProbeTests
     {
         await using var workspace = new LinkedProbeWorkspace();
         string[] lines = await SelfCheckAsync(workspace, "default.txt");
-        Assert.Equal(15, lines.Length);
-        Assert.Equal(DefaultNames, lines[2..]);
+        Assert.Equal(16, lines.Length);
+        Assert.Equal(DefaultNames, lines[2..15]);
     }
 
     /// <summary>Checks that a second prefix replaces the prefix of all 13 protocol names.</summary>
@@ -57,10 +59,10 @@ public sealed class LinkedProbeTests
         await using var workspace = new LinkedProbeWorkspace();
         string[] original = await SelfCheckAsync(workspace, "default.txt");
         string[] changed = await SelfCheckAsync(workspace, "second.txt", ["--protocol-prefix", "CORE_SECOND_"]);
-        Assert.Equal(15, changed.Length);
+        Assert.Equal(16, changed.Length);
         Assert.Equal(original[..2], changed[..2]);
-        Assert.Equal(NamesWithPrefix("CORE_SECOND_"), changed[2..]);
-        for (int index = 2; index < changed.Length; index++)
+        Assert.Equal(NamesWithPrefix("CORE_SECOND_"), changed[2..15]);
+        for (int index = 2; index < 15; index++)
         {
             Assert.NotEqual(original[index], changed[index]);
         }
@@ -80,7 +82,7 @@ public sealed class LinkedProbeTests
         });
         await LinkedProbeWorkspace.ExitAsync(environmentProcess, 0);
         string[] environmentLines = await File.ReadAllLinesAsync(environmentMarker, TestContext.Current.CancellationToken);
-        Assert.Equal(NamesWithPrefix("CORE_ENV_"), environmentLines[2..]);
+        Assert.Equal(NamesWithPrefix("CORE_ENV_"), environmentLines[2..15]);
         Assert.Empty(await LinkedProbeWorkspace.ReadAsync(environmentProcess.StandardOutput));
         Assert.Empty(await LinkedProbeWorkspace.ReadAsync(environmentProcess.StandardError));
 
@@ -95,7 +97,7 @@ public sealed class LinkedProbeTests
             });
         await LinkedProbeWorkspace.ExitAsync(process, 0);
         string[] lines = await File.ReadAllLinesAsync(marker, TestContext.Current.CancellationToken);
-        Assert.Equal(NamesWithPrefix("CORE_ARGUMENT_"), lines[2..]);
+        Assert.Equal(NamesWithPrefix("CORE_ARGUMENT_"), lines[2..15]);
         Assert.False(File.Exists(unused));
         Assert.Empty(await LinkedProbeWorkspace.ReadAsync(process.StandardOutput));
         Assert.Empty(await LinkedProbeWorkspace.ReadAsync(process.StandardError));
