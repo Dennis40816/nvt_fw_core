@@ -179,6 +179,104 @@ Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具�
 
 `Nvt.Focus.RingThickness` 為 Thickness 2，三個焦點 token 全在 `ThemeTokens.axaml`。每個互動角色預設 `FocusAdorner=null`，取消預設矩形。只有 `:focus-visible` 顯示 Border adorner；真實 Tab 顯示，指標焦點不顯示。`Margin=-4` 形成 2 px 線與 2 px 外側間隙；`IsHitTestVisible=False`、`AdornerLayer.IsClipEnabled=False`。圓角隨控制項動態變化：膠囊保留 999，矩形每個角加 4。`actionDanger` 文字按鈕及 `actionIconButton.actionDanger` 採紅框；chip（含 `chipAction.actionDanger`）與其餘角色採藍框。樣式資源 `Nvt.Focus.RingRadiusConverter` 計算焦點框圓角。焦點在靜止、滑入、checked、active 均不改底色、邊界或文字。
 
+## ToggleButton 角色（提案）
+
+三個 ToggleButton 角色定義共用外觀提案。外觀仍待擁有者核准。
+請在 Fluent 之後明確載入 `ToggleStyles.axaml` 進行審閱。既有角色、權杖與樣式載入項目維持原樣。
+
+| 角色 | 用途 | 尺寸與形狀 |
+|---|---|---|
+| `toggleSegment` | 在 `Border.toggleSegmentGroup` 內排列兩到五個相連選項 | 高度 32、群組圓角 8、共用 1 px 邊界 |
+| `toggleTab` | 頁籤式導覽 | 高度 32、透明背景、選取時 2 px 底線 |
+| `toggleIcon` | 畫布或工具列圖示切換 | 32 × 32、圓角 6、零內距 |
+
+群組內使用一個水平 `StackPanel`，且只放區段控制項。第一個與最後一個區段繼承群組外側圓角。
+重疊邊距讓群組維持 32 px 高度，且每條共用邊界只繪製一次。
+宿主負責單選行為、命令與無障礙名稱。內容可使用 `TextBlock.nvtIcon` 字形或其他圖示。
+
+每個角色定義下列狀態：
+
+- 靜止。
+- 指標移入。
+- 按下。
+- 已選取。
+- 已選取且指標移入。
+- 已選取且按下。
+- 停用。
+- 停用且已選取。
+- 鍵盤焦點。
+
+### 提案權杖與狀態
+
+提案不新增調色盤或尺寸權杖。所有筆刷透過 `DynamicResource` 使用既有資源。
+
+| 區段與圖示狀態 | 背景 | 邊界 | 文字或字形 |
+|---|---|---|---|
+| 靜止 | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextSecondaryBrush` |
+| 指標移入 | `NfcSelectionSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| 按下 | `NfcSecondaryActionPressedBrush` | `NfcBorderBrush` | `NfcTextStrongBrush` |
+| 已選取 | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
+| 已選取且指標移入 | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| 已選取且按下 | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| 停用 | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| 停用且已選取 | `NfcSelectionSurfaceBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+
+頁籤在所有狀態都保持透明。靜止使用 `NfcTextSecondaryBrush`，移入使用 `NfcTextBrush`，按下使用 `NfcTextStrongBrush`。
+選取時保留強調中性色文字。底線使用 `NfcAccentBorderBrush`，移入或按下時改用 `NfcAccentBorderStrongBrush`。
+停用頁籤使用 `NfcTextDisabledBrush`。停用且已選取時保留 2 px 的 `NfcBorderMutedBrush` 底線。
+停用狀態優先於指標移入與按下。停用且已選取的區段與圖示保留中性色選取背景。
+
+高度使用 `NfcControlHeight`。群組圓角使用 `NfcSurfaceCornerRadius`；圖示與頁籤圓角使用 `NfcCompactCornerRadius`。
+鍵盤焦點使用 `Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`，並保留 2 px 外側間距。
+可選的 `danger` 類別使用 `Nvt.Focus.DangerRingBrush`。焦點不改變背景、邊界或前景。
+焦點環由範本邊界繪製。`FocusAdorner` 維持 null，容器須在控制項周圍保留 4 px。
+樣式資源 `Nvt.Toggle.FocusRadiusConverter` 與 `Nvt.Toggle.SegmentCornerConverter` 會隨圓角變更即時更新。
+
+### 提案用法
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
+
+<Border Classes="toggleSegmentGroup">
+  <StackPanel>
+    <ToggleButton Classes="toggleSegment" Content="One" IsChecked="True" />
+    <ToggleButton Classes="toggleSegment" Content="Two" />
+    <ToggleButton Classes="toggleSegment" Content="Three" />
+  </StackPanel>
+</Border>
+
+<ToggleButton Classes="toggleTab" Content="Overview" IsChecked="True" />
+
+<ToggleButton Classes="toggleIcon" AutomationProperties.Name="Show grid">
+  <TextBlock Classes="nvtIcon" Text="+" />
+</ToggleButton>
+```
+
+宿主提供圖示字型或圖示內容。未套角色的 ToggleButton 保持 Fluent 外觀。
+工具僅變更前述七個強調色資源，不對這些角色套用本機外觀樣式。
+
+### 提案比較證據
+
+`ToggleComparisonRenderer.RenderComparisonsOrCheckLayout` 每次執行都檢查配置。
+設定 `NVT_TOGGLE_IMAGES_DIR` 輸出目錄後，才會寫入比較圖片。
+繪圖器使用 headless Avalonia、Skia、隨附 Inter 字型與 1.0 縮放。
+
+- `toggle-a-light.png` 與 `toggle-a-dark.png` 比較 Tool A。
+- `toggle-b-light.png` 與 `toggle-b-dark.png` 比較 Tool B。
+- `toggle-c-light.png` 與 `toggle-c-dark.png` 比較 Tool C。
+- `toggle-states-light.png` 與 `toggle-states-dark.png` 顯示每個 Core 角色及狀態。
+
+匿名凍結片段位於 `tests/Nvt.Core.Avalonia.Tests/Toggle/Frozen/`，保留來源樣式值。
+Before 控制項在來源未定義的狀態下保留 Fluent 行為。宿主在儲存庫外對應匿名工具標籤。
+測試對三組強調色與兩種主題解析色彩，檢查文字 4.5:1、停用文字 3:1 與焦點環 3:1 對比。
+
+下列項目仍待擁有者檢視：
+
+- 區段的共用邊界與 32 px 群組密度。
+- 頁籤的強調中性色文字與選取底線。
+- 停用且已選取時的中性色選取提示。
+- 方形圖示切換與外側焦點環。
+
 ## 相較 core-v0.1.0 的重大變更
 
 Core 0.2.0 引入共用色票與按鈕角色；本節為其版本發布說明。下列 class、selector 與資源曾隨 `core-v0.1.0` 發布，現在移除或取代，不提供相容別名。

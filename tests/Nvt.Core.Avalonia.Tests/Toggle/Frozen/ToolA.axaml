@@ -1,0 +1,305 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="ToolA.Value00" Color="#BFDBFE" />
+          <SolidColorBrush x:Key="ToolA.Value01" Color="#60A5FA" />
+          <SolidColorBrush x:Key="ToolA.Value02" Color="#2563EB" />
+          <SolidColorBrush x:Key="ToolA.Value03" Color="#1D4ED8" />
+          <SolidColorBrush x:Key="ToolA.Value04" Color="#EAF3FF" />
+          <SolidColorBrush x:Key="ToolA.Value05" Color="#F4F6FA" />
+          <SolidColorBrush x:Key="ToolA.Value06" Color="#CBD5E1" />
+          <SolidColorBrush x:Key="ToolA.Value07" Color="#E2E8F0" />
+          <SolidColorBrush x:Key="ToolA.Value08" Color="#FEF2F2" />
+          <SolidColorBrush x:Key="ToolA.Value09" Color="#FECACA" />
+          <SolidColorBrush x:Key="ToolA.Value10" Color="#B91C1C" />
+          <BoxShadows x:Key="ToolA.Value12">0 0 0 2 #60A5FA</BoxShadows>
+          <SolidColorBrush x:Key="ToolA.Value14" Color="#BBF7D0" />
+          <SolidColorBrush x:Key="ToolA.Value15" Color="#15803D" />
+          <SolidColorBrush x:Key="ToolA.Value16" Color="#F0FDF4" />
+          <SolidColorBrush x:Key="ToolA.Value17" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="ToolA.Value18" Color="#F8FAFC" />
+          <SolidColorBrush x:Key="ToolA.Value19" Color="#334155" />
+          <SolidColorBrush x:Key="ToolA.Value20" Color="#94A3B8" />
+          <SolidColorBrush x:Key="ToolA.Value21" Color="#475569" />
+          <SolidColorBrush x:Key="ToolA.Value22" Color="#0F172A" />
+          <SolidColorBrush x:Key="ToolA.Value23" Color="#FDBA74" />
+          <SolidColorBrush x:Key="ToolA.Value24" Color="#FFF7ED" />
+          <SolidColorBrush x:Key="ToolA.Value25" Color="#9A3412" />
+          <SolidColorBrush x:Key="ToolA.Background" Color="#F4F6FA" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="ToolA.Value00" Color="#1D4ED8" />
+          <SolidColorBrush x:Key="ToolA.Value01" Color="#60A5FA" />
+          <SolidColorBrush x:Key="ToolA.Value02" Color="#60A5FA" />
+          <SolidColorBrush x:Key="ToolA.Value03" Color="#93C5FD" />
+          <SolidColorBrush x:Key="ToolA.Value04" Color="#172554" />
+          <SolidColorBrush x:Key="ToolA.Value05" Color="#0B1220" />
+          <SolidColorBrush x:Key="ToolA.Value06" Color="#334155" />
+          <SolidColorBrush x:Key="ToolA.Value07" Color="#273449" />
+          <SolidColorBrush x:Key="ToolA.Value08" Color="#450A0A" />
+          <SolidColorBrush x:Key="ToolA.Value09" Color="#991B1B" />
+          <SolidColorBrush x:Key="ToolA.Value10" Color="#FCA5A5" />
+          <BoxShadows x:Key="ToolA.Value12">0 0 0 2 #60A5FA</BoxShadows>
+          <SolidColorBrush x:Key="ToolA.Value14" Color="#166534" />
+          <SolidColorBrush x:Key="ToolA.Value15" Color="#22C55E" />
+          <SolidColorBrush x:Key="ToolA.Value16" Color="#052E16" />
+          <SolidColorBrush x:Key="ToolA.Value17" Color="#111827" />
+          <SolidColorBrush x:Key="ToolA.Value18" Color="#162033" />
+          <SolidColorBrush x:Key="ToolA.Value19" Color="#E2E8F0" />
+          <SolidColorBrush x:Key="ToolA.Value20" Color="#64748B" />
+          <SolidColorBrush x:Key="ToolA.Value21" Color="#CBD5E1" />
+          <SolidColorBrush x:Key="ToolA.Value22" Color="#F8FAFC" />
+          <SolidColorBrush x:Key="ToolA.Value23" Color="#C2410C" />
+          <SolidColorBrush x:Key="ToolA.Value24" Color="#422006" />
+          <SolidColorBrush x:Key="ToolA.Value25" Color="#FFEDD5" />
+          <SolidColorBrush x:Key="ToolA.Background" Color="#0B1220" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <x:Double x:Key="ToolA.Value11">13</x:Double>
+      <CornerRadius x:Key="ToolA.Value13">999</CornerRadius>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="ToggleButton.toolASegment:checked TextBlock">
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value22}" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="13,6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value21}" />
+    <Setter Property="FontSize" Value="{DynamicResource ToolA.Value11}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ClipToBounds" Value="False" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value22}" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:checked">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value22}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value22}" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:disabled">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value20}" />
+  </Style>
+  <Style Selector="Border.toolAUnderline">
+    <Setter Property="Height" Value="2" />
+    <Setter Property="Margin" Value="0,0,0,3" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value02}" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="ToggleButton.toolATab:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BoxShadow" Value="{DynamicResource ToolA.Value12}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASegment">
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="18,10" />
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value17}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value06}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value19}" />
+    <Setter Property="FontSize" Value="{DynamicResource ToolA.Value11}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASegment /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value17}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value06}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ToolA.Value13}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASegment TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value19}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASegment:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value01}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value22}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="ToggleButton.toolASegment:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value01}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ToolA.Value13}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill">
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="7,2" />
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value18}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value06}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ToolA.Value13}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value18}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value06}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ToolA.Value13}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.checking">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value00}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.checking /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value00}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.inspected">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value00}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.inspected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value00}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.pendingInput, ToggleButton.toolAPill.warning">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value24}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value23}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value25}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.pendingInput /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.toolAPill.warning /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value24}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value23}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value25}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.verified">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value16}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value14}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value15}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.verified /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value16}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value14}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value15}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.error">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value08}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value09}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value10}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.error /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value08}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value09}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value10}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.notApplicable">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value18}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value07}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolA.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.notApplicable /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value18}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value07}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ToolA.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:checked">
+    <Setter Property="BorderThickness" Value="1.5" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderThickness" Value="1.5" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:pointerover">
+    <Setter Property="Opacity" Value="0.86" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:pressed">
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value03}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value03}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.checking Path.toolAStateGlyph, ToggleButton.toolAPill.inspected Path.toolAStateGlyph">
+    <Setter Property="Stroke" Value="{DynamicResource ToolA.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.inspected Path.toolAStateGlyph">
+    <Setter Property="Fill" Value="{DynamicResource ToolA.Value03}" />
+    <Setter Property="Stroke" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.pendingInput Path.toolAStateGlyph, ToggleButton.toolAPill.warning Path.toolAStateGlyph">
+    <Setter Property="Stroke" Value="{DynamicResource ToolA.Value25}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.verified Path.toolAStateGlyph">
+    <Setter Property="RenderTransform">
+      <TranslateTransform Y="1" />
+    </Setter>
+    <Setter Property="Stroke" Value="{DynamicResource ToolA.Value15}" />
+  </Style>
+  <Style Selector="ToggleButton.toolAPill.error Path.toolAStateGlyph">
+    <Setter Property="Stroke" Value="{DynamicResource ToolA.Value10}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinWidth" Value="44" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="Transparent">
+          <Border x:Name="Track" Width="38" Height="22" CornerRadius="11" Background="{DynamicResource ToolA.Value07}" BorderThickness="2" BorderBrush="{DynamicResource ToolA.Value06}" VerticalAlignment="Center">
+            <Ellipse x:Name="Thumb" Width="14" Height="14" Margin="2" Fill="{DynamicResource ToolA.Value17}" HorizontalAlignment="Left" />
+          </Border>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch:checked /template/ Border#Track">
+    <Setter Property="Background" Value="{DynamicResource ToolA.Value02}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch:checked /template/ Ellipse#Thumb">
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch:focus-visible /template/ Border#Track">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolA.Value22}" />
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch:pointerover /template/ Border#Track">
+    <Setter Property="Opacity" Value="0.85" />
+  </Style>
+  <Style Selector="ToggleButton.toolASwitch:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+</Styles>

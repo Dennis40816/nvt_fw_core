@@ -179,6 +179,104 @@ Background, border and foreground transitions last 120 ms. Pressing disables tra
 
 `Nvt.Focus.RingThickness` is Thickness 2; all three focus tokens live in `ThemeTokens.axaml`. Every interactive role defaults to `FocusAdorner=null`, disabling the default rectangle. Only `:focus-visible` shows the Border adorner: real Tab traversal shows it, pointer focus does not. `Margin=-4` gives a 2 px ring and 2 px exterior gap; `IsHitTestVisible=False` and `AdornerLayer.IsClipEnabled=False`. Corners follow live control radius changes: pills retain 999; each rectangular corner adds 4. `actionDanger` text buttons and `actionIconButton.actionDanger` use the red ring; chips, including `chipAction.actionDanger`, and all other roles use blue. The style resource `Nvt.Focus.RingRadiusConverter` computes the ring corners. Focus changes no background, border or foreground at rest, hover, checked or active.
 
+## ToggleButton roles (proposal)
+
+The three ToggleButton roles define a proposed shared look. The look awaits owner approval.
+Load `ToggleStyles.axaml` explicitly after Fluent for review. Existing roles, tokens, and style includes remain unchanged.
+
+| Role | Purpose | Geometry |
+|---|---|---|
+| `toggleSegment` | Two to five joined choices inside `Border.toggleSegmentGroup` | Height 32, group radius 8, shared 1 px edges |
+| `toggleTab` | Tab-like navigation | Height 32, transparent background, 2 px checked underline |
+| `toggleIcon` | Canvas or toolbar icon toggle | 32 × 32, radius 6, zero padding |
+
+A group contains one horizontal `StackPanel` with only segment controls. The first and last segments inherit its exterior corners.
+Overlapping margins keep the group height at 32 and paint each shared stroke once.
+The host manages single selection, commands, and accessible names. Styles accept `TextBlock.nvtIcon` glyphs and other icon content.
+
+Every role defines these states:
+
+- Rest.
+- Pointer over.
+- Pressed.
+- Checked.
+- Checked with pointer over.
+- Checked with press.
+- Disabled.
+- Disabled and checked.
+- Keyboard focus.
+
+### Proposal tokens and states
+
+The proposal adds no palette or size tokens. All brushes use existing resources through `DynamicResource`.
+
+| Segment and icon state | Background | Border | Text or glyph |
+|---|---|---|---|
+| Rest | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextSecondaryBrush` |
+| Pointer over | `NfcSelectionSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| Pressed | `NfcSecondaryActionPressedBrush` | `NfcBorderBrush` | `NfcTextStrongBrush` |
+| Checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
+| Checked with pointer over | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| Checked with press | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| Disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+| Disabled and checked | `NfcSelectionSurfaceBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
+
+Tabs stay transparent in every state. Rest uses `NfcTextSecondaryBrush`, hover uses `NfcTextBrush`, and press uses `NfcTextStrongBrush`.
+Checked tabs keep strong neutral text. Their underline uses `NfcAccentBorderBrush`, then `NfcAccentBorderStrongBrush` during hover or press.
+Disabled tabs use `NfcTextDisabledBrush`. Disabled checked tabs keep a 2 px `NfcBorderMutedBrush` underline.
+Disabled states override pointer and pressed feedback. Checked disabled segments and icons retain a neutral selection surface.
+
+Height uses `NfcControlHeight`. Group corners use `NfcSurfaceCornerRadius`; icon and tab corners use `NfcCompactCornerRadius`.
+Keyboard focus uses `Nvt.Focus.RingBrush` and `Nvt.Focus.RingThickness` with a 2 px exterior gap.
+The optional `danger` class selects `Nvt.Focus.DangerRingBrush`. Focus changes no background, border, or foreground.
+A template border draws the ring. `FocusAdorner` stays null, and containers must leave 4 px around the control.
+The style resources `Nvt.Toggle.FocusRadiusConverter` and `Nvt.Toggle.SegmentCornerConverter` follow live corner changes.
+
+### Proposal usage
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
+
+<Border Classes="toggleSegmentGroup">
+  <StackPanel>
+    <ToggleButton Classes="toggleSegment" Content="One" IsChecked="True" />
+    <ToggleButton Classes="toggleSegment" Content="Two" />
+    <ToggleButton Classes="toggleSegment" Content="Three" />
+  </StackPanel>
+</Border>
+
+<ToggleButton Classes="toggleTab" Content="Overview" IsChecked="True" />
+
+<ToggleButton Classes="toggleIcon" AutomationProperties.Name="Show grid">
+  <TextBlock Classes="nvtIcon" Text="+" />
+</ToggleButton>
+```
+
+Hosts supply icon fonts or icon content. A plain ToggleButton keeps its Fluent appearance.
+Tools change only the seven accent resources listed above. They apply no local appearance rules to these roles.
+
+### Proposal comparison evidence
+
+`ToggleComparisonRenderer.RenderComparisonsOrCheckLayout` checks layout on every run.
+Set `NVT_TOGGLE_IMAGES_DIR` to an output directory to write comparison images.
+The renderer uses headless Avalonia, Skia, bundled Inter, and scaling 1.0.
+
+- `toggle-a-light.png` and `toggle-a-dark.png` compare Tool A.
+- `toggle-b-light.png` and `toggle-b-dark.png` compare Tool B.
+- `toggle-c-light.png` and `toggle-c-dark.png` compare Tool C.
+- `toggle-states-light.png` and `toggle-states-dark.png` show every Core role and state.
+
+Frozen fragments preserve anonymous source values under `tests/Nvt.Core.Avalonia.Tests/Toggle/Frozen/`.
+Before controls retain Fluent behavior for unspecified source states. The host maps anonymous tool labels outside the repository.
+Tests resolve colors in both themes for all three accents. They check text contrast of 4.5:1, disabled contrast of 3:1, and ring contrast of 3:1.
+
+Owner review remains open for these choices:
+
+- Joined segment borders and the 32 px group density.
+- Strong neutral tab text and the checked underline.
+- Neutral selection cues on checked disabled controls.
+- Square icon toggles and the exterior focus ring.
+
 ## Breaking changes since core-v0.1.0
 
 Core 0.2.0 introduces the shared palette and button roles. This section is its release note. The following classes, selectors and resources shipped in `core-v0.1.0` are removed or replaced; no compatibility aliases are provided.

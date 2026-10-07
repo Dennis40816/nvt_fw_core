@@ -1,0 +1,101 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="ToolC.Value00" Color="#537D00" />
+          <SolidColorBrush x:Key="ToolC.Value01" Color="#E4EFD1" />
+          <SolidColorBrush x:Key="ToolC.Value02" Color="#E4EAE5" />
+          <SolidColorBrush x:Key="ToolC.Value03" Color="#17201B" />
+          <SolidColorBrush x:Key="ToolC.Value04" Color="#EDF1ED" />
+          <SolidColorBrush x:Key="ToolC.Value05" Color="#405047" />
+          <SolidColorBrush x:Key="ToolC.Value06" Color="#AAB6AE" />
+          <SolidColorBrush x:Key="ToolC.Value07" Color="#F2F5F2" />
+          <SolidColorBrush x:Key="ToolC.Background" Color="#F2F5F2" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="ToolC.Value00" Color="#B9E653" />
+          <SolidColorBrush x:Key="ToolC.Value01" Color="#26351B" />
+          <SolidColorBrush x:Key="ToolC.Value02" Color="#202A30" />
+          <SolidColorBrush x:Key="ToolC.Value03" Color="#EDF1EF" />
+          <SolidColorBrush x:Key="ToolC.Value04" Color="#182126" />
+          <SolidColorBrush x:Key="ToolC.Value05" Color="#BBC5C8" />
+          <SolidColorBrush x:Key="ToolC.Value06" Color="#3B4952" />
+          <SolidColorBrush x:Key="ToolC.Value07" Color="#090D10" />
+          <SolidColorBrush x:Key="ToolC.Background" Color="#090D10" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="ToggleButton.toolCAxis">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinWidth" Value="72" />
+    <Setter Property="Padding" Value="9,0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource ToolC.Value04}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value05}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolC.Value06}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.toolCAxis /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.toolCAxis:pointerover">
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolC.Value05}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value03}" />
+  </Style>
+  <Style Selector="ToggleButton.toolCAxis:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolC.Value01}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolC.Value00}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value00}" />
+  </Style>
+  <Style Selector="ToggleButton.toolCAxis:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ToolC.Value01}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolC.Value00}" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="MinWidth" Value="44" />
+    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value05}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ToolC.Value02}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value03}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas:checked">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value00}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolC.Value00}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.toolCCanvas:focus-visible">
+    <Setter Property="Background" Value="{DynamicResource ToolC.Value02}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+</Styles>

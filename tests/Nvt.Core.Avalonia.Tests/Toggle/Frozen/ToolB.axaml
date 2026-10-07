@@ -1,0 +1,283 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <Color x:Key="ToolB.Value33">#2B6CB0</Color>
+          <Color x:Key="ToolB.Value34">#1F2B6CB0</Color>
+          <Color x:Key="ToolB.Value35">#00000000</Color>
+          <Color x:Key="ToolB.Value36">#F2F4F8</Color>
+          <Color x:Key="ToolB.Value37">#1E2430</Color>
+          <Color x:Key="ToolB.Value38">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value39">#1E2430</Color>
+          <Color x:Key="ToolB.Value40">#000000</Color>
+          <Color x:Key="ToolB.Value41">#1E2430</Color>
+          <Color x:Key="ToolB.Value42">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value43">#2F3A4A</Color>
+          <Color x:Key="ToolB.Value44">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value45">#CBD5E1</Color>
+          <Color x:Key="ToolB.Value46">#000000</Color>
+          <Color x:Key="ToolB.Value47">#F8FAFC</Color>
+          <Color x:Key="ToolB.Value48">#EEF2F7</Color>
+          <Color x:Key="ToolB.Value49">#EEF2F7</Color>
+          <Color x:Key="ToolB.Value50">#1E2430</Color>
+          <Color x:Key="ToolB.Value51">#000000</Color>
+          <Color x:Key="ToolB.Value52">#F2F4F8</Color>
+          <Color x:Key="ToolB.Value53">#E6EAF2</Color>
+          <Color x:Key="ToolB.Value54">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value55">#F5F7FA</Color>
+          <Color x:Key="ToolB.Value56">#F2F4F8</Color>
+          <Color x:Key="ToolB.Value57">#B8C1CC</Color>
+          <Color x:Key="ToolB.Value58">#B8C1CC</Color>
+          <Color x:Key="ToolB.Value59">#5A6678</Color>
+          <Color x:Key="ToolB.Value60">#1E2430</Color>
+          <Color x:Key="ToolB.Value61">#3E4A5A</Color>
+          <SolidColorBrush x:Key="ToolB.Background" Color="{DynamicResource ToolB.Value54}" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <Color x:Key="ToolB.Value33">#4DA3FF</Color>
+          <Color x:Key="ToolB.Value34">#244DA3FF</Color>
+          <Color x:Key="ToolB.Value35">#00000000</Color>
+          <Color x:Key="ToolB.Value36">#121A24</Color>
+          <Color x:Key="ToolB.Value37">#E8EDF4</Color>
+          <Color x:Key="ToolB.Value38">#1A2535</Color>
+          <Color x:Key="ToolB.Value39">#7FB8FF</Color>
+          <Color x:Key="ToolB.Value40">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value41">#FFFFFF</Color>
+          <Color x:Key="ToolB.Value42">#000000</Color>
+          <Color x:Key="ToolB.Value43">#E8EDF5</Color>
+          <Color x:Key="ToolB.Value44">#121A24</Color>
+          <Color x:Key="ToolB.Value45">#2A3340</Color>
+          <Color x:Key="ToolB.Value46">#E8EDF4</Color>
+          <Color x:Key="ToolB.Value47">#1A2535</Color>
+          <Color x:Key="ToolB.Value48">#223049</Color>
+          <Color x:Key="ToolB.Value49">#1E3A5F</Color>
+          <Color x:Key="ToolB.Value50">#7FB8FF</Color>
+          <Color x:Key="ToolB.Value51">#F4F7FC</Color>
+          <Color x:Key="ToolB.Value52">#131B26</Color>
+          <Color x:Key="ToolB.Value53">#172132</Color>
+          <Color x:Key="ToolB.Value54">#0F131A</Color>
+          <Color x:Key="ToolB.Value55">#0C1118</Color>
+          <Color x:Key="ToolB.Value56">#121A24</Color>
+          <Color x:Key="ToolB.Value57">#2A3340</Color>
+          <Color x:Key="ToolB.Value58">#3A475A</Color>
+          <Color x:Key="ToolB.Value59">#9BA9C0</Color>
+          <Color x:Key="ToolB.Value60">#E8EDF4</Color>
+          <Color x:Key="ToolB.Value61">#C8D0DB</Color>
+          <SolidColorBrush x:Key="ToolB.Background" Color="{DynamicResource ToolB.Value54}" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <Thickness x:Key="ToolB.Value00">1.5</Thickness>
+      <Thickness x:Key="ToolB.Value01">0</Thickness>
+      <Thickness x:Key="ToolB.Value02">1</Thickness>
+      <SolidColorBrush x:Key="ToolB.Value03" Color="{DynamicResource ToolB.Value33}" />
+      <SolidColorBrush x:Key="ToolB.Value04" Color="{DynamicResource ToolB.Value34}" />
+      <SolidColorBrush x:Key="ToolB.Value05" Color="{DynamicResource ToolB.Value35}" />
+      <SolidColorBrush x:Key="ToolB.Value06" Color="{DynamicResource ToolB.Value36}" />
+      <SolidColorBrush x:Key="ToolB.Value07" Color="{DynamicResource ToolB.Value37}" />
+      <SolidColorBrush x:Key="ToolB.Value08" Color="{DynamicResource ToolB.Value38}" />
+      <SolidColorBrush x:Key="ToolB.Value09" Color="{DynamicResource ToolB.Value39}" />
+      <SolidColorBrush x:Key="ToolB.Value10" Color="{DynamicResource ToolB.Value40}" />
+      <SolidColorBrush x:Key="ToolB.Value11" Color="{DynamicResource ToolB.Value41}" />
+      <SolidColorBrush x:Key="ToolB.Value12" Color="{DynamicResource ToolB.Value42}" />
+      <SolidColorBrush x:Key="ToolB.Value13" Color="{DynamicResource ToolB.Value43}" />
+      <SolidColorBrush x:Key="ToolB.Value14" Color="{DynamicResource ToolB.Value44}" />
+      <SolidColorBrush x:Key="ToolB.Value15" Color="{DynamicResource ToolB.Value45}" />
+      <SolidColorBrush x:Key="ToolB.Value16" Color="{DynamicResource ToolB.Value46}" />
+      <SolidColorBrush x:Key="ToolB.Value17" Color="{DynamicResource ToolB.Value47}" />
+      <SolidColorBrush x:Key="ToolB.Value18" Color="{DynamicResource ToolB.Value48}" />
+      <SolidColorBrush x:Key="ToolB.Value19" Color="{DynamicResource ToolB.Value49}" />
+      <SolidColorBrush x:Key="ToolB.Value20" Color="{DynamicResource ToolB.Value50}" />
+      <SolidColorBrush x:Key="ToolB.Value21" Color="{DynamicResource ToolB.Value51}" />
+      <SolidColorBrush x:Key="ToolB.Value22" Color="{DynamicResource ToolB.Value52}" />
+      <SolidColorBrush x:Key="ToolB.Value23" Color="{DynamicResource ToolB.Value53}" />
+      <SolidColorBrush x:Key="ToolB.Value24" Color="{DynamicResource ToolB.Value54}" />
+      <SolidColorBrush x:Key="ToolB.Value25" Color="{DynamicResource ToolB.Value55}" />
+      <SolidColorBrush x:Key="ToolB.Value26" Color="{DynamicResource ToolB.Value56}" />
+      <SolidColorBrush x:Key="ToolB.Value27" Color="{DynamicResource ToolB.Value57}" />
+      <SolidColorBrush x:Key="ToolB.Value28" Color="{DynamicResource ToolB.Value58}" />
+      <SolidColorBrush x:Key="ToolB.Value29" Color="{DynamicResource ToolB.Value59}" />
+      <SolidColorBrush x:Key="ToolB.Value30" Color="{DynamicResource ToolB.Value60}" />
+      <SolidColorBrush x:Key="ToolB.Value31" Color="{DynamicResource ToolB.Value61}" />
+      <SolidColorBrush x:Key="ToolB.Value32" Color="Transparent" />
+      <x:Double x:Key="ToolB.Value62">30</x:Double>
+      <x:Double x:Key="ToolB.Value63">30</x:Double>
+      <Thickness x:Key="ToolB.Value64">10,6</Thickness>
+      <Thickness x:Key="ToolB.Value65">4</Thickness>
+      <Thickness x:Key="ToolB.Value66">0</Thickness>
+      <CornerRadius x:Key="ToolB.Value67">999</CornerRadius>
+      <x:Double x:Key="ToolB.Value68">24</x:Double>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="ToggleButton.toolBAction">
+    <Setter Property="MinHeight" Value="{StaticResource ToolB.Value62}" />
+    <Setter Property="Padding" Value="{StaticResource ToolB.Value64}" />
+    <Setter Property="BorderThickness" Value="{StaticResource ToolB.Value01}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon">
+    <Setter Property="Width" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="MinWidth" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="Height" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="MinHeight" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="Padding" Value="{StaticResource ToolB.Value66}" />
+    <Setter Property="CornerRadius" Value="{StaticResource ToolB.Value67}" />
+    <Setter Property="BorderThickness" Value="{StaticResource ToolB.Value01}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.toolBAction">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ToggleButton">
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value14}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value15}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value16}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value17}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value28}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value16}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:focusvisible">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value08}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value09}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value10}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:pressed">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value18}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value28}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value16}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:disabled">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value14}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value15}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value29}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value19}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value20}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBNeutral:checked:pointerover, ToggleButton.toolBNeutral:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value19}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value20}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value21}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value05}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value07}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value11}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value12}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:focusvisible">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value11}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value12}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:pressed">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value13}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value12}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:disabled">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value05}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value29}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value06}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value07}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBActionIcon.toolBNeutral:checked:pointerover, ToggleButton.toolBActionIcon.toolBNeutral:checked:pressed">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value11}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value12}" />
+  </Style>
+  <Style Selector="Border.toolBTabStrip">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value25}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value27}" />
+    <Setter Property="BorderThickness" Value="{StaticResource ToolB.Value02}" />
+    <Setter Property="CornerRadius" Value="{StaticResource ToolB.Value67}" />
+    <Setter Property="Padding" Value="{StaticResource ToolB.Value65}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBTab">
+    <Setter Property="MinHeight" Value="{StaticResource ToolB.Value68}" />
+    <Setter Property="Padding" Value="{StaticResource ToolB.Value64}" />
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value32}" />
+    <Setter Property="BorderThickness" Value="{StaticResource ToolB.Value02}" />
+    <Setter Property="CornerRadius" Value="{StaticResource ToolB.Value67}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value29}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBTab:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value22}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value30}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBTab:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value26}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value28}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value30}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBIcon">
+    <Setter Property="Width" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="MinWidth" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="Height" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="MinHeight" Value="{StaticResource ToolB.Value63}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="{StaticResource ToolB.Value67}" />
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value25}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value27}" />
+    <Setter Property="BorderThickness" Value="{StaticResource ToolB.Value00}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value31}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="ToggleButton.toolBIcon:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value22}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value28}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value30}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBIcon:pressed">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value23}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value28}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value30}" />
+  </Style>
+  <Style Selector="ToggleButton.toolBIcon:checked">
+    <Setter Property="Background" Value="{DynamicResource ToolB.Value04}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolB.Value03}" />
+    <Setter Property="Foreground" Value="{DynamicResource ToolB.Value03}" />
+  </Style>
+</Styles>

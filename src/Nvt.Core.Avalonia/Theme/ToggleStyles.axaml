@@ -1,0 +1,187 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:theme="clr-namespace:Nvt.Core.Avalonia.Theme">
+  <!-- Proposal: load explicitly for review. Existing roles remain unchanged. -->
+  <Styles.Resources>
+    <theme:FocusRingRadiusConverter x:Key="Nvt.Toggle.FocusRadiusConverter"/>
+    <theme:ToggleSegmentCornerConverter x:Key="Nvt.Toggle.SegmentCornerConverter"/>
+  </Styles.Resources>
+
+  <Style Selector="Border.toggleSegmentGroup">
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcSurfaceCornerRadius}"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="ClipToBounds" Value="False"/>
+  </Style>
+  <!-- Overlap the exterior stroke and each shared edge once. Keep focus outside the group. -->
+  <Style Selector="Border.toggleSegmentGroup > StackPanel">
+    <Setter Property="Orientation" Value="Horizontal"/>
+    <Setter Property="Spacing" Value="0"/>
+    <Setter Property="Margin" Value="-1"/>
+    <Setter Property="ClipToBounds" Value="False"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment, ToggleButton.toggleTab, ToggleButton.toggleIcon">
+    <Setter Property="Theme" Value="{x:Null}"/>
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="0"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="ClipToBounds" Value="False"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+    <Setter Property="Opacity" Value="1"/>
+    <Setter Property="ZIndex" Value="0"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment, ToggleButton.toggleTab, ToggleButton.toggleIcon">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid>
+          <Border x:Name="ToggleBody" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" ClipToBounds="True">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                              TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"
+                              RecognizesAccessKey="True"/>
+          </Border>
+          <Border x:Name="ToggleTabUnderline" Height="0" VerticalAlignment="Bottom"
+                  Background="{TemplateBinding BorderBrush}" IsHitTestVisible="False"/>
+          <Border x:Name="ToggleFocusRing" IsVisible="False" Margin="-4" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}"
+                  BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{ReflectionBinding CornerRadius, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource Nvt.Toggle.FocusRadiusConverter}}"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Border.toggleSegmentGroup > StackPanel > ToggleButton.toggleSegment">
+    <Setter Property="Margin" Value="-1,0,0,0"/>
+  </Style>
+  <Style Selector="Border.toggleSegmentGroup > StackPanel > ToggleButton.toggleSegment:nth-child(1)">
+    <Setter Property="Margin" Value="0"/>
+    <Setter Property="CornerRadius" Value="{ReflectionBinding CornerRadius, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource Nvt.Toggle.SegmentCornerConverter}, ConverterParameter=first}"/>
+  </Style>
+  <Style Selector="Border.toggleSegmentGroup > StackPanel > ToggleButton.toggleSegment:nth-last-child(1)">
+    <Setter Property="CornerRadius" Value="{ReflectionBinding CornerRadius, RelativeSource={RelativeSource AncestorType=Border}, Converter={StaticResource Nvt.Toggle.SegmentCornerConverter}, ConverterParameter=last}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:checked">
+    <Setter Property="ZIndex" Value="1"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:focus-visible:not(:disabled)">
+    <Setter Property="ZIndex" Value="2"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleIcon">
+    <Setter Property="Width" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="MinWidth" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment, ToggleButton.toggleIcon">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled), ToggleButton.toggleIcon:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:pressed:not(:disabled), ToggleButton.toggleIcon:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:checked:not(:disabled), ToggleButton.toggleIcon:checked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:checked:pointerover:not(:disabled), ToggleButton.toggleIcon:checked:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:checked:pressed:not(:disabled), ToggleButton.toggleIcon:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:disabled, ToggleButton.toggleIcon:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:disabled:checked, ToggleButton.toggleIcon:disabled:checked">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource NfcCompactCornerRadius}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab /template/ Border#ToggleBody">
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:checked /template/ Border#ToggleTabUnderline">
+    <Setter Property="Height" Value="2"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:pointerover:not(:disabled)">
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:pressed:not(:disabled)">
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:checked:not(:disabled)">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:checked:pointerover:not(:disabled)">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:checked:pressed:not(:disabled)">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:disabled">
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleTab:disabled:checked">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,2"/>
+  </Style>
+
+  <Style Selector="ToggleButton.toggleSegment TextBlock, ToggleButton.toggleTab TextBlock, ToggleButton.toggleIcon TextBlock">
+    <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+    <Setter Property="TextWrapping" Value="NoWrap"/>
+    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    <Setter Property="MaxLines" Value="1"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleButton.toggleTab:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleButton.toggleIcon:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment.danger /template/ Border#ToggleFocusRing, ToggleButton.toggleTab.danger /template/ Border#ToggleFocusRing, ToggleButton.toggleIcon.danger /template/ Border#ToggleFocusRing">
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Focus.DangerRingBrush}"/>
+  </Style>
+</Styles>
