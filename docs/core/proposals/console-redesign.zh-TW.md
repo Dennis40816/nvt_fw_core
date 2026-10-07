@@ -12,6 +12,27 @@
 
 先看 [新舊比較](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/compare-v2.png)。再看 [Dark 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-dark-v2.png)、[Light 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-light-v2.png)、[Dark 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/states-dark-v2.png) 與 [Light 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/states-light-v2.png)。
 
+## 擁有者決定（2026-10-07 23:5x）
+
+擁有者接受本提案的版面與功能，外觀之後另定。
+擁有者先選了「先定版面，外觀跟 ToggleButton (Recommended)」，接著說「接受這個提案」。
+
+定案的部分如下，Core 實作照這些做：
+- 欄位：時間到毫秒、等級圖示、來源、訊息。
+- 等級篩選與各等級筆數。
+- 搜尋與「只看符合」。
+- 重複訊息合併成 ×N。
+- 長訊息展開。
+- 跟隨最新。
+- 狀態列。
+- 等級圖示置中。
+- 下文「21 項問題如何在新設計中解決」的修復做法。
+
+尚未定案的部分如下：
+- 工具列按鈕、等級篩選膠囊、顏色與圓角。
+- 擁有者選定 ToggleButton 的外觀方向後，這些部分照同一風格重畫，再請擁有者確認。
+- 實作時，這些樣式集中在 token 與樣式檔，之後可以整組更換。
+
 ## 版面與欄位（欄寬規則、列高、字型、截斷與展開）
 
 畫面依序是 48 px 標題列、48 px 篩選列、24 px 欄位標題、事件列表與 20 px 狀態列。
