@@ -26,7 +26,9 @@ public enum RuntimeQueryFailure
     /// <summary>Another client failure occurred; detail is the exception message.</summary>
     ClientError,
     /// <summary>No running UI dispatcher is available; detail is null.</summary>
-    DispatcherUnavailable
+    DispatcherUnavailable,
+    /// <summary>No per-window server candidate matches the selection; detail is null.</summary>
+    ServerNotFound
 }
 
 /// <summary>Diagnostic events delivered without a logging dependency.</summary>

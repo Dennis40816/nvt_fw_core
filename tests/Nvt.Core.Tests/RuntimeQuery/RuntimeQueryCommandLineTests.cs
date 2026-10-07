@@ -109,6 +109,22 @@ public sealed class RuntimeQueryCommandLineTests
         }
     }
 
+    /// <summary>Fixed-name mode forwards PID options as ordinary command arguments, including invalid process IDs.</summary>
+    [Theory]
+    [InlineData("--pid", "123", "123")]
+    [InlineData("--pid=123", null, "123")]
+    [InlineData("--pid", null, "true")]
+    [InlineData("--pid=0", null, "0")]
+    [InlineData("--pid=-1", null, "-1")]
+    [InlineData("--pid=text", null, "text")]
+    public async Task FixedNameModeKeepsPidAsCommandArgument(string option, string? value, string expected)
+    {
+        string[] args = value is null ? ["query", "help", option, "--json-compact"] : ["query", "help", option, value, "--json-compact"];
+        await AssertReplyAsync(args, RuntimeQueryCommandLineCases.SuccessReply, 0,
+            RuntimeQueryCommandLineCases.SuccessReply + Environment.NewLine,
+            "{\"version\":\"1\",\"command\":\"help\",\"args\":{\"pid\":\"" + expected + "\"}}" + Environment.NewLine);
+    }
+
     private static void AssertOutput(string[] args, bool handled, int exitCode, string stdout, string? pipeName = null)
     {
         using var writer = NewWriter();
