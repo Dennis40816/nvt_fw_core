@@ -588,7 +588,28 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     private static async Task<int> ReadPidAsync(string path, Task run)
     {
         await WaitForFileAsync(path, run);
-        return int.Parse((await File.ReadAllTextAsync(path, TestToken)).Trim(), CultureInfo.InvariantCulture);
+        var clock = Stopwatch.StartNew();
+        string? text = null;
+        while (clock.Elapsed < Watchdog)
+        {
+            try
+            {
+                text = await File.ReadAllTextAsync(path, TestToken);
+                if (int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int processId) && processId > 0)
+                {
+                    return processId;
+                }
+            }
+            catch (IOException exception) when ((exception.HResult & 0xFFFF) is 32 or 33)
+            {
+                // The probe's marker is visible before its writer closes; retry inside the watchdog.
+            }
+
+            await Task.Delay(10, TestToken);
+        }
+
+        Assert.Fail($"The probe did not publish a valid process ID: {text ?? "<null>"}");
+        return 0;
     }
 
     /// <summary>
@@ -612,7 +633,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
                 .RunAsync(ProbeTree(Path.GetTempPath(), "detached-descendant-root", marker, TimeSpan.FromSeconds(60)), TestToken)
                 .AsTask()
                 .WaitAsync(Watchdog, TestToken);
-            descendant = int.Parse((await File.ReadAllTextAsync(marker, TestToken)).Trim(), CultureInfo.InvariantCulture);
+            descendant = await ReadPidAsync(marker, Task.CompletedTask);
 
             Assert.Equal(0, result.ExitCode);
             Assert.Equal(ExternalProcessCleanup.Complete, result.Cleanup);
