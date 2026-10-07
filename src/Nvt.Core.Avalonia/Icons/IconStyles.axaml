@@ -1,0 +1,20 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="TextBlock.nvtIcon">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Icon.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Icon.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Icon.Weight}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="None" />
+    <Setter Property="AutomationProperties.AccessibilityView" Value="Raw" />
+  </Style>
+  <Style Selector="TextBlock.nvtIcon.small">
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Body.Size}" />
+  </Style>
+  <Style Selector="TextBlock.nvtIcon.large">
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Title.Size}" />
+  </Style>
+</Styles>
