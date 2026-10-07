@@ -24,7 +24,10 @@ public static partial class RuntimeQueryGenericCommands
             new("focus", RuntimeQueryCommandRisk.ChangesState, _ => Task.FromResult(Focus(options))),
             new("page", RuntimeQueryCommandRisk.ChangesState, args => Task.FromResult(Page(options.Navigation, args))),
             new("screenshot", RuntimeQueryCommandRisk.ChangesState, args => ScreenshotAsync(options, args)),
-            new("exit", RuntimeQueryCommandRisk.ChangesState, _ => Task.FromResult(Exit(options)))
+            new("exit", RuntimeQueryCommandRisk.ChangesState, args => Task.FromResult(Exit(options, args)))
+            {
+                ReceivesConfirmation = true
+            }
         ]);
     }
 
@@ -82,9 +85,26 @@ public static partial class RuntimeQueryGenericCommands
         };
     }
 
-    private static RuntimeQueryResponseEnvelope Exit(RuntimeQueryGenericCommandOptions options)
+    private static RuntimeQueryResponseEnvelope Exit(
+        RuntimeQueryGenericCommandOptions options, IReadOnlyDictionary<string, string>? args)
     {
-        switch (options.DecideExit())
+        RuntimeQueryExitResult result;
+        if (options.DecideExitRequest is { } decideExitRequest)
+        {
+            _ = RuntimeQueryArgumentParser.TryGetBoolArg(args, "confirm", out var confirmed, out var error);
+            if (error is not null)
+            {
+                return error;
+            }
+
+            result = decideExitRequest(new RuntimeQueryExitRequest(confirmed));
+        }
+        else
+        {
+            result = options.DecideExit();
+        }
+
+        switch (result)
         {
             case RuntimeQueryExitResult.Closing:
                 var response = RuntimeQueryResponseEnvelope.Success(new { closing = true });

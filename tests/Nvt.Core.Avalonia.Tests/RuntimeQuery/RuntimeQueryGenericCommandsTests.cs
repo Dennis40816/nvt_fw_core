@@ -32,6 +32,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             Assert.Equal(RuntimeQueryStartupPhase.None, command.StartupPhase);
             Assert.Null(command.StartupValueKey);
             Assert.Null(command.StartupValidator);
+            Assert.Equal(command.Name == "exit", command.ReceivesConfirmation);
         });
         var router = new RuntimeQueryCommandRouter(commands, requireConfirmation: true);
         string[] startup = ["--page", "alpha", "--help", "--focus", "--screenshot", "--exit", "--ping"];
