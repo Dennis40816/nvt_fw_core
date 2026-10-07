@@ -54,6 +54,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Codex dispatch queue | Commander; NVT Core | NVT CORE | Tool scripts | `tools/codex-queue/` | 1 → 2 | Merged into `main`; uses Codex defaults for model and effort. |
 | Windows scheduler | Commander; NVT Core | NVT CORE | Tool scripts | `tools/nvt-sched/` | 1 → 2 | Merged into `main`; the owner registered the task on a real machine. |
 | Repository checker engines | NFC; NFH; NFU | NVT CORE | Checker scripts | `tools/repo-checks/` | 1 → 2 | Merged into `main` with NFC's engines; tools supply their own policy values. |
+| GitHub App writes | NVT Core; NFC | NVT CORE | PowerShell module | `tools/gh-app/` | 1 → 2 | Module added with offline tests; repository adoption follows separately. |
 
 ### 5. Shared UI classes
 
