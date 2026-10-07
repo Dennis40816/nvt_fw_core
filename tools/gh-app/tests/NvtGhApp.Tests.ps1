@@ -54,9 +54,9 @@ InModuleScope NvtGhApp {
     function New-Pr {
         param([string]$Head = $script:HeadSha, [string]$MergeState = 'CLEAN', [string]$State = 'OPEN',
             [string]$Branch = 'test/module', [switch]$Fork, [switch]$Draft,
-            [string]$Author = 'example-app[bot]', [string]$BaseHead = $script:NextSha)
+            [string]$Author = 'app/example-app', [string]$BaseHead = $script:NextSha)
         @{ state = $State; headRefOid = $Head; headRefName = $Branch; baseRefName = 'main';
-            baseRefOid = $BaseHead; isDraft = [bool]$Draft; author = @{ login = $Author };
+            baseRefOid = $BaseHead; isDraft = [bool]$Draft; author = @{ login = $Author; is_bot = $Author.StartsWith('app/') -or $Author.EndsWith('[bot]') };
             mergeStateStatus = $MergeState; isCrossRepository = [bool]$Fork; mergeCommit = @{ oid = $script:MergeSha } }
     }
     function New-PrStep {
@@ -347,10 +347,20 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
                 [IO.Directory]::Delete($directory, $true)
             }
         }
+        foreach ($login in @('app/example-app', 'example-app[bot]')) {
+            It "records a review request for the App author form $login" {
+                Set-Responses @((New-PrStep -Pr (New-Pr -Author $login)))
+                $entry = Request-GhAppOwnerReview 7
+                $entry.head | Should Be $script:HeadSha
+                @(Get-Content -LiteralPath $script:LedgerFile).Count | Should Be 1
+            }
+        }
         foreach ($case in @(
             @{ Name = 'draft'; Pr = (New-Pr -Draft); Message = '#7 must be open and not a draft before requesting owner review.' },
             @{ Name = 'closed'; Pr = (New-Pr -State CLOSED); Message = '#7 must be open and not a draft before requesting owner review.' },
             @{ Name = 'non-bot'; Pr = (New-Pr -Author other-author); Message = '#7 PR author does not match botLogin.' },
+            @{ Name = 'different App'; Pr = (New-Pr -Author 'app/other-app'); Message = '#7 PR author does not match botLogin.' },
+            @{ Name = 'non-bot app-prefixed'; Pr = (& { $pr = New-Pr; $pr.author.is_bot = $false; $pr }); Message = '#7 PR author does not match botLogin.' },
             @{ Name = 'fork'; Pr = (New-Pr -Fork); Message = "Repository mismatch. Expected $script:RepositoryName." },
             @{ Name = 'invalid SHA'; Pr = (New-Pr -Head short); Message = 'head of #7 is not a 40-character SHA.' }
         )) {

@@ -257,6 +257,15 @@ function Get-GhAppPullRequest {
     $pr
 }
 
+function Test-GhAppBotAuthor {
+    param([hashtable]$Context, $Author)
+    # REST reports the App as "<name>[bot]". gh pr view reports it as "app/<name>" with is_bot set.
+    if ($null -eq $Author) { return $false }
+    if ([string]$Author.login -ceq $Context.botLogin) { return $true }
+    $appLogin = 'app/' + ($Context.botLogin -creplace '\[bot\]\z', '')
+    return ($Author.is_bot -eq $true -and [string]$Author.login -ceq $appLogin)
+}
+
 function Get-GhAppLedgerPath {
     param([hashtable]$Context, [string]$LedgerPath)
     if (-not $LedgerPath) {
@@ -280,7 +289,7 @@ function Request-GhAppOwnerReview {
     $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
     $pr = Get-GhAppPullRequest $context $Number
     if ($pr.state -cne 'OPEN' -or $pr.isDraft) { throw "#$Number must be open and not a draft before requesting owner review." }
-    if ($pr.author.login -cne $context.botLogin) { throw "#$Number PR author does not match botLogin." }
+    if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
     Assert-GhAppBranch $pr.baseRefName
     $entry = [pscustomobject][ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number;
         head = (Assert-GhAppSha "head of #$Number" $pr.headRefOid);
@@ -614,7 +623,7 @@ function Wait-GhAppApprovedHead {
     $updatingHead = $null
     while ($true) {
         if ($Pr.state -cne 'OPEN') { throw "#$Number stop: state $($Pr.state)." }
-        if ($Pr.isDraft -or $Pr.author.login -cne $Context.botLogin) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
+        if ($Pr.isDraft -or -not (Test-GhAppBotAuthor $Context $Pr.author)) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
         $current = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
         if ($Pr.mergeStateStatus -ceq 'DIRTY') { throw "#$Number stop: merge conflict with $($Pr.baseRefName); manual resolution requires owner approval." }
         if ((Get-GhAppUtcNow) -ge $deadline) { throw "#$Number stop: timed out in state $($Pr.mergeStateStatus)." }
@@ -650,7 +659,7 @@ function Wait-GhAppApprovedHead {
             $fresh = Get-GhAppPullRequest $Context $Number
             if ($fresh.headRefOid -ceq $current -and $fresh.baseRefOid -ceq $Pr.baseRefOid -and
                 $fresh.baseRefName -ceq $Pr.baseRefName -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN') {
-                if ($fresh.isDraft -or $fresh.author.login -cne $Context.botLogin) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
+                if ($fresh.isDraft -or -not (Test-GhAppBotAuthor $Context $fresh.author)) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
                 $evidence = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $fresh $LedgerPath
                 return [pscustomobject]@{ Pr = $fresh; Request = $evidence.Request; Approval = $evidence.Approval }
             }
