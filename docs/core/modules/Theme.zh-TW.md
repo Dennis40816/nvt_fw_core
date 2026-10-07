@@ -74,10 +74,12 @@ Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸
 
 ### 工具主色
 
-Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具在應用程式資源範圍的 Light／Dark 字典設定下表全部七個鍵。採用分為兩步：
+Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具在應用程式資源範圍的 Light／Dark 字典設定下表全部七個鍵。採用分為兩步（擁有者 2026-10-07 決定）：
 
-1. 採用 PR 可在應用程式範圍，以工具目前數值覆寫任何 `Nfc*` 色彩、尺寸與圓角鍵，以及 `Nvt.Button.*`、`Nvt.Focus.*` 鍵（含 `Nvt.Button.PrimaryLabelBrush`），證明畫面沒有變化。
-2. 後續經擁有者核准的色彩 PR 移除上述覆寫，只保留工具主色的七個 `NfcAccent*` 鍵。
+1. 套件 PR：工具把 Core 套件釘到新版本，畫面不變。
+2. 外觀 PR，經擁有者核准：工具載入 `ThemeTokens`、`ButtonStyles` 與 `ScrollStyles`，只設定主色的七個 `NfcAccent*` 鍵，把按鈕改用 Core 角色，並刪除功能相同的本地樣式。高度、圓角與焦點框也在同一個 PR 改變。PR 附 Light 與 Dark 的前後對照影像。
+
+覆寫無法還原工具的舊外觀。部分 Core 值是固定的，例如 14 px 捲軸寬度與 14,0 按鈕內距。也有多個狀態共用一個鍵，例如主色按鈕的底色與邊框。
 
 不得局部覆寫基本控制項樣式。需要變體時由 Core 增加角色。焦點色不跟隨主色。
 
@@ -482,10 +484,10 @@ dotnet test Nvt.Core.sln --no-build
 
 ### 採用
 
-每套工具分成兩個獨立 PR：
+每套工具分成兩個獨立 PR（擁有者 2026-10-07 決定，取代 2026-10-06「先零差異再換色」）：
 
-1. 採用 PR：在應用程式範圍，以工具目前數值覆寫任何 `Nfc*` 色彩、尺寸與圓角鍵，以及 `Nvt.Button.*`、`Nvt.Focus.*` 鍵（含 `Nvt.Button.PrimaryLabelBrush`）。前後對照影像證明畫面沒有變化。
-2. 後續經擁有者核准的色彩 PR：移除上述覆寫，只保留工具主色的七個 `NfcAccent*` 鍵。一個主色以七個鍵表達，必須設定全部七個。
+1. 套件 PR：把 Core 套件釘到新版本，畫面不變。
+2. 外觀 PR，經擁有者核准：一次導入 `ThemeTokens`、`ButtonStyles` 與 `ScrollStyles`。只保留工具主色的七個 `NfcAccent*` 鍵，必須設定全部七個。把按鈕改用 Core 角色，並刪除功能相同的本地樣式。不在 Core 加相容變體來還原舊外觀。前後對照影像涵蓋每個主要畫面的 Light 與 Dark。
 
 影像涵蓋 Light／Dark、英文／繁中、各互動狀態、DPI 與長文字。產品行為與資料色留在工具。
 
@@ -535,7 +537,7 @@ NFH 自己的捲軸規則（同一檔第 8-94 行）沒有移植。Core 採用 N
 採用共用色票：
 
 - NFC 把第 117-185 行換成上面的 include，位置不變。幾何維持相同，共用色票改變 thumb 顏色。執行 UI smoke 測試，以相同作業系統、字型、DPI 與主題附上採用前後影像供 owner 審查。
-- NFH 的外觀與行為會改變。NFH 的採用 PR 須附前後截圖，由 owner 核准外觀改變。非 UI 測試的清單與結果須相同。
+- NFH 的外觀與行為會改變。NFH 的外觀 PR 須附前後截圖，由 owner 核准外觀改變。非 UI 測試的清單與結果須相同。
 - NFH 保留 `scrollV2`、`scrollDevCandidate`、`workspaceDataList`、`workspaceGroupStripScroll` 與 `DevScrollPreviewHeight`。
 
 NFH 採用時會改變的地方：
