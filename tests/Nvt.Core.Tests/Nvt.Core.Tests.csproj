@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nvt.Core\Nvt.Core.csproj" />
     <ProjectReference Include="..\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Nvt.Core.LinkedProbe\Nvt.Core.LinkedProbe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
@@ -26,5 +27,20 @@
       <_TestProbeFile Include="$(_TestProbeDir)*.*" />
     </ItemGroup>
     <Copy SourceFiles="@(_TestProbeFile)" DestinationFolder="$(OutDir)probe" SkipUnchangedFiles="true" />
+  </Target>
+  <!-- Process tests start the Core-linked child from linked-probe/ next to the test assembly. -->
+  <Target Name="CopyLinkedProbe" AfterTargets="Build">
+    <MSBuild Projects="..\Nvt.Core.LinkedProbe\Nvt.Core.LinkedProbe.csproj" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" ItemName="_LinkedProbeTargetPath" />
+    </MSBuild>
+    <PropertyGroup>
+      <_LinkedProbeDir>@(_LinkedProbeTargetPath->'%(RootDir)%(Directory)')</_LinkedProbeDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_LinkedProbeFile Include="$(_LinkedProbeDir)**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_LinkedProbeFile)"
+          DestinationFiles="@(_LinkedProbeFile->'$(OutDir)linked-probe\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 </Project>
