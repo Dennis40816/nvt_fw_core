@@ -138,6 +138,28 @@ function Get-GhAppToken {
 
 function Invoke-GhAppGh {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
+        [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
+        [switch]$Read)
+    # Only reads retry. A write that fails after GitHub applied it must never repeat, for example a comment or a merge.
+    $attempts = $(if ($Read) { 3 } else { 1 })
+    [void]$PSBoundParameters.Remove('Read')
+    for ($attempt = 1; ; $attempt++) {
+        try { return Invoke-GhAppGhOnce @PSBoundParameters }
+        catch {
+            $message = $_.Exception.Message
+            # Retry unknown failures, rate limits and server errors. Other 4xx answers are final.
+            if ($message -cnotmatch '^HTTP (unknown|429|5\d\d) ') { throw }
+            if ($attempt -ge $attempts) {
+                if ($attempts -gt 1) { throw "$message (after $attempts attempts)" }
+                throw
+            }
+            Start-Sleep -Seconds (2 * $attempt)
+        }
+    }
+}
+
+function Invoke-GhAppGhOnce {
+    param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
         [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound)
     $process = $null
     $token = $null
@@ -200,7 +222,7 @@ function Invoke-GhAppApi {
         $arguments += @('--input', '-')
         $inputText = ConvertTo-Json -InputObject $Body -Depth 30 -Compress
     }
-    $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -InputText $inputText `
+    $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -InputText $inputText -Read:($Method -ceq 'GET') `
         -AsApp:$AsApp -AllowNotFound:$AllowNotFound
     if ($null -eq $result -or [string]::IsNullOrWhiteSpace($result.Output)) { return $null }
     try { ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
@@ -248,7 +270,7 @@ function Get-GhAppPullRequest {
     $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number"
     $arguments = @('pr', 'view', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)",
         '--json', 'state,headRefOid,headRefName,baseRefName,baseRefOid,mergeStateStatus,isCrossRepository,mergeCommit,isDraft,author')
-    $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path
+    $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -Read
     try { $pr = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
     catch { throw "HTTP unknown $path" }
     if ($pr.isCrossRepository) { throw "Repository mismatch. Expected $($Context.owner)/$($Context.repo)." }
@@ -447,6 +469,10 @@ function Push-GhAppBranch {
     if ($ExtraParent) { $parents += Assert-GhAppSha 'ExtraParent' $ExtraParent }
     Assert-GhAppBranch $Branch
     $message = Read-GhAppBody $MessageFile
+    # The diff from LocalBase to HEAD becomes the remote commit. A LocalBase that HEAD does not contain would turn
+    # every newer base file into a deletion, so require HEAD to be built on it.
+    $ancestor = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $LocalBase, 'HEAD') -AllowedExitCodes @(0, 1) -Result
+    if ($ancestor.ExitCode -ne 0) { throw "LocalBase $LocalBase is not an ancestor of HEAD; rebase onto the remote base first." }
     $headFilter = [Uri]::EscapeDataString("$($context.owner):$Branch")
     $open = @(Get-GhAppItems $context "pulls?state=open&head=$headFilter")
     foreach ($pr in $open) {
@@ -586,7 +612,7 @@ function Get-GhAppTimelineObservation {
     try {
         for ($page = 0; $page -lt 1000; $page++) {
             $body = @{ query = $query; variables = @{ owner = $Context.owner; repo = $Context.repo; number = $Number; cursor = $cursor } }
-            $result = Invoke-GhAppGh -Context $Context -Arguments @('api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '--input', '-') `
+            $result = Invoke-GhAppGh -Context $Context -Read -Arguments @('api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '--input', '-') `
                 -ApiPath '/graphql' -InputText (ConvertTo-Json $body -Depth 10 -Compress)
             $data = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop
             if ($data.PSObject.Properties['errors']) { return 'unavailable' }
@@ -649,7 +675,7 @@ function Wait-GhAppApprovedHead {
         }
         $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number/checks"
         $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)", '--required', '--json', 'name,bucket,state')
-        $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8)
+        $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8) -Read
         try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
         catch { throw "HTTP unknown $path" }
         if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: required checks failed." }
@@ -824,7 +850,7 @@ function Invoke-GhAppRead {
     $safeArguments = Assert-GhAppReadArguments $context $Arguments
     $path = "/repos/$($context.owner)/$($context.repo)"
     if ($safeArguments[0] -ceq 'api') { $path = '/' + $safeArguments[1].TrimStart('/') }
-    $result = Invoke-GhAppGh -Context $context -Arguments $safeArguments -ApiPath $path
+    $result = Invoke-GhAppGh -Context $context -Arguments $safeArguments -ApiPath $path -Read
     $result.Output.TrimEnd("`r", "`n")
 }
 

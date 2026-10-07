@@ -60,6 +60,7 @@ It uses the Git data API for blobs, trees, commits, and refs.
 It reads committed Git objects, including binary files, executable modes, symlinks, gitlinks, and deletions.
 It leaves uncommitted changes out of the commit.
 
+HEAD must contain `LocalBase`. A branch cut from an older base would otherwise delete every file the base gained since. The function checks this before any `gh` call, so rebase onto the remote base first.
 The local base tree must equal the remote parent's tree.
 Every commit, blob, and tree SHA must contain exactly 40 lowercase hexadecimal characters.
 The created tree must match the local HEAD tree before any ref changes.
@@ -246,6 +247,8 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 - Process and API failures report only `HTTP <status> <API path>`. A helper failure adds only the helper's exit code.
 - The config file, review ledger, helper, DPAPI file and `gh` must all be outside every repository.
 - An unavailable HTTP status appears as `unknown`.
+- A read retries up to three attempts, after 2 and 4 seconds, when its status is unknown, 429 or 5xx. After the third failure the message ends with `(after 3 attempts)`.
+- A write never retries, because GitHub may have applied it. Examples are comments, ref updates, branch updates and merges.
 - Every write targets the configured repository on GitHub.com.
 
 ## Sources and intentional differences

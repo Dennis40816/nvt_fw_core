@@ -559,6 +559,47 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             -Branch test/module -MessageFile $script:BodyFile -AllowOpenPr:$AllowOpenPr -ExtraParent $ExtraParent
     }
 
+    Describe 'Read retries' {
+        BeforeEach { Reset-Fixture; Import-Fixture; Mock Start-Sleep {} }
+        It 'retries a failed read and returns the second answer' {
+            Set-Responses @((New-ApiStep 'pulls/7' -ExitCode 1 -ErrorText 'HTTP 502 Bad Gateway'),
+                (New-ApiStep 'pulls/7' -Value @{ number = 7 }))
+            $context = Get-GhAppContext
+            (Invoke-GhAppApi $context GET 'pulls/7').number | Should Be 7
+            @(Get-Calls).Count | Should Be 2
+            Assert-MockCalled Start-Sleep -Times 1 -Exactly -Scope It
+        }
+        It 'retries an unknown read failure and stops after three attempts' {
+            Set-Responses @((New-ApiStep 'pulls/7' -ExitCode 1), (New-ApiStep 'pulls/7' -ExitCode 1), (New-ApiStep 'pulls/7' -ExitCode 1))
+            $context = Get-GhAppContext
+            Get-Message { Invoke-GhAppApi $context GET 'pulls/7' } |
+                Should Be "HTTP unknown /repos/$script:RepositoryName/pulls/7 (after 3 attempts)"
+            @(Get-Calls).Count | Should Be 3
+            Assert-MockCalled Start-Sleep -Times 2 -Exactly -Scope It
+        }
+        It 'retries the pull request view' {
+            Set-Responses @(@{ Arguments = (New-PrStep).Arguments; App = $false; Output = ''; Error = 'HTTP 503'; ExitCode = 1 },
+                (New-PrStep))
+            $context = Get-GhAppContext
+            (Get-GhAppPullRequest $context 7).headRefOid | Should Be $script:HeadSha
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'does not retry a read that GitHub refused with another 4xx' {
+            Set-Responses @((New-ApiStep 'pulls/7' -ExitCode 1 -ErrorText 'HTTP 403 Forbidden'))
+            $context = Get-GhAppContext
+            Get-Message { Invoke-GhAppApi $context GET 'pulls/7' } | Should Be "HTTP 403 /repos/$script:RepositoryName/pulls/7"
+            @(Get-Calls).Count | Should Be 1
+            Assert-MockCalled Start-Sleep -Times 0 -Exactly -Scope It
+        }
+        It 'never retries a write' {
+            Set-Responses @((New-ApiStep 'issues/7/comments' POST -App -ExitCode 1 -ErrorText 'HTTP 502 Bad Gateway'))
+            $context = Get-GhAppContext
+            Get-Message { Invoke-GhAppApi $context POST 'issues/7/comments' @{ body = 'x' } -AsApp } |
+                Should Be "HTTP 502 /repos/$script:RepositoryName/issues/7/comments"
+            @(Get-Calls).Count | Should Be 1
+            Assert-MockCalled Start-Sleep -Times 0 -Exactly -Scope It
+        }
+    }
     Describe 'Git data API branch pushes' {
         BeforeEach { Reset-Fixture; Import-Fixture }
         It 'creates one commit with binary blobs, modes, a gitlink, and a deletion' {
@@ -586,6 +627,16 @@ if ($env:NVT_GHAPP_HELPER_FAIL) { [Console]::Error.Write('ghs_' + 'FAKE'); exit 
             $commit.parents[1] | Should Be $script:NextSha
             (ConvertFrom-Json $calls[8].Input).ref | Should Be refs/heads/test/module
             Assert-NoToken ($result | Out-String)
+        }
+        It 'refuses a LocalBase that HEAD is not built on before any gh call' {
+            $identity = @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgSign=false')
+            $stale = (Invoke-GhAppGit $script:GitRoot ($identity + @('commit-tree', $script:BaseTree, '-m', 'unrelated base'))).Trim()
+            Set-Responses @()
+            Get-Message {
+                Push-GhAppBranch -Worktree $script:GitRoot -LocalBase $stale -RemoteParent $script:HeadSha `
+                    -Branch test/module -MessageFile $script:BodyFile
+            } | Should Be "LocalBase $stale is not an ancestor of HEAD; rebase onto the remote base first."
+            @(Get-Calls).Count | Should Be 0
         }
         It 'fast-forwards an existing ref with force false' {
             Set-Responses @(New-PushSteps -ExistingRef)
