@@ -115,10 +115,11 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 ```
 
 The message uses the normalized command name. The handler does not run after either error.
-For every risk level, the enabled guard removes the ordinal key `confirm` before calling the handler.
+By default, the enabled guard removes the ordinal key `confirm` before calling handlers at every risk level.
 It copies other keys and values unchanged into a new ordinal dictionary.
 The handler receives null when no keys remain. Null arguments stay null.
-Handlers no longer receive the `confirm` key when the guard is on.
+Commands with `ReceivesConfirmation = true` keep their original runtime arguments, including `confirm`.
+The property defaults to false and leaves `WritesData` checks and startup handling unchanged.
 The existing command-line grammar already maps `--confirm` to `"confirm": "true"`.
 
 `RuntimeQueryConfirmationCases` holds the new inputs and literal expected outputs.
@@ -128,7 +129,8 @@ Run the RuntimeQuery test command below to verify both constructors and the enab
 
 For zero difference, NFH must keep the guard off and run the existing NFH switch-over checks below.
 Compare test results, stdout and stderr bytes, pipe frames, error codes and messages, and process exit codes.
-The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands and remove `confirm` from handler arguments.
+The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands.
+Handlers receive no `confirm` unless their command opts in through `ReceivesConfirmation`.
 
 ## Startup entry
 
@@ -618,6 +620,13 @@ Core returns command records and starts no server.
 All six records have startup phase `None` and define no startup option.
 The tool keeps `--page`, `--help`, and all other startup arguments.
 
+Generic exit sets `RuntimeQueryCommand.ReceivesConfirmation` to true so its handler receives `confirm` with either router setting.
+This init property belongs to `Nvt.Core.RuntimeQuery` and defaults to false for other commands.
+When confirmation is required, the router still validates `WritesData` before calling handlers.
+It still removes `confirm` from commands that do not opt in.
+When confirmation is disabled, the router passes all arguments unchanged for both settings of `ReceivesConfirmation`.
+The property does not change startup parsing or execution.
+
 The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
 
 | Public type | Contract |
@@ -627,8 +636,9 @@ The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
 | `IRuntimeQueryNavigation` | Supplies `Pages`, `CurrentPage`, and synchronous `SwitchPage(name)`. |
 | `RuntimeQueryPageResult` | Defines `Switched`, `NeedsConfirmation`, and `Rejected`. |
 | `RuntimeQueryExitResult` | Defines `Closing`, `NeedsConfirmation`, and `Rejected`. |
+| `RuntimeQueryExitRequest(Confirmed)` | Carries the parsed confirmation to the tool's exit decision. Missing or blank confirmation means false. |
 | `RuntimeQueryScreenshotResult` | `Success(pixelWidth, pixelHeight, fileSize)` or `Failure(code, message)` for replacement capture. File size uses bytes. |
-| `RuntimeQueryGenericFailureCodes` | Constants for the failure codes below, including the shared `INVALID_ARGUMENTS` code. `USER_CONFIRMATION_REQUIRED` differs from the router's `CONFIRMATION_REQUIRED`: adding `--confirm` does not help, because the tool needs a person to confirm. |
+| `RuntimeQueryGenericFailureCodes` | Constants for the failure codes below, including the shared `INVALID_ARGUMENTS` code. `USER_CONFIRMATION_REQUIRED` reports the tool's decision. The router uses `CONFIRMATION_REQUIRED` for its `WritesData` guard. |
 
 | Name | Risk | Arguments | Success data | Failure codes |
 | --- | --- | --- | --- | --- |
@@ -637,7 +647,7 @@ The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
 | `focus` | `ChangesState` | None | `{ focused: true }` | `NO_MAIN_WINDOW` |
 | `page` | `ChangesState` | None, or `--name <page>` | List: `{ pages, currentPage }`. Switch: `{ currentPage }` | `INVALID_ARGUMENTS`, `UNKNOWN_PAGE`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED` |
 | `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`, `FILE_EXISTS`, `NO_MAIN_WINDOW`, `CAPTURE_UNAVAILABLE`, or the replacement's unchanged failure |
-| `exit` | `ChangesState` | None | `{ closing: true }` | `USER_CONFIRMATION_REQUIRED`, `EXIT_REJECTED` |
+| `exit` | `ChangesState` | Optional `--confirm` when `DecideExitRequest` is set | `{ closing: true }` | `INVALID_ARGUMENTS`, `USER_CONFIRMATION_REQUIRED`, `EXIT_REJECTED` |
 
 Help returns risk names as strings and keeps registration order.
 The tool supplies `GetCommands` because registration finishes after factory creation.
@@ -693,18 +703,38 @@ Return `Failure` to preserve the tool's exact code and message, such as `PROTECT
 The delegate's no-replace move must handle a destination that appears after Core's existence check.
 Delegate exceptions escape unchanged.
 
-The tool supplies synchronous `DecideExit` and its normal `Close` action.
-The decision must not open a dialog.
+Set `DecideExitRequest` to let the synchronous exit decision inspect `RuntimeQueryExitRequest.Confirmed`.
+Core calls this delegate instead of `DecideExit` when it is set.
+Otherwise, Core calls the existing `DecideExit` and ignores all arguments, including invalid `confirm` values.
+Existing constructor signatures and legacy exit decisions remain unchanged.
+Both delegates must decide without opening a dialog.
+
+With `DecideExitRequest`, Core parses `confirm` through `RuntimeQueryArgumentParser.TryGetBoolArg` and ignores other arguments.
+Missing or blank confirmation means `Confirmed = false`.
+The command-line parser converts `--confirm` to `confirm=true`, which means `Confirmed = true`.
+Explicit `confirm=false` means `Confirmed = false`.
+The boolean parser also accepts 1, 0, on, off, yes, and no without case sensitivity.
+An invalid value returns the router's exact `INVALID_ARGUMENTS` envelope and calls neither delegate.
+These values and responses stay the same with `requireConfirmation` true or false.
+
+NVT FW Combiner can implement its exit decision with these rules:
+
+- No confirmation: return `NeedsConfirmation` and open no dialog.
+- Confirmation present: return `Closing` and skip the tool's own close confirmation.
+- Already closing or a modal dialog open: return `Rejected`.
+
 Core handles the three results:
 
 - `Closing`: produce `{ closing: true }` and post `Close` to the UI dispatcher at Background priority.
 - `NeedsConfirmation`: return `USER_CONFIRMATION_REQUIRED` with `Exit requires confirmation.`. Do not close or open a dialog.
 - `Rejected`: return `EXIT_REJECTED` with `Exit was rejected.`. Do not close.
 
-Posting defers closing so the handler produces its response first.
+After the delegate returns `Closing`, Core returns the response before the posted `Close` action starts on the UI thread.
 The tool must await `RuntimeQueryHost.StopAsync` in its close path before the process ends.
 The server lets the response write and flush finish within its shutdown bound.
-The tool must commit to closing after `Closing`; its close action must not veto the approved decision.
+This lets Core send the response before the process exits, so closing does not cut off the response.
+The tool must commit to closing after `Closing`.
+Its close action must skip its own confirmation and must not veto the approved decision.
 
 The constants are `NO_MAIN_WINDOW`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED`, `UNKNOWN_PAGE`, `INVALID_ARGUMENTS`, `FILE_EXISTS`, `CAPTURE_UNAVAILABLE`, and `EXIT_REJECTED`.
 Tool capture failures can add their own codes without Core mappings.
@@ -717,6 +747,7 @@ var options = new RuntimeQueryGenericCommandOptions(
     "Example tool", "1.0", () => registered, () => mainWindow,
     navigation, DecideExit, CloseNormally)
 {
+    DecideExitRequest = request => DecideExitWithConfirmation(request.Confirmed),
     CaptureScreenshot = CaptureProductionAsync
 };
 var generic = RuntimeQueryGenericCommands.Create(options);
@@ -731,7 +762,8 @@ To register generic help, include its record and optionally set `HelpText`.
 The completed `registered` list includes every product command and its risk.
 Use the wrapped handler in the tool's existing server setup.
 
-Headless tests check exact response data, messages, navigation decisions, and deferred closing through a confirmation-enabled router.
+Headless tests check exact response data, messages, navigation decisions, and deferred closing.
+Exit tests cover both router settings, callback precedence, parser failures, legacy decisions, and response return before `Close` runs.
 Fixed window content verifies PNG dimensions at two scaling values and temporary-file cleanup after success and failure.
 Tests also verify path checks before replacement capture, delegate-owned layout, and unchanged tool failures and exceptions.
 
