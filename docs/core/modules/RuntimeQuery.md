@@ -289,7 +289,7 @@ This includes a second server with the same name. `Start()` keeps its signature 
 The first server continues to answer requests. Disposal retains the configured shutdown bound.
 
 Callers of the same user see no change to request or response bytes. Another user's process can no longer connect.
-A name conflict now produces one diagnostic event. Pipe names, discovery, options and envelope formats do not change.
+A name conflict now produces one diagnostic event. See [Per-window pipes](#per-window-pipes) to run more than one copy.
 
 ## Command line
 
@@ -371,6 +371,63 @@ Compare stdout bytes and exit codes. Both must be equal.
 Keep the tool's `INSTANCE_NOT_RUNNING` text in its client error mapping.
 Core continues to use the existing client transport and JSON options.
 This task does not change the source tool.
+
+## Per-window pipes
+
+Per-window mode gives each running tool process its own pipe.
+The owner approved this behavior on 2026-10-06.
+Use `new behavior, no source baseline` in the host commit message.
+
+| Public member | Contract |
+| --- | --- |
+| `RuntimeQueryWindowPipes.BuildName(baseName, processId)` | Returns `{baseName}.{processId}` with invariant decimal digits. Rejects null or blank base names and nonpositive process IDs. |
+| `RuntimeQueryCommandLine.TryHandlePerWindowQueryCommand(args, baseName, protocolVersion, supportedCommands, error, output, out exitCode)` | Resolves a running window before calling the existing client. Other parameters match `TryHandleQueryCommand`. |
+| `RuntimeQueryFailure.ServerNotFound` | Maps a missing window through the tool's error callback with null detail. The command line returns exit code 1. |
+
+For example, two windows use `sample.runtime.v1.123` and `sample.runtime.v1.456`.
+If process 456 started later, `sample query help` selects its pipe.
+Use `sample query help --pid 123` to select the other pipe.
+
+Discovery runs only on Windows and enumerates `\\.\pipe\`.
+Each candidate name starts with `{baseName}.` and ends with a positive decimal process ID, with nothing after it.
+Discovery ignores names such as `{baseName}.12x`, `{baseName}.`, and `{baseName}x.1`.
+It skips processes that have exited or whose start time cannot be read.
+Other systems return no candidates.
+
+The selection rule uses only process IDs and start times:
+
+- Without `--pid`, select the latest process start time.
+- On equal start times, select the higher process ID.
+- With `--pid`, select that process ID. A missing ID returns `ServerNotFound` without selecting another window.
+- With no candidates, return `ServerNotFound`.
+
+The new entry accepts `--pid 123` and `--pid=123` as client-only options, like `--timeout-ms`.
+The value must be a positive integer.
+A missing or invalid value prints pretty `INVALID_ARGUMENTS` JSON and returns exit code 2.
+The exact message is `--pid must be a positive process ID.`.
+The request omits `--pid` and `--timeout-ms`.
+All other parsing, output formats, response handling, and exit codes retain the fixed-name behavior.
+
+Fixed-name mode does not change.
+`TryHandleQueryCommand` still sends to its supplied pipe and treats `--pid` as an ordinary command argument.
+A second server with the same fixed name still reports `PipeCreationFailed`, while the first server continues to answer.
+NFH first adopts Core in fixed-name mode with zero difference.
+It moves to per-window mode in a later pull request with these changes:
+
+1. Build each server name with `RuntimeQueryWindowPipes.BuildName(baseName, Environment.ProcessId)` and pass it to the existing server constructor.
+2. Replace the command-line call with `TryHandlePerWindowQueryCommand` and supply the same base name.
+3. Add the tool's `ServerNotFound` error mapping and test the new window selection behavior.
+
+For `focus`, both client entry methods use the connected pipe's server process ID on Windows.
+The client reads that ID with [GetNamedPipeServerProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getnamedpipeserverprocessid).
+Before writing the request, it calls [AllowSetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-allowsetforegroundwindow) for that process.
+A failed Windows call does not stop the request.
+Request bytes and response handling stay unchanged.
+
+Tests check the pure selection rule, exact command-line output, real Windows pipes, and permission calls through an internal seam.
+The old entry method still runs all 40 frozen command-line rows and the existing boundary rows.
+Pipe tests use unique names, bounded waits, and the existing collection with parallel execution disabled.
+The two-process discovery test uses the shared test probe in `silent-wait` mode and kills it in `finally`.
 
 ## Frozen provenance
 
