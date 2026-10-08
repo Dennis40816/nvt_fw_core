@@ -84,6 +84,7 @@ public sealed class ChoiceStylesRenderer(ITestOutputHelper output)
             layer.Children.Add(adorner);
         }
     }
+
     private static Border BuildSheet(bool dark, bool square)
     {
         var stack = new StackPanel { Spacing = 24 };

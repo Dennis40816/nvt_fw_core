@@ -84,6 +84,7 @@ public sealed class ChoiceBehaviorTests
         finally { host.Close(); }
     }
     /// <summary>Named groups span panels while unnamed groups remain scoped to their parent.</summary>
+
     [AvaloniaFact]
     public void GroupNameAndDefaultGroupingKeepTheirNativeBoundaries()
     {
