@@ -19,9 +19,7 @@ public sealed partial class NumberScrubber
             return;
         }
 
-        _scrubStart = e.GetPosition(this);
-        _scrubStartValue = Value;
-        _isScrubbing = true;
+        _scrubSession = new ScrubSession(e.GetPosition(this), Value);
         e.Pointer.Capture(_scrubArea);
         _inputBox?.Focus();
         SetFocused(true);
@@ -30,16 +28,16 @@ public sealed partial class NumberScrubber
 
     private void OnScrubAreaPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_isScrubbing)
+        if (_scrubSession is not { } session)
         {
             return;
         }
 
         var current = e.GetPosition(this);
-        var deltaPixels = _scrubStart.Y - current.Y;
+        var deltaPixels = session.StartPoint.Y - current.Y;
         var stepPixels = Math.Max(1.0, ScrubPixelsPerStep);
         var steps = (decimal)(deltaPixels / stepPixels);
-        ApplyScrubSteps(steps);
+        ApplyScrubSteps(session, steps);
         e.Handled = true;
     }
 
@@ -50,13 +48,13 @@ public sealed partial class NumberScrubber
             e.Pointer.Capture(null);
         }
 
-        _isScrubbing = false;
+        _scrubSession = null;
         SetFocused(_inputBox?.IsFocused ?? false);
     }
 
     private void OnScrubAreaPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        _isScrubbing = false;
+        _scrubSession = null;
         SetFocused(_inputBox?.IsFocused ?? false);
     }
 
@@ -82,7 +80,7 @@ public sealed partial class NumberScrubber
         UpdateTextFromValue(force: true);
     }
 
-    private void ApplyScrubSteps(decimal steps)
+    private void ApplyScrubSteps(ScrubSession session, decimal steps)
     {
         if (SmallChange <= 0)
         {
@@ -94,7 +92,7 @@ public sealed partial class NumberScrubber
             steps = Math.Round(steps, 0, MidpointRounding.AwayFromZero);
         }
 
-        var newValue = _scrubStartValue + steps * SmallChange;
+        var newValue = session.StartValue + steps * SmallChange;
         SetCurrentValue(ValueProperty, Clamp(newValue));
         UpdateTextFromValue(force: true);
     }

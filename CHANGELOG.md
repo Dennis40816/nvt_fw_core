@@ -11,6 +11,10 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus.
 - Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
 
+### Internal
+
+- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#86).
+
 ## 0.4.0 - 2026-10-08
 
 Tag `core-v0.4.0` on commit `7bd42ce33eea26f3bd2eeacce958aa1cf701ccae` (#118). No breaking changes since 0.3.0.

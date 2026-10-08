@@ -12,10 +12,14 @@ public sealed class BackgroundJobService<TProgress, TResult>
     where TProgress : class
     where TResult : class
 {
+    // The gate protects the active job, identity counter, snapshot, and completion flags.
     private readonly object gate = new();
     private ActiveJob? active;
     private long nextJobId;
     private BackgroundJobSnapshot<TProgress, TResult> snapshot = new(0, BackgroundJobStatus.Idle);
+
+    // Read under gate, before completion replaces the cancelling snapshot with a terminal snapshot.
+    private bool CancelRequested => snapshot.Status == BackgroundJobStatus.Cancelling;
 
     /// <summary>Gets the current snapshot under the service lock.</summary>
     public BackgroundJobSnapshot<TProgress, TResult> Snapshot
@@ -72,13 +76,12 @@ public sealed class BackgroundJobService<TProgress, TResult>
         ActiveJob job;
         lock (gate)
         {
-            if (active is null || snapshot.Status == BackgroundJobStatus.Cancelling)
+            if (active is null || CancelRequested)
                 return false;
             snapshot = snapshot with { Status = BackgroundJobStatus.Cancelling };
             cancelling = snapshot;
             observer = active.Observer;
             job = active;
-            job.CancelRequested = true;
         }
         SafeReport(observer, cancelling);
         try
@@ -123,7 +126,9 @@ public sealed class BackgroundJobService<TProgress, TResult>
         BackgroundJobSnapshot<TProgress, TResult> completed;
         lock (gate)
         {
-            completed = job.CancelRequested || job.Cancellation.IsCancellationRequested
+            // Keep the request through this transition so disposal still waits for Cancel to return.
+            var cancelRequested = CancelRequested;
+            completed = cancelRequested || job.Cancellation.IsCancellationRequested
                 ? new BackgroundJobSnapshot<TProgress, TResult>(job.JobId, BackgroundJobStatus.Cancelled, snapshot.Progress)
                 : error is not null
                     ? new BackgroundJobSnapshot<TProgress, TResult>(job.JobId, BackgroundJobStatus.Failed, snapshot.Progress, Error: error)
@@ -135,7 +140,7 @@ public sealed class BackgroundJobService<TProgress, TResult>
                 publish = true;
             }
             job.CompletionFinished = true;
-            dispose = !job.CancelRequested || job.CancelCallFinished;
+            dispose = !cancelRequested || job.CancelCallFinished;
         }
         if (dispose) job.Cancellation.Dispose();
         if (publish) SafeReport(observer, completed);
@@ -180,7 +185,6 @@ public sealed class BackgroundJobService<TProgress, TResult>
         public long JobId { get; } = jobId;
         public CancellationTokenSource Cancellation { get; } = cancellation;
         public IProgress<BackgroundJobSnapshot<TProgress, TResult>>? Observer { get; } = observer;
-        public bool CancelRequested { get; set; }
         public bool CancelCallFinished { get; set; }
         public bool CompletionFinished { get; set; }
     }
