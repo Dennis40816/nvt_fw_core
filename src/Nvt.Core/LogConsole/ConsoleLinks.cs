@@ -66,11 +66,13 @@ public static partial class ConsoleLinkScanner
 {
     /// <summary>Finds URLs first, quoted paths second, then absolute and relative paths.</summary>
     /// <remarks>A trailing slash denotes a folder. Ambiguous extensionless paths remain files;
-    /// apps identify other folders with structured spans or resolver candidates.</remarks>
+    /// apps identify other folders with structured spans or resolver candidates. Separator-free
+    /// location targets require a non-leading dot followed by a letter. Candidates exceeding
+    /// 4,096 UTF-16 characters, including location suffixes and excluding quotes, are skipped.</remarks>
     public static ImmutableArray<ConsoleLinkSpan> Scan(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        // Delegate to the segmented engine so IsPathName and IsPathStart have one definition.
+        // Delegate to the segmented engine so path names, starts and quote boundaries have one definition.
         // Both entry points preserve the same scalar-aware grammar and UTF-16 span offsets.
         return Scan(new InMemoryLogTextContent(text));
     }

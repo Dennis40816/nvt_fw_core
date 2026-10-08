@@ -8,12 +8,15 @@ namespace Nvt.Core.LogConsole;
 
 public static partial class ConsoleLinkScanner
 {
+    // UTF-16 target characters, including a location suffix but excluding surrounding quotes.
+    private const int MaxTargetLength = 4096;
     // The cursor and result list belong only to this invocation. No app reads run under a lock.
     // Candidate ranges survive read boundaries. Only confirmed targets become strings.
     internal static ImmutableArray<ConsoleLinkSpan> Scan(ILogTextContent content)
     {
         var text = new SegmentedCursor(content);
         var spans = new List<ConsoleLinkSpan>();
+        var excluded = new List<(int Start, int Length)>();
         for (var start = 0; start < text.Length; start++)
         {
             if (start != 0 && IsUrlWord(text.Before(start))) continue;
@@ -22,25 +25,34 @@ public static partial class ConsoleLinkScanner
             if (prefix == 0) continue;
             var end = TargetEnd(start + prefix);
             if (end == start + prefix) continue;
-            Add(start, end - start, new LinkTarget(LinkKind.Url, TrimTarget(text.Read(start, end - start))));
+            if (WithinCap(start, end - start))
+                Add(start, end - start, new LinkTarget(LinkKind.Url, TrimTarget(text.Read(start, end - start))));
             start = end - 1;
         }
         for (var start = 0; start < text.Length; start++)
         {
             var quote = text.At(start);
-            if (quote is not ('\'' or '"')) continue;
+            if (QuoteBoundaryAt(text, start) != QuoteBoundary.Open) continue;
             var end = start + 1;
             var hasSeparator = false;
-            while (end < text.Length && text.At(end) != quote && text.At(end) is not ('\r' or '\n'))
+            while (end < text.Length && text.At(end) is not ('\r' or '\n'))
             {
+                var boundary = QuoteBoundaryAt(text, end, quote);
+                if (boundary == QuoteBoundary.Open)
+                {
+                    start = end;
+                    hasSeparator = false;
+                }
+                else if (boundary == QuoteBoundary.Close) break;
                 hasSeparator |= IsSeparator(text.At(end));
                 end++;
             }
-            if (end == text.Length || text.At(end) is '\r' or '\n') { start = end - 1; continue; }
+            if (end == text.Length || text.At(end) is '\r' or '\n') continue;
             var suffixEnd = LocationEnd(end + 1);
-            if (end > start + 1 && (hasSeparator || suffixEnd != end + 1))
+            if (end > start + 1 && (hasSeparator || suffixEnd != end + 1 && LooksLikeFileName(start + 1, end)))
             {
-                if (!Overlaps(start, suffixEnd - start))
+                // Cap first, then overlap: oversized quotes exclude the whole range even around a URL.
+                if (WithinCap(start, suffixEnd - start, quoteCharacters: 2) && !Overlaps(start, suffixEnd - start))
                 {
                     var path = text.Read(start + 1, end - start - 1);
                     var suffix = text.Read(end + 1, suffixEnd - end - 1);
@@ -48,7 +60,6 @@ public static partial class ConsoleLinkScanner
                 }
                 start = suffixEnd - 1;
             }
-            else start = end;
         }
         for (var start = 0; start < text.Length; start++)
         {
@@ -56,7 +67,7 @@ public static partial class ConsoleLinkScanner
                 : text.At(start) == '\\' && text.At(start + 1) == '\\' ? 2 : 0;
             if (prefix == 0 || !IsPathStart(text.ScalarAt(start), text.Before(start), absolutePrefix: true)) continue;
             var end = PathEnd(start + prefix);
-            if (!Overlaps(start, end - start))
+            if (!Overlaps(start, end - start) && WithinCap(start, end - start))
             {
                 var value = TrimTarget(text.Read(start, end - start));
                 Add(start, value.Length, ParsePath(value));
@@ -71,12 +82,12 @@ public static partial class ConsoleLinkScanner
                 nameEnd += text.ScalarAt(nameEnd).Utf16SequenceLength;
             var hasSeparator = IsSeparator(text.At(nameEnd));
             var end = hasSeparator ? PathEnd(nameEnd) : LocationEnd(nameEnd);
-            if (!hasSeparator && (end == nameEnd || IsPathName(text.ScalarAt(end))))
+            if (!hasSeparator && (end == nameEnd || IsPathName(text.ScalarAt(end)) || !LooksLikeFileName(start, nameEnd)))
             {
                 start = nameEnd - 1;
                 continue;
             }
-            if (!Overlaps(start, end - start))
+            if (!Overlaps(start, end - start) && WithinCap(start, end - start))
             {
                 var value = TrimTarget(text.Read(start, end - start));
                 Add(start, value.Length, ParsePath(value));
@@ -122,13 +133,26 @@ public static partial class ConsoleLinkScanner
             while (text.At(end) is >= '0' and <= '9') end++;
             return end;
         }
+        bool LooksLikeFileName(int start, int end)
+        {
+            for (var offset = start + 1; offset < end - 1; offset++)
+                if (text.At(offset) == '.' && Rune.IsLetter(text.ScalarAt(offset + 1))) return true;
+            return false;
+        }
+        bool WithinCap(int start, int length, int quoteCharacters = 0)
+        {
+            if (length - quoteCharacters <= MaxTargetLength) return true;
+            excluded.Add((start, length));
+            return false;
+        }
         void Add(int start, int length, LinkTarget target)
         {
             if (target.Kind == LinkKind.Url) length = target.Path.Length;
             if (length == 0 || Overlaps(start, length)) return;
             spans.Add(new ConsoleLinkSpan(start, length, target));
         }
-        bool Overlaps(int start, int length) => spans.Any(s => start < s.Start + s.Length && s.Start < start + length);
+        bool Overlaps(int start, int length) => spans.Any(s => start < s.Start + s.Length && s.Start < start + length)
+            || excluded.Any(s => start < s.Start + s.Length && s.Start < start + length);
     }
 
     private static bool IsDriveLetter(char value) => value is >= 'A' and <= 'Z' or >= 'a' and <= 'z';

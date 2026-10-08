@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Nvt.Core.LogConsole;
 
@@ -21,7 +22,7 @@ public sealed class LogStore : IDisposable
     private Queue<Work> _discarded = new();
     private readonly HashSet<ContentOwner> _inFlight = [];
     private long _rejectedCount;
-    private readonly Queue<SnapshotWaiter> _snapshotWaiters = new();
+    private readonly LinkedList<SnapshotWaiter> _snapshotWaiters = new();
     private Queue<(ContentOwner Owner, Action Dispose)> _cleanup = new();
     private readonly ConsoleGeneration _generation = new();
     private long _nextSequence;
@@ -196,14 +197,56 @@ public sealed class LogStore : IDisposable
         WakeWriter();
     }
 
-    /// <summary>Captures a publication covering every Add and Clear admitted before this call.</summary>
-    /// <remarks>Waits outside locks. On the writer thread, including Changed and content Dispose
-    /// callbacks, returns the current publication without waiting for queued operations.</remarks>
+    /// <summary>Captures the last published version without waiting for the writer.</summary>
+    /// <remarks>Accepted writes and Clear may not yet be published. Use CaptureLatestAsync
+    /// before export or copy when all previously admitted operations must be covered.</remarks>
     public LogSnapshot CaptureSnapshot()
     {
         var capturedAt = _clock.GetUtcNow().ToUniversalTime();
-        var state = AcquireLatest();
+        var state = AcquirePublished();
         try { return state.Capture(capturedAt); }
+        finally { state.Release(); }
+    }
+
+    /// <summary>Asynchronously captures a publication covering every Add and Clear admitted before this call.</summary>
+    /// <remarks>Never blocks a thread. Cancellation or store disposal cancels the wait. A writer failure
+    /// faults outstanding waits with its original exception. On the writer thread, including Changed
+    /// and content Dispose callbacks, returns the current publication without waiting for itself.
+    /// The caller must dispose the returned snapshot.</remarks>
+    public async ValueTask<LogSnapshot> CaptureLatestAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        PublishedState state;
+        SnapshotWaiter? waiter = null;
+        lock (_gate)
+        {
+            if (_disposed) throw new OperationCanceledException("The log store was disposed.", new CancellationToken(true));
+            if (_published.Admission >= AdmissionFence || Volatile.Read(ref _writerThreadId) == Environment.CurrentManagedThreadId)
+            {
+                state = _published;
+                state.Retain();
+            }
+            else
+            {
+                waiter = new SnapshotWaiter(AdmissionFence, new(TaskCreationOptions.RunContinuationsAsynchronously));
+                _snapshotWaiters.AddLast(waiter);
+                state = null!;
+            }
+        }
+        if (waiter is not null)
+        {
+            await using var registration = cancellationToken.Register(() =>
+            {
+                lock (_gate)
+                    if (_snapshotWaiters.Remove(waiter)) waiter.Completion.TrySetCanceled(cancellationToken);
+            });
+            state = await waiter.Completion.Task.ConfigureAwait(false);
+        }
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return state.Capture(_clock.GetUtcNow().ToUniversalTime());
+        }
         finally { state.Release(); }
     }
 
@@ -224,24 +267,6 @@ public sealed class LogStore : IDisposable
     private PublishedState AcquirePublished()
     {
         lock (_gate) { ThrowIfDisposed(); _published.Retain(); return _published; }
-    }
-
-    private PublishedState AcquireLatest()
-    {
-        TaskCompletionSource<PublishedState> completion;
-        lock (_gate)
-        {
-            ThrowIfDisposed();
-            var target = AdmissionFence;
-            if (_published.Admission >= target || Volatile.Read(ref _writerThreadId) == Environment.CurrentManagedThreadId)
-            {
-                _published.Retain();
-                return _published;
-            }
-            completion = new TaskCompletionSource<PublishedState>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _snapshotWaiters.Enqueue(new SnapshotWaiter(target, completion));
-        }
-        return completion.Task.GetAwaiter().GetResult();
     }
 
     /// <summary>Checks the generation fence and last published state.</summary>
@@ -279,7 +304,7 @@ public sealed class LogStore : IDisposable
             _disposed = true;
             _generation.Advance();
             _changed = null;
-            foreach (var waiter in _snapshotWaiters) waiter.Completion.SetException(new ObjectDisposedException(nameof(LogStore)));
+            foreach (var waiter in _snapshotWaiters) waiter.Completion.TrySetCanceled();
             _snapshotWaiters.Clear();
         }
         WakeWriter();
@@ -304,14 +329,15 @@ public sealed class LogStore : IDisposable
 
     private void WriteLoop()
     {
+        LinkedList<Work> work = new();
+        Queue<Work> discarded = new();
+        Queue<(ContentOwner Owner, Action Dispose)> cleanup = new();
+        var released = new List<ILogTextContent>();
         Volatile.Write(ref _writerThreadId, Environment.CurrentManagedThreadId);
         try
         {
             while (true)
             {
-                LinkedList<Work> work;
-                Queue<Work> discarded;
-                Queue<(ContentOwner Owner, Action Dispose)> cleanup;
                 long generation, admission;
                 bool disposed;
                 lock (_gate)
@@ -324,10 +350,13 @@ public sealed class LogStore : IDisposable
                     admission = AdmissionFence;
                     disposed = _disposed;
                 }
-                var released = new List<ILogTextContent>();
+                // Read app time after taking ownership, before changing the writer's state.
+                var capturedAt = disposed ? default : _clock.GetUtcNow().ToUniversalTime();
                 if (disposed)
                 {
                     foreach (var item in work.Concat(discarded)) if (item.Write is { } write) released.Add(write.Owner.TakeInitialLease());
+                    work.Clear();
+                    discarded.Clear();
                     DetachEntries(released);
                     _history.Clear();
                     PublishedState old;
@@ -337,12 +366,13 @@ public sealed class LogStore : IDisposable
                 else Apply(work, discarded, generation, admission, released);
                 // Publication always precedes app cleanup and notification.
                 foreach (var content in released) RunCallback(content.Dispose);
-                foreach (var callback in cleanup)
+                released.Clear();
+                while (cleanup.TryDequeue(out var callback))
                 {
                     RunCallback(callback.Dispose);
                     lock (_gate) _inFlight.Remove(callback.Owner);
                 }
-                if (!disposed) Notify();
+                if (!disposed) Notify(capturedAt);
                 lock (_gate)
                 {
                     if (_pending.Count != 0 || _discarded.Count != 0 || _cleanup.Count != 0 || _disposed && !disposed
@@ -353,41 +383,53 @@ public sealed class LogStore : IDisposable
                 }
             }
         }
-        catch
+        catch (Exception exception)
         {
-            // Restore scheduling if an injected clock or unexpected infrastructure operation fails.
+            foreach (var content in released) RunCallback(content.Dispose);
+            ReportError(exception);
             lock (_gate)
             {
+                // Return unconsumed ownership ahead of newer admissions. In-flight owners already
+                // transferred to ring/cleanup remain charged until publication or final disposal.
+                foreach (var item in work.Concat(discarded)) if (item.Write is { } write) _inFlight.Remove(write.Owner);
+                while (work.Last is { } last) { _pending.AddFirst(last.Value); work.RemoveLast(); }
+                _discarded = new Queue<Work>(discarded.Concat(_discarded));
+                _cleanup = new Queue<(ContentOwner Owner, Action Dispose)>(cleanup.Concat(_cleanup));
                 Interlocked.Exchange(ref _writerScheduled, 0);
                 Volatile.Write(ref _writerThreadId, 0);
-                if (_pending.Count != 0 || _discarded.Count != 0 || _cleanup.Count != 0
+                if (_disposed || _pending.Count != 0 || _discarded.Count != 0 || _cleanup.Count != 0
                     || _ready && !_disposed && _generation.IsCurrent(_published.Generation)
                     && _published.Version != _notifiedVersion) WakeWriter();
             }
         }
     }
 
-    private void Apply(IEnumerable<Work> work, Queue<Work> discarded, long generation, long admission, List<ILogTextContent> released)
+    private void Apply(LinkedList<Work> work, Queue<Work> discarded, long generation, long admission, List<ILogTextContent> released)
     {
-        var current = new Queue<Work>();
-        foreach (var item in discarded)
+        while (discarded.TryDequeue(out var item))
         {
             _lastSequence = Math.Max(_lastSequence, item.Id);
             released.Add(item.Write!.Owner.TakeInitialLease());
         }
-        foreach (var item in work)
+        for (var node = work.First; node is not null;)
         {
-            if (item.Generation == generation) current.Enqueue(item);
-            else if (item.Write is { } stale)
+            var next = node.Next;
+            if (node.Value.Generation != generation)
             {
-                _lastSequence = Math.Max(_lastSequence, item.Id);
-                released.Add(stale.Owner.TakeInitialLease());
+                if (node.Value.Write is { } stale)
+                {
+                    _lastSequence = Math.Max(_lastSequence, node.Value.Id);
+                    released.Add(stale.Owner.TakeInitialLease());
+                }
+                work.Remove(node);
             }
+            node = next;
         }
-        if (current.Count == 0) return;
-        if (current.Count != 0 && current.Peek().Write is null)
+        if (work.Count == 0) return;
+        if (work.First!.Value.Write is null)
         {
-            var reset = current.Dequeue();
+            var reset = work.First.Value;
+            work.RemoveFirst();
             _lastSequence = Math.Max(_lastSequence, reset.Id);
             DetachEntries(released);
             _history.Clear();
@@ -395,11 +437,13 @@ public sealed class LogStore : IDisposable
             _evictedCount = 0;
             Publish([], true, reset.Admission);
         }
-        if (current.Count != 0) _lastSequence = Math.Max(_lastSequence, current.Last().Id);
+        var hasWrites = work.Count != 0;
+        if (hasWrites) _lastSequence = Math.Max(_lastSequence, work.Last!.Value.Id);
         var removed = new List<long>();
         var retained = _entries.Sum(item => (long)item.Owner.ResidentCharacters);
-        foreach (var item in current)
+        while (work.First is { } node)
         {
+            var item = node.Value;
             var prepared = item.Write!;
             Group? group = null;
             try
@@ -407,10 +451,11 @@ public sealed class LogStore : IDisposable
                 if (_groups.TryGetValue(prepared.Key, out var bucket))
                     group = bucket.Find(candidate => LogText.Equal(candidate.Members.Peek().Entry.TextContent, prepared.Write.TextContent));
             }
-            catch
+            catch (Exception exception)
             {
                 // A faulty comparison cannot drop an accepted write or count as ring eviction.
                 // Keep it in a separate group when equality cannot be established.
+                ReportError(exception);
             }
             if (group is null)
             {
@@ -421,9 +466,11 @@ public sealed class LogStore : IDisposable
             var input = prepared.Write;
             var entry = new LogEntry(item.Id, generation, item.Id, prepared.Timestamp, input.Level, input.SourceId,
                 prepared.Owner.TakeInitialLease(), input.LinkSpans, group.Id);
+            Debug.Assert(entry.EntryId == entry.Sequence, "EntryId equals Sequence for store-created entries.");
             var stored = new StoredEntry(entry, _version + 1, group, prepared.Owner);
             _entries.Enqueue(stored);
             group.Members.Enqueue(stored);
+            work.RemoveFirst();
             retained += prepared.Owner.ResidentCharacters;
             while (_entries.Count > _maxEntries || retained > _maxCharacters)
             {
@@ -441,7 +488,7 @@ public sealed class LogStore : IDisposable
                 _evictedCount++;
             }
         }
-        if (current.Count != 0) Publish(removed, false, admission);
+        if (hasWrites) Publish(removed, false, admission);
     }
 
     private void Publish(List<long> removed, bool reset, long admission)
@@ -462,9 +509,9 @@ public sealed class LogStore : IDisposable
             {
                 old = _published; _published = state;
                 foreach (var entry in _entries) _inFlight.Remove(entry.Owner);
-                while (_snapshotWaiters.TryPeek(out var waiter) && waiter.Admission <= admission)
+                while (_snapshotWaiters.First is { Value: var waiter } && waiter.Admission <= admission)
                 {
-                    _snapshotWaiters.Dequeue();
+                    _snapshotWaiters.RemoveFirst();
                     state.Retain();
                     waiter.Completion.SetResult(state);
                 }
@@ -477,7 +524,7 @@ public sealed class LogStore : IDisposable
         old.Release();
     }
 
-    private void Notify()
+    private void Notify(DateTimeOffset capturedAt)
     {
         PublishedState state;
         EventHandler<LogChangeSet>? changed;
@@ -490,7 +537,7 @@ public sealed class LogStore : IDisposable
         }
         try
         {
-            using var changes = state.Changes(_notifiedVersion, _clock.GetUtcNow().ToUniversalTime());
+            using var changes = state.Changes(_notifiedVersion, capturedAt);
             lock (_gate) _notifiedVersion = state.Version;
             if (changed is not null)
                 foreach (EventHandler<LogChangeSet> callback in changed.GetInvocationList())
@@ -506,10 +553,21 @@ public sealed class LogStore : IDisposable
         _groups.Clear();
     }
 
-    private static void RunCallback(Action callback)
+    private void RunCallback(Action callback)
     {
         try { callback(); }
-        catch { /* A faulty app callback cannot stop logging or leak the remaining content. */ }
+        catch (Exception exception) { ReportError(exception); }
+    }
+
+    private void ReportError(Exception exception)
+    {
+        lock (_gate)
+        {
+            foreach (var waiter in _snapshotWaiters) waiter.Completion.TrySetException(exception);
+            _snapshotWaiters.Clear();
+        }
+        try { Trace.TraceError("LogStore writer failed: {0}", exception); }
+        catch { /* A diagnostic listener cannot prevent recovery or cleanup. */ }
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
@@ -525,6 +583,7 @@ public sealed class LogStore : IDisposable
         var textVersion = write.TextContent.Version;
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         ArgumentOutOfRangeException.ThrowIfNegative(resident);
+        if (write.LinkSpans is { } spans) _ = new ConsoleLinkIndex(spans, length);
         var timestamp = (write.Timestamp ?? _clock.GetUtcNow()).ToUniversalTime();
         var key = new GroupKey(write.SourceId, write.Level, _fingerprint(write.TextContent));
         return new PreparedWrite(write, timestamp, key, new ContentOwner(write.TextContent, length, resident, textVersion, QueueCleanup));

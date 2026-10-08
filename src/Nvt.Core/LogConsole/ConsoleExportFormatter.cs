@@ -37,7 +37,7 @@ public static class ConsoleExportFormatter
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(projection);
         options ??= new ConsoleExportOptions();
-        using var writer = new StreamWriter(destination, new UTF8Encoding(false), 1024, leaveOpen: true);
+        await using var writer = new StreamWriter(destination, new UTF8Encoding(false), 1024, leaveOpen: true);
         var chunk = new char[1024];
         var first = true;
         foreach (var row in projection.Rows)

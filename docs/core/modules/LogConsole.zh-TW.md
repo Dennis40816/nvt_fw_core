@@ -11,8 +11,8 @@ Avalonia 控制項與共用 commands 會在 K2 實作。
 ## 設計與來源
 
 這是 Core PR #82 於 2026-10-07 核准設計的新實作，不是產品 console 的直接移植。
-行為參考是實作前的 NFH console baseline。
-該 baseline 的 10,000 筆同步突發量測為 9714.908 ms，包含產品投影與 UI 工作。
+行為參考是先前的 NFH console 與已核准的 console redesign proposal。
+NFH 量測包含產品投影與 UI 工作；不同 workload 不能作為直接的 UI 效能比較。
 此模組的效能測試只量測純投影，不能直接證明 UI 改善。
 本次沒有 UI 或產品邏輯。
 
@@ -24,6 +24,7 @@ Avalonia 控制項與共用 commands 會在 K2 實作。
 
 `LogStore` 是事件唯一 owner。
 `LogSnapshot` 是不可變、帶 content lease 的版本快照。
+Store 建立的每個 `LogEntry` 都維持 `EntryId` 等於 `Sequence`；selection 與 projection membership 使用此不變量。
 它包含 version、generation、保留範圍、事件數、淘汰總數與 entries。
 排序只看 Sequence，不看時間。
 Clear 後 EntryId 與 GroupId 不會重用。
@@ -77,15 +78,15 @@ Length、resident charge 與 Version 必須固定，Read 必須填滿要求區�
 `Add` 與 `AddBatch` 在鎖外驗證 metadata、讀取 timestamp 與計算 fingerprint。
 短時間 admission lock 先檢查總容量，再分配 ID 並按序入列。
 Producer 不等待容量、writer 或 callback。
-發布是非同步的；`CaptureSnapshot` 在所有鎖外等待先前已接受的 Add 與 Clear 發布。
-Admission fence 在 `_gate` 內由 next sequence 加 generation 推導。
-被拒絕的寫入與空 batch 不推進此 fence。
-匯出先取得這份最新快照，再投影固定版本的資料。
-在 writer 執行緒呼叫 Capture 時，包括 Changed 與 content Dispose callback，只回傳目前已發布狀態。
-它不會等待自己 callback 才入列的操作。
-Writer 不受通知 ready 狀態限制。
-`GetChangesSince(version)` 與 `IsCurrent` 不等待，直接讀取已發布狀態。
-Store Dispose 以 `ObjectDisposedException` 解除等待中的 Capture。
+發布是非同步的；`CaptureSnapshot()` 立即回傳最後已發布版本，不等待 writer。
+已發布版本可能落後於已接受的寫入與 Clear。
+`CaptureLatestAsync(cancellationToken)` 非同步涵蓋呼叫前已接受的全部 Add 與 Clear。
+Admission fence 在 `_gate` 內由 next sequence 加 generation 推導；拒絕與空 batch 不推進此 fence。
+取消 token 或 Dispose store 會取消尚未完成的 barrier，不阻塞執行緒。
+Writer 失敗會以原始例外結束等待中的 barrier，將未套用的 ownership 排回 queue，並透過 diagnostic trace 回報。
+若 callback 在 writer 失敗前 Dispose store，即使 queue 為空，writer 仍會重新排程清理。內容 Dispose 拋出例外時仍會繼續清理其他內容，每個內容只呼叫一次。
+在 writer 執行緒，包括 Changed 與 content Dispose callback，兩種 Capture 都立即回傳目前 publication。
+Writer 不受通知 ready 狀態限制；`GetChangesSince(version)` 與 `IsCurrent` 也不等待，直接讀取已發布狀態。
 
 只有 writer 修改 ring、groups、version、history 與 EvictedCount。
 Writer 取出 queued work、比較全文、套用新增與淘汰，最後以一次 reference swap 發布不可變狀態。
@@ -222,7 +223,8 @@ IncludeTime 與 IncludeLevel 預設開啟，彼此獨立。
 匯出時間使用 UTC clock time，不受畫面時間模式影響。
 來源與完整訊息一定保留，原始換行不變，列間以 LF 分隔。
 重複列保留 `×N`，不讀取截斷畫面或舊格式化字串。
-稍後 Add 發布後，宿主即使收合也須擷取最新快照供匯出。
+匯出與複製前，即使 console 已收合，宿主仍須 await `CaptureLatestAsync(cancellationToken)`，再投影該固定版本。
+Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 
 ## 公開 API
 
@@ -251,75 +253,37 @@ CoalescedRefresh 不能將 ready 與 pending work 原子整合進 store 的同�
 MessageCenter 與 Persistence 的 generation 各自綁定 modal 與 save coordinator，不能代替 store generation。
 本模組只有一個 internal `ConsoleGeneration`，統一遞增與 stale-work checks，由 store lock 保護。
 
+引號 target 的起始引號須位於文字開頭、空白之後或非 name scalar 之後，右側須有可開始路徑的內容。
+前導 dots 後須接 name 字元或 separator；空白、單獨的 prose dot、只有 location 的標點或文字結尾都不會開始引號內容。
+遇到後方有效的同類起始引號時，先放棄前一候選，再考慮結尾條件。
+其他情況下，配對引號在空白、標點（包含 location suffix 起點）或文字結尾之前關閉候選。
+兩種入口共用這一份引號規則；未配對引號與 prose apostrophe 不會遮蔽後方 target。
+沒有 separator 的 location target 必須有非首字元的點，且點後接字母。
+Candidate 超過 4,096 個 UTF-16 字元（含 location suffix、不含外層引號）時，在建立字串前略過。
+略過的引號候選會排除包含引號的完整範圍，內部尾段不會成為其他連結；後方獨立 target 仍可辨識。
+引號候選先檢查長度上限，再檢查 overlap；URL 掃描已接受的內嵌 URL 仍保留為連結。
+App 提供的 `LinkSpans` 在 Add preparation 驗證；AddBatch 在 admission 前驗證整個 batch。
+
 ## 驗證與採用
 
-測試涵蓋 startup delta、Clear、所有可達 drain 交錯、三項 budget、content leases、hash 碰撞、去重、counts、search、pause、selection、scanner 語法與 IL、cache 失效、區間索引與匯出 bytes。
-回歸涵蓋 reentrant app callbacks、串行通知、凍結順序的 anchor successor、原始事件選取與封閉 Follow constructors。
-也涵蓋收合後最新快照匯出、絕對與隱藏時間、文件 hygiene。
-生成的 16 Mi 字元訊息只計入 64 個 resident 字元；測試要求投影配置少於 256 KiB、每次讀取最多 1,024 個字元、stream 寫入最多 4,096 bytes。
-測試驗證跨段搜尋與 UTF-8 surrogate pair，沒有保留整份匯出內容。
-同一份大內容的連結掃描也要求配置少於 256 KiB，且每次讀取最多 1,024 個字元。
-案例包含一般文字，以及很長的引號候選內含一個短 URL，確保優先順序在建立 target 字串前判斷。
-過大的 lazy batch 在第一筆超額輸入停止準備，不接受任何 prefix；無限零 charge batch 也驗證準備的 handle 上限。
-Held-writer 測試將 queued、discarded 與 active ownership 的推導用量，對照已接受內容的可觀察生命週期。
-涵蓋字元與 handle 峰值、重複 Clear、延後 Dispose、整批拒絕與 concurrent rejection 下的 ID 順序。
-拒絕測試涵蓋 counters、無事件與例外、caller ownership、無 ID 消耗及無發布。
-已發布 snapshot cleanup 不計入 pending 額度也有獨立回歸。
-最新 Capture 與匯出測試先進入 publication barrier，再釋放 writer。
-Writer callback 中的 Capture，以及 Dispose 解除 reader 等待，都有 timeout 回歸。
-通知 clock 例外會重新排程尚未送出的 Changed，並有 throw-once 回歸。
-兩種 scanner 共用 Unicode scalar 規則，span 仍使用 UTF-16 offset。
-回歸涵蓋跨讀取邊界的 supplementary 路徑字元，以及緊鄰 CJK 敘述的 URL。
-具名 dot-prefix 與 mark 回歸涵蓋兩種入口及 name、suffix 內的每個讀取邊界。
-Deterministic differential corpus 有 115 行不同內容，包含第四至第八輪 review 的每個 scanner 範例。
-它測試每個 UTF-16 split，對不超過 32 字元的短行也測試每對 interior split。
-實體 content 分段涵蓋 surrogate pair 與三種 Unicode mark categories。
-Padding 將每個 split 移到 scanner 真正的 1,024 字元讀取邊界。
-13,181 次比對包含 10,971 個三段切割。
-除了兩種入口 parity，獨立預期 spans 也驗證完整 component 起點與不變的相對 target。
-URL 與 absolute-prefix 的 word boundary 也共用所有 mark categories。
-回歸驗證 word 內 spacing 與 enclosing marks 後面的 drive 或 URL prefix 不會被誤認為起點。
-必要回歸涵蓋會 logging 的 callbacks、八個 concurrent producers、pending overflow、並行 Clear 與 Dispose、回傳 IDs 的遞增順序。
-另測試空與失敗的空 batches、nested preparation callback，以及阻塞的 inline scheduler。
-Reservation 與 queued-drop 測試移除或改寫為 admission ownership 與拒絕容量。
-暫停排序回歸涵蓋重複事件、群組最初成員淘汰與切換去重時 anchor remapping。
-連結測試涵蓋配對引號，以及跨段 prefixes、paths、quotes 與行欄 suffix。
-含空白與 Unicode 的引號檔名只要帶行欄 suffix，就不需要 separator。
-兩種 scanner 入口都測試引號檔名與 suffix 內每個讀取邊界。
-沒有 separator 或 suffix 的引號名稱仍為一般文字。
-混合 Add、被拒絕的 Add、AddBatch 與 Clear，每次操作後都有最新 Capture 回歸。
-Admission fence 不另存獨立計數器。
-第六輪緊鄰 CJK 敘述的 drive 與 UNC prefix 回歸保留不變且通過。
-Deterministic writer explorer 涵蓋其有限情境中所有可達 enqueue、ready、post 與 writer 交錯。
-效能測試只有 `NVT_CORE_PERF=1` 才執行。
-它先 warm up，再投影 10,000 筆 retained events，啟用去重與搜尋，只印時間不斷言時間上限。
+回歸涵蓋 admission 上限、整批接受或拒絕、reentrant callback、generation reset、snapshot leases、
+dispatcher 上不等待的讀取、可取消的 async barrier、writer failure recovery、跨讀取邊界的 Unicode 與引號規則、
+target 長度上限、structured span 驗證，以及 async-only stream 匯出。搜尋每次 projection 共用一個 chunk buffer。
+Deterministic scanner corpus 對每個 split 比對獨立預期 spans。
+生成的 quote oracle 由文字組件建立預期 links，在每個 storage 與 scanner read split 驗證兩種入口。
+效能測試僅在 `NVT_CORE_PERF=1` 執行，不斷言時間上限。
 
 ```powershell
-$env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet build Nvt.Core.sln --no-restore
-dotnet test Nvt.Core.sln --no-build
-$env:NVT_CORE_PERF = '1'
-dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~ConsolePerformanceTests" --logger "console;verbosity=detailed"
+dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-2026-10-08 第九輪修正後的 Debug 驗證結果：solution build 為零警告、零錯誤。
-Solution tests 為 3,706 通過、16 跳過、零失敗。
-
-| 測試專案 | 通過 | 跳過 | 失敗 |
-| --- | ---: | ---: | ---: |
-| Nvt.Core.Tests | 3,077 | 16 | 0 |
-| Nvt.Core.Avalonia.Tests | 604 | 0 | 0 |
-| Nvt.Core.Fonts.Tests | 25 | 0 | 0 |
-
-LogConsole 為 181 通過、1 個 opt-in 效能案例跳過。
-第五輪 32 個、第六輪 9 個、第七輪 10 個與第八輪 11 個回歸案例全部通過。
-第九輪 18 個回歸案例全部通過，包含 differential corpus 與 word 內 prefix 前方的 mark 案例。
-第六輪 review 記錄的六個 store 失敗目前全部通過。
-另一次單獨效能測試為 1 通過、零跳過、零失敗：10,000 筆投影耗時 25.604 ms，產生 1,000 列。
-這是一次 warm-up 後的單次投影量測，不是時間上限。
-Restricted sandbox 內將 TEMP 與 TMP 指向 worktree 中產生的目錄，讓既有 Windows custody tests 使用允許的暫存根目錄。
+2026-10-08 的 Debug 實際驗證：solution build 為零警告、零錯誤。
+全部測試專案共 4,550 通過、16 跳過、零失敗。
+`Nvt.Core.Tests`：3,729 通過、16 跳過；`Nvt.Core.Avalonia.Tests`：796 通過；`Nvt.Core.Fonts.Tests`：25 通過；三個專案均零失敗。
+LogConsole：280 通過、1 個 opt-in 效能案例跳過、零失敗。
+Quote oracle 涵蓋 6,506 個生成文字與 678,848 次比較；scanner corpus 涵蓋 136 行、46,627 次比較與 10,971 個 three-way splits。
+另一次 opt-in 效能測試為 1 通過、零跳過、零失敗；10,000 筆產生 1,000 列。
 
 UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
 宿主採用是另外的變更，真實 resolver、opener、clipboard 與 spill-store 整合仍屬於 app。
-
-

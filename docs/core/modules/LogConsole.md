@@ -13,11 +13,9 @@ The Avalonia control and its commands come in K2.
 
 This is a new implementation of the design approved on 2026-10-07 in Core PR #82.
 It does not port a product console.
-The behavior reference is the NFH console baseline.
-The baseline took 9714.908 ms for a synchronous 10,000-event burst.
-That number includes product projection and UI work.
-The Core projection measurement below measures only projection.
-It is not a UI comparison.
+The behavior reference is the earlier NFH console and the approved console redesign proposal.
+An NFH measurement included product projection and UI work; the Core performance test measures only projection.
+These workloads do not establish a comparable UI speedup.
 No UI or product logic is included here.
 
 ## State structure
@@ -32,6 +30,7 @@ Search uses ordinal case-insensitive matching.
 
 `LogStore` is the sole event owner.
 It publishes a leased immutable `LogSnapshot`.
+For every store-created `LogEntry`, `EntryId` equals `Sequence`; selection and projection membership use this invariant.
 The snapshot contains the version, generation, retained range, event count, eviction total, and entries.
 Sequence determines order.
 Time never determines order.
@@ -98,15 +97,19 @@ Implementations must support concurrent reads.
 A short admission lock checks total capacity before assigning IDs and enqueuing in sequence order.
 Producers never wait for capacity, the writer, or a callback.
 Publication is asynchronous.
-`CaptureSnapshot` waits outside locks for every previously admitted Add and Clear to be published.
+`CaptureSnapshot()` immediately returns the last published version. It never waits for the writer.
+The published version can lag behind accepted writes and Clear.
+`CaptureLatestAsync(cancellationToken)` asynchronously covers every Add and Clear admitted before its call.
 Its admission fence is derived under `_gate` from the next sequence plus the generation.
 Rejected writes and empty batches do not advance that fence.
-Exports acquire this latest snapshot before projecting their frozen data.
-Capture on the writer thread returns the current publication, including inside Changed and content Dispose callbacks.
-It cannot wait for operations queued by its own callback.
+Cancellation or store disposal cancels a pending barrier without blocking a thread.
+Writer failures fault outstanding barriers with the original exception and requeue unconsumed ownership.
+The diagnostic trace also reports writer failures.
+If a callback disposes the store before a writer failure, cleanup is rearmed even with empty queues.
+A throwing content Dispose does not prevent other cleanup; each content disposal is invoked once.
+On the writer thread, including Changed and content Dispose callbacks, either capture API returns the current publication.
 The writer runs independently of notification readiness.
-`GetChangesSince(version)` and `IsCurrent` read the published state without waiting.
-Disposing the store releases waiting captures with `ObjectDisposedException`.
+`GetChangesSince(version)` and `IsCurrent` also read the published state without waiting.
 
 Only the writer changes the ring, groups, version, bounded history, and eviction total.
 It takes queued work, compares full text, applies additions and eviction, then publishes one immutable state.
@@ -266,6 +269,18 @@ Core provides no opener implementation in this module.
 Apps supply source names, adapters, path policy, opening, clipboard, and save destination.
 Apps also supply storage for large content.
 
+
+Quoted targets require an opening quote at the start of text, after whitespace, or after a non-name scalar, followed by content that can start a path.
+Leading dots must lead to a name character or separator; whitespace, a lone prose dot, location-only punctuation, and end of text do not start quoted content.
+A later valid opening quote of the same type abandons the earlier candidate before any closing check.
+Otherwise, a matching quote closes before whitespace, punctuation (including location suffix openers), or end of text.
+Both entry points use this single quote grammar. Unpaired quotes and prose apostrophes do not hide later targets.
+Separator-free location targets require a non-leading dot followed by a letter.
+Candidates over 4,096 UTF-16 characters (including location suffixes, excluding surrounding quotes) are skipped before materialization.
+The whole skipped quoted span, including its quotes, is excluded from further scanning. Later independent targets remain eligible.
+The quoted candidate's cap is evaluated before overlap; an embedded URL already accepted by the URL pass remains a link.
+App-supplied `LinkSpans` are validated during Add preparation, including whole-batch validation before admission.
+
 ## Export
 
 All three actions use `ConsoleExportFormatter` over one frozen projection version.
@@ -284,7 +299,8 @@ Original message line breaks stay unchanged.
 Rows are separated by LF.
 Repeated rows retain `×N`.
 No display truncation or stale formatted-text cache is used.
-After publication of a later Add, the host captures the latest snapshot for export, including while collapsed.
+For export and copy, including while collapsed, the host awaits `CaptureLatestAsync(cancellationToken)` and projects that frozen snapshot.
+Formatting methods accept an existing projection and do not acquire or refresh store state.
 
 ## Public API
 
@@ -300,7 +316,7 @@ After publication of a later Add, the host captures the latest snapshot for expo
 | `LogEntry` | `EntryId`, `Generation`, `Sequence`, `Timestamp`, `Level`, `SourceId`, `TextContent`, `LinkSpans`, `GroupId`. |
 | `LogSnapshot` | `Version`, `Generation`, `LastSequence`, `FirstRetainedSequence`, `LastRetainedSequence`, `EventCount`, `EvictedCount`, `CapturedAt`, `Entries`, `Dispose()`. |
 | `LogChangeSet` | `FromVersion`, `Snapshot`, `Version`, `Generation`, `RequiresReset`, `AddedEntries`, `RemovedEntryIds`, `Dispose()`. |
-| `LogStore` | Constructor `(maxEntries, maxCharacters, maxPendingCharacters, clock, schedule)` with defaults; `Generation`, read-only `RejectedCount`, `Changed`, `Add(level, sourceId, message, timestamp)`, `Add(write)`, `AddBatch(generation, writes)`, `Clear()`, `CaptureSnapshot()`, `GetChangesSince(version)`, `IsCurrent(generation)`, `IsCurrent(generation, entryId, textVersion)`, `SetReady(ready)`, `Dispose()`. |
+| `LogStore` | Constructor `(maxEntries, maxCharacters, maxPendingCharacters, clock, schedule)` with defaults; `Generation`, read-only `RejectedCount`, `Changed`, `Add(level, sourceId, message, timestamp)`, `Add(write)`, `AddBatch(generation, writes)`, `Clear()`, `CaptureSnapshot()`, `CaptureLatestAsync(cancellationToken = default)`, `GetChangesSince(version)`, `IsCurrent(generation)`, `IsCurrent(generation, entryId, textVersion)`, `SetReady(ready)`, `Dispose()`. |
 | `ConsoleReadingAnchor` | `RowId`, `Sequence`, `TextOffset`, `PixelOffset`, `Generation`, `ThroughSequence`, `RowOrder`. |
 | `ConsoleFollow` | Closed nested `Following` and `Paused`; `Paused.Anchor`, `Paused.PausedAt`. |
 | `ConsoleViewState` | `Follow`, `ExpandedIds`, `Selection` (`ImmutableHashSet<long>` of raw EntryIds), `IsExpanded`, `Pause(projection, rowId, textOffset, pixelOffset, pausedAt)`, `Resume()`, `Remap(previous, current)`. |
@@ -349,78 +365,26 @@ It is protected by the store lock.
 
 ## Verification and adoption
 
-Tests cover startup deltas, Clear, reachable drain interleavings, each budget, content leases, collisions, dedupe, counts, search, pause, selection, scanner syntax, scanner IL, cache invalidation, interval hit testing, and exact export bytes.
-Regressions cover reentrant app callbacks, serialized delivery, frozen anchor successors, canonical selection, and closed follow constructors.
-They also cover collapsed latest-snapshot export, absolute and hidden time text, and documentation hygiene.
-A generated 16 Mi-character message charges 64 resident characters.
-Its test checks projection allocations below 256 KiB, reads of at most 1,024 characters, and streamed writes of at most 4,096 bytes.
-It verifies search across chunk boundaries and UTF-8 surrogate pairs without retaining the full export.
-Link scanning of the same content also stays below 256 KiB of allocations and 1,024 characters per read.
-It covers both plain text and a short URL inside a very long quoted candidate.
-Lazy oversized batches stop preparation at the first excess input and transfer no prefix.
-An unending zero-charge batch verifies the preparation handle bound.
-Held-writer tests compare derived queued, discarded and active ownership against accepted content lifetimes.
-They cover character and handle peaks, repeated Clear, deferred disposal, atomic batch rejection, and ID order under concurrent rejection.
-Rejection tests check counters, silent failure, caller ownership, no consumed IDs and no publication.
-Published snapshot cleanup has a separate regression for its exclusion from pending capacity.
-Latest capture and export tests enter their publication barrier before releasing the writer.
-Capture inside writer callbacks and disposal of a waiting reader have timeout regressions.
-Both scanner entry points share a Unicode scalar grammar with UTF-16 spans.
-Tests cover supplementary path characters across read boundaries and URLs adjoining CJK prose.
-Named dot-prefix and mark regressions cover both entry points and every interior name and suffix boundary.
-The deterministic differential corpus has 115 distinct lines, including every scanner example from fix-round-4 through fix-round-8 reviews.
-It checks every UTF-16 split and every pair of interior splits for lines of at most 32 characters.
-Physical content splits also cover surrogate pairs and all three Unicode mark categories.
-Padding moves each split onto the scanner's actual 1,024-character read boundary.
-Its 13,181 comparisons include 10,971 three-way splits.
-Independent expected spans require whole-component starts and unchanged relative targets, as well as parity.
-Mark categories also share the URL and absolute-prefix word boundary.
-Regressions reject embedded drive and URL prefixes after spacing and enclosing marks inside a word.
-The required regressions cover callbacks that log, eight concurrent producers, pending overflow, concurrent Clear and Dispose, and ascending returned IDs.
-They also cover empty and faulted empty batches, nested preparation callbacks, and blocked inline scheduling.
-Reservation and queued-drop tests were removed or rewritten for admission ownership and rejection.
-Pause regressions cover post-pause duplicates, eviction of a group's original member, and dedupe anchor remapping.
-Link tests cover matching quotes and prefixes, paths, quotes, and location suffixes across read boundaries.
-Quoted filenames with spaces and Unicode need no separator when they have a location suffix.
-Both scanner entry points cover every interior read boundary in the quoted name and suffix.
-Quoted names without a separator or suffix remain plain text.
-Mixed Add, rejected Add, AddBatch and Clear calls each have a latest-capture regression.
-The admission fence has no independently stored counter.
-The fix-round-6 drive and UNC prefix regressions beside CJK prose remain unchanged and pass.
-The deterministic writer explorer covers every reachable enqueue, ready-switch, post, and writer step for its bounded scenario.
-The performance test skips unless `NVT_CORE_PERF=1`.
-It projects 10,000 retained events with dedupe and search after one warm-up.
-It prints elapsed time without a timing assertion.
+Regressions cover bounded admission, all-or-nothing batches, reentrant callbacks, generation resets,
+snapshot leases, nonblocking dispatcher reads, cancellable async barriers, writer failure recovery,
+Unicode and quote grammar across read boundaries, target length limits, structured span validation,
+and async-only stream export. Search uses one chunk buffer per projection.
+The deterministic scanner corpus checks every split against independent expected spans.
+The generated quote oracle constructs expected links from text parts and checks both entry points at every storage and scanner read split.
+The performance test is opt-in with `NVT_CORE_PERF=1` and has no timing assertion.
 
 ```powershell
-$env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet build Nvt.Core.sln --no-restore
-dotnet test Nvt.Core.sln --no-build
-$env:NVT_CORE_PERF = '1'
-dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~ConsolePerformanceTests" --logger "console;verbosity=detailed"
+dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-Verified on 2026-10-08 in Debug configuration after fix round 9.
-The solution build completed with zero warnings and zero errors.
-Solution tests passed 3,706 cases and skipped 16 cases, with zero failures.
-
-| Test project | Passed | Skipped | Failed |
-| --- | ---: | ---: | ---: |
-| Nvt.Core.Tests | 3,077 | 16 | 0 |
-| Nvt.Core.Avalonia.Tests | 604 | 0 | 0 |
-| Nvt.Core.Fonts.Tests | 25 | 0 | 0 |
-
-LogConsole passed 181 cases and skipped its opt-in performance case.
-All 32 fix-round-5, 9 fix-round-6, 10 fix-round-7 and 11 fix-round-8 regression cases passed.
-All 18 fix-round-9 regression cases passed, including the differential corpus and embedded-prefix mark cases.
-The six store failures recorded in the fix-round-6 review now pass.
-The separate performance run passed one case with no skips or failures.
-The 10,000-event projection took 25.604 ms and produced 1,000 rows.
-This is one measured projection after one warm-up, not a timing bound.
-In the restricted sandbox, TEMP and TMP use a generated directory inside the worktree.
-This lets existing native Windows custody tests use a permitted temporary root.
+Verified on 2026-10-08 in Debug: the solution build completed with zero warnings and zero errors.
+All test projects together passed 4,550 cases, skipped 16, and failed zero.
+`Nvt.Core.Tests`: 3,729 passed, 16 skipped; `Nvt.Core.Avalonia.Tests`: 796 passed; `Nvt.Core.Fonts.Tests`: 25 passed; all three had zero failures.
+LogConsole passed 280 cases and skipped its opt-in performance case, with zero failures.
+The quote oracle covered 6,506 generated texts and 678,848 comparisons; the scanner corpus covered 136 lines, 46,627 comparisons, and 10,971 three-way splits.
+The separate opt-in performance run passed one case with no skips or failures; 10,000 events produced 1,000 rows.
 
 UI virtualization, pointer coordinates, keyboard commands, accessibility, and visual evidence belong to K2.
 Host adoption remains separate.
 Real resolver, opener, clipboard, and spill-store integration remain app responsibilities.
-

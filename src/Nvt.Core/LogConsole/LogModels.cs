@@ -55,6 +55,8 @@ public sealed record ConsoleFilter
 public readonly record struct ConsoleRowId(long Value, bool IsGroup = false);
 
 /// <summary>An immutable event. Sequence alone determines event order.</summary>
+/// <remarks>EntryId equals Sequence for every store-created entry. Projection membership and
+/// selection use this invariant; callers constructing entries must preserve it.</remarks>
 /// <param name="EntryId">The stable identity.</param>
 /// <param name="Generation">The store generation.</param>
 /// <param name="Sequence">The globally increasing sequence.</param>

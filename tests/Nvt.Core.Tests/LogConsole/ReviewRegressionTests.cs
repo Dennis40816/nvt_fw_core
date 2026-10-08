@@ -2,6 +2,7 @@
 
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using Nvt.Core.LogConsole;
 using Nvt.Core.Time;
 using Xunit;
@@ -451,12 +452,63 @@ public sealed class ReviewRegressionTests
     [InlineData("LogConsole.zh-TW.md")]
     public void ModuleDocsContainNoRepositoryCommitIdentifiers(string name)
     {
-        DirectoryInfo? root = new(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "docs", "core", "modules", name))) root = root.Parent;
-        Assert.NotNull(root);
-        var text = File.ReadAllText(Path.Combine(root.FullName, "docs", "core", "modules", name));
-        Assert.DoesNotMatch(@"\b[0-9a-f]{40}\b|\b(?=[0-9a-f]{7,39}\b)(?=[0-9a-f]*[a-f])[0-9a-f]+\b", text);
+        var text = ReadModuleDocument(name, new DirectoryInfo(AppContext.BaseDirectory));
+        Assert.DoesNotMatch(CommitIdentifierPattern, text);
         Assert.DoesNotContain("origin/", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static readonly Regex CommitIdentifierPattern = new(
+        @"\b(?:[0-9a-f]{40}|(?=[0-9a-f]{7,39}\b)(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,39})\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    internal static string ReadModuleDocument(string name, DirectoryInfo? root)
+    {
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "docs", "core", "modules", name))) root = root.Parent;
+        Assert.SkipWhen(root is null, "Module docs folder was not found; documentation hygiene requires a source checkout.");
+        return File.ReadAllText(Path.Combine(root!.FullName, "docs", "core", "modules", name));
+    }
+
+    /// <summary>Hex identifiers require commit-like length and abbreviated identifiers need a digit.</summary>
+    /// <param name="text">The candidate token.</param>
+    /// <param name="expected">Whether the token is a commit identifier.</param>
+    [Theory]
+    [InlineData("defaced", false)]
+    [InlineData("acceded", false)]
+    [InlineData("abcdef", false)]
+    [InlineData("1234567", false)]
+    [InlineData("c2345fd", true)]
+    [InlineData("C2345FD", true)]
+    [InlineData("0ec7de8b1e54b091d21d24f878dba39ebbf953d7", true)]
+    [InlineData("wordc2345fdword", false)]
+    public void CommitIdentifierRegexDistinguishesOrdinaryWords(string text, bool expected)
+        => Assert.Equal(expected, CommitIdentifierPattern.IsMatch(text));
+
+    /// <summary>Copied test outputs clearly skip source-dependent documentation checks.</summary>
+    [Fact]
+    public void MissingModuleDocsProducesExplicitSkip()
+    {
+        try { ReadModuleDocument("LogConsole.md", null); }
+        catch (Xunit.Sdk.SkipException exception)
+        {
+            Assert.Contains("Module docs folder was not found", exception.Message, StringComparison.Ordinal);
+            return;
+        }
+        Assert.Fail("Missing source documentation must produce an explicit skip.");
+    }
+
+    /// <summary>Public docs describe behavior without internal process history or local test setup.</summary>
+    /// <param name="name">The module document filename.</param>
+    [Theory]
+    [InlineData("LogConsole.md")]
+    [InlineData("LogConsole.zh-TW.md")]
+    public void ModuleDocsContainNoInternalProcessNarration(string name)
+    {
+        var text = ReadModuleDocument(name, new DirectoryInfo(AppContext.BaseDirectory));
+        Assert.DoesNotMatch(@"(?i)fix[ -]?round|fix[4-9]|sandbox|\bTEMP\b|\bTMP\b|第[四五六七八九]輪", text);
+        Assert.DoesNotContain("| Passed | Skipped | Failed |", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("| 通過 | 跳過 | 失敗 |", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("9714.908", text, StringComparison.Ordinal);
+        Assert.Contains("CaptureLatestAsync", text, StringComparison.Ordinal);
     }
 
     /// <summary>Collapse does not cause export to use the earlier display projection.</summary>
@@ -465,11 +517,11 @@ public sealed class ReviewRegressionTests
     {
         using var store = new LogStore(clock: LogStoreTests.FixedClock());
         var first = store.Add(LogLevel.Info, "app", "before");
-        using var initial = store.CaptureSnapshot();
+        using var initial = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
         using var displayed = ConsoleProjector.Project(initial, new ConsoleFilter(), new ConsoleViewState());
         var collapsed = new ConsoleViewState { Selection = [first] }.Pause(displayed, displayed.Rows[0].Id) with { IsExpanded = false };
         store.Add(LogLevel.Info, "app", "later\r\nsecond line");
-        using var latest = store.CaptureSnapshot();
+        using var latest = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
         using var exported = ConsoleProjector.Project(latest, new ConsoleFilter(), collapsed);
         Assert.True(exported.Version > displayed.Version);
         Assert.Equal(latest.Version, exported.Version);

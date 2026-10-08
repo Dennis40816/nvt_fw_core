@@ -7,7 +7,7 @@ using Xunit;
 namespace Nvt.Core.Tests.LogConsole;
 
 /// <summary>Path components remain whole at every storage and scanner read boundary.</summary>
-public sealed class Fix9RegressionTests(ITestOutputHelper output)
+public sealed class ScannerCorpusTests(ITestOutputHelper output)
 {
     /// <summary>Leading dots belong to the path, including filename-only location targets.</summary>
     /// <param name="path">The complete relative target.</param>
@@ -83,7 +83,7 @@ public sealed class Fix9RegressionTests(ITestOutputHelper output)
     {
         // Include both endpoint splits and place every interior split on the cursor's actual read seam.
         for (var split = 0; split <= item.Text.Length; split++)
-            Verify(item, split == 0 ? 0 : 1024 - split, [split]);
+            Verify(item, (1024 - split % 1024) % 1024, [split]);
         return item.Text.Length + 1;
     }
 
@@ -131,9 +131,38 @@ public sealed class Fix9RegressionTests(ITestOutputHelper output)
             yield return Path(path, ":12:3");
             yield return Path(path, "(12,3)");
         }
-        // Verbatim scanner examples from the fix4 through fix8 reviews and their boundary variants.
+        // Scanner examples and their Unicode and read-boundary variants.
         yield return Path(@"C:\Demo\O'Brien file.txt", "(142,18)", quote: '"', line: 142, column: 18, rooted: true);
         yield return Path(@"C:\Demo\a""b file.txt", "(142,18)", quote: '\'', line: 142, column: 18, rooted: true);
+        yield return Path(@"C:\Demo\a.txt", before: "Can't find ", after: ", it's missing", rooted: true);
+        yield return Path("./My Docs/a b.txt", "(3,4)", before: "\"unpaired then ", quote: '"', line: 3, column: 4);
+        yield return Path("/My Docs/a b.txt", "(3,4)", before: "'unpaired then ", quote: '\'', line: 3, column: 4, rooted: true);
+        foreach (var quote in new[] { '"', '\'' })
+        {
+            foreach (var path in new[] { "./My Docs/a b.txt", "../My Docs/a b.txt", @"\\server\My Docs\a b.txt" })
+            {
+                var before = quote + "unpaired load/save then ";
+                var syntax = quote + path + quote + "(3,4)";
+                yield return new LineCase(before + syntax,
+                    [new ConsoleLinkSpan(before.IndexOf("load/save", StringComparison.Ordinal), 9, new LinkTarget(LinkKind.File, "load/save")),
+                     new ConsoleLinkSpan(before.Length, syntax.Length, new LinkTarget(LinkKind.File, path, 3, 4))]);
+            }
+            foreach (var earlier in new[] { '"', '\'' })
+                yield return Path(@"C:\My Docs\a b.txt", "(3,4)", before: earlier + "unpaired then ",
+                    quote: quote, line: 3, column: 4, rooted: true);
+            foreach (var extra in new[] { 0, 1 })
+            {
+                var target = "d/" + new string('a', 4092 + extra) + " /";
+                var candidate = quote + target + quote;
+                var expected = extra == 0
+                    ? ImmutableArray.Create(new ConsoleLinkSpan(0, candidate.Length, new LinkTarget(LinkKind.Folder, target)))
+                    : ImmutableArray<ConsoleLinkSpan>.Empty;
+                yield return new LineCase(candidate, expected);
+                const string later = @"C:\keep\a.cs";
+                yield return new LineCase(candidate + " " + later,
+                    expected.Add(new ConsoleLinkSpan(candidate.Length + 1, later.Length, new LinkTarget(LinkKind.File, later))));
+            }
+        }
         yield return Path(@"C:\Demo\file.cs", before: "檔案", after: "。", rooted: true);
         yield return Path(@"\\server\share\檔案.log", before: "開啟", after: "。", rooted: true);
         yield return Path("D:/Demo/檔案.log", before: "𠀀", after: "。完成", rooted: true);

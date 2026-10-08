@@ -35,13 +35,14 @@ public static class ConsoleProjector
         var newEvents = 0;
         IEnumerable<IEnumerable<LogEntry>> candidates = filter.Deduplicate
             ? groups : snapshot.Entries.Select(entry => new[] { entry });
+        var searchBuffer = filter.SearchText.Length == 0 ? [] : new char[checked(1024 + filter.SearchText.Length - 1)];
         foreach (var candidate in candidates)
         {
             var entries = candidate.ToArray();
             var first = entries[0];
             var last = entries[^1];
             if (!filter.EnabledLevels.Contains(last.Level) || !MatchesSource(last.SourceId, filter)) continue;
-            var hits = FindHits(last.TextContent, last.SourceId, filter.SearchText);
+            var hits = FindHits(last.TextContent, last.SourceId, filter.SearchText, searchBuffer);
             if (filter.OnlyMatches && filter.SearchText.Length != 0 && hits.IsEmpty) continue;
             var id = filter.Deduplicate ? new ConsoleRowId(last.GroupId, true) : new ConsoleRowId(last.EntryId);
             rows.Add(new ConsoleRow(id, last.Level, last.SourceId, last.TextContent, last.TextContent.Version, last.LinkSpans,
@@ -95,14 +96,13 @@ public static class ConsoleProjector
     private static bool MatchesSource(string source, ConsoleFilter filter)
         => filter.SelectedSources.IsEmpty || filter.SelectedSources.Contains(source);
 
-    private static ImmutableArray<ConsoleSearchHit> FindHits(ILogTextContent message, string source, string query)
+    private static ImmutableArray<ConsoleSearchHit> FindHits(ILogTextContent message, string source, string query, char[] buffer)
     {
         if (query.Length == 0) return [];
         var hits = ImmutableArray.CreateBuilder<ConsoleSearchHit>();
         if (message.Length >= query.Length)
         {
             // Retain only enough overlap to find a literal spanning any chunk boundary.
-            var buffer = new char[checked(1024 + query.Length - 1)];
             var carry = 0;
             var nextStart = 0;
             for (var offset = 0; offset < message.Length;)
