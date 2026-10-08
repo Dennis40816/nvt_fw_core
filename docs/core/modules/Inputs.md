@@ -6,7 +6,9 @@
 
 ## Public API and use
 
-The eleven original styled properties keep their names, types and defaults. `Value` keeps `BindingMode.TwoWay`; the other properties keep their default binding metadata.
+`LargeChange` and `LargeChangeProperty` are removed because they never affected input behavior.
+The eleven supported styled properties keep their types and defaults.
+`Value` keeps `BindingMode.TwoWay`. The other properties keep their default binding metadata.
 
 | Property | Type | Default | Behavior |
 | --- | --- | --- | --- |
@@ -14,7 +16,6 @@ The eleven original styled properties keep their names, types and defaults. `Val
 | `Minimum` | `decimal` | `decimal.MinValue` | Inclusive lower bound. |
 | `Maximum` | `decimal` | `decimal.MaxValue` | Inclusive upper bound. |
 | `SmallChange` | `decimal` | `1m` | Text snapping and wheel/drag step size; nonpositive values disable snapping and stepping. |
-| `LargeChange` | `decimal` | `10m` | Retained property; the source has no large-step behavior. |
 | `FormatString` | `string` | `"0.###"` | Invariant-culture display format; empty or whitespace uses invariant default formatting. |
 | `RequireAltForWheel` | `bool` | `true` | Requires Alt for wheel adjustment. |
 | `SnapToStep` | `bool` | `true` | Rounds text values to a multiple of `SmallChange`, and wheel/drag step counts to integers, away from zero at midpoints. |
@@ -27,7 +28,65 @@ The host includes its normal Avalonia text-box theme, the existing `Theme/ThemeT
 
 Parsing uses `decimal.TryParse` with `NumberStyles.Float` and `CultureInfo.InvariantCulture`. Leading/trailing whitespace, signs and exponents are accepted; thousands separators and culture-specific decimal commas are rejected. Empty, invalid and decimal-out-of-range text leave `Value` unchanged. During editing, each parsable text change normalizes to the step and clamps immediately while keeping the typed text. Enter commits and refreshes text. Escape refreshes text from the current value and keeps all live value updates. Neither key ends editing. Lost focus commits, ends editing and refreshes text. `IsMixed` is never cleared automatically.
 
-Wheel input uses the actual vertical delta, with optional Alt gating; zero vertical delta is ignored. Eligible nonzero wheel events are handled even when the rounded delta is zero or `SmallChange` is nonpositive. Dragging starts on left press, captures the pointer and focuses the text box. Upward motion increases the value from the drag's starting value; horizontal motion has no effect. Release or capture loss ends dragging; the focused class remains if the text box is focused. `LargeChange` is unused for all stepping.
+Wheel input uses the actual vertical delta, with optional Alt gating. It ignores zero vertical delta.
+Eligible nonzero wheel events are handled even when the rounded delta is zero or `SmallChange` is nonpositive.
+Dragging starts on left press, captures the pointer and focuses the text box.
+Upward motion increases the value from the drag's starting value. Horizontal motion has no effect.
+Release or capture loss ends dragging. The focused class remains if the text box is focused.
+Page Up and Page Down remain unhandled and do not change the value.
+
+### Large-step migration
+
+Remove these references when upgrading:
+
+- `LargeChange` attributes, bindings, assignments, and reads.
+- `LargeChangeProperty` references in styled-property code.
+- `get_LargeChange` and `set_LargeChange` references in reflection code.
+
+`SmallChange` still controls text snapping, wheel steps, and scrub steps.
+Keep any required large-step behavior in a host adapter or an existing host control.
+
+### Range updates
+
+Callers must keep `Minimum <= Maximum` after every assignment.
+CLR setters, `SetValue`, XAML, and bindings retain the existing unvalidated range contract.
+Each bound change immediately reclamps `Value` without step snapping.
+Reversed bounds remain accepted by property storage.
+Clamping checks the lower bound first, then the upper bound.
+Reversed bounds can repeatedly reclamp between competing endpoints. Callers must never supply them.
+The control provides no atomic range update.
+
+Move a range upward by widening `Maximum` before raising `Minimum`:
+
+```csharp
+var input = new NumberScrubber { Minimum = 0m, Maximum = 10m, Value = 4m };
+input.Maximum = 20m;
+input.Minimum = 15m;
+// Value is now 15.
+```
+
+Move that range downward by lowering `Minimum` before lowering `Maximum`:
+
+```csharp
+input.Minimum = -20m;
+input.Maximum = -10m;
+// Value is now -10.
+```
+
+Use the same order for `SetValue` calls and binding-source updates.
+Independent bindings must publish ordered bounds. Updating two source properties does not make their target updates atomic.
+XAML can initialize a valid finite range:
+
+```xml
+<inputs:NumberScrubber Minimum="0" Maximum="10" Value="4" />
+```
+
+Range rejection was evaluated and withdrawn because binding coherence was not proved.
+A headless throwing-coercion probe preserved effective bounds after rejected CLR and `SetValue` assignments.
+A rejected binding-source update instead retained source `11` and target `0` without propagating the exception.
+Widening the other bound and calling `CoerceValue` still left those values different.
+Later valid source updates recovered. This evidence does not establish a uniform rejection contract.
+The probe remains isolated in `StyledRangeRejectionEvidenceTests`. It changes no production range behavior.
 
 ## Internal state
 

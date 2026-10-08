@@ -6,7 +6,9 @@
 
 ## 公開 API 與使用方式
 
-原有十一個樣式屬性的名稱、型別及預設值皆保留。`Value` 保留 `BindingMode.TwoWay`；其他屬性保留原有的預設繫結中繼資料。
+`LargeChange` 與 `LargeChangeProperty` 已移除，因為它們從未影響輸入行為。
+目前支援的十一個樣式屬性保留型別與預設值。
+`Value` 保留 `BindingMode.TwoWay`。其他屬性保留原有的預設繫結中繼資料。
 
 | 屬性 | 型別 | 預設值 | 行為 |
 | --- | --- | --- | --- |
@@ -14,7 +16,6 @@
 | `Minimum` | `decimal` | `decimal.MinValue` | 包含端點的下限。 |
 | `Maximum` | `decimal` | `decimal.MaxValue` | 包含端點的上限。 |
 | `SmallChange` | `decimal` | `1m` | 文字吸附與滾輪／拖曳步長；非正值停用吸附及步進。 |
-| `LargeChange` | `decimal` | `10m` | 保留的屬性；來源沒有大步長行為。 |
 | `FormatString` | `string` | `"0.###"` | 使用不變文化的顯示格式；空字串或純空白使用不變文化的預設格式。 |
 | `RequireAltForWheel` | `bool` | `true` | 滾輪調整是否需要 Alt。 |
 | `SnapToStep` | `bool` | `true` | 將文字數值取整到 `SmallChange` 的倍數，滾輪／拖曳步數取整為整數，中點皆向遠離零的方向取整。 |
@@ -27,7 +28,65 @@
 
 解析使用 `decimal.TryParse`、`NumberStyles.Float` 及 `CultureInfo.InvariantCulture`。接受前後空白、正負號及指數；拒絕千分位分隔符號及文化特定的小數逗號。空白、無效及超出 decimal 範圍的文字不改變 `Value`。編輯期間，每次可解析的文字變更都立即正規化至步長並限制範圍，同時保留輸入文字。Enter 提交並更新文字；Escape 從目前數值更新文字，保留所有即時數值更新。兩者都不結束編輯。失去焦點時提交、結束編輯並更新文字。`IsMixed` 不會自動清除。
 
-滾輪使用實際垂直差值，可要求 Alt；垂直差值為零時忽略。符合條件的非零滾輪事件會標記為已處理，即使取整後差值為零或 `SmallChange` 非正。左鍵按下開始拖曳、擷取指標並讓文字框取得焦點。向上移動會從拖曳起始數值增加；水平移動無影響。放開或失去指標擷取會結束拖曳；文字框仍有焦點時保留 focused 類別。所有步進都不使用 `LargeChange`。
+滾輪使用實際垂直差值，可要求 Alt。垂直差值為零時忽略。
+符合條件的非零滾輪事件會標記為已處理，即使取整後差值為零或 `SmallChange` 非正。
+左鍵按下開始拖曳、擷取指標並讓文字框取得焦點。
+向上移動會從拖曳起始數值增加。水平移動無影響。
+放開或失去指標擷取會結束拖曳。文字框仍有焦點時保留 focused 類別。
+Page Up 與 Page Down 仍不會標記為已處理，也不會改變數值。
+
+### 大步長遷移
+
+升級時移除下列參照：
+
+- `LargeChange` 的 XAML 屬性、繫結、賦值及讀取。
+- 樣式屬性程式碼中的 `LargeChangeProperty` 參照。
+- 反射程式碼中的 `get_LargeChange` 與 `set_LargeChange` 參照。
+
+`SmallChange` 仍控制文字吸附、滾輪步進及拖曳步進。
+需要的大步長行為應保留在主程式配接器或既有的主程式控制項。
+
+### 範圍更新
+
+呼叫端必須在每次賦值後維持 `Minimum <= Maximum`。
+CLR setter、`SetValue`、XAML 與繫結保留既有的不驗證範圍契約。
+每次上下限變更都立即限制 `Value`，但不吸附步長。
+屬性儲存仍接受顛倒的上下限。
+限制範圍時先檢查下限，再檢查上限。
+顛倒的上下限可能使數值在兩端點之間反覆限制。呼叫端不得提供顛倒的上下限。
+控制項沒有原子範圍更新方法。
+
+向上移動範圍時，先擴大 `Maximum`，再提高 `Minimum`：
+
+```csharp
+var input = new NumberScrubber { Minimum = 0m, Maximum = 10m, Value = 4m };
+input.Maximum = 20m;
+input.Minimum = 15m;
+// Value 現在為 15。
+```
+
+將此範圍向下移動時，先降低 `Minimum`，再降低 `Maximum`：
+
+```csharp
+input.Minimum = -20m;
+input.Maximum = -10m;
+// Value 現在為 -10。
+```
+
+`SetValue` 呼叫與繫結來源更新也使用相同順序。
+獨立繫結必須依有效順序發布上下限。更新兩個來源屬性不會讓目標更新成為原子操作。
+XAML 可以初始化有效的有限範圍：
+
+```xml
+<inputs:NumberScrubber Minimum="0" Maximum="10" Value="4" />
+```
+
+已評估並撤回範圍拒絕規則，因為尚未證明繫結一致性。
+無視窗的拋出例外強制轉換探針，在拒絕 CLR 與 `SetValue` 賦值後保留有效上下限。
+被拒絕的繫結來源更新卻保留來源 `11` 與目標 `0`，而且沒有向外傳遞例外。
+擴大另一端上下限並呼叫 `CoerceValue` 後，兩者仍不相同。
+後續有效來源更新可以恢復。這些證據無法建立一致的拒絕契約。
+探針獨立保留於 `StyledRangeRejectionEvidenceTests`，不改變正式範圍行為。
 
 ## 內部狀態
 
