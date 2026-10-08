@@ -2,6 +2,29 @@
 
 # Files
 
+## 0.9.0 前的不相容變更
+
+`RegularFileGuard.ReadUnixIdentity` 已改為 internal。
+檔案准入請使用公開的 `RequirePath` 與 `RequireOpenHandle`。
+Core 透過既有的內部測試可見性保留 Unix identity 測試。
+
+`BoundedReadResult.Sha256` 現為 `byte[]?`。
+位置建構函式的雜湊參數與 `Deconstruct` 的雜湊輸出也採用相同註記。
+未初始化的預設值包含零長度、null 雜湊與 null 內容。
+成功讀取在兩種擷取模式下仍提供完整 SHA-256 雜湊。
+轉換或使用已儲存結果前，請先檢查雜湊：
+
+```csharp
+if (result.Sha256 is not { } hash)
+{
+    throw new InvalidOperationException("The read result is uninitialized.");
+}
+string digest = Convert.ToHexString(hash).ToLowerInvariant();
+```
+
+缺少的雜湊只會出現在未初始化的預設結果，成功讀取不會回傳它。Launcher 將缺少的雜湊視為不符：套件驗證回傳 `PackageMismatch`，執行檔測量與已安裝 launcher 檢查回傳 `Tampered`。
+通過驗證的內容識別位元組維持不變。
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Infrastructure/Files/FileSystemPathGuard.cs` (complete file; renamed `RootedPathGuard`)
@@ -33,7 +56,7 @@ public enum FileCaptureMode { IdentityOnly, CaptureBytes }
 public enum FileChangeKind { Unspecified, ShortRead, Growth, Shrinkage, PositionChanged }
 public sealed class FileSizeLimitExceededException : Exception
 public sealed class FileChangedDuringReadException : IOException
-public readonly record struct BoundedReadResult(long Length, byte[] Sha256, byte[]? Bytes);
+public readonly record struct BoundedReadResult(long Length, byte[]? Sha256, byte[]? Bytes);
 public static ValueTask<BoundedReadResult> BoundedFileReader.ReadAndHashAsync(
     Stream stream, long observedLength, FileCaptureMode mode, CancellationToken cancellationToken);
 public static ValueTask<BoundedReadResult> BoundedFileReader.ReadFileAsync(
@@ -53,7 +76,6 @@ public static partial class RegularFileGuard
 {
     public static void RequirePath(string path);
     public static void RequireOpenHandle(Microsoft.Win32.SafeHandles.SafeFileHandle handle, string displayPath);
-    public static (long Device, long Inode)? ReadUnixIdentity(string path);
 }
 ```
 
@@ -93,7 +115,7 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 
 ## 測試
 
-`BoundedFileReaderStreamTests` 包含 24 個公開測試方法，共 47 個測試案例，全部使用合成資料。內部輔助類別 `GeneratedReadStream` 按需產生 `0xA5` 位元組，記錄讀取請求、支援部分讀取，並可模擬長度、位置與取消狀態的變化，不需儲存大型內容。
+`BoundedFileReaderStreamTests` 包含 26 個公開測試方法，共 50 個測試案例，全部使用合成資料。內部輔助類別 `GeneratedReadStream` 按需產生 `0xA5` 位元組，記錄讀取請求、支援部分讀取，並可模擬長度、位置與取消狀態的變化，不需儲存大型內容。
 
 長整數計數器測試分別讀取 2,147,483,665 與 4,294,967,313 個產生的位元組，並比對固定 SHA-256 值。這些案例可能各需數秒。其他測試以 `(byte)(index % 251)` 產生 0 與 131,089 個位元組，驗證兩種模式的結果與 `SHA256.HashData` 一致。
 
@@ -137,7 +159,7 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 
 `ResolveExistingRelativeFileUnderRoot` 先驗證相對路徑與根目錄參數，再拒絕完整限定路徑、反斜線、冒號、NUL，以及空白段落、目前目錄段落或父目錄段落，然後解析既有根目錄。接著依序檢查包含關係、存在性、重新解析點及一般檔案狀態。`ResolveFileNameUnderRoot` 只接受單純檔名，不會建立或要求根目錄及目標存在。這些凍結的一般防護沒有 512 字元路徑上限；更嚴格的產品或套件路徑政策留在 NFC。
 
-`RegularFileGuard.RequirePath` 保留 Windows 裝置、目錄與重新解析點屬性遮罩，以及 Unix `lstat` 的一般檔案遮罩。`RequireOpenHandle` 依序驗證控制代碼、顯示路徑、無效或已關閉狀態，再使用 Windows `GetFileType` 或 Unix `fstat`。`ReadUnixIdentity` 用於非 Windows 主機，透過 `stat` 跟隨連結，成功時回傳裝置及 inode，原生錯誤 2（`ENOENT`）與 20（`ENOTDIR`）回傳 null，其他原生錯誤維持例外。完整 `UnixFileStatus` 配置未變。
+`RegularFileGuard.RequirePath` 保留 Windows 裝置、目錄與重新解析點屬性遮罩，以及 Unix `lstat` 的一般檔案遮罩。`RequireOpenHandle` 依序驗證控制代碼、顯示路徑、無效或已關閉狀態，再使用 Windows `GetFileType` 或 Unix `fstat`。`ReadUnixIdentity` 是內部的非 Windows helper，透過 `stat` 跟隨連結，成功時回傳裝置及 inode，原生錯誤 2（`ENOENT`）與 20（`ENOTDIR`）回傳 null，其他原生錯誤維持例外。完整 `UnixFileStatus` 配置未變。
 
 只改名下列防護訊息；其他訊息、例外型別、判斷式與順序保持凍結版本：
 
@@ -179,7 +201,7 @@ BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
 | `BoundedIdentity.cs:247 InspectionRejectsInvalidPayloadModeBeforeReading` (path half) | `ReadFileAsyncRejectsInvalidModeBeforeAccessingPath` |
 | `BoundedIdentity.cs:271 InspectionPropagatesCancellationBeforeOpeningOrReading` (path half) | `ReadFileAsyncPropagatesCancellationBeforeAccessingPath` |
 
-新增測試共 54 個公開方法、110 個案例：`RootedPathGuardTests` 為 20/42、`RegularFileGuardTests` 為 15/20、`BoundedFileReaderPathTests` 為 17/42、`BoundedFileReaderStorageBoundaryTests` 為 2/6。原有 24 方法、47 案例的串流套件未變。所有資料皆為合成資料；Files 自有 `TestWorkspace` 使用系統暫存目錄，保留原 Windows 有界刪除重試（總計 450 ms，每次等待最多 50 ms）。
+新增測試共 55 個公開方法、111 個案例：`RootedPathGuardTests` 為 20/42、`RegularFileGuardTests` 為 16/21、`BoundedFileReaderPathTests` 為 17/42、`BoundedFileReaderStorageBoundaryTests` 為 2/6。原有串流套件新增預設結果與空讀取識別測試，現為 26 方法、50 案例。所有資料皆為合成資料；Files 自有 `TestWorkspace` 使用系統暫存目錄，保留原 Windows 有界刪除重試（總計 450 ms，每次等待最多 50 ms）。
 
 涵蓋建立與缺少根目錄、外部及相同前綴相鄰路徑、第二根目錄、新檔及缺少父目錄、既有目錄目標、必要檔案不存在、空/null 根目錄及空白參數、單純檔名及所有原始相對路徑語法、檔案連結及連結父目錄/根目錄、Windows 大小寫折疊及其他平台大小寫敏感、一般/目錄/不存在路徑、有效/null/無效/已關閉控制代碼、真實 Windows/Unix pipe 控制代碼，以及 Unix identity 相等與不存在時回傳 null。順序驗證使用確定的無效參數、預先取消的 token 及依序完成的改寫。
 

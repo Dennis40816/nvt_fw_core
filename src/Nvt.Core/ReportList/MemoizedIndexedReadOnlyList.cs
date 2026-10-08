@@ -30,7 +30,7 @@ public sealed class MemoizedIndexedReadOnlyList<T> : IReadOnlyList<T>
     public int Count => _items.Length;
 
     /// <summary>Gets the number of successfully created rows.</summary>
-    public int MaterializedCount => Volatile.Read(ref _materializedCount);
+    internal int MaterializedCount => Volatile.Read(ref _materializedCount);
 
     internal bool HasMaterializedReference(int index, object? value)
     {

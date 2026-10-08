@@ -2,6 +2,18 @@
 
 # Processes
 
+## 0.9.0 前的不相容變更
+
+`ProcessInheritedHandle.EnvironmentVariable` 現為 `string?`。
+未初始化的預設值包含 null 環境名稱與零控制代碼。
+`ProcessLaunchGate.StartContained` 會在回呼或建立程序前拒絕該預設值。
+通過建構函式與 `Parse` 驗證的名稱與控制代碼值維持原樣。
+
+Contained launch 前，請透過建構函式或 `Parse` 建立繫結。
+檢查可能未初始化的繫結時，請先防護環境名稱。
+啟動期間請保留父程序擁有的原控制代碼。
+測試涵蓋原生作業前拒絕預設值，以及有效繫結的不變行為。
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Infrastructure/ExternalTools/BoundedProcessOutputReader.cs`（完整讀取器及輸出 record）。
@@ -32,7 +44,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 public readonly record struct ProcessInheritedHandle
 {
     public ProcessInheritedHandle(string environmentVariable, IntPtr handle);
-    public string EnvironmentVariable { get; }
+    public string? EnvironmentVariable { get; }
     public IntPtr Handle { get; }
     public static ProcessInheritedHandle Parse(string environmentVariable, string handle);
 }
@@ -175,7 +187,7 @@ kernel 讀取前的競態測試使用真正的 Windows 匿名管線及確定性�
 
 ## 受控建立行為
 
-`Start` 與兩個 `StartContained` 多載透過同一個 private static `object` 鎖序列化。只有經過此 API 的啟動才參與閘門。一般啟動在鎖定前檢查 `startInfo`；受控啟動依序在鎖定前檢查 `startInfo`、`inheritedHandles` 及 `validateImmediatelyBeforeStart`。兩參數多載提供永遠回傳 true 的回呼。
+`Start` 與兩個 `StartContained` 多載透過同一個 private static `object` 鎖序列化。只有經過此 API 的啟動才參與閘門。一般啟動在鎖定前檢查 `startInfo`；受控啟動依序檢查 `startInfo`、`inheritedHandles` 及 `validateImmediatelyBeforeStart` 是否為 null，接著以 `ArgumentException`（`ParamName == "inheritedHandles"`）拒絕任何未初始化的控制代碼。這些檢查都在鎖定前完成。兩參數多載提供永遠回傳 true 的回呼。
 
 `ProcessInheritedHandle` 依序拒絕空白名稱、含 `=` 的名稱，以及有號 `ToInt64()` 值非正的控制代碼。其餘名稱和值保持原樣。`Parse` 使用 `NumberStyles.None` 及 invariant culture；解析失敗保留 `ParamName == "handle"` 與 `Inherited handle must be a positive decimal value.`。解析成功的零值由建構函式拒絕。Record 相等性包含完整名稱及控制代碼；default record 保留 null／零欄位。
 
@@ -200,6 +212,15 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 非 Windows 受控啟動在同一閘門內執行最後驗證，再呼叫 `Process.Start` 或回傳 null；不套用 Windows 限制及控制代碼允許清單。`TryClearInheritance` 在其他平台回傳 true；Windows 在 `SetHandleInformation` 前拒絕 0 與 -1。原生成員保留 Windows 平台屬性及 mutable-layout 警告抑制。Core 將 net9 鎖改為 `object`，並將相同 quoting 字元存入 static readonly 陣列以符合分析器要求。
 
+### 與凍結來源的刻意差異
+
+Core 在一處與凍結的 NFC 受控啟動不同：它拒絕來源接受或太晚才失敗的輸入。
+
+- 未初始化的繼承控制代碼（null 名稱或零控制代碼）現在於所有平台丟出 `ArgumentException`。檢查在回呼與任何原生作業之前執行。
+- 在 Windows，來源會嘗試複製零控制代碼並以 `Win32Exception` 失敗。在非 Windows，來源忽略該控制代碼並啟動程序。兩種情況現在都會丟出例外。
+- 此檢查也早於原生設定檢查，因此 `UseShellExecute = true` 搭配預設控制代碼現在丟出 `ArgumentException`，不再是 `InvalidOperationException`。
+- 有效繫結、回呼順序與其他所有拒絕條件維持凍結行為。
+
 ## 受控啟動測試對應
 
 受控啟動新增 47 個已記錄 XML 文件的公開測試方法及 107 個靜態列舉案例：八個移植案例方法，以及以下輸入、閘門與準備邊界方法。
@@ -221,7 +242,7 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 `ProcessInheritedHandleTests` 新增建構檢查順序、空白／等號名稱、未正規化的名稱、零／負值／正一控制代碼、有號指標極值、invariant 十進位語法、`long.MaxValue` 前一值／邊界／後一值及 record 相等性。啟動閘門沒有可調整的正值數字上限參數。
 
-`ProcessLaunchGateBoundaryTests` 新增公開／內部 null 順序、一般 `exit` 啟動、拒絕且無 marker、回呼失敗與閘門重用、一般啟動序列化、原生驗證順序、default record 複製失敗、精確零／一／二控制代碼清單、相同原始控制代碼綁定、父環境不變、原生建立清理，以及無效／真實管線／非 Windows 的繼承清除。完整 probe 資料夾副本只重新命名 apphost 並測試原始 Arguments。
+`ProcessLaunchGateBoundaryTests` 新增公開／內部 null 順序、一般 `exit` 啟動、拒絕且無 marker、回呼失敗與閘門重用、一般啟動序列化、原生驗證順序、default record 在回呼前即被拒絕、精確零／一／二控制代碼清單、相同原始控制代碼綁定、父環境不變、原生建立清理，以及無效／真實管線／非 Windows 的繼承清除。完整 probe 資料夾副本只重新命名 apphost 並測試原始 Arguments。
 
 `WindowsContainedProcessStarterContractTests` 固定空／非空 command line、原始引數、零／一／二反斜線、空格／tab／引號／換行邊界、Unicode、ordinal 忽略大小寫環境排序、null 省略、空值、零／一／二環境項目及精確結尾。它固定 5,000-ms 確認常數；此期限沒有呼叫者可傳入的前一值／後一值。原生建立後案例證明暫停子程序不能執行，且其實體管線在原有兩秒門檻內關閉。
 

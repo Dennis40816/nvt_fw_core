@@ -256,17 +256,19 @@ public sealed class ProcessLaunchGateBoundaryTests
         Assert.Equal("validateImmediatelyBeforeCreate", error.ParamName);
     }
 
-    /// <summary>The mechanism has no validation of record defaults before duplication.</summary>
+    /// <summary>The public contained-launch boundary rejects a default binding before native duplication.</summary>
     [Fact]
-    public void DefaultBindingRetainsNativeDuplicationFailure()
+    public void DefaultBindingIsRejectedAtLaunchAdmission()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Skip("Default handle duplication requires Windows.");
-            return;
-        }
-        _ = Assert.Throws<Win32Exception>(() =>
-            ProcessLaunchGate.StartContained(ProcessProbe.Create("exit"), [default]));
+        bool callbackRan = false;
+        ArgumentException error = Assert.Throws<ArgumentException>(() =>
+            ProcessLaunchGate.StartContained(ProcessProbe.Create("exit"), [default], () =>
+            {
+                callbackRan = true;
+                return true;
+            }));
+        Assert.Equal("inheritedHandles", error.ParamName);
+        Assert.False(callbackRan);
     }
 
     /// <summary>Checks zero, one, and two declared handles, including duplicate originals under distinct names.</summary>
@@ -410,11 +412,11 @@ public sealed class ProcessLaunchGateBoundaryTests
     {
         Assert.SkipUnless(!OperatingSystem.IsWindows(), "This behavior requires a non-Windows system.");
         var invalid = new ProcessStartInfo { FileName = "", UseShellExecute = true };
-        Assert.Null(ProcessLaunchGate.StartContained(invalid, [default], static () => false));
+        Assert.Null(ProcessLaunchGate.StartContained(invalid, [], static () => false));
         ProcessStartInfo info = ProcessProbe.Create("exit");
         info.RedirectStandardOutput = true;
         int validations = 0;
-        using Process child = Assert.IsType<Process>(ProcessLaunchGate.StartContained(info, [default],
+        using Process child = Assert.IsType<Process>(ProcessLaunchGate.StartContained(info, [],
             () => { validations++; return true; }));
         await ExitAsync(child);
         Assert.Equal(1, validations);

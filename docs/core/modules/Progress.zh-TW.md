@@ -2,6 +2,18 @@
 
 # Progress
 
+## 0.9.0 前的不相容變更
+
+`ProgressUpdate.StepText` 現為 `string?`。
+位置建構函式的文字參數與 `Deconstruct` 的文字輸出也採用相同註記。
+未初始化的預設值沒有比例或步驟文字，仍屬不確定進度。
+傳入文字與有效比例的行為維持不變。
+
+呼叫字串 API 前，請先檢查缺少的文字。
+顯示時請明確選用工具原有的替代值，例如 `update.StepText ?? string.Empty`。
+Core 不新增文字驗證或替代值政策。
+測試涵蓋預設進度、明確 null 文字，以及原有文字與比例規則。
+
 ## 摘要
 
 Progress 提供有範圍驗證的進度資料、NVT FW UTIL（NFU）一次只執行一個工作的背景服務，以及 Freeform Helper（NFH）的兩個部分：進度間隔限制與讀取範圍協調器。
@@ -70,7 +82,7 @@ NFH 另外提供 `src/FreeformHelper.UI/Services/LoadingScopeCoordinator.cs` 的
 ## Progress data
 
 [`ProgressUpdate`](../../../src/Nvt.Core/Progress/ProgressUpdate.cs) 是公開的 readonly record struct。
-它儲存 `double? Fraction` 與 `string StepText`。
+它儲存 `double? Fraction` 與 `string? StepText`。
 只有 `Fraction` 為 null 時，`IsIndeterminate` 才為 true。
 
 NFC 會驗證比例，不會將比例限制到邊界值。

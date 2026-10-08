@@ -2,6 +2,16 @@
 
 # Fonts
 
+## 0.9.0 前的不相容變更
+
+`NvtCoreFonts.CjkFallback` 每次存取都回傳新的 `FontFallback`。
+每個 builder 都取得自己的可變 fallback 實例。
+內嵌字型 URI 與 `WithNvtCoreFonts()` 行為維持不變。
+
+請為每個 builder 或自行擁有的 `FontManagerOptions` 取得一個 fallback。
+僅調整該實例，不要依賴不同屬性存取之間的參考相等性。
+測試確認修改一個 fallback 不會影響其他實例或後續存取。
+
 `Nvt.Core.Fonts` 提供字型角色資源與內嵌中文字型後備，使用 `net10.0` 與 Avalonia 12.1.1。
 此函式庫就是 Fonts 模組，命名空間為 `Nvt.Core.Fonts`。
 模組不提供樣式、控制項、圖示名稱常數或其他字型註冊。
