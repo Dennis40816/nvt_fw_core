@@ -51,7 +51,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 _ => Arg("confirm", confirm)
             };
             args?.Add("ignored", "unchanged");
-            var response = await router.RouteAsync("exit", args);
+            var response = await router.RouteAsync("exit", args, TestContext.Current.CancellationToken);
 
             Assert.Equal(new RuntimeQueryExitRequest(confirmed), Assert.Single(requests));
             if (confirmed)
@@ -84,12 +84,12 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         var args = Arg("confirm", "invalid");
         var router = new RuntimeQueryCommandRouter(RuntimeQueryGenericCommands.Create(options), requireConfirmation);
         var guardedWriter = new RuntimeQueryCommandRouter(
-            [new("probe", RuntimeQueryCommandRisk.WritesData, _ => throw new InvalidOperationException("The guard must reject invalid confirmation."))],
+            [new("probe", RuntimeQueryCommandRisk.WritesData, (_, _, _) => throw new InvalidOperationException("The guard must reject invalid confirmation."))],
             requireConfirmation: true);
-        var response = await router.RouteAsync("exit", args);
+        var response = await router.RouteAsync("exit", args, TestContext.Current.CancellationToken);
 
         AssertFailure(response, "INVALID_ARGUMENTS", "Argument '--confirm' must be true/false (or 1/0, on/off).");
-        Assert.Equal(await guardedWriter.RouteAsync("probe", args), response);
+        Assert.Equal(await guardedWriter.RouteAsync("probe", args, TestContext.Current.CancellationToken), response);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(0, closes);
     }
@@ -116,7 +116,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 Close = () => closes++
             };
             var router = new RuntimeQueryCommandRouter(RuntimeQueryGenericCommands.Create(options), requireConfirmation);
-            var response = await router.RouteAsync("exit", Arg("confirm", "true"));
+            var response = await router.RouteAsync("exit", Arg("confirm", "true"), TestContext.Current.CancellationToken);
 
             AssertExitDecision(response, code, message);
             Assert.Equal(1, decisions);
@@ -152,7 +152,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                     "--confirm" => ParseExitConfirmationFlag(router),
                     _ => Arg("confirm", confirm)
                 };
-                var response = await router.RouteAsync("exit", args);
+                var response = await router.RouteAsync("exit", args, TestContext.Current.CancellationToken);
 
                 AssertExitDecision(response, code, message);
                 Assert.Equal(1, decisions);
@@ -187,7 +187,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             }
         };
         var router = new RuntimeQueryCommandRouter(RuntimeQueryGenericCommands.Create(options), requireConfirmation);
-        var response = await router.RouteAsync("exit", Arg("confirm", "true"));
+        var response = await router.RouteAsync("exit", Arg("confirm", "true"), TestContext.Current.CancellationToken);
 
         AssertSuccess(response, """{"closing":true}""");
         events.Add("response");

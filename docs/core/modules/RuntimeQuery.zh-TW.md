@@ -6,6 +6,72 @@
 
 `Nvt.Core.RuntimeQuery` 提供從 FreeformHelper（NFH）擷取的 JSON 封套與本機具名管道傳輸。每個連線依序處理一筆請求，使用位元組模式的非同步管道。不依賴 Avalonia 或 NLog，也不解讀產品命令。
 
+## 取消與遷移
+
+RuntimeQuery 使用單一執行委派，將取消 token 從 IPC 傳遞到路由、啟動、UI 派送與截圖擷取。
+`InvocationHandler` 已移除。
+共用 JSON 預設選項在首次使用前即為唯讀。
+傳輸位元組與格式化輸出的預設值保持不變。
+
+- `Handler` 接收呼叫時機、引數與取消 token。
+- `FromArgs` 從引數與 token 委派建立命令，忽略呼叫時機。
+- 字典路由器的委派接收引數與取消 token。
+
+將同一個 token 傳給 `ExecuteAsync`、`RouteAsync` 與 `ExecuteStartupPhaseAsync`。
+這些方法的 token 可省略，預設為 `default`。
+UI 包裝器在派送前檢查取消，並在排入佇列的工作開始前再次檢查。
+啟動執行器在每個命令開始前檢查取消。
+已開始的處理委派自行採用合作式取消。
+忽略 token 的處理委派仍回傳原本的回應。
+已提交變更的清理流程不得使用已取消的請求 token。
+Core 保留無關的例外，且仍執行已核准的關閉動作。
+預設截圖在繪製前與檔案提交前檢查取消，暫存檔清理一定執行。
+替代擷取接收呼叫的 token，自行負責取消與已提交檔案的清理。
+
+舊版登錄使用兩個委派：
+
+```csharp
+var command = new RuntimeQueryCommand("resize", RuntimeQueryCommandRisk.ChangesState, LegacyHandler)
+{
+    InvocationHandler = ApplyAsync
+};
+```
+
+新版登錄只提供一個接收呼叫時機的處理委派：
+
+```csharp
+var command = new RuntimeQueryCommand("resize", RuntimeQueryCommandRisk.ChangesState,
+    (invocation, values, token) => ApplyAsync(invocation, values, token));
+```
+
+執行不需要呼叫時機時，使用只接收引數與 token 的工廠：
+
+```csharp
+var command = RuntimeQueryCommand.FromArgs("probe", RuntimeQueryCommandRisk.ReadOnly,
+    (values, token) => ProbeAsync(values, token),
+    startupPhase: RuntimeQueryStartupPhase.AfterStartup);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var handler = RuntimeQueryUiThread.Wrap(router.ExecuteAsync, MapTransportError);
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup, cancellationToken);
+```
+
+自訂輸出時，建立可修改的選項複本：
+
+```csharp
+var options = RuntimeQueryProtocol.CreatePrettyJsonOptions();
+options.PropertyNameCaseInsensitive = true;
+```
+
+`CreateCompactJsonOptions` 與 `CreatePrettyJsonOptions` 回傳共用預設選項的獨立可修改複本。
+自訂選項不影響傳輸序列化或其他複本。
+
+在兩個 RuntimeQuery 分支更新 `DesktopRuntimeQuery` 工廠及路由包裝器。
+將 token 傳給 `Router.ExecuteAsync(request, version, token)`，或直接使用路由器的方法群組。
+更新 `AppearanceLaunchCommands`、啟動派送與處理委派測試的簽章。
+命令結果、確認資訊傳遞與傳輸位元組保持不變。
+另外兩個已檢視的工具不需原始碼遷移。
+由整合者鎖定已接受版本、更新套件雜湊、重新產生鎖定檔，並以鎖定模式還原。
+
 ## Commands and arguments
 
 Core 現在提供命令路由、請求檢查與五個通用引數輔助方法。
@@ -14,15 +80,15 @@ Core 現在提供命令路由、請求檢查與五個通用引數輔助方法。
 | --- | --- |
 | `RuntimeQueryCommandRouter(handlers)` | 使用工具提供的委派字典。不新增命令，也不更改字典的鍵比較方式。 |
 | `RegisteredCommands` | 建構時依字典列舉順序保存唯讀名稱清單。工具須先依登錄順序建立字典。 |
-| `RouteAsync(commandText, args)` | 去除命令前後空白，以 invariant culture 轉為小寫。將原始引數字典傳給處理委派。 |
-| `ExecuteAsync(request, expectedVersion)` | 先檢查 null，再以 ordinal 相等比較版本，最後路由命令。版本由工具提供。 |
+| `RouteAsync(commandText, args, cancellationToken)` | 去除命令前後空白，以 invariant culture 轉為小寫。將原始引數字典傳給處理委派。 |
+| `ExecuteAsync(request, expectedVersion, cancellationToken)` | 先檢查 null，再以 ordinal 相等比較版本，最後路由命令。版本由工具提供。 |
 | `RuntimeQueryArgumentParser.TryGetIntArg` | 以 invariant culture 解析整數，並檢查包含端點的範圍。 |
 | `TryGetIntListArg` | 以逗號分割、去除項目前後空白及空項目，再依序檢查各整數。 |
 | `TryGetDoubleArg` | 以 invariant culture 解析浮點數，允許千位分隔符。拒絕 NaN、無限值及範圍外數值。 |
 | `TryGetStringArg` | 讀取非空白值，去除前後空白。 |
 | `TryGetBoolArg` | 接受 true/false、1/0、on/off 與 yes/no，以 ordinal 規則比較且不區分大小寫。 |
 
-處理委派型別保持為 `Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>`。
+字典處理委派的型別為 `Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`。
 路由器原樣回傳處理委派的回應，並讓處理委派的例外向外傳遞。
 Core 沒有版本常數。
 
@@ -64,7 +130,7 @@ double 解析使用 invariant culture，但範圍訊息以目前文化格式化�
 NFH 切換至 Core 時：
 
 1. 以 `RuntimeQueryCommandRouter` 取代來源路由器。保留工具的處理委派表與各處理委派的檢查順序。
-2. 在原本呼叫位置以 `router.ExecuteAsync(request, RuntimeQueryProtocol.Version)` 取代請求檢查。
+2. 在原本呼叫位置以 `router.ExecuteAsync(request, RuntimeQueryProtocol.Version, cancellationToken)` 取代請求檢查。
 3. 以 `RuntimeQueryArgumentParser` 取代五個通用方法。保留第 7–159 行的產品選取解析器。
 4. 為來源型別與 Core 型別建立轉接，重用相同案例表。比較結果、輸出值、代碼與完整訊息。
 5. 替換前後皆執行 NFH 切換證據章節列出的完整測試清單。
@@ -142,7 +208,7 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 | --- | --- |
 | `RuntimeQueryStartupPhase` | `None` 不新增啟動選項。`BeforeFirstFrame` 僅供啟動使用。`AfterStartup` 也接受 RuntimeQuery 請求。`BeforeFirstFrameAndRuntime` 同時接受早期啟動與執行期間的請求。 |
 | `RuntimeQueryInvocation` | 識別 `Startup` 或 `Runtime` 呼叫時機。 |
-| `RuntimeQueryCommand.InvocationHandler` | 可省略的 init 屬性，型別為 `Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>?`。設定後取代 `Handler`。 |
+| `RuntimeQueryCommand.Handler` | 唯一的處理委派接收呼叫時機、引數與取消 token。 |
 | `RuntimeQueryCommand.StartupPhase` | 可省略的中繼資料。預設為 `None`，現有登錄維持原有行為。 |
 | `RuntimeQueryCommand.StartupValueKey` | 一個啟動值的引數鍵。預設為 null，表示旗標，處理委派接收 null 引數。 |
 | `RuntimeQueryCommand.StartupValidator` | 可省略的驗證委派，型別為 `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`。有效時回傳 null，無效時回傳失敗。 |
@@ -151,18 +217,18 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 | `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | 一次解析的全部呼叫、工具剩餘引數及問題。 |
 | `RuntimeQueryStartupCallResult(Call, Response)` | 已執行的呼叫及原樣回傳的回應。 |
 | `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | 依路由器登錄的命令及確認設定解析原始引數。不執行處理委派。 |
-| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | 透過路由器依命令列順序執行一個階段。包含第一個失敗回應，然後停止。 |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase, cancellationToken)` | 透過路由器依命令列順序執行一個階段。包含第一個失敗回應，然後停止。 |
 
 例如，將 `theme` 登錄為 `AfterStartup`，並使用引數鍵 `value`：
 
 ```csharp
-var command = new RuntimeQueryCommand(
+var command = RuntimeQueryCommand.FromArgs(
     "theme",
     RuntimeQueryCommandRisk.ChangesState,
     ApplyThemeAsync,
-    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
-    StartupValueKey: "value",
-    StartupValidator: ValidateTheme);
+    startupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    startupValueKey: "value",
+    startupValidator: ValidateTheme);
 var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
 var startup = router.ParseStartupArguments(args);
 ```
@@ -246,13 +312,10 @@ Core 只回傳問題及回應，不定義結束代碼常數。
 混合的早期命令保留命令列順序。
 呼叫端須在顯示視窗或開始任何排版之前執行此批次。
 
-處理委派需要時機資訊時，設定 `InvocationHandler`。
-啟動執行器傳入 `RuntimeQueryInvocation.Startup`，兩個執行期間入口都傳入 `RuntimeQueryInvocation.Runtime`。
-建構子仍要求提供 `Handler`。
-設定 `InvocationHandler` 後，Core 完成既有路由及確認檢查，再以它取代 `Handler`。
-未設定時，Core 仍呼叫原有的 `Handler`。
-`ReceivesConfirmation` 也控制執行期間傳給 `InvocationHandler` 的引數。
-啟動驗證委派仍在解析期間執行，不呼叫任一處理委派。
+`Handler` 在啟動執行時接收 `RuntimeQueryInvocation.Startup`，執行期間路由時接收 `RuntimeQueryInvocation.Runtime`。
+它也接收引數與取消 token。
+`ReceivesConfirmation` 控制執行期間傳入的引數。
+啟動驗證委派仍在解析期間執行，不呼叫處理委派。
 
 啟動解析器依既有的選項、值鍵、驗證及確認規則辨識新階段。
 通用 help 依登錄順序列出這些命令。
@@ -275,8 +338,9 @@ RuntimeQueryResponseEnvelope? ValidateWindowSize(IReadOnlyDictionary<string, str
 }
 
 Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
-    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values)
+    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values, CancellationToken cancellationToken)
 {
+    cancellationToken.ThrowIfCancellationRequested();
     if (ValidateWindowSize(values) is { } failure)
     {
         return Task.FromResult(failure);
@@ -295,13 +359,10 @@ Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
 
 var windowSize = new RuntimeQueryCommand(
     "window-size", RuntimeQueryCommandRisk.ChangesState,
-    values => ApplyWindowSizeAsync(RuntimeQueryInvocation.Runtime, values),
+    ApplyWindowSizeAsync,
     StartupPhase: RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime,
     StartupValueKey: "size",
-    StartupValidator: ValidateWindowSize)
-{
-    InvocationHandler = ApplyWindowSizeAsync
-};
+    StartupValidator: ValidateWindowSize);
 var router = new RuntimeQueryCommandRouter([windowSize], requireConfirmation: false);
 var startup = router.ParseStartupArguments(args);
 if (startup.Issues.Count > 0)
@@ -309,14 +370,14 @@ if (startup.Issues.Count > 0)
     return;
 }
 
-var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, cancellationToken);
 if (before.Any(result => !result.Response.Ok))
 {
     return;
 }
 
 mainWindow.Show();
-await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup);
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup, cancellationToken);
 ```
 
 兩種形式都使用 `size` 引數鍵：
@@ -338,10 +399,10 @@ query window-size --size 1280,720
 | `RuntimeQueryRequest(Version, Command, Args)` | 請求欄位依此順序排列；引數可以是 null。 |
 | `RuntimeQueryError(Code, Message)` | 由呼叫端擁有的錯誤代碼與訊息。 |
 | `RuntimeQueryResponseEnvelope(Ok, Data, Error)` | 回應欄位依此順序排列；`Success(data)` 與 `Failure(code, message)` 保留明確的 null 屬性。 |
-| `RuntimeQueryProtocol.CompactJsonOptions` | 屬性名稱採 camelCase、保留 null、使用預設 JSON 跳脫規則、反序列化區分大小寫、不縮排。字典鍵保留原本大小寫。 |
-| `RuntimeQueryProtocol.PrettyJsonOptions` | 相同設定，另使用兩個空白縮排與序列化器預設的平台換行字元。用於呼叫端輸出，不用於管道訊息。 |
+| `RuntimeQueryProtocol.CompactJsonOptions` | 唯讀預設選項。 屬性名稱採 camelCase、保留 null、使用預設 JSON 跳脫規則、反序列化區分大小寫、不縮排。字典鍵保留原本大小寫。 |
+| `RuntimeQueryProtocol.PrettyJsonOptions` | 唯讀預設選項。 相同設定，另使用兩個空白縮排與序列化器預設的平台換行字元。用於呼叫端輸出，不用於管道訊息。 |
 | `RuntimeQueryIpcServer(...)` | 實例接收管道名稱、協定版本、以毫秒計的正數讀取與關閉逾時、錯誤回呼、診斷回呼及請求處理委派。 |
-| `Start()` / `DisposeAsync()` | 啟動一次；執行期間重複啟動與重複釋放皆不產生額外作用。釋放後啟動會擲回例外。釋放會停止接受新連線，並取消尚未送出請求行的連線。已讀到請求的連線可在關閉時間上限內完成處理並寫出回應。超過上限後，釋放會取消處理委派的等待並關閉管道。 |
+| `Start()` / `DisposeAsync()` | 啟動一次；執行期間重複啟動與重複釋放皆不產生額外作用。釋放後啟動會擲回例外。釋放會停止接受新連線，並取消尚未送出請求行的連線。已讀到請求的連線可在關閉時間上限內完成處理並寫出回應。超過上限後，釋放會向處理委派發出合作式取消通知並關閉管道。 |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | 同步送出一筆請求，使用涵蓋連線、寫入與讀取的正數總逾時預算。開始寫入／讀取計時前扣除連線耗時，保留來源的整數毫秒取整與至少一毫秒的剩餘預算。 |
 
 伺服器處理委派為 `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`。接收反序列化後的請求、設定的協定版本與關閉 token。空白行與格式錯誤的 JSON 由傳輸層拒絕；JSON null 與版本不符的請求會交給處理委派，與凍結傳輸一致。Core 現在提供 null／版本檢查與命令路由。工具保留處理委派表、產品解析器、命令列與 UI 派送。傳輸測試同時固定原有的 null 與版本錯誤封套。
@@ -602,7 +663,8 @@ Core 現在於 `Nvt.Core.Avalonia.RuntimeQuery` 提供 UI 派送與實例 host�
 
 `Wrap` 透過 `UiThread.TryGetRunningDispatcher` 取得 dispatcher。
 它使用回傳 Task 的 `Dispatcher.InvokeAsync` 多載，保留來源的預設優先序。
-請求、版本與取消 token 皆原樣傳遞，包含 null 請求與已取消的 token。
+請求、版本與取消 token 皆原樣傳遞，包含 null 請求。
+派送前與佇列工作開始前皆檢查取消。
 它回傳內部處理委派的回應，並讓例外向外傳遞。伺服器負責對應這些例外。
 工具透過 `UiThread.RegisterRunningDispatcher` 登錄執行中的 dispatcher。
 
@@ -618,7 +680,7 @@ host 不加入排程、視窗事件、應用程式生命週期事件、靜態實
 
 `StopAsync` 立即停止接受新連線，並取消尚未讀到請求行的連線。
 已讀到請求的連線可在伺服器的關閉時間上限內完成處理委派、寫出並清空回應緩衝區。
-超過上限後，伺服器取消處理委派等待、關閉管道，並回報 `ShutdownTimedOut`。
+超過上限後，伺服器向處理委派發出合作式取消通知、關閉管道，並回報 `ShutdownTimedOut`。
 
 ### 工具啟動與結束
 
@@ -790,7 +852,7 @@ Core 不覆寫地移至最終名稱，失敗時刪除暫存檔。
 
 設定 `CaptureScreenshot` 可使用工具自己的非同步擷取流程。
 NVT FW Combiner 可用此方式接上正式擷取。
-委派接收正規化後的絕對路徑與 `CancellationToken.None`，因為命令處理委派目前沒有 token。
+委派接收正規化後的絕對路徑與呼叫的取消 token。
 委派負責等待影格、排版、擷取及不覆寫的寫入。
 Core 在呼叫委派前不更新排版，也不取得主視窗。
 成功時回傳 `RuntimeQueryScreenshotResult.Success`，包含已儲存影像的像素尺寸及檔案大小。
@@ -849,7 +911,7 @@ var generic = RuntimeQueryGenericCommands.Create(options);
 registered = [.. generic.Where(command => command.Name != "help"), .. productCommands];
 var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
 var handler = RuntimeQueryUiThread.Wrap(
-    (request, version, _) => router.ExecuteAsync(request, version), MapTransportError);
+    (request, version, token) => router.ExecuteAsync(request, version, token), MapTransportError);
 ```
 
 此範例選用五個通用命令，help 留在工具。

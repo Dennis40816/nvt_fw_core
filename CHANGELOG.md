@@ -19,6 +19,47 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - `ProcessInheritedHandle.EnvironmentVariable` changes to `string?`. Guard uninitialized bindings. Both `ProcessLaunchGate.StartContained` overloads reject defaults before callbacks or native work.
 - `UpdateCatalogPackagePath.Value` changes to `string?`. Its positional constructor parameter and `Deconstruct` output become nullable. Guard raw paths. `UpdateCatalogVersionSnapshot.Create` still rejects default paths and preserves validated identities.
 
+**RuntimeQuery cancellation (API review item P1).** RuntimeQuery carries cancellation through one execution handler.
+Shared protocol defaults are read-only before first use.
+Confirmation delivery, startup eligibility, command order, response defaults, and wire bytes remain unchanged.
+
+The table lists changed members and new migration factories.
+`Response` below means `Task<RuntimeQueryResponseEnvelope>`.
+`Args` means `IReadOnlyDictionary<string, string>?`.
+
+| Public member | Before | After |
+| --- | --- | --- |
+| `RuntimeQueryCommand` constructor | `Handler: Func<Args, Response>` | `Handler: Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.Handler`, including get/init accessors | `Func<Args, Response>` | `Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.Deconstruct` | Third output: `Func<Args, Response>` | Third output: `Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.InvocationHandler`, including get/init accessors | Optional invocation-aware delegate replacing `Handler` | Removed. Supply `Handler` directly. |
+| `RuntimeQueryCommand.FromArgs` | Absent | Factory accepting `Func<Args, CancellationToken, Response>` and existing startup metadata |
+| `RuntimeQueryCommandRouter(handlers)` | Dictionary values: `Func<Args, Response>` | Dictionary values: `Func<Args, CancellationToken, Response>` |
+| `RuntimeQueryCommandRouter.ExecuteAsync` | `(request, expectedVersion)` | `(request, expectedVersion, cancellationToken = default)` |
+| `RuntimeQueryCommandRouter.RouteAsync` | `(commandText, args)` | `(commandText, args, cancellationToken = default)` |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync` | `(calls, phase)` | `(calls, phase, cancellationToken = default)` |
+| `RuntimeQueryProtocol.CompactJsonOptions` | Mutable before first serialization | Always read-only. Exact transport defaults remain unchanged. |
+| `RuntimeQueryProtocol.PrettyJsonOptions` | Mutable before first serialization | Always read-only. Exact pretty-output defaults remain unchanged. |
+| `RuntimeQueryProtocol.CreateCompactJsonOptions` | Absent | Independent mutable copy of compact defaults |
+| `RuntimeQueryProtocol.CreatePrettyJsonOptions` | Absent | Independent mutable copy of pretty defaults |
+| `RuntimeQueryUiThread.Wrap` | Dispatches already cancelled requests | Checks cancellation before dispatch and before queued work begins |
+| `RuntimeQueryGenericCommandOptions.CaptureScreenshot` | Receives `CancellationToken.None` | Receives the invocation token. The delegate signature stays unchanged. |
+| `RuntimeQueryGenericCommands.Create` | Handlers omit cancellation | Handlers check cancellation before effects and forward it to screenshot capture |
+| `RuntimeQueryIpcServer.DisposeAsync` | Bounded shutdown can detach its handler wait | Bounded shutdown signals cancellation. Started handlers retain their cooperative execution and cleanup. |
+
+Tool migration steps:
+
+- Update `DesktopRuntimeQuery` factories and router wrappers on both RuntimeQuery branches with the new signatures.
+- Supply one invocation-aware handler, or use `RuntimeQueryCommand.FromArgs` for commands that ignore invocation timing.
+- Forward the server token to `Router.ExecuteAsync(request, version, token)` and pass it through startup dispatch.
+- Update `AppearanceLaunchCommands` and handler tests while preserving command results, confirmation delivery, and transport bytes.
+- Customize JSON through the copy factories. Keep the shared options for transport and default output.
+- The other two inspected consumers need no source migration.
+- The integrator pins the accepted release, updates package hashes, regenerates locks, and restores in locked mode.
+
+See the [RuntimeQuery migration examples](docs/core/modules/RuntimeQuery.md#cancellation-and-migration)
+and the [Traditional Chinese examples](docs/core/modules/RuntimeQuery.zh-TW.md#取消與遷移).
+
 Tool migration: NFH must update `CadLoadOverlayFrameYieldPolicyTests` before upgrading its Core package.
 Replace the removed conjunction helper with a local predicate or real dispatcher evidence.
 Rebuild its existing `UiThread` consumers.

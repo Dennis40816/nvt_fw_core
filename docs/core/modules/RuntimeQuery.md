@@ -6,6 +6,73 @@
 
 `Nvt.Core.RuntimeQuery` provides the JSON envelopes and local named-pipe transport extracted from FreeformHelper (NFH). It serves one request per connection, sequentially, using byte-mode asynchronous pipes. It has no Avalonia or NLog dependency and does not interpret product commands.
 
+## Cancellation and migration
+
+RuntimeQuery uses one execution handler and forwards cancellation from IPC through routing, startup, UI dispatch, and screenshot capture.
+`InvocationHandler` is removed.
+Shared JSON defaults are read-only before first use.
+Transport bytes and pretty-output defaults remain unchanged.
+
+- `Handler` receives invocation, arguments, and the cancellation token.
+- `FromArgs` creates a command from an arguments-and-token delegate and ignores invocation timing.
+- Dictionary router delegates receive arguments and the cancellation token.
+
+Pass the same token to `ExecuteAsync`, `RouteAsync`, and `ExecuteStartupPhaseAsync`.
+These methods accept an optional token that defaults to `default`.
+The UI wrapper checks cancellation before dispatch and again before queued work starts.
+Startup execution checks cancellation before each command.
+Started handlers own cooperative cancellation.
+A handler that ignores the token still returns its original response.
+Finish committed mutation cleanup without the cancelled request token.
+Core preserves unrelated exceptions and still runs an approved close action.
+The default screenshot checks cancellation before rendering and before file commit.
+Its temporary-file cleanup always runs.
+Custom capture receives the invocation token and owns its cancellation and committed cleanup.
+
+The old registration used two delegates:
+
+```csharp
+var command = new RuntimeQueryCommand("resize", RuntimeQueryCommandRisk.ChangesState, LegacyHandler)
+{
+    InvocationHandler = ApplyAsync
+};
+```
+
+The new registration supplies one invocation-aware handler:
+
+```csharp
+var command = new RuntimeQueryCommand("resize", RuntimeQueryCommandRisk.ChangesState,
+    (invocation, values, token) => ApplyAsync(invocation, values, token));
+```
+
+Use the args-only factory when timing does not affect execution:
+
+```csharp
+var command = RuntimeQueryCommand.FromArgs("probe", RuntimeQueryCommandRisk.ReadOnly,
+    (values, token) => ProbeAsync(values, token),
+    startupPhase: RuntimeQueryStartupPhase.AfterStartup);
+var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
+var handler = RuntimeQueryUiThread.Wrap(router.ExecuteAsync, MapTransportError);
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup, cancellationToken);
+```
+
+Create mutable options when customizing output:
+
+```csharp
+var options = RuntimeQueryProtocol.CreatePrettyJsonOptions();
+options.PropertyNameCaseInsensitive = true;
+```
+
+`CreateCompactJsonOptions` and `CreatePrettyJsonOptions` return independent mutable copies of the exact shared defaults.
+Customization does not affect transport serialization or other copies.
+
+Update `DesktopRuntimeQuery` factories and router wrappers on both RuntimeQuery branches.
+Forward the token to `Router.ExecuteAsync(request, version, token)` or use the router method group.
+Update `AppearanceLaunchCommands`, startup dispatch, and handler tests with the new signatures.
+Keep command results, confirmation delivery, and wire bytes unchanged.
+The other two inspected consumers need no source migration.
+The integrator pins the accepted release, updates package hashes, regenerates locks, and restores in locked mode.
+
 ## Commands and arguments
 
 Core now provides command routing, request checks, and five generic argument helpers.
@@ -14,15 +81,15 @@ Core now provides command routing, request checks, and five generic argument hel
 | --- | --- |
 | `RuntimeQueryCommandRouter(handlers)` | Uses the caller's delegate dictionary without adding commands or changing its key comparer. |
 | `RegisteredCommands` | Read-only names in dictionary enumeration order at construction. Build the dictionary in registration order first. |
-| `RouteAsync(commandText, args)` | Trims and lowercases the command with invariant culture. Passes the original argument dictionary to the handler. |
-| `ExecuteAsync(request, expectedVersion)` | Checks null first, compares versions with ordinal equality second, then routes. The tool supplies its version. |
+| `RouteAsync(commandText, args, cancellationToken)` | Trims and lowercases the command with invariant culture. Passes the original argument dictionary to the handler. |
+| `ExecuteAsync(request, expectedVersion, cancellationToken)` | Checks null first, compares versions with ordinal equality second, then routes. The tool supplies its version. |
 | `RuntimeQueryArgumentParser.TryGetIntArg` | Parses invariant integers and checks an inclusive range. |
 | `TryGetIntListArg` | Splits on commas, trims items, removes empty items, and checks each integer in order. |
 | `TryGetDoubleArg` | Parses invariant floats with thousands separators. Rejects NaN, infinity, and values outside the inclusive range. |
 | `TryGetStringArg` | Reads a nonblank value and trims surrounding whitespace. |
 | `TryGetBoolArg` | Accepts true/false, 1/0, on/off, and yes/no with ordinal case-insensitive matching. |
 
-The handler type remains `Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>`.
+Dictionary handlers use `Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`.
 The router returns the handler's response and lets handler exceptions escape.
 Core has no version constant.
 
@@ -64,7 +131,7 @@ The source has no direct tests for the router, request checks, or generic helper
 To switch NFH to Core:
 
 1. Replace its router with `RuntimeQueryCommandRouter`. Keep its handler table and each handler's check order.
-2. Replace its request checks with `router.ExecuteAsync(request, RuntimeQueryProtocol.Version)` at the existing call position.
+2. Replace its request checks with `router.ExecuteAsync(request, RuntimeQueryProtocol.Version, cancellationToken)` at the existing call position.
 3. Replace its five generic helpers with `RuntimeQueryArgumentParser`. Keep product selection parsers from lines 7–159.
 4. Reuse the case tables with adapters for the source types and Core types. Compare outcomes, output values, codes, and exact messages.
 5. Run the full test list under NFH switch-over evidence before and after replacement.
@@ -85,7 +152,7 @@ This behavior was approved on 2026-10-06 and has no source tool baseline.
 | Public API | Contract |
 | --- | --- |
 | `RuntimeQueryCommandRisk` | Defines `ReadOnly`, `ChangesState`, and `WritesData`. |
-| `RuntimeQueryCommand(Name, Risk, Handler)` | A sealed record with the command name, risk, and existing handler type. |
+| `RuntimeQueryCommand(Name, Risk, Handler)` | A sealed record with the command name, risk, and invocation-aware handler. |
 | `RuntimeQueryCommandRouter(commands, requireConfirmation)` | Builds an ordinal handler table from a command list. `RegisteredCommands` preserves registration order. |
 
 - `ReadOnly` commands only read state.
@@ -142,7 +209,7 @@ It has no source tool baseline or extracted source paths.
 | --- | --- |
 | `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. `BeforeFirstFrameAndRuntime` permits early startup and runtime requests. |
 | `RuntimeQueryInvocation` | Identifies `Startup` or `Runtime` invocation timing. |
-| `RuntimeQueryCommand.InvocationHandler` | Optional init property with type `Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>?`. Replaces `Handler` when set. |
+| `RuntimeQueryCommand.Handler` | The sole handler receives invocation, arguments, and cancellation. |
 | `RuntimeQueryCommand.StartupPhase` | Optional metadata. The default is `None`, so existing registrations keep their behavior. |
 | `RuntimeQueryCommand.StartupValueKey` | Optional argument key for one startup value. The default is null, which defines a flag with null handler arguments. |
 | `RuntimeQueryCommand.StartupValidator` | Optional validator with type `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`. Returns null for valid arguments or a failure. |
@@ -151,18 +218,18 @@ It has no source tool baseline or extracted source paths.
 | `RuntimeQueryStartupParseResult(Calls, RemainingArguments, Issues)` | All calls, remaining tool arguments, and issues from one parse. |
 | `RuntimeQueryStartupCallResult(Call, Response)` | The executed call and its unchanged response. |
 | `RuntimeQueryCommandRouter.ParseStartupArguments(arguments)` | Parses raw arguments against the router's registered commands and confirmation setting. Runs no handlers. |
-| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase)` | Runs one phase through the router in command-line order. Includes the first failed response, then stops. |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(calls, phase, cancellationToken)` | Runs one phase through the router in command-line order. Includes the first failed response, then stops. |
 
 For example, register `theme` with phase `AfterStartup` and value key `value`:
 
 ```csharp
-var command = new RuntimeQueryCommand(
+var command = RuntimeQueryCommand.FromArgs(
     "theme",
     RuntimeQueryCommandRisk.ChangesState,
     ApplyThemeAsync,
-    StartupPhase: RuntimeQueryStartupPhase.AfterStartup,
-    StartupValueKey: "value",
-    StartupValidator: ValidateTheme);
+    startupPhase: RuntimeQueryStartupPhase.AfterStartup,
+    startupValueKey: "value",
+    startupValidator: ValidateTheme);
 var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
 var startup = router.ParseStartupArguments(args);
 ```
@@ -246,13 +313,10 @@ Both early phase values select the same before-first-frame pass.
 Mixed early commands keep command-line order.
 Run this pass before showing the window or starting any layout.
 
-Set `InvocationHandler` when the handler needs timing information.
-It receives `RuntimeQueryInvocation.Startup` from the startup runner and `RuntimeQueryInvocation.Runtime` from either runtime entry point.
-The constructor still requires `Handler`.
-When set, `InvocationHandler` replaces `Handler` after the existing routing and confirmation checks.
-Without it, Core calls `Handler` as before.
-`ReceivesConfirmation` also controls runtime arguments delivered to `InvocationHandler`.
-Startup validators still run during parsing without invoking either handler.
+`Handler` receives `RuntimeQueryInvocation.Startup` from startup execution and `RuntimeQueryInvocation.Runtime` from runtime routing.
+It also receives arguments and the cancellation token.
+`ReceivesConfirmation` controls its runtime arguments.
+Startup validators still run during parsing without invoking the handler.
 
 The startup parser recognizes the new phase through the existing option, value-key, validator, and confirmation rules.
 Generic help includes these commands in registration order.
@@ -275,8 +339,9 @@ RuntimeQueryResponseEnvelope? ValidateWindowSize(IReadOnlyDictionary<string, str
 }
 
 Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
-    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values)
+    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values, CancellationToken cancellationToken)
 {
+    cancellationToken.ThrowIfCancellationRequested();
     if (ValidateWindowSize(values) is { } failure)
     {
         return Task.FromResult(failure);
@@ -295,13 +360,10 @@ Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
 
 var windowSize = new RuntimeQueryCommand(
     "window-size", RuntimeQueryCommandRisk.ChangesState,
-    values => ApplyWindowSizeAsync(RuntimeQueryInvocation.Runtime, values),
+    ApplyWindowSizeAsync,
     StartupPhase: RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime,
     StartupValueKey: "size",
-    StartupValidator: ValidateWindowSize)
-{
-    InvocationHandler = ApplyWindowSizeAsync
-};
+    StartupValidator: ValidateWindowSize);
 var router = new RuntimeQueryCommandRouter([windowSize], requireConfirmation: false);
 var startup = router.ParseStartupArguments(args);
 if (startup.Issues.Count > 0)
@@ -309,14 +371,14 @@ if (startup.Issues.Count > 0)
     return;
 }
 
-var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, cancellationToken);
 if (before.Any(result => !result.Response.Ok))
 {
     return;
 }
 
 mainWindow.Show();
-await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup);
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup, cancellationToken);
 ```
 
 Both forms use the `size` argument key:
@@ -338,10 +400,10 @@ The caller owns the window and dispatches runtime requests on the UI thread.
 | `RuntimeQueryRequest(Version, Command, Args)` | Request fields in that order; arguments may be null. |
 | `RuntimeQueryError(Code, Message)` | Caller-owned error code and message. |
 | `RuntimeQueryResponseEnvelope(Ok, Data, Error)` | Response fields in that order; `Success(data)` and `Failure(code, message)` retain explicit null properties. |
-| `RuntimeQueryProtocol.CompactJsonOptions` | Camel-case property names, explicit nulls, default JSON escaping, case-sensitive deserialization, no indentation. Dictionary keys retain their casing. |
-| `RuntimeQueryProtocol.PrettyJsonOptions` | The same settings with two-space indentation and the serializer's default platform line endings. Used for caller output, not pipe messages. |
+| `RuntimeQueryProtocol.CompactJsonOptions` | Read-only defaults. Camel-case property names, explicit nulls, default JSON escaping, case-sensitive deserialization, no indentation. Dictionary keys retain their casing. |
+| `RuntimeQueryProtocol.PrettyJsonOptions` | Read-only defaults. The same settings with two-space indentation and the serializer's default platform line endings. Used for caller output, not pipe messages. |
 | `RuntimeQueryIpcServer(...)` | An instance configured with pipe name, protocol version, positive read and shutdown timeouts in milliseconds, error callback, diagnostic callback, and request handler. |
-| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal stops new connections and cancels a connection that has no request line. A request that was already read can finish and write its response within the shutdown bound. After the bound, disposal cancels the handler wait and closes the pipe. |
+| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal stops new connections and cancels a connection that has no request line. A request that was already read can finish and write its response within the shutdown bound. After the bound, disposal signals cooperative handler cancellation and closes the pipe. |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | Synchronously sends one request with a positive total connection/write/read budget. Connection elapsed time is deducted before the write/read timer, retaining the source's integer millisecond rounding and minimum remaining budget of one millisecond. |
 
 The server handler is `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`. It receives the deserialized request, configured protocol version and shutdown token. Empty lines and malformed JSON are rejected by the transport; a JSON null literal and version mismatches reach the handler, exactly as in the frozen transport. Core now provides null/version checks and command routing. The tool keeps its handler table, product parsers, command line, and UI dispatch. Transport tests also pin the original null and version error envelopes.
@@ -602,7 +664,8 @@ The new public types are `RuntimeQueryUiThread` and `RuntimeQueryHost`.
 
 `Wrap` gets the dispatcher through `UiThread.TryGetRunningDispatcher`.
 It uses the task-returning `Dispatcher.InvokeAsync` overload at the source's default priority.
-It passes the request, version, and cancellation token unchanged, including a null request or an already canceled token.
+It passes the request, version, and token unchanged, including null requests.
+It checks cancellation before dispatch and before queued work starts.
 It returns the inner response and lets inner exceptions escape. The server maps those exceptions.
 The tool registers its running dispatcher through `UiThread.RegisterRunningDispatcher`.
 
@@ -618,7 +681,7 @@ The tool decides when to start it and calls `StopAsync` on exit.
 
 `StopAsync` stops new connections immediately and cancels connections that have no request line.
 An already-read request can finish its handler and flush its response within the server's shutdown bound.
-After that bound, the server cancels the handler wait, closes the pipe, and reports `ShutdownTimedOut`.
+After that bound, the server signals cooperative handler cancellation, closes the pipe, and reports `ShutdownTimedOut`.
 
 ### Tool startup and exit
 
@@ -790,7 +853,7 @@ Other capture exceptions escape the handler.
 
 Set `CaptureScreenshot` to use the tool's own asynchronous capture.
 NVT FW Combiner can use its production capture this way.
-The delegate receives the normalized absolute path and `CancellationToken.None` because command handlers currently have no token.
+The delegate receives the normalized absolute path and the invocation cancellation token.
 The delegate owns frame waits, layout, capture, and writing without replacement.
 Core does not update layout or obtain the main window before this delegate runs.
 Return `RuntimeQueryScreenshotResult.Success` with the saved image dimensions and file size.
@@ -849,7 +912,7 @@ var generic = RuntimeQueryGenericCommands.Create(options);
 registered = [.. generic.Where(command => command.Name != "help"), .. productCommands];
 var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
 var handler = RuntimeQueryUiThread.Wrap(
-    (request, version, _) => router.ExecuteAsync(request, version), MapTransportError);
+    (request, version, token) => router.ExecuteAsync(request, version, token), MapTransportError);
 ```
 
 This example selects five generic commands and leaves help with the tool.

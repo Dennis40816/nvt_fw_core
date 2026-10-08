@@ -288,14 +288,14 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         try
         {
             var request = JsonSerializer.Deserialize<RuntimeQueryRequest>(requestJson, RuntimeQueryProtocol.CompactJsonOptions);
-            response = await _handler(request, _protocolVersion, cancellationToken)
-                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            response = await _handler(request, _protocolVersion, cancellationToken).ConfigureAwait(false);
         }
         catch (JsonException ex)
         {
             response = Failure(RuntimeQueryFailure.InvalidJson, ex.Message);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested && ex.CancellationToken == cancellationToken)
         {
             throw;
         }
