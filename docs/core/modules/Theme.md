@@ -498,6 +498,7 @@ Load `Theme/ExpanderStyles.axaml` after Fluent and merge `ThemeTokens.axaml` int
 Plain `Expander` headers measure 32 DIP. Add `section` for a 44 DIP header with a one-DIP top divider.
 Headers have no border and use the shared Pill or Square corners.
 The 12 × 6 chevron, 20-DIP chevron host, and 10-DIP spacing match `CollapsiblePanel`.
+The styles support `ExpandDirection` Down and Up. Left and Right are not styled.
 `CollapsiblePanel` retains its existing template and behavior.
 
 Rest and expanded headers remain transparent. Pointer over uses the selection surface. Pressed headers use the secondary pressed surface.
@@ -576,6 +577,7 @@ Load `Theme/DividerStyles.axaml` after Fluent.
 `Separator` and `Border.divider` render the same one-DIP line without a default margin.
 The default line is horizontal. Add `vertical` for a vertical line and `strong` for the stronger border color.
 Separators remain noninteractive and retain their native accessibility behavior.
+Separators inside menus belong to the list and menu styles, which set their own margin and color.
 
 | Token | Light | Dark |
 | --- | --- | --- |

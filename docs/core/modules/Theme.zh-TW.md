@@ -498,6 +498,7 @@ dotnet test Nvt.Core.sln --no-build
 一般 `Expander` 標頭高 32 DIP。加上 `section` 後，標頭高 44 DIP，頂部增加一 DIP 分隔線。
 標頭預設無邊框，圓角跟隨共用 Pill 或 Square 形狀。
 12 × 6 箭頭、20 DIP 箭頭容器與 10 DIP 間距均與 `CollapsiblePanel` 一致。
+樣式支援 `ExpandDirection` 的 Down 與 Up，不處理 Left 與 Right。
 `CollapsiblePanel` 保留原有模板與行為。
 
 靜止與展開標頭保持透明。滑鼠移入使用選取表面；按下使用次要按壓表面。
@@ -576,6 +577,7 @@ Dark 指示器因相同原因重用既有較強強調色。既有共用顏色保
 `Separator` 與 `Border.divider` 顯示相同的一 DIP 線，預設不留 margin。
 預設為水平線。加上 `vertical` 改為垂直線；加上 `strong` 改用較強邊框色。
 分隔線維持非互動控制項，並保留原生無障礙行為。
+選單內的分隔線由清單與選單樣式負責，使用該樣式自己的 margin 與顏色。
 
 | Token | Light | Dark |
 | --- | --- | --- |
