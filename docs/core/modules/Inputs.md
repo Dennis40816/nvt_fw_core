@@ -86,7 +86,7 @@ A headless throwing-coercion probe preserved effective bounds after rejected CLR
 A rejected binding-source update instead retained source `11` and target `0` without propagating the exception.
 Widening the other bound and calling `CoerceValue` still left those values different.
 Later valid source updates recovered. This evidence does not establish a uniform rejection contract.
-The probe remains isolated in `StyledRangeRejectionEvidenceTests`. It changes no production range behavior.
+The probe changed no production range behavior and is not part of the library.
 
 ## Internal state
 
