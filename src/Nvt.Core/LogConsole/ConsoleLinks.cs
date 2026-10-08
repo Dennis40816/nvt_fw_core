@@ -2,7 +2,6 @@
 
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
-using Nvt.Core.SourceFileNavigation;
 
 namespace Nvt.Core.LogConsole;
 
@@ -29,37 +28,6 @@ public sealed record LinkTarget(LinkKind Kind, string Path, int? Line = null, in
 /// <param name="Length">The span length.</param>
 /// <param name="Target">The complete target.</param>
 public sealed record ConsoleLinkSpan(int Start, int Length, LinkTarget Target);
-
-/// <summary>A bounded app resolution request. The resolver must honor both positive limits and cancellation.</summary>
-/// <param name="Target">The syntactic target to resolve.</param>
-/// <param name="MaxCandidates">The maximum returned candidates.</param>
-/// <param name="MaxProbes">The maximum app lookup operations.</param>
-public sealed record ConsolePathResolutionRequest(LinkTarget Target, int MaxCandidates = 16, int MaxProbes = 128);
-
-/// <summary>An app-owned asynchronous, bounded path policy. Core supplies no repository search implementation.</summary>
-public interface IConsolePathResolver
-{
-    /// <summary>Gets the policy revision used to invalidate cached results.</summary>
-    long PolicyVersion { get; }
-    /// <summary>Returns candidates without choosing an ambiguous result. Limits and cancellation must be honored.</summary>
-    ValueTask<ImmutableArray<LinkTarget>> ResolveAsync(ConsolePathResolutionRequest request, CancellationToken cancellationToken);
-}
-
-/// <summary>Capabilities for one full target.</summary>
-/// <param name="CanOpen">Whether the target can be opened.</param>
-/// <param name="CanOpenContainingFolder">Whether a file's parent can be opened.</param>
-/// <param name="SupportsLine">Whether the opener can navigate to a line.</param>
-/// <param name="SupportsColumn">Whether the opener can navigate to a column.</param>
-public sealed record ConsoleLinkCapabilities(bool CanOpen, bool CanOpenContainingFolder, bool SupportsLine, bool SupportsColumn);
-
-/// <summary>The app-owned open adapter. No disk or process implementation is provided here.</summary>
-public interface IConsoleLinkOpener
-{
-    /// <summary>Reports capabilities for the full target, including line and column.</summary>
-    ConsoleLinkCapabilities GetCapabilities(LinkTarget target);
-    /// <summary>Opens the full target and returns Core's existing navigation result.</summary>
-    ValueTask<SourceFileOpenResult> OpenAsync(LinkTarget target, CancellationToken cancellationToken);
-}
 
 /// <summary>A pure Unicode scanner. It performs no file-system, resolver, or process operations.</summary>
 public static partial class ConsoleLinkScanner
@@ -88,7 +56,7 @@ public static partial class ConsoleLinkScanner
             if (int.TryParse(suffix.Groups["column"].Value, out var parsedColumn)) column = parsedColumn;
             value = value[..suffix.Index];
         }
-        var kind = line is null && value.Length != 0 && value[^1] is '/' or '\\' ? LinkKind.Folder : LinkKind.File;
+        var kind = value.Length != 0 && value[^1] is '/' or '\\' ? LinkKind.Folder : LinkKind.File;
         return new LinkTarget(kind, value, line, column);
     }
 
@@ -117,13 +85,24 @@ public sealed class ConsoleLinkIndex
     {
         ArgumentNullException.ThrowIfNull(spans);
         ArgumentOutOfRangeException.ThrowIfNegative(textLength);
-        Spans = spans.OrderBy(s => s.Start).ToImmutableArray();
-        var end = 0;
-        foreach (var span in Spans)
+        var supplied = spans is ImmutableArray<ConsoleLinkSpan> array ? array : spans.ToImmutableArray();
+        Validate(supplied, textLength);
+        Spans = supplied.OrderBy(s => s.Start).ToImmutableArray();
+    }
+
+    // Admission validates the original array without allocating an interval index.
+    internal static void Validate(ImmutableArray<ConsoleLinkSpan> spans, int textLength)
+    {
+        if (spans.IsDefault) throw new ArgumentException("Link spans must be initialized.", nameof(spans));
+        for (var i = 0; i < spans.Length; i++)
         {
-            if (span.Start < end || span.Length <= 0 || span.Start > textLength - span.Length)
-                throw new ArgumentException("Link spans must be in range and nonoverlapping.", nameof(spans));
-            end = span.Start + span.Length;
+            var span = spans[i];
+            if (span is null || span.Target is null || span.Start < 0 || span.Length <= 0
+                || span.Start > textLength - span.Length)
+                throw new ArgumentException("Link spans must have targets and valid ranges.", nameof(spans));
+            for (var j = 0; j < i; j++)
+                if (span.Start < spans[j].Start + spans[j].Length && spans[j].Start < span.Start + span.Length)
+                    throw new ArgumentException("Link spans must be nonoverlapping.", nameof(spans));
         }
     }
 

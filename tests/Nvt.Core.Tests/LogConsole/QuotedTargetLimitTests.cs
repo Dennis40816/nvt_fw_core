@@ -89,7 +89,7 @@ public sealed class QuotedTargetLimitTests
         {
             var padding = (1024 - split % 1024) % 1024;
             var padded = new string(' ', padding) + text;
-            using var content = new ScannerTestContent(padded, 0);
+            using var content = new TestContent(padded, 0);
             var actual = segmented ? ConsoleLinkScanner.Scan(content) : ConsoleLinkScanner.Scan(padded);
             Assert.Equal(expected.Select(span => span with { Start = padding + span.Start }), actual);
             if (segmented) Assert.InRange(content.MaximumRead, 1, 1024);

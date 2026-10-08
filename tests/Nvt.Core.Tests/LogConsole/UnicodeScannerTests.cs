@@ -30,7 +30,7 @@ public sealed class UnicodeScannerTests
     {
         var text = new string(' ', padding) + path + ":12:3";
         var expected = new ConsoleLinkSpan(padding, path.Length + 5, new LinkTarget(LinkKind.File, path, 12, 3));
-        using var content = new Content(text, 0);
+        using var content = new TestContent(text, 0);
         Assert.Equal(expected, Assert.Single(segmented ? ConsoleLinkScanner.Scan(content) : ConsoleLinkScanner.Scan(text)));
         if (segmented) Assert.InRange(content.MaximumRead, 1, 1024);
     }
@@ -55,7 +55,7 @@ public sealed class UnicodeScannerTests
         const string url = "https://example.test/export_(v2)";
         var text = before + url + after;
         var expected = new ConsoleLinkSpan(before.Length, url.Length, new LinkTarget(LinkKind.Url, url));
-        using var content = new Content(text, 0);
+        using var content = new TestContent(text, 0);
         Assert.Equal(expected, Assert.Single(segmented ? ConsoleLinkScanner.Scan(content) : ConsoleLinkScanner.Scan(text)));
     }
 }

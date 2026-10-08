@@ -103,9 +103,10 @@ The published version can lag behind accepted writes and Clear.
 Its admission fence is derived under `_gate` from the next sequence plus the generation.
 Rejected writes and empty batches do not advance that fence.
 Cancellation or store disposal cancels a pending barrier without blocking a thread.
+Calling CaptureLatestAsync after disposal throws ObjectDisposedException.
 Writer failures fault outstanding barriers with the original exception and requeue unconsumed ownership.
 The diagnostic trace also reports writer failures.
-If a callback disposes the store before a writer failure, cleanup is rearmed even with empty queues.
+A callback that disposes the store leaves cleanup for the writer before it stops.
 A throwing content Dispose does not prevent other cleanup; each content disposal is invoked once.
 On the writer thread, including Changed and content Dispose callbacks, either capture API returns the current publication.
 The writer runs independently of notification readiness.
@@ -165,7 +166,10 @@ The existing `schedule` delegate starts the writer when work arrives.
 A thread-pool dispatch invokes it off the producer thread, so inline schedulers cannot block producers.
 A throwing scheduler must not enqueue its callback.
 A scheduler failure falls back to writing on that dispatch thread.
-If the notification clock throws, the writer rearms outstanding Changed delivery.
+The writer reads the notification clock after publication, comparison, and cleanup, only for ready delivery with subscribers.
+A clock exception leaves only Changed delivery pending until the next explicit writer wake, such as Add, Clear, or SetReady(true).
+Wakes for work still awaiting publication, or arriving during or after the failed attempt, are coalesced into a notification request for the next writer turn.
+The clock fault alone causes no retry or data requeue; publication and pending-capacity release still complete.
 App subscriber, comparison, and disposal exceptions are isolated so later work and cleanup continue.
 Failed comparisons keep the accepted write in a separate group and do not count as ring eviction.
 
@@ -233,11 +237,25 @@ This includes the fullwidth colon.
 Filename-only relative paths with location suffixes are accepted.
 This includes quoted filenames with spaces.
 Quoted names without a separator or location suffix are not links.
-A trailing separator explicitly denotes a folder.
+Paired quoted prose containing a separator is treated as one path, including any nested other-type quotes.
+A trailing separator explicitly denotes a folder, including targets with location suffixes.
 An extensionless path can still be a file.
 Other ambiguous folder targets require structured spans or app resolution.
 There is no extension allowlist.
 There are no existence checks or repository scans.
+
+Quoted targets require an opening quote at the start of text, after whitespace, or after a non-name or CJK scalar, followed by content that can start a path.
+Quoted content can also start with `~`, `%`, or `$`. Leading dots must lead to a name character or separator; whitespace, a lone prose dot, location-only punctuation, and end of text do not start quoted content.
+Inside a candidate, a matching quote after a CJK scalar or path separator and before CJK prose closes the target, including a path whose final component is CJK or whose trailing separator denotes a folder.
+Otherwise, a later valid opening quote of the same type abandons the earlier candidate before any closing check.
+Otherwise, a matching quote closes before whitespace, CJK prose, punctuation (including location suffix openers), or end of text.
+Abandoned or unpaired candidates resume scanning immediately after their original opening quote. Both entry points use this single quote grammar. Unpaired quotes and prose apostrophes do not hide later targets.
+Separator-free location targets require a non-leading dot followed by a letter.
+Candidates over 4,096 UTF-16 characters (including location suffixes, excluding surrounding quotes) are skipped before materialization.
+The whole skipped quoted span, including its quotes, is excluded from further scanning. Later independent targets remain eligible.
+The quoted candidate's cap is evaluated before overlap; an embedded URL already accepted by the URL pass remains a link.
+App-supplied `LinkSpans` are validated during Add preparation, including whole-batch validation before admission.
+Default arrays, null spans or targets, invalid ranges, and overlaps throw ArgumentException without transferring ownership.
 
 App-supplied spans replace scanning completely.
 An explicitly empty span array also wins.
@@ -256,30 +274,8 @@ Publication checks the current snapshot and policy revision again.
 Entry count, span count, and target characters each bound cache retention.
 Oversized results are returned without caching.
 
-`IConsolePathResolver` is asynchronous.
-It returns candidates without selecting an ambiguous target.
-The app honors cancellation, `MaxCandidates`, and `MaxProbes`.
-Its policy version invalidates cached links.
-Core provides no resolver implementation.
-
-`IConsoleLinkOpener` receives the complete `LinkTarget`.
-It reports open, parent-folder, line, and column capabilities.
-Its return value reuses `SourceFileNavigation.SourceFileOpenResult`.
-Core provides no opener implementation in this module.
 Apps supply source names, adapters, path policy, opening, clipboard, and save destination.
 Apps also supply storage for large content.
-
-
-Quoted targets require an opening quote at the start of text, after whitespace, or after a non-name scalar, followed by content that can start a path.
-Leading dots must lead to a name character or separator; whitespace, a lone prose dot, location-only punctuation, and end of text do not start quoted content.
-A later valid opening quote of the same type abandons the earlier candidate before any closing check.
-Otherwise, a matching quote closes before whitespace, punctuation (including location suffix openers), or end of text.
-Both entry points use this single quote grammar. Unpaired quotes and prose apostrophes do not hide later targets.
-Separator-free location targets require a non-leading dot followed by a letter.
-Candidates over 4,096 UTF-16 characters (including location suffixes, excluding surrounding quotes) are skipped before materialization.
-The whole skipped quoted span, including its quotes, is excluded from further scanning. Later independent targets remain eligible.
-The quoted candidate's cap is evaluated before overlap; an embedded URL already accepted by the URL pass remains a link.
-App-supplied `LinkSpans` are validated during Add preparation, including whole-batch validation before admission.
 
 ## Export
 
@@ -328,10 +324,6 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 | `LinkKind` | `Url`, `File`, `Folder`. |
 | `LinkTarget` | `Kind`, `Path`, optional `Line`, optional `Column`. |
 | `ConsoleLinkSpan` | `Start`, `Length`, `Target`. |
-| `ConsolePathResolutionRequest` | `Target`, `MaxCandidates = 16`, `MaxProbes = 128`. |
-| `IConsolePathResolver` | `PolicyVersion`, `ResolveAsync(request, cancellationToken)`. |
-| `ConsoleLinkCapabilities` | `CanOpen`, `CanOpenContainingFolder`, `SupportsLine`, `SupportsColumn`. |
-| `IConsoleLinkOpener` | `GetCapabilities(target)`, `OpenAsync(target, cancellationToken)`. |
 | `ConsoleLinkScanner` | `Scan(text)`. |
 | `ConsoleLinkIndex` | Constructor `(spans, textLength)`, `Spans`, `HitTest(offset)`. |
 | `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot, resolverPolicyVersion = 0)`, `GetLinks(snapshot, entry, resolverPolicyVersion = 0)`. |
@@ -353,7 +345,6 @@ Hosts own view-state replacement and command access on one thread.
 
 The time API is BCL `TimeProvider`.
 Tests reuse Core's `Time.DelegateTimeProvider`.
-Open results reuse `SourceFileNavigation.SourceFileOpenResult`.
 Lifecycle in the implementation baseline has no reusable generation helper.
 It has only `CoalescedRefresh` and `UndoService`.
 The former cannot atomically combine ready state with the store's pending work.
@@ -366,24 +357,17 @@ It is protected by the store lock.
 ## Verification and adoption
 
 Regressions cover bounded admission, all-or-nothing batches, reentrant callbacks, generation resets,
-snapshot leases, nonblocking dispatcher reads, cancellable async barriers, writer failure recovery,
+snapshot leases, nonblocking dispatcher reads, cancellable async barriers, isolated callback faults, notification clock recovery,
 Unicode and quote grammar across read boundaries, target length limits, structured span validation,
 and async-only stream export. Search uses one chunk buffer per projection.
 The deterministic scanner corpus checks every split against independent expected spans.
-The generated quote oracle constructs expected links from text parts and checks both entry points at every storage and scanner read split.
+The generated quote oracle constructs expected links from text parts, including adjacent CJK prose and later quotes, and checks both entry points at every storage and scanner read split.
 The performance test is opt-in with `NVT_CORE_PERF=1` and has no timing assertion.
 
 ```powershell
 dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
-
-Verified on 2026-10-08 in Debug: the solution build completed with zero warnings and zero errors.
-All test projects together passed 4,550 cases, skipped 16, and failed zero.
-`Nvt.Core.Tests`: 3,729 passed, 16 skipped; `Nvt.Core.Avalonia.Tests`: 796 passed; `Nvt.Core.Fonts.Tests`: 25 passed; all three had zero failures.
-LogConsole passed 280 cases and skipped its opt-in performance case, with zero failures.
-The quote oracle covered 6,506 generated texts and 678,848 comparisons; the scanner corpus covered 136 lines, 46,627 comparisons, and 10,971 three-way splits.
-The separate opt-in performance run passed one case with no skips or failures; 10,000 events produced 1,000 rows.
 
 UI virtualization, pointer coordinates, keyboard commands, accessibility, and visual evidence belong to K2.
 Host adoption remains separate.

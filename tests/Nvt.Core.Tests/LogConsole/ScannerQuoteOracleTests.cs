@@ -64,6 +64,10 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
             Target("../My Docs/a b.txt", false, ("../My", false), ("Docs/a", false), ("b.txt", true)),
             Target("My Docs/a b.txt", false, ("Docs/a", false), ("b.txt", true)),
             Target("Export.cs", true, ("Export.cs", true)),
+            Target(@"C:\My Docs\", false, (@"C:\My", false), (@"Docs\", false)),
+            Target("./My Docs/", false, ("./My", false), ("Docs/", false)),
+            Target(@"C:\我的 文件\", false, (@"C:\我的", false), (@"文件\", false)),
+            Target("./我的 文件/", false, ("./我的", false), ("文件/", false)),
         };
         var locations = new[] { new Location("", null, null), new Location(":12:3", 12, 3), new Location("(12,3)", 12, 3) };
         foreach (var quote in new[] { '"', '\'' })
@@ -75,6 +79,17 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
                     foreach (var location in locations)
                         foreach (var suffix in new[] { "", " done", ", it's missing", "。完成" })
                             yield return Compose(prefix, quote, target, location, suffix);
+        foreach (var prefix in prefixes)
+            foreach (var quote in new[] { '"', '\'' })
+                foreach (var target in targets)
+                    foreach (var location in locations)
+                        foreach (var before in new[] { "", "開啟" })
+                            foreach (var after in new[] { "", "失敗" })
+                                foreach (var suffix in new[] { "", " and \"more", " and 'more", " and \"more\"", " and 'more'" })
+                                {
+                                    if (before.Length == 0 && after.Length == 0 && suffix.Length == 0) continue;
+                                    yield return Compose(new LineCase(prefix.Text + before, prefix.Expected), quote, target, location, after + suffix);
+                                }
         foreach (var quote in new[] { '"', '\'' })
             foreach (var extra in new[] { 0, 1 })
                 foreach (var embeddedUrl in new[] { false, true })
@@ -116,7 +131,7 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
         var expected = prefix.Expected;
         if (quoted && (!target.RequiresLocation || location.Line is not null))
             expected = expected.Add(new ConsoleLinkSpan(prefix.Text.Length, syntax.Length,
-                new LinkTarget(LinkKind.File, target.Path, location.Line, location.Column)));
+                new LinkTarget(PathKind(target.Path), target.Path, location.Line, location.Column)));
         else if (!quoted)
             foreach (var part in target.UnquotedParts)
             {
@@ -124,13 +139,15 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
                 var hasLocation = part.Start + part.Path.Length == target.Path.Length;
                 expected = expected.Add(new ConsoleLinkSpan(prefix.Text.Length + part.Start,
                     part.Path.Length + (hasLocation ? location.Text.Length : 0),
-                    new LinkTarget(LinkKind.File, part.Path, hasLocation ? location.Line : null, hasLocation ? location.Column : null)));
+                    new LinkTarget(PathKind(part.Path), part.Path, hasLocation ? location.Line : null, hasLocation ? location.Column : null)));
             }
         return new LineCase(prefix.Text + syntax + suffix, expected);
     }
 
     private static LineCase Prefix(string text, string? path = null) => new(text,
         path is null ? [] : [new ConsoleLinkSpan(text.IndexOf(path, StringComparison.Ordinal), path.Length, new LinkTarget(LinkKind.File, path))]);
+
+    private static LinkKind PathKind(string path) => path[^1] is '/' or '\\' ? LinkKind.Folder : LinkKind.File;
 
     private static TargetForm Target(string path, bool requiresLocation, params (string Path, bool RequiresLocation)[] parts)
         => new(path, requiresLocation, parts.Select(part =>
@@ -141,26 +158,4 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
     private sealed record TargetPart(int Start, string Path, bool RequiresLocation);
     private sealed record Location(string Text, int? Line, int? Column);
 
-    // Physical storage has two immutable chunks; Read still fills each complete requested range.
-    private sealed class SplitContent(string text, int split) : ILogTextContent
-    {
-        private readonly string _left = text[..split];
-        private readonly string _right = text[split..];
-        internal int MaximumRead { get; private set; }
-        public int Length => _left.Length + _right.Length;
-        public int ResidentCharacterCount => 0;
-        public long Version => 0;
-
-        public void Read(int offset, Span<char> destination)
-        {
-            Assert.InRange(destination.Length, 1, 1024);
-            MaximumRead = Math.Max(MaximumRead, destination.Length);
-            var leftCount = Math.Min(destination.Length, Math.Max(0, _left.Length - offset));
-            if (leftCount != 0) _left.AsSpan(offset, leftCount).CopyTo(destination);
-            if (leftCount != destination.Length)
-                _right.AsSpan(offset + leftCount - _left.Length, destination.Length - leftCount).CopyTo(destination[leftCount..]);
-        }
-
-        public void Dispose() { }
-    }
 }

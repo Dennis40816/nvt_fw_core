@@ -16,8 +16,8 @@ public sealed class LogStore : IDisposable
     private readonly Action<Action> _schedule;
     private readonly Func<ILogTextContent, ulong> _fingerprint;
     // _gate protects admission, ownership collections, reader fences, generation, subscriptions,
-    // readiness and the published reference. Ownership moves from queues to _inFlight until
-    // successful publication or completed disposal, including deferred unpublished cleanup.
+    // readiness, notification requests and the published reference. Ownership moves from queues
+    // to _inFlight until successful publication or completed disposal, including deferred unpublished cleanup.
     private LinkedList<Work> _pending = new();
     private Queue<Work> _discarded = new();
     private readonly HashSet<ContentOwner> _inFlight = [];
@@ -28,6 +28,8 @@ public sealed class LogStore : IDisposable
     private long _nextSequence;
     private bool _disposed;
     private bool _ready;
+    // Coalesced explicit wakes are acknowledged before an attempt, never after its failure.
+    private bool _notificationRequested;
     private EventHandler<LogChangeSet>? _changed;
     private PublishedState _published = new(0, 0, 0, 0, [], []);
     // Interlocked owns scheduling. It remains set through all writer callbacks and cleanup.
@@ -215,12 +217,12 @@ public sealed class LogStore : IDisposable
     /// The caller must dispose the returned snapshot.</remarks>
     public async ValueTask<LogSnapshot> CaptureLatestAsync(CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         PublishedState state;
         SnapshotWaiter? waiter = null;
         lock (_gate)
         {
-            if (_disposed) throw new OperationCanceledException("The log store was disposed.", new CancellationToken(true));
+            ThrowIfDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
             if (_published.Admission >= AdmissionFence || Volatile.Read(ref _writerThreadId) == Environment.CurrentManagedThreadId)
             {
                 state = _published;
@@ -312,7 +314,11 @@ public sealed class LogStore : IDisposable
 
     private void WakeWriter()
     {
-        if (Interlocked.CompareExchange(ref _writerScheduled, 1, 0) != 0) return;
+        lock (_gate)
+        {
+            _notificationRequested = true;
+            if (Interlocked.CompareExchange(ref _writerScheduled, 1, 0) != 0) return;
+        }
         // Even an inline scheduler must never put writer callbacks on an Add or Dispose caller.
         ThreadPool.QueueUserWorkItem(_ =>
         {
@@ -333,7 +339,9 @@ public sealed class LogStore : IDisposable
         Queue<Work> discarded = new();
         Queue<(ContentOwner Owner, Action Dispose)> cleanup = new();
         var released = new List<ILogTextContent>();
+        var notificationFailed = false;
         Volatile.Write(ref _writerThreadId, Environment.CurrentManagedThreadId);
+        lock (_gate) _notificationRequested = false;
         try
         {
             while (true)
@@ -350,8 +358,6 @@ public sealed class LogStore : IDisposable
                     admission = AdmissionFence;
                     disposed = _disposed;
                 }
-                // Read app time after taking ownership, before changing the writer's state.
-                var capturedAt = disposed ? default : _clock.GetUtcNow().ToUniversalTime();
                 if (disposed)
                 {
                     foreach (var item in work.Concat(discarded)) if (item.Write is { } write) released.Add(write.Owner.TakeInitialLease());
@@ -367,18 +373,30 @@ public sealed class LogStore : IDisposable
                 // Publication always precedes app cleanup and notification.
                 foreach (var content in released) RunCallback(content.Dispose);
                 released.Clear();
-                while (cleanup.TryDequeue(out var callback))
+                while (true)
                 {
-                    RunCallback(callback.Dispose);
-                    lock (_gate) _inFlight.Remove(callback.Owner);
+                    while (cleanup.TryDequeue(out var callback))
+                    {
+                        RunCallback(callback.Dispose);
+                        lock (_gate) _inFlight.Remove(callback.Owner);
+                    }
+                    lock (_gate)
+                    {
+                        if (_cleanup.Count == 0) break;
+                        cleanup = _cleanup; _cleanup = new();
+                    }
                 }
-                if (!disposed) Notify(capturedAt);
+                if (!disposed && !notificationFailed) notificationFailed = !Notify();
                 lock (_gate)
                 {
                     if (_pending.Count != 0 || _discarded.Count != 0 || _cleanup.Count != 0 || _disposed && !disposed
-                        || _ready && !_disposed && _published.Version != _notifiedVersion) continue;
+                        || !notificationFailed && _ready && !_disposed
+                        && _generation.IsCurrent(_published.Generation) && _published.Version != _notifiedVersion) continue;
                     Volatile.Write(ref _writerThreadId, 0);
                     Interlocked.Exchange(ref _writerScheduled, 0);
+                    // Wakes during or after a failed attempt belong to the next turn. A failed
+                    // clock alone leaves no request, so it cannot cause an automatic retry loop.
+                    if (_notificationRequested && !_disposed) WakeWriter();
                     return;
                 }
             }
@@ -386,7 +404,8 @@ public sealed class LogStore : IDisposable
         catch (Exception exception)
         {
             foreach (var content in released) RunCallback(content.Dispose);
-            ReportError(exception);
+            FaultSnapshotWaiters(exception);
+            TraceError("LogStore writer failed", exception);
             lock (_gate)
             {
                 // Return unconsumed ownership ahead of newer admissions. In-flight owners already
@@ -455,7 +474,7 @@ public sealed class LogStore : IDisposable
             {
                 // A faulty comparison cannot drop an accepted write or count as ring eviction.
                 // Keep it in a separate group when equality cannot be established.
-                ReportError(exception);
+                TraceError("LogStore comparison callback threw", exception);
             }
             if (group is null)
             {
@@ -524,24 +543,37 @@ public sealed class LogStore : IDisposable
         old.Release();
     }
 
-    private void Notify(DateTimeOffset capturedAt)
+    private bool Notify()
     {
         PublishedState state;
         EventHandler<LogChangeSet>? changed;
         lock (_gate)
         {
-            if (_disposed || !_ready || !_generation.IsCurrent(_published.Generation) || _published.Version == _notifiedVersion) return;
+            // This attempt covers only published work. A wake for work still pending must
+            // survive if the clock fails before that work reaches a later publication.
+            if (_pending.Count == 0 && _discarded.Count == 0 && _cleanup.Count == 0)
+                _notificationRequested = false;
+            if (_disposed || !_ready || !_generation.IsCurrent(_published.Generation) || _published.Version == _notifiedVersion) return true;
+            changed = _changed;
+            if (changed is null) { _notifiedVersion = _published.Version; return true; }
             state = _published;
             state.Retain();
-            changed = _changed;
         }
         try
         {
+            DateTimeOffset capturedAt;
+            try { capturedAt = _clock.GetUtcNow().ToUniversalTime(); }
+            catch (Exception exception)
+            {
+                // Leave the notification cursor unchanged until another explicit writer wake.
+                TraceError("LogStore notification clock threw", exception);
+                return false;
+            }
             using var changes = state.Changes(_notifiedVersion, capturedAt);
             lock (_gate) _notifiedVersion = state.Version;
-            if (changed is not null)
-                foreach (EventHandler<LogChangeSet> callback in changed.GetInvocationList())
-                    RunCallback(() => { if (IsCurrent(changes.Generation)) callback(this, changes); });
+            foreach (EventHandler<LogChangeSet> callback in changed.GetInvocationList())
+                RunCallback(() => { if (IsCurrent(changes.Generation)) callback(this, changes); });
+            return true;
         }
         finally { state.Release(); }
     }
@@ -553,20 +585,24 @@ public sealed class LogStore : IDisposable
         _groups.Clear();
     }
 
-    private void RunCallback(Action callback)
+    private static void RunCallback(Action callback)
     {
         try { callback(); }
-        catch (Exception exception) { ReportError(exception); }
+        catch (Exception exception) { TraceError("LogStore app callback threw", exception); }
     }
 
-    private void ReportError(Exception exception)
+    private void FaultSnapshotWaiters(Exception exception)
     {
         lock (_gate)
         {
             foreach (var waiter in _snapshotWaiters) waiter.Completion.TrySetException(exception);
             _snapshotWaiters.Clear();
         }
-        try { Trace.TraceError("LogStore writer failed: {0}", exception); }
+    }
+
+    private static void TraceError(string message, Exception exception)
+    {
+        try { Trace.TraceError("{0}: {1}", message, exception); }
         catch { /* A diagnostic listener cannot prevent recovery or cleanup. */ }
     }
 
@@ -583,7 +619,7 @@ public sealed class LogStore : IDisposable
         var textVersion = write.TextContent.Version;
         ArgumentOutOfRangeException.ThrowIfNegative(length);
         ArgumentOutOfRangeException.ThrowIfNegative(resident);
-        if (write.LinkSpans is { } spans) _ = new ConsoleLinkIndex(spans, length);
+        if (write.LinkSpans is { } spans) ConsoleLinkIndex.Validate(spans, length);
         var timestamp = (write.Timestamp ?? _clock.GetUtcNow()).ToUniversalTime();
         var key = new GroupKey(write.SourceId, write.Level, _fingerprint(write.TextContent));
         return new PreparedWrite(write, timestamp, key, new ContentOwner(write.TextContent, length, resident, textVersion, QueueCleanup));

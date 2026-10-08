@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 using Nvt.Core.LogConsole;
 using Nvt.Core.Time;
 using Xunit;
-using static Nvt.Core.Tests.LogConsole.PublicationTestSupport;
+using static Nvt.Core.Tests.LogConsole.StoreRegressionSupport;
 
 namespace Nvt.Core.Tests.LogConsole;
 
@@ -29,12 +29,12 @@ public sealed class WriterFailureTests
         }), schedule: callbacks.Enqueue);
         owner = store;
         var disposals = new int[2];
-        var first = new ScannerTestContent("first", 5, () =>
+        var first = new TestContent("first", 5, () =>
         {
             disposals[0]++;
             if (throwOnDispose) throw new InvalidOperationException("content disposal failed");
         });
-        var second = new ScannerTestContent("second", 6, () => disposals[1]++);
+        var second = new TestContent("second", 6, () => disposals[1]++);
         store.Add(new LogWrite(LogLevel.Info, "app", first, DateTimeOffset.UnixEpoch));
         store.Add(new LogWrite(LogLevel.Info, "app", second, DateTimeOffset.UnixEpoch));
         Take(callbacks)();
@@ -42,10 +42,10 @@ public sealed class WriterFailureTests
         Assert.Equal(0, (int)StoreRegressionSupport.Field(store, "_writerScheduled")!);
 
         fail = true;
+        store.Changed += (_, _) => { };
         store.SetReady(true);
         Take(callbacks)();
-        Assert.Equal(1, (int)StoreRegressionSupport.Field(store, "_writerScheduled")!);
-        Take(callbacks)();
+        Assert.Equal(0, (int)StoreRegressionSupport.Field(store, "_writerScheduled")!);
 
         Assert.All(disposals, count => Assert.Equal(1, count));
         Assert.Equal((0, 0L), store.PendingUsage);
@@ -58,7 +58,7 @@ public sealed class WriterFailureTests
         Assert.Empty(callbacks);
     }
 
-    /// <summary>A clock failure after taking work faults its barrier and preserves bounded ownership.</summary>
+    /// <summary>Notification faults leave publication barriers and pending ownership independent of app time.</summary>
     /// <param name="clear">Whether a reset has discarded the accepted content.</param>
     [Theory]
     [InlineData(false)]
@@ -67,27 +67,35 @@ public sealed class WriterFailureTests
     {
         var callbacks = new ConcurrentQueue<Action>();
         var reads = 0;
-        var fault = new InvalidOperationException("clock unavailable");
+        LogStore? current = null;
         using var store = new LogStore(maxEntries: 1, maxPendingCharacters: 4,
-            clock: new DelegateTimeProvider(() => Interlocked.Increment(ref reads) == 1 ? throw fault : DateTimeOffset.UnixEpoch),
-            schedule: callbacks.Enqueue);
-        var content = new ScannerTestContent("seed", 4);
+            clock: new DelegateTimeProvider(() =>
+            {
+                if (current is not null && (int)StoreRegressionSupport.Field(current, "_writerThreadId")! == Environment.CurrentManagedThreadId)
+                {
+                    Interlocked.Increment(ref reads);
+                    throw new InvalidOperationException("notification clock unavailable");
+                }
+                return DateTimeOffset.UnixEpoch;
+            }), schedule: callbacks.Enqueue);
+        current = store;
+        store.Changed += (_, _) => { };
+        store.SetReady(true);
+        var content = new TestContent("seed", 4);
         store.Add(new LogWrite(LogLevel.Info, "app", content, DateTimeOffset.UnixEpoch));
         if (clear) store.Clear();
         var capture = Latest(store, TestContext.Current.CancellationToken);
         Assert.False(capture.IsCompleted);
         Take(callbacks)();
-        Assert.Same(fault, await Assert.ThrowsAsync<InvalidOperationException>(() => capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)));
-        Assert.Equal((1, 4L), store.PendingUsage);
-        Assert.Equal(0, store.Add(LogLevel.Info, "app", "next", DateTimeOffset.UnixEpoch));
-        var retry = Latest(store, TestContext.Current.CancellationToken);
-        Take(callbacks)();
-        using (var recovered = await retry.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken))
+        Assert.Equal(1, Volatile.Read(ref reads));
+        Assert.Equal((0, 0L), store.PendingUsage);
+        Assert.Equal(0, (int)StoreRegressionSupport.Field(store, "_writerScheduled")!);
+        Assert.Empty(callbacks);
+        using (var recovered = await capture)
         {
             if (clear) Assert.Empty(recovered.Entries); else Assert.Single(recovered.Entries);
             Assert.Equal(store.Generation, recovered.Generation);
         }
-        Assert.Equal((0, 0L), store.PendingUsage);
         Assert.Equal(2, store.Add(LogLevel.Info, "app", "next", DateTimeOffset.UnixEpoch));
         var next = Latest(store, TestContext.Current.CancellationToken);
         Take(callbacks)();

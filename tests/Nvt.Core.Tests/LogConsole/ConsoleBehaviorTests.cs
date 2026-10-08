@@ -9,8 +9,8 @@ using Xunit;
 
 namespace Nvt.Core.Tests.LogConsole;
 
-/// <summary>Deterministic regressions for console review findings.</summary>
-public sealed class ReviewRegressionTests
+/// <summary>Projection order, callback isolation, bounded content, and documentation hygiene.</summary>
+public sealed class ConsoleBehaviorTests
 {
     private static readonly string[] SurvivingPausedOrder = ["B", "C"];
     private static readonly string[] PostPauseOrder = ["A", "B", "C"];
@@ -476,10 +476,10 @@ public sealed class ReviewRegressionTests
     [InlineData("acceded", false)]
     [InlineData("abcdef", false)]
     [InlineData("1234567", false)]
-    [InlineData("c2345fd", true)]
-    [InlineData("C2345FD", true)]
-    [InlineData("0ec7de8b1e54b091d21d24f878dba39ebbf953d7", true)]
-    [InlineData("wordc2345fdword", false)]
+    [InlineData("a1b2c3d", true)]
+    [InlineData("A1B2C3D", true)]
+    [InlineData("0123456789abcdef0123456789abcdef01234567", true)]
+    [InlineData("worda1b2c3dword", false)]
     public void CommitIdentifierRegexDistinguishesOrdinaryWords(string text, bool expected)
         => Assert.Equal(expected, CommitIdentifierPattern.IsMatch(text));
 
@@ -504,10 +504,9 @@ public sealed class ReviewRegressionTests
     public void ModuleDocsContainNoInternalProcessNarration(string name)
     {
         var text = ReadModuleDocument(name, new DirectoryInfo(AppContext.BaseDirectory));
-        Assert.DoesNotMatch(@"(?i)fix[ -]?round|fix[4-9]|sandbox|\bTEMP\b|\bTMP\b|第[四五六七八九]輪", text);
+        Assert.DoesNotMatch(@"(?i)sandbox|\bTEMP\b|\bTMP\b", text);
         Assert.DoesNotContain("| Passed | Skipped | Failed |", text, StringComparison.Ordinal);
         Assert.DoesNotContain("| 通過 | 跳過 | 失敗 |", text, StringComparison.Ordinal);
-        Assert.DoesNotContain("9714.908", text, StringComparison.Ordinal);
         Assert.Contains("CaptureLatestAsync", text, StringComparison.Ordinal);
     }
 

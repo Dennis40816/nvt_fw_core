@@ -17,9 +17,9 @@ public sealed class AdmissionRegressionTests
         var notifications = 0;
         store.Changed += (_, _) => notifications++;
         store.SetReady(true);
-        var accepted = new ScannerTestContent("seed", 4);
+        var accepted = new TestContent("seed", 4);
         var first = store.Add(new LogWrite(LogLevel.Info, "app", accepted));
-        var rejected = new ScannerTestContent("next", 4);
+        var rejected = new TestContent("next", 4);
         Assert.Null(Record.Exception(() => Assert.Equal(0, store.Add(new LogWrite(LogLevel.Info, "app", rejected)))));
         Assert.Null(Record.Exception(() => Assert.False(store.AddBatch(store.Generation,
             [new LogWrite(LogLevel.Info, "app", rejected)]))));
@@ -55,13 +55,13 @@ public sealed class AdmissionRegressionTests
     public void UnendingZeroChargeBatchHasBoundedPreparationAndNoOwnershipTransfer()
     {
         using var store = LogStoreTests.CreateStore(entries: 3, pending: 4);
-        var generated = new List<ScannerTestContent>();
+        var generated = new List<TestContent>();
         IEnumerable<LogWrite> Writes()
         {
             while (true)
             {
                 Assert.InRange(generated.Count, 0, 3);
-                var content = new ScannerTestContent("zero", 0);
+                var content = new TestContent("zero", 0);
                 generated.Add(content);
                 yield return new LogWrite(LogLevel.Info, "app", content);
             }
@@ -136,10 +136,10 @@ public sealed class AdmissionRegressionTests
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var store = LogStoreTests.CreateStore(entries: 1, pending: 4);
-        var content = new ScannerTestContent("seed", zeroCharge ? 0 : 4, () =>
+        var content = new TestContent("seed", zeroCharge ? 0 : 4, () =>
         {
             entered.Set();
-            release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            release.Wait(TestContext.Current.CancellationToken);
         });
         Assert.Equal(1, store.Add(new LogWrite(LogLevel.Info, "app", content)));
         store.Clear();
@@ -176,8 +176,8 @@ public sealed class AdmissionRegressionTests
         var seed = new BlockingContent("same");
         store.Add(new LogWrite(LogLevel.Info, "app", seed));
         LogStoreTests.Flush(store);
-        seed.OnRead = () => { entered.Set(); release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); };
-        var candidate = new ScannerTestContent("same", 4);
+        seed.OnRead = () => { entered.Set(); release.Wait(TestContext.Current.CancellationToken); };
+        var candidate = new TestContent("same", 4);
         Assert.Equal(2, store.Add(new LogWrite(LogLevel.Info, "app", candidate)));
         var writer = Task.Run(() => LogStoreTests.Flush(store), TestContext.Current.CancellationToken);
         try
@@ -200,7 +200,7 @@ public sealed class AdmissionRegressionTests
     public void PublishedLeaseCleanupIsExcludedFromPendingCapacity()
     {
         using var store = LogStoreTests.CreateStore(entries: 1, pending: 4);
-        var first = new ScannerTestContent("seed", 4);
+        var first = new TestContent("seed", 4);
         store.Add(new LogWrite(LogLevel.Info, "app", first));
         var frozen = LogStoreTests.Capture(store);
         Assert.Equal(2, store.Add(LogLevel.Info, "app", "next"));
@@ -221,8 +221,8 @@ public sealed class AdmissionRegressionTests
     public void RandomAdmissionClearAndDrainMatchesObservableOwnedContent()
     {
         using var store = LogStoreTests.CreateStore(entries: 4, characters: 8, pending: 8);
-        var attempted = new List<(ScannerTestContent Content, bool Accepted)>();
-        var published = new HashSet<ScannerTestContent>();
+        var attempted = new List<(TestContent Content, bool Accepted)>();
+        var published = new HashSet<TestContent>();
         var random = new Random(7);
         for (var step = 0; step < 500; step++)
         {
@@ -234,7 +234,7 @@ public sealed class AdmissionRegressionTests
                     foreach (var item in attempted.Where(item => item.Accepted && item.Content.Disposals == 0)) published.Add(item.Content);
                     break;
                 default:
-                    var content = new ScannerTestContent($"message {step}", random.Next(5));
+                    var content = new TestContent($"message {step}", random.Next(5));
                     var accepted = step % 2 == 0 ? store.Add(new LogWrite(LogLevel.Info, "app", content)) != 0
                         : store.AddBatch(store.Generation, [new LogWrite(LogLevel.Info, "app", content)]);
                     attempted.Add((content, accepted));

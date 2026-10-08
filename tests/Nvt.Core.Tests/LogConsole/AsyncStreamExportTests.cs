@@ -33,4 +33,5 @@ public sealed class AsyncStreamExportTests
             base.Write(bytes, 0, bytes.Length);
             return ValueTask.CompletedTask;
         }
-    }}
+    }
+}

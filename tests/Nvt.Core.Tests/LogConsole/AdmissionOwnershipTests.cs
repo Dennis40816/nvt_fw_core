@@ -21,24 +21,24 @@ public sealed class AdmissionOwnershipTests
     public void HeldWriterBoundsAllAcceptedContent(bool zeroCharge, bool clear)
     {
         using var store = LogStoreTests.CreateStore(entries: 4, pending: 8);
-        var attempted = new List<(ScannerTestContent ScannerTestContent, long Id)>();
+        var attempted = new List<(TestContent Content, long Id)>();
         try
         {
             for (var i = 0; i < 100; i++)
             {
-                var content = new ScannerTestContent(i.ToString("D4", CultureInfo.InvariantCulture), zeroCharge ? 0 : 4);
+                var content = new TestContent(i.ToString("D4", CultureInfo.InvariantCulture), zeroCharge ? 0 : 4);
                 attempted.Add((content, store.Add(new LogWrite(LogLevel.Info, "app", content))));
                 if (clear) { store.Clear(); store.Clear(); }
-                var owned = attempted.Where(item => item.Id != 0 && item.ScannerTestContent.Disposals == 0).ToArray();
+                var owned = attempted.Where(item => item.Id != 0 && item.Content.Disposals == 0).ToArray();
                 Assert.InRange(owned.Length, 0, 4);
-                Assert.InRange(owned.Sum(item => (long)item.ScannerTestContent.ResidentCharacterCount), 0, 8);
-                Assert.Equal((owned.Length, owned.Sum(item => (long)item.ScannerTestContent.ResidentCharacterCount)), store.PendingUsage);
-                Assert.All(attempted, item => Assert.Equal(0, item.ScannerTestContent.Disposals));
+                Assert.InRange(owned.Sum(item => (long)item.Content.ResidentCharacterCount), 0, 8);
+                Assert.Equal((owned.Length, owned.Sum(item => (long)item.Content.ResidentCharacterCount)), store.PendingUsage);
+                Assert.All(attempted, item => Assert.Equal(0, item.Content.Disposals));
             }
         }
         finally { store.Dispose(); LogStoreTests.Flush(store); }
         Assert.Contains(attempted, item => item.Id == 0);
-        Assert.All(attempted, item => Assert.Equal(item.Id == 0 ? 0 : 1, item.ScannerTestContent.Disposals));
+        Assert.All(attempted, item => Assert.Equal(item.Id == 0 ? 0 : 1, item.Content.Disposals));
     }
 
     /// <summary>A rejected batch cannot transfer a prefix, publish, or consume IDs.</summary>
@@ -47,7 +47,7 @@ public sealed class AdmissionOwnershipTests
     {
         using var store = LogStoreTests.CreateStore(pending: 8);
         var first = store.Add(LogLevel.Info, "app", "seed");
-        var contents = new[] { new ScannerTestContent("aaaa", 4), new ScannerTestContent("bbbb", 4) };
+        var contents = new[] { new TestContent("aaaa", 4), new TestContent("bbbb", 4) };
         Assert.False(store.AddBatch(store.Generation, contents.Select(content => new LogWrite(LogLevel.Info, "app", content))));
         using (var snapshot = LogStoreTests.Capture(store))
         {

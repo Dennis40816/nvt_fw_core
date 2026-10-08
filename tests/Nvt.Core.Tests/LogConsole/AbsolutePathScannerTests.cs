@@ -23,7 +23,7 @@ public sealed class AbsolutePathScannerTests
             var padding = prefixOffset == 0 ? 0 : 1024 - prose.Length - prefixOffset;
             var text = new string(' ', padding) + prose + path + "。完成";
             var expected = new ConsoleLinkSpan(padding + prose.Length, path.Length, new LinkTarget(LinkKind.File, path));
-            using var content = new ScannerTestContent(text, 0);
+            using var content = new TestContent(text, 0);
             Assert.Equal(expected, Assert.Single(ConsoleLinkScanner.Scan(text)));
             Assert.Equal(expected, Assert.Single(ConsoleLinkScanner.Scan(content)));
             Assert.InRange(content.MaximumRead, 1, 1024);

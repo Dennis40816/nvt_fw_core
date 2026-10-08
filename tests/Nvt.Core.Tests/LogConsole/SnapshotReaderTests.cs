@@ -3,7 +3,7 @@
 using System.Collections.Concurrent;
 using Nvt.Core.LogConsole;
 using Xunit;
-using static Nvt.Core.Tests.LogConsole.PublicationTestSupport;
+using static Nvt.Core.Tests.LogConsole.StoreRegressionSupport;
 
 namespace Nvt.Core.Tests.LogConsole;
 
@@ -14,24 +14,47 @@ public sealed class SnapshotReaderTests
     [Fact]
     public async Task SnapshotOnSingleThreadSchedulerReturnsBeforeWriterRuns()
     {
+        using var pump = new SingleThreadPump();
         var callbacks = new ConcurrentQueue<Action>();
-        using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
-        var caller = Task.Run(() =>
+        await pump.Run(async () =>
         {
+            Assert.Same(pump, SynchronizationContext.Current);
+            using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
             store.Add(LogLevel.Info, "app", "queued");
             using var snapshot = store.CaptureSnapshot();
             Assert.Empty(snapshot.Entries);
-            Take(callbacks)(); // The scheduler's work runs later on this same thread.
-            using var published = store.CaptureSnapshot();
+            pump.Schedule(Take(callbacks));
+            using var published = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+            Assert.Same(pump, SynchronizationContext.Current);
             Assert.Single(published.Entries);
-        }, TestContext.Current.CancellationToken);
-        try { await caller.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken); }
-        finally
+            store.Dispose();
+            pump.Schedule(Take(callbacks));
+        });
+    }
+
+    /// <summary>An awaiting dispatcher caller yields to the writer on that same dispatcher.</summary>
+    [Fact]
+    public async Task LatestCaptureOnDispatcherYieldsToWriterAndCompletes()
+    {
+        using var pump = new SingleThreadPump();
+        await pump.Run(async () =>
         {
-            // Release a blocked caller when verifying an implementation that waits synchronously.
-            if (!caller.IsCompleted) Take(callbacks)();
-            await caller.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        }
+            var dispatcherThread = Environment.CurrentManagedThreadId;
+            var writerThreads = new ConcurrentQueue<int>();
+            using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: action => pump.Schedule(() =>
+            {
+                writerThreads.Enqueue(Environment.CurrentManagedThreadId);
+                action();
+            }));
+            store.Add(LogLevel.Info, "app", "queued");
+            var capture = store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+            Assert.False(capture.IsCompleted);
+            using var published = await capture;
+            Assert.Single(published.Entries);
+            Assert.Same(pump, SynchronizationContext.Current);
+            Assert.Equal(dispatcherThread, Environment.CurrentManagedThreadId);
+            Assert.All(writerThreads, id => Assert.Equal(dispatcherThread, id));
+        });
     }
 
     /// <summary>An async barrier yields its caller and covers accepted writes and reset markers.</summary>
@@ -88,12 +111,13 @@ public sealed class SnapshotReaderTests
         }
         else
         {
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Latest(store, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => Latest(store, TestContext.Current.CancellationToken));
             Take(callbacks)();
         }
         using var alreadyCancelled = new CancellationTokenSource();
         alreadyCancelled.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Latest(store, alreadyCancelled.Token));
+        if (dispose) await Assert.ThrowsAsync<ObjectDisposedException>(() => Latest(store, alreadyCancelled.Token));
+        else await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Latest(store, alreadyCancelled.Token));
     }
 
     /// <summary>Both writer callback types read the publication instead of waiting on themselves.</summary>
@@ -102,7 +126,7 @@ public sealed class SnapshotReaderTests
     {
         using var store = LogStoreTests.CreateStore(entries: 1);
         var observed = new List<long>();
-        var content = new ScannerTestContent("seed", 4, () =>
+        var content = new TestContent("seed", 4, () =>
         {
             store.Clear();
             var capture = Latest(store, TestContext.Current.CancellationToken);

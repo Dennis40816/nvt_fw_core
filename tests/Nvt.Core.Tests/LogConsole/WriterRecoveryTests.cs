@@ -11,7 +11,7 @@ namespace Nvt.Core.Tests.LogConsole;
 /// <summary>Writer clock recovery and notification continuity.</summary>
 public sealed class WriterRecoveryTests
 {
-    /// <summary>A clock fault before publication rearms the outstanding notification once.</summary>
+    /// <summary>A clock fault after publication leaves notification pending until the next explicit wake.</summary>
     [Fact]
     public void ThrowOnceWriterClockRearmsAndStoreKeepsWorking()
     {
@@ -28,7 +28,10 @@ public sealed class WriterRecoveryTests
         store.Add(LogLevel.Info, "app", "first", DateTimeOffset.UnixEpoch);
         Take(callbacks)();
         Assert.Empty(versions);
-        Assert.Equal(1, (int)Field(store, "_writerScheduled")!);
+        Assert.Equal(0, (int)Field(store, "_writerScheduled")!);
+        Assert.Empty(callbacks);
+        Assert.Equal((0, 0L), store.PendingUsage);
+        store.SetReady(true);
         Take(callbacks)();
         Assert.Equal(new long[] { 1 }, versions);
         store.Add(LogLevel.Info, "app", "second", DateTimeOffset.UnixEpoch);

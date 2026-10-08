@@ -85,6 +85,7 @@ Admission fence 在 `_gate` 內由 next sequence 加 generation 推導；拒絕�
 取消 token 或 Dispose store 會取消尚未完成的 barrier，不阻塞執行緒。
 Writer 失敗會以原始例外結束等待中的 barrier，將未套用的 ownership 排回 queue，並透過 diagnostic trace 回報。
 若 callback 在 writer 失敗前 Dispose store，即使 queue 為空，writer 仍會重新排程清理。內容 Dispose 拋出例外時仍會繼續清理其他內容，每個內容只呼叫一次。
+Dispose 後再呼叫 CaptureLatestAsync 會拋出 ObjectDisposedException。
 在 writer 執行緒，包括 Changed 與 content Dispose callback，兩種 Capture 都立即回傳目前 publication。
 Writer 不受通知 ready 狀態限制；`GetChangesSince(version)` 與 `IsCurrent` 也不等待，直接讀取已發布狀態。
 
@@ -137,6 +138,10 @@ App content Dispose 由 writer 在發布後、所有鎖外執行。
 既有 `schedule` delegate 啟動 writer。
 Thread-pool dispatch 在 producer 執行緒外呼叫 delegate，因此 inline scheduler 不會阻塞 producer。
 Scheduler 丟例外時不得已經排入 callback；失敗時在 dispatch 執行緒繼續 writer。
+Writer 只在 ready 且有 subscribers 要接收通知時，於發布、比較與清理完成後讀取 notification clock。
+Clock 例外只保留尚未送出的 Changed，等下一次明確喚醒（如 Add、Clear 或 SetReady(true)）再嘗試。
+尚未發布工作的喚醒，以及失敗的嘗試期間或之後收到的喚醒，會合併為下一個 writer turn 的通知請求。
+Clock 例外本身不會觸發重試或重新入列資料；publication 與 pending capacity 釋放仍會完成。
 Subscriber、比較與 Dispose 的例外各自隔離，不能中斷後續 logging 與清理。
 比較失敗時保留已接受輸入並使用獨立群組，不將比較失敗算成 ring eviction。
 
@@ -189,9 +194,23 @@ URL 保留成對括號，外側中文標點不是 target。
 外側標點包含全形冒號；只有檔名的相對路徑若帶行欄 suffix 也會接受。
 這包含引號內帶空白的檔名。
 沒有 separator 或行欄 suffix 的引號名稱不會成為連結。
-結尾 separator 明確代表資料夾，沒有副檔名仍可能是檔案。
+包含 separator 的成對引號敘述視為單一路徑，包括其中其他類型的巢狀引號。
+結尾 separator 明確代表資料夾，即使帶有行欄 suffix 也一樣；沒有副檔名仍可能是檔案。
 其他模糊的資料夾由 structured spans 或 app resolver 指定。
 沒有副檔名白名單，沒有存在性查詢，也不掃 repository。
+
+引號 target 的起始引號須位於文字開頭、空白之後或非 name、CJK scalar 之後，右側須有可開始路徑的內容。
+引號內容也可從 `~`、`%` 或 `$` 開始。前導 dots 後須接 name 字元或 separator；空白、單獨的 prose dot、只有 location 的標點或文字結尾都不會開始引號內容。
+在候選內，前方為 CJK scalar 或 path separator、後方為 CJK 敘述的配對引號會關閉 target，包含最後一個 component 為 CJK 或以 separator 結尾的資料夾路徑。
+其他情況下，遇到後方有效的同類起始引號時，先放棄前一候選，再考慮結尾條件。
+其他情況下，配對引號在空白、CJK 敘述、標點（包含 location suffix 起點）或文字結尾之前關閉候選。
+放棄或未配對的候選會從原始起始引號的下一個字元恢復掃描。兩種入口共用這一份引號規則；未配對引號與 prose apostrophe 不會遮蔽後方 target。
+沒有 separator 的 location target 必須有非首字元的點，且點後接字母。
+Candidate 超過 4,096 個 UTF-16 字元（含 location suffix、不含外層引號）時，在建立字串前略過。
+略過的引號候選會排除包含引號的完整範圍，內部尾段不會成為其他連結；後方獨立 target 仍可辨識。
+引號候選先檢查長度上限，再檢查 overlap；URL 掃描已接受的內嵌 URL 仍保留為連結。
+App 提供的 `LinkSpans` 在 Add preparation 驗證；AddBatch 在 admission 前驗證整個 batch。
+Default array、null span 或 target、無效 range 與 overlap 會拋出 ArgumentException，不轉移 ownership。
 
 App spans 完全取代推導，明確的空 spans 也同樣優先。
 `ConsoleLinkIndex` 驗證 ranges 並提供 binary hit test。
@@ -204,11 +223,6 @@ Cache 使用固定 1,024 字元的讀取 buffer 直接掃描 segmented content�
 Entry 數、span 數與 target 字元都有獨立 retention limit。
 過大的結果仍完整回傳，但不快取。
 
-`IConsolePathResolver` 非同步回傳 candidates，不替使用者選模糊結果。
-App 必須遵守 cancellation、MaxCandidates 與 MaxProbes。
-PolicyVersion 用來使 cache 失效，Core 不提供 resolver 實作。
-`IConsoleLinkOpener` 接收完整 `LinkTarget`，回報開啟、父資料夾、行與欄能力。
-開啟結果沿用 `SourceFileNavigation.SourceFileOpenResult`，本模組不提供 opener 實作。
 來源名稱、logging adapter、路徑政策、開啟、clipboard、儲存目的地與大訊息 storage 都由 app 提供。
 
 ## 匯出
@@ -231,7 +245,7 @@ Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 完整 type 與 member 表見 [英文 Public API](LogConsole.md#public-api)。
 主要入口是 `LogStore`、`ConsoleProjector`、`ConsoleViewState`、`ConsoleLinkScanner`、`ConsoleLinkCache` 與 `ConsoleExportFormatter`。
 資料與輸出型別包含 `LogEntry`、`LogSnapshot`、`LogChangeSet`、`ConsoleFilter`、`ConsoleProjection`、`ConsoleRow` 與穩定 IDs。
-App contracts 是 `ILogTextContent`、`IConsolePathResolver` 與 `IConsoleLinkOpener`。
+App content contract 是 `ILogTextContent`。
 `ConsoleRow.TextContent` 取代完整 Message 字串；`ConsoleProjection` 實作 IDisposable。
 `ConsoleViewState.Selection` 與 `FormatSelection` 使用 `ImmutableHashSet<long>` 原始 EntryIds。
 `ConsoleFollow` 改為 private base constructor 的 immutable class 階層，巢狀兩種狀態皆為 sealed。
@@ -247,43 +261,24 @@ Writer 排程使用一個 interlocked flag，published state 的 reference count
 宿主在單一執行緒替換 view state 並處理 commands。
 
 Clock 使用 BCL `TimeProvider`，測試重用 Core 的 `Time.DelegateTimeProvider`。
-開啟結果重用 `SourceFileNavigation.SourceFileOpenResult`。
 實作 baseline 的 Lifecycle 只有 CoalescedRefresh 與 UndoService，沒有可重用的 generation helper。
 CoalescedRefresh 不能將 ready 與 pending work 原子整合進 store 的同一鎖。
 MessageCenter 與 Persistence 的 generation 各自綁定 modal 與 save coordinator，不能代替 store generation。
 本模組只有一個 internal `ConsoleGeneration`，統一遞增與 stale-work checks，由 store lock 保護。
 
-引號 target 的起始引號須位於文字開頭、空白之後或非 name scalar 之後，右側須有可開始路徑的內容。
-前導 dots 後須接 name 字元或 separator；空白、單獨的 prose dot、只有 location 的標點或文字結尾都不會開始引號內容。
-遇到後方有效的同類起始引號時，先放棄前一候選，再考慮結尾條件。
-其他情況下，配對引號在空白、標點（包含 location suffix 起點）或文字結尾之前關閉候選。
-兩種入口共用這一份引號規則；未配對引號與 prose apostrophe 不會遮蔽後方 target。
-沒有 separator 的 location target 必須有非首字元的點，且點後接字母。
-Candidate 超過 4,096 個 UTF-16 字元（含 location suffix、不含外層引號）時，在建立字串前略過。
-略過的引號候選會排除包含引號的完整範圍，內部尾段不會成為其他連結；後方獨立 target 仍可辨識。
-引號候選先檢查長度上限，再檢查 overlap；URL 掃描已接受的內嵌 URL 仍保留為連結。
-App 提供的 `LinkSpans` 在 Add preparation 驗證；AddBatch 在 admission 前驗證整個 batch。
-
 ## 驗證與採用
 
 回歸涵蓋 admission 上限、整批接受或拒絕、reentrant callback、generation reset、snapshot leases、
-dispatcher 上不等待的讀取、可取消的 async barrier、writer failure recovery、跨讀取邊界的 Unicode 與引號規則、
+dispatcher 上不等待的讀取、可取消的 async barrier、隔離的 callback 例外、notification clock recovery、跨讀取邊界的 Unicode 與引號規則、
 target 長度上限、structured span 驗證，以及 async-only stream 匯出。搜尋每次 projection 共用一個 chunk buffer。
 Deterministic scanner corpus 對每個 split 比對獨立預期 spans。
-生成的 quote oracle 由文字組件建立預期 links，在每個 storage 與 scanner read split 驗證兩種入口。
+生成的 quote oracle 由文字組件（包含相鄰 CJK 敘述與後方引號）建立預期 links，在每個 storage 與 scanner read split 驗證兩種入口。
 效能測試僅在 `NVT_CORE_PERF=1` 執行，不斷言時間上限。
 
 ```powershell
 dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
-
-2026-10-08 的 Debug 實際驗證：solution build 為零警告、零錯誤。
-全部測試專案共 4,550 通過、16 跳過、零失敗。
-`Nvt.Core.Tests`：3,729 通過、16 跳過；`Nvt.Core.Avalonia.Tests`：796 通過；`Nvt.Core.Fonts.Tests`：25 通過；三個專案均零失敗。
-LogConsole：280 通過、1 個 opt-in 效能案例跳過、零失敗。
-Quote oracle 涵蓋 6,506 個生成文字與 678,848 次比較；scanner corpus 涵蓋 136 行、46,627 次比較與 10,971 個 three-way splits。
-另一次 opt-in 效能測試為 1 通過、零跳過、零失敗；10,000 筆產生 1,000 列。
 
 UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
 宿主採用是另外的變更，真實 resolver、opener、clipboard 與 spill-store 整合仍屬於 app。

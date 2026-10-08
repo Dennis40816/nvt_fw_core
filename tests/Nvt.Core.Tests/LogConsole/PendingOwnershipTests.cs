@@ -14,7 +14,7 @@ public sealed class PendingOwnershipTests
     public void HeldWriterNeverExceedsPendingCharacterLimit()
     {
         using var store = LogStoreTests.CreateStore(characters: 1000, pending: 8);
-        var contents = Enumerable.Range(0, 5).Select(_ => new Content("aaaa", 4, () =>
+        var contents = Enumerable.Range(0, 5).Select(_ => new TestContent("aaaa", 4, () =>
             Assert.False(Monitor.IsEntered(Field(store, "_gate")!)))).ToArray();
         try
         {
@@ -45,7 +45,7 @@ public sealed class PendingOwnershipTests
     public void HeldWriterBoundsZeroChargeHandles()
     {
         using var store = LogStoreTests.CreateStore(entries: 4, pending: 8);
-        var contents = Enumerable.Range(0, 20).Select(_ => new Content("a", 0)).ToArray();
+        var contents = Enumerable.Range(0, 20).Select(_ => new TestContent("a", 0)).ToArray();
         var ids = new List<long>();
         try
         {
@@ -77,7 +77,7 @@ public sealed class PendingOwnershipTests
     public void HeldWriterMergesClearMarkersAndReleasesDiscardedWritesOnce()
     {
         using var store = LogStoreTests.CreateStore(entries: 4, pending: 8);
-        var contents = Enumerable.Range(0, 20).Select(_ => new Content("aaaa", 4)).ToArray();
+        var contents = Enumerable.Range(0, 20).Select(_ => new TestContent("aaaa", 4)).ToArray();
         try
         {
             for (var i = 0; i < 20; i++)

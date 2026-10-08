@@ -67,7 +67,7 @@ public sealed class ScannerSyntaxTests
         const string path = "d/a /";
         var located = after is "(12,3)" or ":12:3";
         VerifySplits(quote + path + quote + after, spans => Assert.Equal(
-            new LinkTarget(located ? LinkKind.File : LinkKind.Folder, path, located ? 12 : null, located ? 3 : null),
+            new LinkTarget(LinkKind.Folder, path, located ? 12 : null, located ? 3 : null),
             Assert.Single(spans).Target));
     }
 
@@ -117,7 +117,7 @@ public sealed class ScannerSyntaxTests
         var suffix = kind == "filename" ? ".cs:1" : "";
         var target = prefix + new string('a', cap + extra - prefix.Length - suffix.Length) + suffix;
         var syntax = kind == "quoted" ? "\"" + target[..^3] + "/aa\"" : target;
-        using var content = new ScannerTestContent(syntax, 0);
+        using var content = new TestContent(syntax, 0);
         var spans = ConsoleLinkScanner.Scan(content);
         Assert.Equal(spans, ConsoleLinkScanner.Scan(syntax));
         if (extra == 0) Assert.Single(spans); else Assert.Empty(spans);
@@ -128,7 +128,7 @@ public sealed class ScannerSyntaxTests
     public void OversizedQuotedTargetDoesNotLinkInternalFragments()
     {
         var text = "\"C:\\" + new string('a', 4096) + " tail/a.cs\"(3,4) C:\\keep\\a.cs";
-        using var content = new ScannerTestContent(text, 0);
+        using var content = new TestContent(text, 0);
         var spans = ConsoleLinkScanner.Scan(content);
         Assert.Equal(new LinkTarget(LinkKind.File, @"C:\keep\a.cs"), Assert.Single(spans).Target);
         Assert.Equal(spans, ConsoleLinkScanner.Scan(text));
@@ -163,7 +163,7 @@ public sealed class ScannerSyntaxTests
     [Fact]
     public void OversizedUrlUsesBoundedAllocation()
     {
-        using var content = new ScannerTestContent("https://" + new string('a', 1024 * 1024), 0);
+        using var content = new TestContent("https://" + new string('a', 1024 * 1024), 0);
         ConsoleLinkScanner.Scan("https://example.test/");
         var before = GC.GetAllocatedBytesForCurrentThread();
         var spans = ConsoleLinkScanner.Scan(content);
@@ -178,7 +178,7 @@ public sealed class ScannerSyntaxTests
         for (var split = 0; split < text.Length; split++)
         {
             var value = new string(' ', (1024 - split % 1024) % 1024) + text;
-            using var content = new ScannerTestContent(value, 0);
+            using var content = new TestContent(value, 0);
             var spans = ConsoleLinkScanner.Scan(value);
             Assert.Equal(spans, ConsoleLinkScanner.Scan(content));
             verify(spans);

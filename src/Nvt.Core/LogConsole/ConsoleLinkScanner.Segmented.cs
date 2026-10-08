@@ -31,23 +31,8 @@ public static partial class ConsoleLinkScanner
         }
         for (var start = 0; start < text.Length; start++)
         {
-            var quote = text.At(start);
             if (QuoteBoundaryAt(text, start) != QuoteBoundary.Open) continue;
-            var end = start + 1;
-            var hasSeparator = false;
-            while (end < text.Length && text.At(end) is not ('\r' or '\n'))
-            {
-                var boundary = QuoteBoundaryAt(text, end, quote);
-                if (boundary == QuoteBoundary.Open)
-                {
-                    start = end;
-                    hasSeparator = false;
-                }
-                else if (boundary == QuoteBoundary.Close) break;
-                hasSeparator |= IsSeparator(text.At(end));
-                end++;
-            }
-            if (end == text.Length || text.At(end) is '\r' or '\n') continue;
+            if (!TryQuotedRange(text, start, out var end, out var hasSeparator)) continue;
             var suffixEnd = LocationEnd(end + 1);
             if (end > start + 1 && (hasSeparator || suffixEnd != end + 1 && LooksLikeFileName(start + 1, end)))
             {

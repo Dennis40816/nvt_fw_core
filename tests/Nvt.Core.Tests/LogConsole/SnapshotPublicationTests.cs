@@ -88,7 +88,7 @@ public sealed class SnapshotPublicationTests
         using var store = LogStoreTests.CreateStore(entries: 1);
         var observed = new ConcurrentQueue<long>();
         var failures = new ConcurrentQueue<Exception>();
-        var content = new Content("first", 5, () =>
+        var content = new TestContent("first", 5, () =>
         {
             store.Clear();
             using var snapshot = store.CaptureSnapshot();
