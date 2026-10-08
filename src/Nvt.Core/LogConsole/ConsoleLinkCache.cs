@@ -27,25 +27,25 @@ public sealed class ConsoleLinkCache
         _maxTargetCharacters = maxTargetCharacters;
     }
 
-    /// <summary>Invalidates by snapshot version, live membership, text revision, and resolver policy revision.</summary>
+    /// <summary>Invalidates by snapshot version, live membership, and text revision.</summary>
     /// <remarks>Call for every accepted snapshot, including Clear. Older snapshots cannot repopulate the cache.</remarks>
-    public void Synchronize(LogSnapshot snapshot, long resolverPolicyVersion = 0)
+    public void Synchronize(LogSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        lock (_cacheGate) SynchronizeCore(snapshot, resolverPolicyVersion);
+        lock (_cacheGate) SynchronizeCore(snapshot);
     }
 
-    /// <summary>Gets app spans or scans this entry once for the current content and policy revisions.</summary>
-    public ConsoleLinkIndex GetLinks(LogSnapshot snapshot, LogEntry entry, long resolverPolicyVersion = 0)
+    /// <summary>Gets app spans or scans this entry once for the current content revision.</summary>
+    public ConsoleLinkIndex GetLinks(LogSnapshot snapshot, LogEntry entry)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(entry);
         var textVersion = entry.TextContent.Version;
         var textLength = entry.TextContent.Length;
-        var requested = new CacheRevision(snapshot.Version, snapshot.Generation, resolverPolicyVersion);
+        var requested = new CacheRevision(snapshot.Version, snapshot.Generation);
         lock (_cacheGate)
         {
-            SynchronizeCore(snapshot, resolverPolicyVersion);
+            SynchronizeCore(snapshot);
             var current = _revision == requested
                 && _liveVersions.TryGetValue(entry.EntryId, out var version) && version == textVersion
                 && entry.Generation == snapshot.Generation;
@@ -71,19 +71,19 @@ public sealed class ConsoleLinkCache
         }
     }
 
-    private void SynchronizeCore(LogSnapshot snapshot, long policy)
+    private void SynchronizeCore(LogSnapshot snapshot)
     {
         if (_revision is { } prior && snapshot.Version < prior.Version) return;
-        var next = new CacheRevision(snapshot.Version, snapshot.Generation, policy);
+        var next = new CacheRevision(snapshot.Version, snapshot.Generation);
         if (next == _revision) return;
-        if (_revision?.Generation != snapshot.Generation || _revision.Policy != policy) _cache.Clear();
+        if (_revision?.Generation != snapshot.Generation) _cache.Clear();
         _liveVersions = snapshot.Entries.ToImmutableDictionary(e => e.EntryId, e => e.TextContent.Version);
         foreach (var pair in _cache.ToArray())
             if (!_liveVersions.TryGetValue(pair.Key, out var version) || pair.Value.TextVersion != version) _cache.Remove(pair.Key);
         _revision = next;
     }
 
-    private sealed record CacheRevision(long Version, long Generation, long Policy);
+    private sealed record CacheRevision(long Version, long Generation);
     private sealed record CachedLinks(long TextVersion, ConsoleLinkIndex Index);
 }
 

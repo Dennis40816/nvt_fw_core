@@ -13,11 +13,12 @@ public sealed class AsyncStreamExportTests
     [Fact]
     public async Task StreamExportDisposesWriterAsynchronously()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore();
         store.Add(LogLevel.Info, "app", "message");
         using var projection = ConsoleProjectionTests.Project(store);
         await using var stream = new AsyncOnlyStream();
-        await ConsoleExportFormatter.WriteLogAsync(stream, projection, new ConsoleExportOptions(false, false), TestContext.Current.CancellationToken);
+        await ConsoleExportFormatter.WriteLogAsync(stream, projection, new ConsoleExportOptions(false, false), waitCancellation.Token);
         Assert.Equal("[app] message", Encoding.UTF8.GetString(stream.ToArray()));
         Assert.True(stream.CanWrite);
     }

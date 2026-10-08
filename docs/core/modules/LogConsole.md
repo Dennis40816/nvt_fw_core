@@ -94,6 +94,7 @@ Content reads must fill the requested range.
 Implementations must support concurrent reads.
 
 `Add` and `AddBatch` validate metadata, take timestamps, and fingerprint outside locks.
+Structured span validation checks neighbours in linear time for sorted starts and sorts an index copy for unsorted starts in O(n log n) time.
 A short admission lock checks total capacity before assigning IDs and enqueuing in sequence order.
 Producers never wait for capacity, the writer, or a callback.
 Publication is asynchronous.
@@ -237,10 +238,12 @@ This includes the fullwidth colon.
 Filename-only relative paths with location suffixes are accepted.
 This includes quoted filenames with spaces.
 Quoted names without a separator or location suffix are not links.
-Paired quoted prose containing a separator is treated as one path, including any nested other-type quotes.
+Known limitation: paired quoted prose that contains a separator is treated as one path, including quotes of the other type nested inside it. `"Read/write error"` and `"could not open 'C:\My Docs\a.txt'"` each produce one file link over the whole quoted text, not over the inner path.
+With `"unpaired load/save then 開啟"資料/a.txt"`, the CJK closing rule produces the quoted prose path and the following unquoted `資料/a.txt` path.
+An app that needs the exact target supplies structured spans.
 A trailing separator explicitly denotes a folder, including targets with location suffixes.
 An extensionless path can still be a file.
-Other ambiguous folder targets require structured spans or app resolution.
+Other ambiguous folder targets require structured spans.
 There is no extension allowlist.
 There are no existence checks or repository scans.
 
@@ -260,7 +263,7 @@ Default arrays, null spans or targets, invalid ranges, and overlaps throw Argume
 App-supplied spans replace scanning completely.
 An explicitly empty span array also wins.
 `ConsoleLinkIndex` validates ranges and provides binary hit testing.
-`ConsoleLinkCache` keys results by entry ID, text revision, and resolver policy revision.
+`ConsoleLinkCache` keys results by entry ID and text revision within the accepted snapshot generation and version.
 Search is not a cache key.
 `Synchronize` is its only semantic invalidation point.
 Call it for every accepted snapshot, including Clear.
@@ -270,7 +273,7 @@ The cache scans segmented content with a fixed 1,024-character read buffer.
 Candidate offsets survive read boundaries.
 Only confirmed link targets become strings.
 Plain message text is never materialized in full.
-Publication checks the current snapshot and policy revision again.
+Publication checks the current snapshot generation, version, live membership and text revision again.
 Entry count, span count, and target characters each bound cache retention.
 Oversized results are returned without caching.
 
@@ -326,7 +329,7 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 | `ConsoleLinkSpan` | `Start`, `Length`, `Target`. |
 | `ConsoleLinkScanner` | `Scan(text)`. |
 | `ConsoleLinkIndex` | Constructor `(spans, textLength)`, `Spans`, `HitTest(offset)`. |
-| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot, resolverPolicyVersion = 0)`, `GetLinks(snapshot, entry, resolverPolicyVersion = 0)`. |
+| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot)`, `GetLinks(snapshot, entry)`. |
 | `ConsoleExportOptions` | `IncludeTime = true`, `IncludeLevel = true`. |
 | `ConsoleExportFormatter` | `FormatVisible(projection, options)`, `FormatSelection(projection, selection, options)`, `WriteLogAsync(destination, projection, options, cancellationToken)`. |
 
@@ -357,7 +360,7 @@ It is protected by the store lock.
 ## Verification and adoption
 
 Regressions cover bounded admission, all-or-nothing batches, reentrant callbacks, generation resets,
-snapshot leases, nonblocking dispatcher reads, cancellable async barriers, isolated callback faults, notification clock recovery,
+snapshot leases, writer failure recovery, nonblocking dispatcher reads, cancellable async barriers, isolated callback faults, notification clock recovery,
 Unicode and quote grammar across read boundaries, target length limits, structured span validation,
 and async-only stream export. Search uses one chunk buffer per projection.
 The deterministic scanner corpus checks every split against independent expected spans.
@@ -371,4 +374,4 @@ dotnet test Nvt.Core.sln --no-build --no-restore
 
 UI virtualization, pointer coordinates, keyboard commands, accessibility, and visual evidence belong to K2.
 Host adoption remains separate.
-Real resolver, opener, clipboard, and spill-store integration remain app responsibilities.
+Path policy, opening, clipboard, and spill-store integration remain app responsibilities.

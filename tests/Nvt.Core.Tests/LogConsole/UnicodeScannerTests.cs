@@ -2,7 +2,6 @@
 
 using Nvt.Core.LogConsole;
 using Xunit;
-using static Nvt.Core.Tests.LogConsole.StoreRegressionSupport;
 
 namespace Nvt.Core.Tests.LogConsole;
 

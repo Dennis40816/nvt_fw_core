@@ -84,7 +84,7 @@ Producer 不等待容量、writer 或 callback。
 Admission fence 在 `_gate` 內由 next sequence 加 generation 推導；拒絕與空 batch 不推進此 fence。
 取消 token 或 Dispose store 會取消尚未完成的 barrier，不阻塞執行緒。
 Writer 失敗會以原始例外結束等待中的 barrier，將未套用的 ownership 排回 queue，並透過 diagnostic trace 回報。
-若 callback 在 writer 失敗前 Dispose store，即使 queue 為空，writer 仍會重新排程清理。內容 Dispose 拋出例外時仍會繼續清理其他內容，每個內容只呼叫一次。
+Callback 若 Dispose store，writer 會在停止前完成剩餘清理。內容 Dispose 拋出例外時仍會繼續清理其他內容，每個內容只呼叫一次。
 Dispose 後再呼叫 CaptureLatestAsync 會拋出 ObjectDisposedException。
 在 writer 執行緒，包括 Changed 與 content Dispose callback，兩種 Capture 都立即回傳目前 publication。
 Writer 不受通知 ready 狀態限制；`GetChangesSince(version)` 與 `IsCurrent` 也不等待，直接讀取已發布狀態。
@@ -194,9 +194,12 @@ URL 保留成對括號，外側中文標點不是 target。
 外側標點包含全形冒號；只有檔名的相對路徑若帶行欄 suffix 也會接受。
 這包含引號內帶空白的檔名。
 沒有 separator 或行欄 suffix 的引號名稱不會成為連結。
-包含 separator 的成對引號敘述視為單一路徑，包括其中其他類型的巢狀引號。
+已知限制：含 separator 的成對引號敘述視為單一路徑，包括其中其他類型的巢狀引號。
+`"Read/write error"` 與 `"could not open 'C:\My Docs\a.txt'"` 各產生涵蓋整段引號文字的檔案連結，而不是內層路徑。
+`"unpaired load/save then 開啟"資料/a.txt"` 依 CJK 結尾引號規則產生引號內敘述路徑，以及後方未加引號的 `資料/a.txt` 路徑。
+需要精確 target 的 app 應提供 structured spans。
 結尾 separator 明確代表資料夾，即使帶有行欄 suffix 也一樣；沒有副檔名仍可能是檔案。
-其他模糊的資料夾由 structured spans 或 app resolver 指定。
+其他模糊的資料夾由 structured spans 指定。
 沒有副檔名白名單，沒有存在性查詢，也不掃 repository。
 
 引號 target 的起始引號須位於文字開頭、空白之後或非 name、CJK scalar 之後，右側須有可開始路徑的內容。
@@ -211,13 +214,14 @@ Candidate 超過 4,096 個 UTF-16 字元（含 location suffix、不含外層引
 引號候選先檢查長度上限，再檢查 overlap；URL 掃描已接受的內嵌 URL 仍保留為連結。
 App 提供的 `LinkSpans` 在 Add preparation 驗證；AddBatch 在 admission 前驗證整個 batch。
 Default array、null span 或 target、無效 range 與 overlap 會拋出 ArgumentException，不轉移 ownership。
+Structured span 驗證在起點已排序時以線性時間比較相鄰區間；未排序時排序 index 副本，時間為 O(n log n)。
 
 App spans 完全取代推導，明確的空 spans 也同樣優先。
 `ConsoleLinkIndex` 驗證 ranges 並提供 binary hit test。
-`ConsoleLinkCache` key 包含 EntryId、text revision 與 resolver policy revision，不含搜尋。
+`ConsoleLinkCache` 在接受的 snapshot generation 與 version 內，以 EntryId 與 text revision 作為 key，不含搜尋。
 `Synchronize` 是唯一語意失效點，每次接受快照都要呼叫，包含 Clear。
 舊快照不能重新填入 live cache。
-掃描在 cache 鎖外執行，發布前再次驗證 snapshot 與 policy revision。
+掃描在 cache 鎖外執行，發布前再次驗證 snapshot generation、version、live membership 與 text revision。
 Cache 使用固定 1,024 字元的讀取 buffer 直接掃描 segmented content，候選 offset 可跨越讀取邊界。
 只將確認的 link targets 建立成字串，不將完整一般訊息 materialize。
 Entry 數、span 數與 target 字元都有獨立 retention limit。
@@ -269,7 +273,7 @@ MessageCenter 與 Persistence 的 generation 各自綁定 modal 與 save coordin
 ## 驗證與採用
 
 回歸涵蓋 admission 上限、整批接受或拒絕、reentrant callback、generation reset、snapshot leases、
-dispatcher 上不等待的讀取、可取消的 async barrier、隔離的 callback 例外、notification clock recovery、跨讀取邊界的 Unicode 與引號規則、
+writer failure recovery、dispatcher 上不等待的讀取、可取消的 async barrier、隔離的 callback 例外、notification clock recovery、跨讀取邊界的 Unicode 與引號規則、
 target 長度上限、structured span 驗證，以及 async-only stream 匯出。搜尋每次 projection 共用一個 chunk buffer。
 Deterministic scanner corpus 對每個 split 比對獨立預期 spans。
 生成的 quote oracle 由文字組件（包含相鄰 CJK 敘述與後方引號）建立預期 links，在每個 storage 與 scanner read split 驗證兩種入口。
@@ -281,4 +285,4 @@ dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
 UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
-宿主採用是另外的變更，真實 resolver、opener、clipboard 與 spill-store 整合仍屬於 app。
+宿主採用是另外的變更，路徑政策、開啟、clipboard 與 spill-store 整合仍屬於 app。

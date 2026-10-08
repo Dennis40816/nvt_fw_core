@@ -116,7 +116,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
     [InlineData(true, true)]
     public void KeyboardAndPointerInputWorkForEveryRole(bool dark, bool square)
     {
-        foreach (string role in Roles)
+        foreach (string role in Roles.Append("toggleSoft"))
         foreach (bool selected in new[] { false, true })
         {
             var before = new Grid { Focusable = true, Height = 20 };

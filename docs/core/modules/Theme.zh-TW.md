@@ -463,7 +463,6 @@ NFC 也須保留：
 - Static 與 DynamicResource 查找方式。
 - 字型資產、Inter 套件版本及 fallback 順序。
 
-
 ## 驗證與來源
 
 本次取代 NFC 衍生色票與舊按鈕角色，合併 PR #71 的範本與焦點方案到唯一的 `ButtonStyles.axaml`，修正停用與 active 疊加。`ThemeTokens.xml`、`ButtonStyles.xml` 刻意依新的核准檔案重新產生，不再宣稱保留舊 NFC 外觀。`ExtractedXamlMatchesFrozenBaseline` 仍鎖定完整 XML；token 比對先展開八個既有字型別名。捲軸幾何與 baseline 不因本次色票調整而變動。
@@ -555,6 +554,119 @@ NFH 採用時會改變的地方：
 
 目前尚無採用工具。
 
+## ListBox 與下拉選單項目
+
+`ListStyles.axaml` 讓 `ListBoxItem` 與 `ComboBoxItem` 共用外觀。
+ListBox 容器沒有背景、框線與 padding，由應用程式提供周圍表面。
+項目最小高度為 32 DIP，padding 為 10,5。
+在 ListBox 或個別項目加上 `compact`，即可使用高度 24 DIP、padding 10,0 的密集項目。
+ComboBox 本體保留原有主題與範本。
+
+### 清單狀態與 token
+
+靜止時透明，滑鼠移入使用 `NfcSelectionSurfaceBrush`，按下使用 `NfcSecondaryActionPressedBrush`。
+選取項目使用柔和主色表面、主色文字與 2 × 12 DIP 主色標記。標記距左緣 4 DIP，與文字之間留 4 DIP。
+多重選取使用相同外觀。
+停用項目維持 opacity 1，並使用 `NfcTextDisabledBrush`。
+停用且選取時使用 `NfcSelectionSurfaceBrush`。
+鍵盤焦點顯示一個 2 DIP 框，向內縮 2 DIP，避免捲動時裁切。
+滑鼠焦點不顯示框，焦點也不改變清單項目顏色。
+
+基準版本沒有 `toggleSoft` 資源，因此清單別名直接對應 Core 色票。
+同時覆寫 `Nvt.List.Selected*` 資源，即可在執行時替換選取色票。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.List.SelectedBrush` | `#F7F9FE`，`NfcAccentSurfaceSubtleBrush` | `#162034`，`NfcAccentSurfaceSubtleBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#1148BE`，`NfcAccentStrongBrush` | `#8FBFFB`，`NfcAccentStrongBrush` |
+| `Nvt.List.TransparentBrush` | `#00FFFFFF`，`Nvt.Toggle.TransparentBrush` | 相同 |
+| `Nvt.List.CompactHeight` | 24 | 24 |
+
+項目使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
+標記使用 `Nvt.Shape.RoundCornerRadius`。
+焦點沿用 `Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`。
+顏色轉場持續 150 ms，項目或上層的 `reducedMotion` 類別可停用轉場。
+
+## Menu、MenuItem、ContextMenu 與選單分隔線
+
+`MenuStyles.axaml` 提供選單列、彈出命令、右鍵選單與選單分隔線。
+選單項目點擊範圍高 32 DIP，padding 為 10,0。
+項目表面四周預留 4 DIP，容納外側焦點框。
+如此可在捲動範圍內保留一個 2 DIP 框與 2 DIP 間隔。
+
+選單表面使用 `NfcSurfaceBrush`、1 DIP 的 `NfcBorderBrush` 框線與 padding 4。
+表面圓角跟隨共用形狀，並以現有表面圓角 token 為上限。
+Pill 表面圓角為 8 DIP，Square 為 6 DIP。
+表面四周預留透明陰影空間，彈出位置的 offset 會補償這段空間。
+
+### 選單狀態與 token
+
+滑鼠移入、原生選單選取與鍵盤焦點使用 `NfcSelectionSurfaceBrush`。
+按下使用 `NfcSecondaryActionPressedBrush`。
+停用內容使用 `NfcTextDisabledBrush`，opacity 維持 1。
+勾選項目顯示勾號。有圖示時使用 20 DIP 圖示欄。
+快捷鍵文字使用 `NfcTextMutedBrush`，子選單保留箭頭。
+選單列採用相同項目狀態與高度。
+
+焦點框跟隨 Avalonia 的 `:focus-visible` 狀態。
+原生方向鍵導覽保留 Avalonia 的選單選取行為。
+樣式保留方向鍵、Enter、Escape、存取鍵、命令與自動化功能。
+選單分隔線高 1 DIP，使用 `NfcBorderBrush`。
+舊式 `MenuItem Header="-"` 分隔線也採用相同外觀。
+顏色轉場持續 150 ms，`reducedMotion` 也會停用選單轉場。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Menu.PopupShadow` | `0 4 12 0 #26000000` | `0 4 12 0 #66000000` |
+| `Nvt.Menu.PopupShadowMargin` | 16 | 16 |
+| `Nvt.Menu.PopupMaximumCornerRadius` | 8，`NfcSurfaceCornerRadius` | 8，`NfcSurfaceCornerRadius` |
+| `Nvt.Menu.ChevronGeometry` | `M1 1 L5 5 L1 9` | 相同 |
+
+陰影透明度色碼是唯一新增的顏色常值，定義於 `ListTokens.axaml`。
+樣式中的所有顏色與圓角均來自 token 或所屬控制項。
+彈出圓角轉換器為 internal，此控制項家族沒有新增 public C# API。
+
+### 清單與選單採用步驟
+
+1. 將 `ThemeTokens.axaml` 合併到應用程式資源。
+2. 在 Fluent 之後、建立控制項之前載入 `ListStyles.axaml` 與 `MenuStyles.axaml`。
+3. 移除衝突的本地項目主題、顏色、padding、圓角與焦點裝飾。
+4. 保留容器表面、項目內容範本、選取繫結、命令、圖示與無障礙名稱。
+5. 檢查項目內的次要文字。項目樣式會把所有子孫 `TextBlock` 的前景綁到項目前景，所以用樣式類別設定的淡色會失效。請改用區域 `Foreground` 值設定淡色文字。
+6. 在資源根節點設定共用形狀，並驗證兩種主題。
+7. 在真實桌面視窗開啟一次右鍵選單與兩層子選單。彈出陰影需要視窗支援逐像素透明，無頭測試看不出來。
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/MenuStyles.axaml" />
+```
+
+| 採用工具 | 差異與應移除規則 |
+| --- | --- |
+| NFC | 替換 Fluent 清單選取與主色文字下拉項目覆寫。移除本地 ListBox 與 ComboBoxItem 外觀規則。 |
+| NFH | 在原先隱藏選取的工作區項目恢復可見選取。移除這些項目規則、下拉項目覆寫與選單字型覆寫。 |
+| NFU | 將主色填滿選取與 34 DIP 下拉項目改為柔和的 32 DIP 項目。移除共用、inspector 與下拉項目外觀規則。 |
+| 三個工具 | 替換 Fluent 彈出表面與選單狀態。保留項目產生、導覽、命令與容器表面。 |
+
+### 清單與選單驗證
+
+Headless 測試涵蓋兩種主題與形狀、狀態優先順序、精確尺寸、資源替換、對比與原生鍵盤輸入。
+也會驗證捲動、視窗大小與 render scale 改變後，焦點框仍位於項目內。
+以下最低對比在兩種形狀下相同。
+
+| 對比 | Light | Dark |
+| --- | --- | --- |
+| 選取清單文字與標記 | 7.018:1 | 7.674:1 |
+| 停用文字 | 3.903:1 | 4.275:1 |
+| 焦點框對項目填色 | 4.006:1 | 4.930:1 |
+
+`ListMenuStylesRenderer` 僅在設定 `NVT_LIST_IMAGES_DIR` 時匯出。
+輸出 `list-light.png`、`list-dark.png`、`list-square-light.png` 與 `list-before-light.png`。
+所有圖片寬 1200 像素、scale 為 1，每張均小於 1 MB。
+比較圖使用真正的 Fluent 範本，並排顯示 Core 範本。
+
 ## 資源解析
 
 `UiResourceResolver` 為在程式碼中繪製的控制項讀取一個主題資源。每個方法都接收擁有者控制項、資源鍵與後備值。
@@ -628,11 +740,11 @@ NFH 零差異採用：
 
 ### 切換狀態與 danger
 
-每個角色皆支援以下九種狀態。
+以下九種狀態適用實心填色的切換角色。
 滑鼠取得焦點時不顯示焦點框。Tab 焦點顯示單一 2 px 焦點框，外側間隙為 2 px。
 Space 切換勾選狀態。
 筆刷與旋鈕轉場皆為 150 ms。
-按下 ToggleButton 角色時，繪製縮放為 0.98；原生 ToggleSwitch 維持原尺寸。
+按下實心填色的 ToggleButton 角色時，繪製縮放為 0.98；原生 ToggleSwitch 維持原尺寸。
 配置尺寸與點擊範圍不變。
 
 | 狀態 | Segment、tab 與 icon 填色 | 內容 | 開關軌道 |
@@ -647,7 +759,7 @@ Space 切換勾選狀態。
 | Disabled checked | `NfcSelectionSurfaceBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
 | Keyboard focus | 保留目前填色。 | 保留目前內容顏色。 | 保留目前軌道顏色。 |
 
-對任一切換角色或原生 `ToggleSwitch` 加上 `danger`，啟用且勾選時即顯示紅底白色內容。
+對實心填色的切換角色或原生 `ToggleSwitch` 加上 `danger`，啟用且勾選時即顯示紅底白色內容。
 勾選後的 pointer over 與 pressed 使用同一個較深紅色。
 Danger 控制項使用 `Nvt.Focus.RingBrush`，勾選後的鍵盤焦點也相同。
 停用且勾選的控制項維持核准圖片的中性外觀，danger 亦同。
@@ -747,3 +859,220 @@ Light 與 Dark 使用相同數值。
 `ToggleStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_TOGGLE_IMAGES_DIR` 時寫入圖片。
 輸出 `toggle-src-light.png` 與 `toggle-src-dark.png`，尺寸為 1320 × 2920，包含兩種形狀與所有狀態。
 測試涵蓋對比、執行期資源替換、精確開關幾何、鍵盤操作，以及禁止樣式內寫死顏色或圓角。
+
+### toggleSoft
+
+`toggleSoft` 適合精簡篩選器與工具列的選用項目，勾選時顯示淡主色底。
+支援純文字、圖示加文字，以及不需群組邊框的並列控制項。
+高度使用 `NfcControlHeight`，預設為 32 DIP；水平內距為 12 DIP。
+
+| 狀態 | 填色 | 文字與圖示 |
+| --- | --- | --- |
+| Off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftForegroundBrush` |
+| Off pointer over | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftPointerOverForegroundBrush` |
+| Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
+| On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| On pointer over 或 pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| Disabled，off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled，on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Keyboard focus | 保留目前填色。 | 保留目前前景色。 |
+
+以下別名在兩種主題皆重用既有 Core 資源，不新增寫死的顏色。
+替換包含這些 `Nvt.Toggle.Soft*` 鍵的單一字典，即可一起更新已掛載的控制項。
+
+| Token | Core 資源 | Light | Dark |
+| --- | --- | --- | --- |
+| `Nvt.Toggle.SoftCheckedBrush` | `NfcAccentSurfaceBrush` | `#EFF3FD` | `#1A2940` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SoftPointerOverBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `Nvt.Toggle.SoftPressedBrush` | `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `Nvt.Toggle.SoftPointerOverForegroundBrush` | `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `Nvt.Toggle.SoftPressedForegroundBrush` | `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `Nvt.Toggle.SoftDisabledForegroundBrush` | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Toggle.SoftDisabledCheckedBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+
+本體圓角使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
+焦點圓角使用 `Nvt.Shape.FocusCornerRadius`：Pill 為 999，Square 為 10。
+既有 `ThemeShapes.SetShape` 方法可於執行期一起切換。
+
+鍵盤焦點使用 `focus-visible`、`Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`，外側間隙為 2 px。
+指標焦點不顯示焦點框。
+背景與前景轉場皆為 150 ms。
+按下時使用 0.98 繪製縮放，配置尺寸與點擊範圍不變。
+Space 切換數值，Tab 聚焦控制項，停用控制項忽略輸入。
+
+文字與圖示繼承相同前景色，在兩種主題皆達到 4.5:1 對比。
+On 的對比在 Light 為 7.018:1，Dark 為 7.674:1。
+On pointer over 與 pressed 分別為 6.673:1 與 7.672:1。
+焦點環對頁面底與勾選淡色底的對比，亮色為 4.446:1 至 4.938:1，暗色為 5.573:1 至 7.131:1。測試要求至少 3:1。
+Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1。
+
+採用分成三步：
+
+1. 合併 `ThemeTokens.axaml`，並在 Fluent 後載入 `ToggleStyles.axaml`。
+2. 指定 `Classes="toggleSoft"`、繫結 `IsChecked`，並提供繼承前景色的內容。
+3. 移除衝突的本機顏色與圓角，再驗證兩種主題、兩種形狀與鍵盤操作。
+
+```xml
+<StackPanel Orientation="Horizontal" Spacing="8">
+  <ToggleButton Classes="toggleSoft" Content="Matches only" IsChecked="{Binding MatchesOnly}" />
+  <ToggleButton Classes="toggleSoft" Content="Dedupe" IsChecked="{Binding Dedupe}" />
+</StackPanel>
+```
+
+提供圖示內容時，請載入既有字型與圖示資源。
+向量圖示的填色或筆畫須繫結至切換控制項的前景色。
+`toggleSoft` 使用淡色調色票，沒有 `danger` 變體。
+
+`ToggleSoftRenderer` 以 headless 方式檢查兩種形狀、純文字、圖示與所有狀態。
+只有設定 `NVT_TOGGLE_IMAGES_DIR` 時，才寫入 `toggle-soft-light.png` 與 `toggle-soft-dark.png`。
+測試與既有角色一樣，在本機停用轉場以取得穩定快照。
+
+## CheckBox
+
+`ChoiceStyles.axaml` 為原生核取方塊提供共用 Core 外觀，不需指定外觀 class。
+將 `ThemeTokens.axaml` 合併至應用程式資源，並在 Fluent 後載入 `ChoiceStyles.axaml`。
+
+指示框尺寸為 20 × 20 DIP。標籤使用 `NfcTextBrush`、`NfcUiFontFamily` 與 13 DIP 的 `NfcFontSize13` 內文字級。
+指示框與標籤間距為 8 DIP。整列可點擊，最小高度為 32 DIP。
+長字串標籤會換行並增加列高，指示框維持與第一行對齊。
+自訂內容保留原有內容模板，並自行控制文字換行。
+
+密集篩選清單可加上 `compact`，固定列高為 24 DIP，指示框仍為 20 DIP。
+`compact` 只用於單行標籤。列高固定，換行的標籤會被裁掉。
+目前使用清單需要此變體來呈現篩選核取方塊。
+
+Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾選、勾選、不確定，再回到未勾選。
+不確定狀態顯示白色短橫線，勾選狀態顯示白色勾號。
+停用選項保留選取圖示與 opacity 1。
+
+### 選項狀態
+
+下表適用於核取方塊的未勾選、勾選、不確定，以及單選按鈕的未勾選、勾選。
+焦點僅改變外側焦點框。指標焦點不顯示焦點框。
+鍵盤焦點在整列外側顯示一個 2 DIP 的 `Nvt.Focus.RingBrush` 焦點框，間隔為 2 DIP。
+預設焦點裝飾器已關閉。
+筆刷轉場為 150 ms。控制項或祖先加上 `reducedMotion` 即可關閉轉場。
+
+| 狀態 | 指示框底色 | 指示框外框 | 標籤 |
+| --- | --- | --- | --- |
+| 未勾選靜止 | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| 未勾選指標移入 | `NfcSurfaceSubtleBrush` | `NfcTextSecondaryBrush` | `NfcTextBrush` |
+| 未勾選按下 | `NfcSelectionSurfaceBrush` | `NfcTextStrongBrush` | `NfcTextBrush` |
+| 勾選或不確定 | `Nvt.Toggle.SelectedBrush` | `NfcAccentBorderBrush` | `NfcTextBrush` |
+| 已選取指標移入 | `Nvt.Toggle.SelectedPointerOverBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
+| 已選取按下 | `Nvt.Toggle.SelectedPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
+| 停用未勾選 | `NfcSurfaceSubtleBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| 停用已選取 | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| 鍵盤焦點 | 保留目前底色 | 保留目前外框 | 保留目前標籤 |
+
+停用控制項忽略指標、按下與鍵盤焦點樣式。
+兩種主題的白色選取內容均使用 `Nvt.Toggle.SelectedLabelBrush`。
+深色主題的選取外框使用較亮的 Core 強調色，確保指示框與鄰近底色可辨識。
+
+### 選項 token
+
+`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中六個幾何 token 在 Light 與 Dark 使用相同值。
+所有顏色與單選圓角均使用既有 Core token。唯一新增的值是核取方塊圓角，定義為 `Nvt.Choice.CheckBoxCornerRadius`。此控制項家族不新增顏色常數。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Choice.IndicatorSize` | 20 | 20 |
+| `Nvt.Choice.DotSize` | 10 | 10 |
+| `Nvt.Choice.CompactHeight` | 24 | 24 |
+| `Nvt.Choice.CheckBoxCornerRadius` | 6 | 6 |
+| `Nvt.Choice.RowPadding` | `0,6` | `0,6` |
+| `Nvt.Choice.CompactPadding` | `0,2` | `0,2` |
+| `NfcControlHeight` | 32 | 32 |
+| `NfcFontSize13` | 13 | 13 |
+| `NfcSurfaceBrush` | `#FFFFFF` | `#111827` |
+| `NfcSurfaceSubtleBrush` | `#F8FAFC` | `#182337` |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `NfcAccentBorderBrush` | `#1557E9` | `#5FA5FA` |
+| `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` | `#1148BE` |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` | `#0E3C9E` |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.RingThickness` | 2 | 2 |
+
+勾號沿用 `NfcDoneIconGeometry`。
+核取方塊圓角使用 `Nvt.Choice.CheckBoxCornerRadius`（6），Pill 與 Square 相同，避免看起來像單選圓環。單選指示點維持圓形。
+整列焦點框使用 `Nvt.Shape.FocusCornerRadius`：Pill 999、Square 10。
+在資源根節點呼叫 `ThemeShapes.SetShape`，即可更新已掛載選項而不替換模板。
+在同一色票字典覆寫既有筆刷資源，可於執行期更新顏色。
+
+以下最小對比涵蓋兩種形狀與五種鄰近底色，包含按下時的底色。
+
+| 對比 | Light | Dark |
+| --- | --- | --- |
+| 啟用標籤 | 11.866:1 | 10.501:1 |
+| 停用標籤 | 3.698:1 | 3.783:1 |
+| 所有狀態的指示框外框 | 3.257:1 | 3.256:1 |
+| 所有選取狀態的白色圖示，含停用 | 4.559:1 | 3.422:1 |
+| 啟用勾選底色上的白色圖示 | 5.879:1 | 7.794:1 |
+| 鍵盤焦點框 | 4.006:1 | 4.930:1 |
+
+### CheckBox 採用步驟
+
+1. 合併主題 token，並在 Fluent 後載入選項樣式。
+2. 繫結 `IsChecked`；需要不確定值時設定 `IsThreeState`。
+3. 密集篩選列加上 `compact`，並提供有意義的標籤或無障礙名稱。
+4. 移除本機核取方塊模板、文字色、固定高度、內距覆寫與透明度變更。
+5. 驗證兩種主題、兩種形狀、指標操作、鍵盤操作與停用選取狀態。
+
+以 `compact` 取代既有篩選列的 24 DIP 高度。
+以共用內文取代本機 14 DIP 中等字重的文字。
+
+```xml
+<CheckBox Content="Include archived items" IsChecked="True" />
+<CheckBox Content="Include annotations" IsThreeState="True" IsChecked="{x:Null}" />
+<CheckBox Classes="compact" Content="Include archive" />
+```
+
+## RadioButton
+
+`ChoiceStyles.axaml` 同時為原生單選按鈕提供外觀，不需指定外觀 class。
+載入 CheckBox 章節所述的相同主題 token 與樣式。
+單選外框尺寸為 20 × 20 DIP，勾選時顯示 10 DIP 白色圓點。
+`Nvt.Shape.RoundCornerRadius` 讓外框在 Pill 與 Square 均保持圓形。
+標籤間距、列高、換行、焦點框、轉場、停用選取與 `compact` class 均遵循核取方塊規則。
+單選按鈕使用選項狀態表中的勾選與未勾選狀態。
+
+選取行為由 Avalonia 管理，不新增自訂控制項、行為或鍵盤處理器。
+未命名群組以父容器為範圍；相同 `GroupName` 可跨同一根節點內的不同面板分組。
+Avalonia 12.1.1 需由宿主設定 `XYFocus.NavigationModes="Keyboard"`，方向鍵才會在一般 `StackPanel` 中移動焦點。
+方向鍵僅移動焦點，不改變選取。Space 選取目前焦點的單選按鈕，不會取消選取。
+此行為遵循 [Avalonia 方向焦點導覽](https://docs.avaloniaui.net/docs/input-interaction/focus)，並由選項測試記錄原生結果。
+無障礙名稱與原生自動化控制項類型維持有效。
+
+### RadioButton 採用步驟
+
+1. 在 Fluent 後載入 `ChoiceStyles.axaml`，並合併主題 token。
+2. 相關選項放入 `StackPanel`，或保留既有命名群組的 `GroupName`。
+3. 繫結 `IsChecked`，並保留標籤、命令與無障礙名稱。
+4. 移除本機選項模板、外框尺寸、圓點尺寸、顏色、圓角與固定卡片高度。
+5. 採用後驗證群組範圍與方向鍵導覽。
+
+採用此家族時，以共用選項列取代按鈕式單選導覽、篩選模板與高卡片。
+共用 20/10 DIP 指示尺寸取代本機 18/8 DIP 外框與圓點。
+
+```xml
+<StackPanel>
+  <RadioButton Content="Standard review" GroupName="Review" IsChecked="True" />
+  <RadioButton Content="Extended review" GroupName="Review" />
+</StackPanel>
+```
+
+`ChoiceStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_CHOICE_IMAGES_DIR` 時寫入圖片。
+輸出 `choice-light.png`、`choice-dark.png`、`choice-square-light.png` 與 `choice-before-light.png`，每張寬 1200 像素、比例為 100%。
+比較圖將 Fluent 與 Core 控制項並排呈現。
+測試涵蓋所有狀態、對比、列幾何、換行、原生操作、執行期字典與形狀、無障礙及減少動態效果。

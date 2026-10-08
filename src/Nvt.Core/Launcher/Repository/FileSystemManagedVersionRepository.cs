@@ -62,7 +62,8 @@ public sealed partial class FileSystemManagedVersionRepository : IManagedVersion
         {
             string source = Path.GetFullPath(sourceRoot);
             if (!RepositoryPathSafety.IsSafeExistingDirectory(source) ||
-                !RepositoryPathSafety.TryResolveRelativeFile(source, package.PackagePath.Value, out string packagePath))
+                package.PackagePath.Value is not { } relativePath ||
+                !RepositoryPathSafety.TryResolveRelativeFile(source, relativePath, out string packagePath))
             {
                 return new(null, ManagedVersionInstallIssue.PackageUnavailable);
             }

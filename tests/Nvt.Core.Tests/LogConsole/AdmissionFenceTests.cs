@@ -22,6 +22,7 @@ public sealed class AdmissionFenceTests
     [Fact]
     public async Task CaptureFenceCoversMixedAddsRejectionsBatchesAndClears()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(maxPendingCharacters: 8, clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         await VerifyLatest(0, 0, [], false);
@@ -47,18 +48,18 @@ public sealed class AdmissionFenceTests
 
         async Task<long> VerifyLatest(long generation, long sequence, string[] messages, bool pending)
         {
-            var capture = store.CaptureLatestAsync(TestContext.Current.CancellationToken).AsTask();
+            var capture = store.CaptureLatestAsync(waitCancellation.Token).AsTask();
             if (pending)
             {
-                Assert.True(SpinWait.SpinUntil(() =>
+                Assert.True(StoreRegressionSupport.WaitUntil(() =>
                 {
                     lock (Field("_gate")!)
                         return capture.IsCompleted || Field("_snapshotWaiters") is ICollection { Count: > 0 };
-                }, TimeSpan.FromSeconds(10)));
+                }, waitCancellation.Token));
                 Assert.False(capture.IsCompleted);
                 TakeWriter()();
             }
-            using var snapshot = await capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            using var snapshot = await capture.WaitAsync(waitCancellation.Token);
             Assert.Equal(generation, snapshot.Generation);
             Assert.Equal(sequence, snapshot.LastSequence);
             Assert.Equal(messages, snapshot.Entries.Select(entry => LogText.ReadAll(entry.TextContent)));
@@ -71,7 +72,7 @@ public sealed class AdmissionFenceTests
         Action TakeWriter()
         {
             Action? callback = null;
-            Assert.True(SpinWait.SpinUntil(() => callbacks.TryDequeue(out callback), TimeSpan.FromSeconds(10)));
+            Assert.True(StoreRegressionSupport.WaitUntil(() => callbacks.TryDequeue(out callback), waitCancellation.Token));
             return callback!;
         }
     }

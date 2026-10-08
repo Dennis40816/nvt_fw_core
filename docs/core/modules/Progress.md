@@ -2,6 +2,19 @@
 
 # Progress
 
+## Breaking changes before 0.9.0
+
+`ProgressUpdate.StepText` is now `string?`.
+Its positional constructor text parameter and `Deconstruct` text output carry the same annotation.
+The uninitialized default has no fraction or step text.
+It remains indeterminate.
+Supplied text and valid fraction behavior remain unchanged.
+
+Guard absent text before calling string APIs.
+For presentation, choose the tool's existing fallback explicitly, such as `update.StepText ?? string.Empty`.
+Core adds no text validation or fallback policy.
+Tests cover default progress, explicit null text, and retained text and fraction rules.
+
 ## Summary
 
 Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and two Freeform Helper (NFH) parts: the progress interval gate and the loading scope coordinator.
@@ -12,6 +25,13 @@ Each tool keeps its update rate, progress payloads, result payloads, and present
 The owner approved this boundary on 2026-10-06.
 The loading scope waits for its minimum visible time with `Task.Delay` on its `TimeProvider`.
 Apart from that wait, the module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
+
+## Internal cancellation state
+
+The service derives `CancelRequested` from the current status under `gate`.
+Completion captures that value before publishing a terminal snapshot.
+The captured value preserves result suppression and defers source disposal until the cancellation call finishes.
+The lock also protects job identity, active ownership, and completion flags.
 
 ## Frozen baselines
 
@@ -63,7 +83,7 @@ Both callers use a 120 ms minimum visible time.
 ## Progress data
 
 [`ProgressUpdate`](../../../src/Nvt.Core/Progress/ProgressUpdate.cs) is a public readonly record struct.
-It stores `double? Fraction` and `string StepText`.
+It stores `double? Fraction` and `string? StepText`.
 `IsIndeterminate` is true exactly when `Fraction` is null.
 
 NFC validates the fraction and does not clamp it.

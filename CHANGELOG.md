@@ -6,9 +6,41 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+### Breaking changes
+
+- `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
+- `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
+- `UndoService.TryPop` changes to `[NotNullWhen(true)] out UndoAction? action`. Use the success branch. Empty stacks still return false and null.
+- `LocalJsonDocument.Options` is removed. Call `LocalJsonDocument.CreateOptions()` for an independent mutable copy. The codec uses private frozen defaults.
+- `ProgressUpdate.StepText` changes to `string?`. Its positional constructor text parameter and `Deconstruct` text output become nullable. Guard absent text or apply the tool's existing presentation fallback.
+- `MemoizedIndexedReadOnlyList<T>.MaterializedCount` is internal. Count factory calls in external allocation tests.
+- `UiThread.IsUiThreadThatRunsALoop` is removed. Use `TryGetRunningDispatcher`, `IsCurrent`, or a local test predicate.
+- `NvtCoreFonts.CjkFallback` returns a fresh `FontFallback` per access. Retrieve one instance per builder or owned font options.
+- `ProcessInheritedHandle.EnvironmentVariable` changes to `string?`. Guard uninitialized bindings. Both `ProcessLaunchGate.StartContained` overloads reject defaults before callbacks or native work.
+- `UpdateCatalogPackagePath.Value` changes to `string?`. Its positional constructor parameter and `Deconstruct` output become nullable. Guard raw paths. `UpdateCatalogVersionSnapshot.Create` still rejects default paths and preserves validated identities.
+
+Tool migration: NFH must update `CadLoadOverlayFrameYieldPolicyTests` before upgrading its Core package.
+Replace the removed conjunction helper with a local predicate or real dispatcher evidence.
+Rebuild its existing `UiThread` consumers.
+NFC has no inspected direct calls to these changed members.
+Future adoption must guard defaults and replace `Options` reads with `CreateOptions()`.
+NFU has no inspected source migration.
+Rebuild its CSV, AtomicOutput, and SourceFileNavigation consumers against the accepted package.
+Integrators must pin the accepted release, update package-download hashes, regenerate locks, and restore in locked mode.
+
+## 0.5.0 - 2026-10-08
+
+No breaking changes since 0.4.0.
+
 ### New modules and features
 
-- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
+- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners (#120).
+- Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus (#124).
+
+### Internal
+
+- Launcher: add the four frozen handoff tests that the READY transport was missing (#121).
+- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#122).
 
 ## 0.4.0 - 2026-10-08
 

@@ -141,6 +141,7 @@ public sealed class NotificationClockTests
     [InlineData(false, true)]
     public async Task ClockFaultOverlappingExplicitWakeRetriesOnce(bool add, bool permanentFault)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
@@ -151,7 +152,7 @@ public sealed class NotificationClockTests
             if (Interlocked.Increment(ref clockCalls) == 1)
             {
                 entered.Set();
-                release.Wait(TestContext.Current.CancellationToken);
+                release.Wait(waitCancellation.Token);
                 throw new InvalidOperationException("clock unavailable");
             }
             if (permanentFault) throw new InvalidOperationException("clock unavailable");
@@ -161,15 +162,15 @@ public sealed class NotificationClockTests
         store.Changed += (_, changes) => versions.Add(changes.Version);
         store.SetReady(true);
         store.Add(LogLevel.Info, "app", "first", DateTimeOffset.UnixEpoch);
-        var turn = Task.Run(Take(callbacks), TestContext.Current.CancellationToken);
+        var turn = Task.Run(Take(callbacks), waitCancellation.Token);
         try
         {
-            entered.Wait(TestContext.Current.CancellationToken);
+            entered.Wait(waitCancellation.Token);
             if (add) store.Add(LogLevel.Info, "app", "overlap", DateTimeOffset.UnixEpoch);
             else store.SetReady(true);
         }
         finally { release.Set(); }
-        await turn;
+        await turn.WaitAsync(waitCancellation.Token);
         Assert.Empty(versions);
         Assert.Equal(1, (int)Field(store, "_writerScheduled")!);
         Take(callbacks)();

@@ -65,14 +65,27 @@ public sealed class QuotedBoundaryTests
         }
     }
 
-    /// <summary>Paired separator-bearing prose retains the established single-path interpretation.</summary>
+    /// <summary>Known limitation: paired separator-bearing prose is one path, even around a quoted target.</summary>
     /// <param name="text">The quoted prose.</param>
     /// <param name="path">The retained target including nested other-type quotes.</param>
     [Theory]
     [InlineData("\"could not open 'C:\\My Docs\\a.txt'\"", "could not open 'C:\\My Docs\\a.txt'")]
     [InlineData("\"Read/write error\"", "Read/write error")]
-    public void PairedQuotedProseWithSeparatorRetainsOneTarget(string text, string path)
+    public void PairedQuotedProseWithSeparatorLimitationKeepsOuterTarget(string text, string path)
         => VerifyEverySplit(text, [new ConsoleLinkSpan(0, text.Length, new LinkTarget(LinkKind.File, path))]);
+
+    /// <summary>Known limitation: CJK closing precedence splits unpaired separator prose from the following path.</summary>
+    [Fact]
+    public void UnpairedProseBeforeCjkClosureLimitationKeepsQuotedProseAndFollowingPath()
+    {
+        const string adjacent = "\"unpaired load/save then 開啟\"資料/a.txt\"";
+        var close = adjacent.IndexOf("\"資料", StringComparison.Ordinal);
+        VerifyEverySplit(adjacent,
+        [
+            new ConsoleLinkSpan(0, close + 1, new LinkTarget(LinkKind.File, "unpaired load/save then 開啟")),
+            new ConsoleLinkSpan(close + 1, "資料/a.txt".Length, new LinkTarget(LinkKind.File, "資料/a.txt")),
+        ]);
+    }
 
     private static void VerifyEverySplit(string text, ImmutableArray<ConsoleLinkSpan> expected)
     {

@@ -15,6 +15,7 @@ public sealed class CallbackBarrierTests
     [Fact]
     public async Task ChangedFailureDoesNotFaultPendingCapture()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         Task<LogSnapshot>? pending = null;
@@ -29,7 +30,7 @@ public sealed class CallbackBarrierTests
         store.Add(LogLevel.Info, "app", "seed");
         Take(callbacks)();
         Assert.NotNull(pending);
-        using var published = await pending;
+        using var published = await pending.WaitAsync(waitCancellation.Token);
         Assert.Equal(2, published.Version);
         Assert.Equal(PublishedMessages, published.Entries.Select(e => LogText.ReadAll(e.TextContent)));
         store.Dispose();
@@ -40,6 +41,7 @@ public sealed class CallbackBarrierTests
     [Fact]
     public async Task ContentDisposalFailureDoesNotFaultPendingCapture()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(maxEntries: 1, clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         Task<LogSnapshot>? pending = null;
@@ -54,7 +56,7 @@ public sealed class CallbackBarrierTests
         store.Add(LogLevel.Info, "app", "replacement");
         Take(callbacks)();
         Assert.NotNull(pending);
-        using var published = await pending;
+        using var published = await pending.WaitAsync(waitCancellation.Token);
         Assert.Equal(3, published.Version);
         Assert.Equal("later", LogText.ReadAll(Assert.Single(published.Entries).TextContent));
         Assert.Equal(1, content.Disposals);
@@ -67,6 +69,7 @@ public sealed class CallbackBarrierTests
     [Fact]
     public async Task ComparisonFailureDoesNotFaultPendingCapture()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         var seed = new TestContent("same", 4);
@@ -74,11 +77,11 @@ public sealed class CallbackBarrierTests
         Take(callbacks)();
         seed.OnRead = () => throw new InvalidOperationException("comparison unavailable");
         store.Add(LogLevel.Info, "app", "same");
-        var pending = Latest(store, TestContext.Current.CancellationToken);
+        var pending = Latest(store, waitCancellation.Token);
         Assert.False(pending.IsCompleted);
         Take(callbacks)();
         seed.OnRead = null;
-        using var published = await pending;
+        using var published = await pending.WaitAsync(waitCancellation.Token);
         Assert.Equal(2, published.Version);
         Assert.Equal(2, published.EventCount);
         Assert.NotEqual(published.Entries[0].GroupId, published.Entries[1].GroupId);
@@ -89,7 +92,8 @@ public sealed class CallbackBarrierTests
 
     private static Task<LogSnapshot> AdmitFromProducer(LogStore store)
     {
-        var cancellationToken = TestContext.Current.CancellationToken;
+        using var waitCancellation = CreateWaitCancellation();
+        var cancellationToken = waitCancellation.Token;
         var completion = new TaskCompletionSource<Task<LogSnapshot>>(TaskCreationOptions.RunContinuationsAsynchronously);
         var producer = new Thread(() =>
         {
@@ -101,7 +105,7 @@ public sealed class CallbackBarrierTests
             catch (Exception exception) { completion.SetException(exception); }
         }) { IsBackground = true };
         producer.Start();
-        producer.Join();
+        JoinThread(producer, cancellationToken);
         return completion.Task.GetAwaiter().GetResult();
     }
 }

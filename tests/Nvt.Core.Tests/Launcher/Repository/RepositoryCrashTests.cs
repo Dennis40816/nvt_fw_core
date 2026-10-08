@@ -122,7 +122,7 @@ internal static class InstallationCrashProbe
             ["README.txt"] = "readme"u8.ToArray(),
         });
         // The parent wrote the source package; ZIP entry times differ between runs, so hash the parent's bytes.
-        string sourcePackage = Path.Combine(fixtureRoot, "source", package.Candidate.PackagePath.Value);
+        string sourcePackage = Path.Combine(fixtureRoot, "source", Assert.IsType<string>(package.Candidate.PackagePath.Value));
         var candidate = package.CandidateFor(File.ReadAllBytes(sourcePackage));
         void Hold(string path)
         {

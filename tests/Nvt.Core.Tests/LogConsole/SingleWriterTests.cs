@@ -14,6 +14,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task ChangedAndContentDisposeCanAddWithoutDeadlock()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(entries: 1);
         var disposed = new CountingContent("first", onDispose: () => store.Add(LogLevel.Info, "app", "dispose callback"));
         var added = false;
@@ -25,7 +26,7 @@ public sealed class SingleWriterTests
         };
         store.SetReady(true);
         store.Add(new LogWrite(LogLevel.Info, "app", disposed));
-        await Task.Run(() => LogStoreTests.Flush(store), TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await Task.Run(() => LogStoreTests.Flush(store), waitCancellation.Token).WaitAsync(waitCancellation.Token);
         using var snapshot = store.CaptureSnapshot();
         Assert.Equal(3, snapshot.LastSequence);
         Assert.Equal("dispose callback", LogText.ReadAll(Assert.Single(snapshot.Entries).TextContent));
@@ -36,6 +37,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task EightProducersPublishEvictionsTogetherWithAdditions()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = new LogStore(maxEntries: 8, maxCharacters: 100_000, maxPendingCharacters: 100_000);
         var observed = new ConcurrentQueue<long>();
         var retained = new HashSet<long>();
@@ -61,16 +63,16 @@ public sealed class SingleWriterTests
         var accepted = new ConcurrentBag<long>();
         var producers = Enumerable.Range(0, 8).Select(producer => Task.Run(() =>
         {
-            start.SignalAndWait(TestContext.Current.CancellationToken);
+            start.SignalAndWait(waitCancellation.Token);
             for (var i = 0; i < 100; i++)
             {
                 var id = store.Add(LogLevel.Info, "app", $"{producer}/{i}");
                 if (id != 0) accepted.Add(id);
             }
-        }, TestContext.Current.CancellationToken)).ToArray();
-        start.SignalAndWait(TestContext.Current.CancellationToken);
-        await Task.WhenAll(producers).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
-        Assert.True(SpinWait.SpinUntil(() => observed.Contains(accepted.Max()), TimeSpan.FromSeconds(10)));
+        }, waitCancellation.Token)).ToArray();
+        start.SignalAndWait(waitCancellation.Token);
+        await Task.WhenAll(producers).WaitAsync(waitCancellation.Token);
+        Assert.True(StoreRegressionSupport.WaitUntil(() => observed.Contains(accepted.Max()), waitCancellation.Token));
         Assert.Equal(800, accepted.Count + store.RejectedCount);
         Assert.Null(failure);
         Assert.NotEmpty(observed);
@@ -106,6 +108,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task ClearDuringConcurrentAddsRejectsOldGenerationAfterReset()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(pending: 100_000);
         var oldGeneration = store.Generation;
         using var entered = new CountdownEvent(8);
@@ -114,19 +117,19 @@ public sealed class SingleWriterTests
         store.Add(new LogWrite(LogLevel.Info, "app", accepted));
         var rejected = Enumerable.Range(0, 8).Select(_ => new CountingContent("unenqueued old")).ToArray();
         var producers = rejected.Select(content => Task.Run(() => store.AddBatch(oldGeneration, Writes(content)),
-            TestContext.Current.CancellationToken)).ToArray();
+            waitCancellation.Token)).ToArray();
         IEnumerable<LogWrite> Writes(CountingContent content)
         {
             entered.Signal();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            release.Wait(waitCancellation.Token);
             yield return new LogWrite(LogLevel.Info, "app", content);
         }
-        Assert.True(entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        entered.Wait(waitCancellation.Token);
         store.Clear();
         Assert.False(store.IsCurrent(oldGeneration));
         var newId = store.Add(LogLevel.Info, "app", "new");
         release.Set();
-        Assert.All(await Task.WhenAll(producers).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken), result => Assert.False(result));
+        Assert.All(await Task.WhenAll(producers).WaitAsync(waitCancellation.Token), result => Assert.False(result));
         using var snapshot = LogStoreTests.Capture(store);
         Assert.Equal(newId, Assert.Single(snapshot.Entries).EntryId);
         Assert.All(snapshot.Entries, entry => Assert.Equal(oldGeneration + 1, entry.Generation));
@@ -138,6 +141,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task DisposeDuringConcurrentAddsReleasesEveryContentExactlyOnce()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(pending: 100_000);
         var retained = new CountingContent("retained");
         store.Add(new LogWrite(LogLevel.Info, "app", retained));
@@ -150,17 +154,17 @@ public sealed class SingleWriterTests
         var contents = Enumerable.Range(0, 8).Select(_ => new CountingContent("racing", onMetadata: () =>
         {
             entered.Signal();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            release.Wait(waitCancellation.Token);
         })).ToArray();
         var producers = contents.Select(content => Task.Run(() =>
         {
             Assert.Throws<ObjectDisposedException>(() => store.Add(new LogWrite(LogLevel.Info, "app", content)));
             content.Dispose(); // Admission failed; ownership never transferred.
-        }, TestContext.Current.CancellationToken)).ToArray();
-        Assert.True(entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        }, waitCancellation.Token)).ToArray();
+        entered.Wait(waitCancellation.Token);
         store.Dispose();
         release.Set();
-        await Task.WhenAll(producers).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await Task.WhenAll(producers).WaitAsync(waitCancellation.Token);
         LogStoreTests.Flush(store);
         Assert.Equal(1, queued.Disposals);
         Assert.Equal(0, retained.Disposals);
@@ -190,6 +194,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task InlineSchedulerAndBlockedCallbackNeverRunOnProducer()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var completed = new ManualResetEventSlim();
@@ -200,19 +205,19 @@ public sealed class SingleWriterTests
         {
             callbackThread = Environment.CurrentManagedThreadId;
             entered.Set();
-            Assert.True(release.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            release.Wait(waitCancellation.Token);
             completed.Set();
         };
         store.SetReady(true);
         store.Add(LogLevel.Info, "app", "first");
-        Assert.True(entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        entered.Wait(waitCancellation.Token);
         try
         {
-            await Task.Run(() => store.Add(LogLevel.Info, "app", "second"), TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            await Task.Run(() => store.Add(LogLevel.Info, "app", "second"), waitCancellation.Token).WaitAsync(waitCancellation.Token);
             Assert.NotEqual(producerThread, callbackThread);
         }
         finally { release.Set(); }
-        Assert.True(completed.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        completed.Wait(waitCancellation.Token);
     }
 
     /// <summary>An empty or faulted empty enumerable cannot evict a retained entry or publish a version.</summary>
@@ -236,6 +241,7 @@ public sealed class SingleWriterTests
     [Fact]
     public async Task ReentrantPreparationClockKeepsPriorPublicationAndCanAdd()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         LogStore? current = null;
         var armed = false;
         var oldId = 0L;
@@ -254,8 +260,8 @@ public sealed class SingleWriterTests
         oldId = store.Add(LogLevel.Info, "app", new string('x', 128));
         LogStoreTests.Flush(store);
         armed = true;
-        var id = await Task.Run(() => store.Add(LogLevel.Info, "app", new string('y', 128)), TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        var id = await Task.Run(() => store.Add(LogLevel.Info, "app", new string('y', 128)), waitCancellation.Token)
+            .WaitAsync(waitCancellation.Token);
         using var snapshot = LogStoreTests.Capture(store);
         Assert.Equal(id, Assert.Single(snapshot.Entries).EntryId);
         Assert.Equal(2, snapshot.EvictedCount); // Old retained entry and nested write both leave the ring.

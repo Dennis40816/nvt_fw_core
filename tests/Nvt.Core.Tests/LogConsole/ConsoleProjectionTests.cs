@@ -206,6 +206,7 @@ public sealed class ConsoleProjectionTests
     [InlineData(false, false, "[app] full\r\n第二行 ×2")]
     public async Task ExportKeepsSourceFullMessageLineBreaksAndCount(bool time, bool level, string expected)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore();
         store.Add(LogLevel.Info, "app", "full\r\n第二行", DateTimeOffset.UnixEpoch);
         store.Add(LogLevel.Warn, "other", "second", DateTimeOffset.UnixEpoch.AddSeconds(2));
@@ -218,7 +219,7 @@ public sealed class ConsoleProjectionTests
         Assert.Equal(first + "\n" + expected, ConsoleExportFormatter.FormatVisible(projection, options));
         store.Add(LogLevel.Info, "app", "newer");
         using var destination = new MemoryStream();
-        await ConsoleExportFormatter.WriteLogAsync(destination, projection, options, TestContext.Current.CancellationToken);
+        await ConsoleExportFormatter.WriteLogAsync(destination, projection, options, waitCancellation.Token);
         Assert.Equal(Encoding.UTF8.GetBytes(first + "\n" + expected), destination.ToArray());
         Assert.True(destination.CanWrite);
         Assert.True(new ConsoleExportOptions().IncludeTime);

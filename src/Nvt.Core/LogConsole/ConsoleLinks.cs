@@ -29,12 +29,12 @@ public sealed record LinkTarget(LinkKind Kind, string Path, int? Line = null, in
 /// <param name="Target">The complete target.</param>
 public sealed record ConsoleLinkSpan(int Start, int Length, LinkTarget Target);
 
-/// <summary>A pure Unicode scanner. It performs no file-system, resolver, or process operations.</summary>
+/// <summary>A pure Unicode scanner. It performs no file-system or process operations.</summary>
 public static partial class ConsoleLinkScanner
 {
     /// <summary>Finds URLs first, quoted paths second, then absolute and relative paths.</summary>
     /// <remarks>A trailing slash denotes a folder. Ambiguous extensionless paths remain files;
-    /// apps identify other folders with structured spans or resolver candidates. Separator-free
+    /// apps identify other folders with structured spans. Separator-free
     /// location targets require a non-leading dot followed by a letter. Candidates exceeding
     /// 4,096 UTF-16 characters, including location suffixes and excluding quotes, are skipped.</remarks>
     public static ImmutableArray<ConsoleLinkSpan> Scan(string text)
@@ -86,24 +86,54 @@ public sealed class ConsoleLinkIndex
         ArgumentNullException.ThrowIfNull(spans);
         ArgumentOutOfRangeException.ThrowIfNegative(textLength);
         var supplied = spans is ImmutableArray<ConsoleLinkSpan> array ? array : spans.ToImmutableArray();
-        Validate(supplied, textLength);
-        Spans = supplied.OrderBy(s => s.Start).ToImmutableArray();
+        var order = ValidateOrder(supplied, textLength, out _);
+        Spans = order is null ? supplied : order.Select(index => supplied[index]).ToImmutableArray();
     }
 
-    // Admission validates the original array without allocating an interval index.
-    internal static void Validate(ImmutableArray<ConsoleLinkSpan> spans, int textLength)
+    // Admission validates without an index. The result counts order, sort and overlap comparisons.
+    internal static int Validate(ImmutableArray<ConsoleLinkSpan> spans, int textLength)
+    {
+        ValidateOrder(spans, textLength, out var comparisons);
+        return comparisons;
+    }
+
+    private static int[]? ValidateOrder(ImmutableArray<ConsoleLinkSpan> spans, int textLength, out int comparisons)
     {
         if (spans.IsDefault) throw new ArgumentException("Link spans must be initialized.", nameof(spans));
+        var count = 0;
+        var sorted = true;
         for (var i = 0; i < spans.Length; i++)
         {
             var span = spans[i];
             if (span is null || span.Target is null || span.Start < 0 || span.Length <= 0
                 || span.Start > textLength - span.Length)
                 throw new ArgumentException("Link spans must have targets and valid ranges.", nameof(spans));
-            for (var j = 0; j < i; j++)
-                if (span.Start < spans[j].Start + spans[j].Length && spans[j].Start < span.Start + span.Length)
-                    throw new ArgumentException("Link spans must be nonoverlapping.", nameof(spans));
+            if (i != 0)
+            {
+                count++;
+                sorted &= spans[i - 1].Start <= span.Start;
+            }
         }
+        int[]? order = null;
+        if (!sorted)
+        {
+            order = Enumerable.Range(0, spans.Length).ToArray();
+            Array.Sort(order, (left, right) =>
+            {
+                count++;
+                return spans[left].Start.CompareTo(spans[right].Start);
+            });
+        }
+        for (var i = 1; i < spans.Length; i++)
+        {
+            var previous = spans[order is null ? i - 1 : order[i - 1]];
+            var current = spans[order is null ? i : order[i]];
+            count++;
+            if (current.Start < previous.Start + previous.Length)
+                throw new ArgumentException("Link spans must be nonoverlapping.", nameof(spans));
+        }
+        comparisons = count;
+        return order;
     }
 
     /// <summary>Gets ordered spans.</summary>

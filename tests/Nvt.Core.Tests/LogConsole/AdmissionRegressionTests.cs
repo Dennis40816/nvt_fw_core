@@ -96,12 +96,13 @@ public sealed class AdmissionRegressionTests
     [Fact]
     public async Task ConcurrentRejectionsPreserveQueueOrderAndBatchContiguity()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(entries: 8, pending: 32);
         var accepted = new ConcurrentBag<(long Id, string Text)>();
         using var start = new Barrier(9);
         var tasks = Enumerable.Range(0, 8).Select(producer => Task.Run(() =>
         {
-            start.SignalAndWait(TestContext.Current.CancellationToken);
+            start.SignalAndWait(waitCancellation.Token);
             for (var i = 0; i < 100; i++)
             {
                 var text = $"{producer}/{i}";
@@ -111,9 +112,9 @@ public sealed class AdmissionRegressionTests
                 Assert.InRange(usage.Handles, 0, 8);
                 Assert.InRange(usage.Characters, 0, 32);
             }
-        }, TestContext.Current.CancellationToken)).ToArray();
-        start.SignalAndWait(TestContext.Current.CancellationToken);
-        await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        }, waitCancellation.Token)).ToArray();
+        start.SignalAndWait(waitCancellation.Token);
+        await Task.WhenAll(tasks).WaitAsync(waitCancellation.Token);
         Assert.Equal(8, accepted.Count);
         Assert.Equal(792, store.RejectedCount);
         using var snapshot = LogStoreTests.Capture(store);
@@ -133,21 +134,22 @@ public sealed class AdmissionRegressionTests
     [InlineData(true)]
     public async Task DiscardedOwnershipRemainsChargedUntilDisposeReturns(bool zeroCharge)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var store = LogStoreTests.CreateStore(entries: 1, pending: 4);
         var content = new TestContent("seed", zeroCharge ? 0 : 4, () =>
         {
             entered.Set();
-            release.Wait(TestContext.Current.CancellationToken);
+            release.Wait(waitCancellation.Token);
         });
         Assert.Equal(1, store.Add(new LogWrite(LogLevel.Info, "app", content)));
         store.Clear();
         Assert.Equal((1, zeroCharge ? 0L : 4L), store.PendingUsage);
-        var writer = Task.Run(() => LogStoreTests.Flush(store), TestContext.Current.CancellationToken);
+        var writer = Task.Run(() => LogStoreTests.Flush(store), waitCancellation.Token);
         try
         {
-            Assert.True(entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            entered.Wait(waitCancellation.Token);
             for (var i = 0; i < 100; i++)
             {
                 Assert.Equal(0, store.Add(LogLevel.Info, "app", "next"));
@@ -157,7 +159,7 @@ public sealed class AdmissionRegressionTests
             }
             Assert.Equal(0, content.Disposals);
         }
-        finally { release.Set(); await writer.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); }
+        finally { release.Set(); await writer.WaitAsync(waitCancellation.Token); }
         Assert.Equal((0, 0L), store.PendingUsage);
         Assert.Equal(1, content.Disposals);
         Assert.Equal(2, store.Add(LogLevel.Info, "app", "next"));
@@ -170,25 +172,26 @@ public sealed class AdmissionRegressionTests
     [Fact]
     public async Task WriterComparisonKeepsActiveContentInsidePendingBound()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var store = LogStoreTests.CreateStore(entries: 2, pending: 4);
         var seed = new BlockingContent("same");
         store.Add(new LogWrite(LogLevel.Info, "app", seed));
         LogStoreTests.Flush(store);
-        seed.OnRead = () => { entered.Set(); release.Wait(TestContext.Current.CancellationToken); };
+        seed.OnRead = () => { entered.Set(); release.Wait(waitCancellation.Token); };
         var candidate = new TestContent("same", 4);
         Assert.Equal(2, store.Add(new LogWrite(LogLevel.Info, "app", candidate)));
-        var writer = Task.Run(() => LogStoreTests.Flush(store), TestContext.Current.CancellationToken);
+        var writer = Task.Run(() => LogStoreTests.Flush(store), waitCancellation.Token);
         try
         {
-            Assert.True(entered.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+            entered.Wait(waitCancellation.Token);
             Assert.Equal((1, 4L), store.PendingUsage);
             Assert.Equal(0, store.Add(LogLevel.Info, "app", "next"));
             store.Clear();
             Assert.Equal((1, 4L), store.PendingUsage);
         }
-        finally { release.Set(); await writer.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken); }
+        finally { release.Set(); await writer.WaitAsync(waitCancellation.Token); }
         Assert.Equal((0, 0L), store.PendingUsage);
         Assert.Equal(1, candidate.Disposals);
         using var reset = store.CaptureSnapshot();

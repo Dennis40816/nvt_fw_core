@@ -1,6 +1,6 @@
 # Roadmap
 
-This file is the one place for Core's planned work. Status as of 2026-10-07.
+This file is the one place for Core's planned work. Status as of 2026-10-08.
 
 The owner asked on 2026-10-07 for one roadmap per repository, with Core adoption tracked as progress: 「我認為需要重新整理各專案 Todo 規劃，也要把整合 core 納入進度，要不然很難做 hotfix」 ("I think we need to reorganize each project's to-do plan and include Core integration in the progress; otherwise hotfixes are hard to do.")
 
@@ -69,7 +69,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Item | Target | Status | Link |
 | --- | --- | --- | --- |
 | README, contribution rules, license | 1.0.0 | Merged | [README](README.md), [CONTRIBUTING](CONTRIBUTING.md) |
-| Pull request templates | 1.0.0 | Planned | — |
+| Pull request template | 1.0.0 | Merged | [template](.github/pull_request_template.md) |
 
 **3. CI/CD workflows and tests**
 
@@ -100,11 +100,11 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Message Center presentation view model | 1.0.0 | Merged | [#100](https://github.com/Dennis40816/nvt_fw_core/pull/100) |
 | RuntimeQuery generic commands: help, ping, focus, page, screenshot, exit | 1.0.0 | Merged | [#102](https://github.com/Dennis40816/nvt_fw_core/pull/102) |
 | Basic controls, set 1: tooltip wrapping, text and number input, combo box, toggle switch, tab control | 1.0.0 | Planned (NFH ports) | — |
-| Basic controls, set 2: toggle button | 1.0.0 | In progress; the owner picks from comparison images | — |
+| Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Planned | — |
-| Icons from the Material Symbols font | 1.0.0 | In progress | — |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Design proposal open | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82) |
-| Number scrubber holds one drag session | 1.0.0 | Open | [#86](https://github.com/Dennis40816/nvt_fw_core/issues/86) |
+| Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Design proposal merged; the control is in progress | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82) |
+| Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
 
 **6. Launcher**
 

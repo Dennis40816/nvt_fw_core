@@ -80,7 +80,7 @@ public static partial class RegularFileGuard
 
     /// <summary>Reads Unix device and inode identity, returning null for absent paths or non-directory parents.</summary>
     /// <remarks>This method is for non-Windows hosts and follows file links through stat.</remarks>
-    public static (long Device, long Inode)? ReadUnixIdentity(string path)
+    internal static (long Device, long Inode)? ReadUnixIdentity(string path)
     {
         if (UnixStat(path, out UnixFileStatus status) == 0)
         {

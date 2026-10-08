@@ -15,6 +15,7 @@ public sealed class LogStore : IDisposable
     private readonly TimeProvider _clock;
     private readonly Action<Action> _schedule;
     private readonly Func<ILogTextContent, ulong> _fingerprint;
+    private readonly Action? _beforeApply;
     // _gate protects admission, ownership collections, reader fences, generation, subscriptions,
     // readiness, notification requests and the published reference. Ownership moves from queues
     // to _inFlight until successful publication or completed disposal, including deferred unpublished cleanup.
@@ -60,7 +61,7 @@ public sealed class LogStore : IDisposable
         : this(maxEntries, maxCharacters, maxPendingCharacters, clock, schedule, LogText.Fingerprint) { }
 
     internal LogStore(int maxEntries, long maxCharacters, long maxPendingCharacters, TimeProvider? clock,
-        Action<Action>? schedule, Func<ILogTextContent, ulong> fingerprint)
+        Action<Action>? schedule, Func<ILogTextContent, ulong> fingerprint, Action? beforeApply = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxEntries);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxCharacters);
@@ -71,6 +72,7 @@ public sealed class LogStore : IDisposable
         _clock = clock ?? TimeProvider.System;
         _schedule = schedule ?? (static action => action());
         _fingerprint = fingerprint;
+        _beforeApply = beforeApply;
     }
 
     /// <summary>Delivers a scoped delta after publication, outside every lock.</summary>
@@ -211,7 +213,8 @@ public sealed class LogStore : IDisposable
     }
 
     /// <summary>Asynchronously captures a publication covering every Add and Clear admitted before this call.</summary>
-    /// <remarks>Never blocks a thread. Cancellation or store disposal cancels the wait. A writer failure
+    /// <remarks>Never blocks a thread. Cancellation or store disposal cancels a pending wait.
+    /// A call after Dispose throws ObjectDisposedException. A writer failure
     /// faults outstanding waits with its original exception. On the writer thread, including Changed
     /// and content Dispose callbacks, returns the current publication without waiting for itself.
     /// The caller must dispose the returned snapshot.</remarks>
@@ -425,6 +428,8 @@ public sealed class LogStore : IDisposable
 
     private void Apply(LinkedList<Work> work, Queue<Work> discarded, long generation, long admission, List<ILogTextContent> released)
     {
+        // Internal fault injection runs before any ownership transfer in this step.
+        _beforeApply?.Invoke();
         while (discarded.TryDequeue(out var item))
         {
             _lastSequence = Math.Max(_lastSequence, item.Id);

@@ -2,6 +2,20 @@
 
 # Launcher
 
+## 0.9.0 前的不相容變更
+
+`UpdateCatalogPackagePath.Value` 現為 `string?`。
+位置建構函式參數與 `Deconstruct` 輸出也採用相同註記。
+未初始化的預設值包含 null。
+`UpdateCatalogVersionSnapshot.Create` 仍是准入邊界，並拒絕該預設值。
+通過驗證的 snapshot identity 組成與位元組維持不變。
+
+字串操作前，請先防護原始路徑。
+儲存庫使用前，請透過 `Create` 准入目錄資料。
+儲存庫呼叫端會在解析前檢查路徑。
+雜湊呼叫端也會在驗證或執行檔測量前檢查 nullable `BoundedReadResult.Sha256`。
+測試保留 identity 相同性，並驗證准入時拒絕預設路徑。
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedAppVersion.cs`

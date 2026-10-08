@@ -13,7 +13,7 @@ public sealed class WriterRecoveryTests
 {
     /// <summary>A clock fault after publication leaves notification pending until the next explicit wake.</summary>
     [Fact]
-    public void ThrowOnceWriterClockRearmsAndStoreKeepsWorking()
+    public void ThrowOnceClockRequiresExplicitWakeAndStoreKeepsWorking()
     {
         var callbacks = new ConcurrentQueue<Action>();
         var reads = 0;

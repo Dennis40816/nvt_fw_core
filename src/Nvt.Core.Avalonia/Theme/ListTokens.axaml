@@ -1,0 +1,24 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.List.SelectedBrush" ResourceKey="NfcAccentSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedPointerOverBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedPressedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedLabelBrush" ResourceKey="NfcAccentStrongBrush" />
+      <BoxShadows x:Key="Nvt.Menu.PopupShadow">0 4 12 0 #26000000</BoxShadows>
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.List.SelectedBrush" ResourceKey="NfcAccentSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedPointerOverBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedPressedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.List.SelectedLabelBrush" ResourceKey="NfcAccentStrongBrush" />
+      <BoxShadows x:Key="Nvt.Menu.PopupShadow">0 4 12 0 #66000000</BoxShadows>
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <StaticResource x:Key="Nvt.List.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+  <x:Double x:Key="Nvt.List.CompactHeight">24</x:Double>
+  <StaticResource x:Key="Nvt.Menu.PopupMaximumCornerRadius" ResourceKey="NfcSurfaceCornerRadius" />
+  <Thickness x:Key="Nvt.Menu.PopupShadowMargin">16</Thickness>
+  <StreamGeometry x:Key="Nvt.Menu.ChevronGeometry">M1 1 L5 5 L1 9</StreamGeometry>
+</ResourceDictionary>

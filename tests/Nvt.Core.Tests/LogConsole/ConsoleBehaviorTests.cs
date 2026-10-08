@@ -253,6 +253,7 @@ public sealed class ConsoleBehaviorTests
     [Fact]
     public async Task EagerSchedulerDeliversOneCallbackAtATimeInVersionOrder()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var completedSecond = new ManualResetEventSlim();
         using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: action => action());
         var active = 0;
@@ -284,8 +285,8 @@ public sealed class ConsoleBehaviorTests
         };
         store.SetReady(true);
         store.Add(LogLevel.Info, "app", "first");
-        await Task.Run(() => Assert.True(completedSecond.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken)),
-            TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await Task.Run(() => completedSecond.Wait(waitCancellation.Token),
+            waitCancellation.Token).WaitAsync(waitCancellation.Token);
         Assert.Empty(faults);
         Assert.Equal(1, maximum);
         Assert.Equal(new long[] { 1, 2 }, completed);
@@ -316,6 +317,7 @@ public sealed class ConsoleBehaviorTests
     [Fact]
     public async Task LargeSegmentedContentStaysBoundedThroughProjectionSearchAndExport()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(characters: 128, pending: 128);
         var content = new GeneratedContent(16 * 1024 * 1024);
         store.Add(new LogWrite(LogLevel.Info, "app", content));
@@ -336,7 +338,7 @@ public sealed class ConsoleBehaviorTests
         Assert.Equal(0, content.Disposals);
         using var destination = new BoundedOutputStream();
         await ConsoleExportFormatter.WriteLogAsync(destination, projection, new ConsoleExportOptions(false, false),
-            TestContext.Current.CancellationToken);
+            waitCancellation.Token);
         Assert.Equal((long)content.Length + 8, destination.Length); // Six prefix bytes; surrogate pair adds two bytes.
         var prefix = new char[4096];
         // Build a small expected prefix independently of export's chunk boundaries.
@@ -504,9 +506,10 @@ public sealed class ConsoleBehaviorTests
     public void ModuleDocsContainNoInternalProcessNarration(string name)
     {
         var text = ReadModuleDocument(name, new DirectoryInfo(AppContext.BaseDirectory));
-        Assert.DoesNotMatch(@"(?i)sandbox|\bTEMP\b|\bTMP\b", text);
+        Assert.DoesNotMatch(@"(?i)sandbox|\bTEMP\b|\bTMP\b|fix[ -]?round|fix[4-9]|第[四五六七八九]輪", text);
         Assert.DoesNotContain("| Passed | Skipped | Failed |", text, StringComparison.Ordinal);
         Assert.DoesNotContain("| 通過 | 跳過 | 失敗 |", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("9714.908", text, StringComparison.Ordinal);
         Assert.Contains("CaptureLatestAsync", text, StringComparison.Ordinal);
     }
 
@@ -514,13 +517,14 @@ public sealed class ConsoleBehaviorTests
     [Fact]
     public async Task CollapsedConsoleExportsLatestSnapshotAfterLaterAdd()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = new LogStore(clock: LogStoreTests.FixedClock());
         var first = store.Add(LogLevel.Info, "app", "before");
-        using var initial = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+        using var initial = await store.CaptureLatestAsync(waitCancellation.Token);
         using var displayed = ConsoleProjector.Project(initial, new ConsoleFilter(), new ConsoleViewState());
         var collapsed = new ConsoleViewState { Selection = [first] }.Pause(displayed, displayed.Rows[0].Id) with { IsExpanded = false };
         store.Add(LogLevel.Info, "app", "later\r\nsecond line");
-        using var latest = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+        using var latest = await store.CaptureLatestAsync(waitCancellation.Token);
         using var exported = ConsoleProjector.Project(latest, new ConsoleFilter(), collapsed);
         Assert.True(exported.Version > displayed.Version);
         Assert.Equal(latest.Version, exported.Version);
@@ -533,7 +537,7 @@ public sealed class ConsoleBehaviorTests
         Assert.Equal(expected, ConsoleExportFormatter.FormatVisible(exported, options));
         Assert.Equal("[app] before", ConsoleExportFormatter.FormatSelection(exported, collapsed.Selection, options));
         using var destination = new MemoryStream();
-        await ConsoleExportFormatter.WriteLogAsync(destination, exported, options, TestContext.Current.CancellationToken);
+        await ConsoleExportFormatter.WriteLogAsync(destination, exported, options, waitCancellation.Token);
         Assert.Equal(Encoding.UTF8.GetBytes(expected), destination.ToArray());
     }
 

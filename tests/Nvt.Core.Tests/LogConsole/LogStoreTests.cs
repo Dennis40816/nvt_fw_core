@@ -251,12 +251,13 @@ public sealed class LogStoreTests
     [Fact]
     public void SchedulingFailureFallsBackWithoutLosingAcceptedEntry()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var done = new ManualResetEventSlim();
         using var store = CreateStore(schedule: _ => throw new InvalidOperationException("Scheduler unavailable."));
         store.Changed += (_, _) => done.Set();
         store.SetReady(true);
         Assert.True(store.Add(LogLevel.Info, "app", "accepted") > 0);
-        Assert.True(done.Wait(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        done.Wait(waitCancellation.Token);
         using var snapshot = store.CaptureSnapshot();
         Assert.Equal(1, snapshot.EventCount);
     }
@@ -281,8 +282,9 @@ public sealed class LogStoreTests
 
     private static Action Take(ConcurrentQueue<Action> queue)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         Action? action = null;
-        Assert.True(SpinWait.SpinUntil(() => queue.TryDequeue(out action), TimeSpan.FromSeconds(10)));
+        Assert.True(StoreRegressionSupport.WaitUntil(() => queue.TryDequeue(out action), waitCancellation.Token));
         return action!;
     }
 

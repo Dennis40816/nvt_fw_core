@@ -8,6 +8,20 @@ namespace Nvt.Core.Tests.Progress;
 /// <summary>Characterizes NFC's fraction rule without adding step-text validation.</summary>
 public sealed class ProgressUpdateTests
 {
+    /// <summary>Default progress is indeterminate with absent text and advertises nullable text.</summary>
+    [Fact]
+    public void DefaultProgressHasNoFractionOrText()
+    {
+        ProgressUpdate update = default;
+        Assert.True(update.IsIndeterminate);
+        Assert.Null(update.Fraction);
+        Assert.Null(update.StepText);
+        var property = typeof(ProgressUpdate).GetProperty(nameof(ProgressUpdate.StepText));
+        Assert.NotNull(property);
+        Assert.Equal(System.Reflection.NullabilityState.Nullable,
+            new System.Reflection.NullabilityInfoContext().Create(property).ReadState);
+    }
+
     /// <summary>Null means unknown. Valid fractions are retained without clamping.</summary>
     [Theory]
     [InlineData(null)]
@@ -73,9 +87,10 @@ public sealed class ProgressUpdateTests
 
     /// <summary>Core retains supplied text, including empty or whitespace text.</summary>
     [Theory]
+    [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void StepTextIsRetained(string stepText)
+    public void StepTextIsRetained(string? stepText)
     {
         Assert.Equal(stepText, new ProgressUpdate(null, stepText).StepText);
     }

@@ -13,12 +13,27 @@ public static class LocalJsonDocument
     private static readonly Encoding Utf32Le = new UTF32Encoding(false, false);
     private static readonly Encoding Utf32Be = new UTF32Encoding(true, false);
 
-    /// <summary>Shared serializer options: indented output with null properties omitted.</summary>
-    public static readonly JsonSerializerOptions Options = new()
+    private static readonly JsonSerializerOptions Options = CreateFrozenOptions();
+
+    /// <summary>Creates independent mutable serializer options with the local-state defaults.</summary>
+    /// <returns>A fresh copy with indented output and null properties omitted.</returns>
+    /// <remarks>Customizing the copy does not affect deserialization or later copies. The copy carries no type resolver until it is used.</remarks>
+    public static JsonSerializerOptions CreateOptions() => new()
     {
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
+
+    private static JsonSerializerOptions CreateFrozenOptions()
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        };
+        options.MakeReadOnly(populateMissingResolver: true);
+        return options;
+    }
 
     /// <summary>Combines the host-supplied local-state directory and file name.</summary>
     public static string GetPath(string localStateDirectory, string fileName)

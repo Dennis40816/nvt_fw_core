@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using System.Text.RegularExpressions;
 using Nvt.Core.LogConsole;
 using Xunit;
 
@@ -10,7 +11,7 @@ public sealed class ModuleDocumentationTests
 {
     /// <summary>Store identities equal their member sequences.</summary>
     [Fact]
-    public void LogEntryDocumentsIdentityEqualsSequence()
+    public void StoreEntryIdentityEqualsSequence()
     {
         using var store = LogStoreTests.CreateStore();
         store.Add(LogLevel.Info, "app", "first");
@@ -18,5 +19,8 @@ public sealed class ModuleDocumentationTests
         using var snapshot = LogStoreTests.Capture(store);
         Assert.All(snapshot.Entries, value => Assert.Equal(value.EntryId, value.Sequence));
     }
-
+    /// <summary>Regression classes communicate behavior without internal process names.</summary>
+    [Fact]
+    public void RegressionClassesUseBehaviorNames()
+        => Assert.DoesNotContain(typeof(LogStoreTests).Assembly.GetTypes(), type => type.Namespace == typeof(LogStoreTests).Namespace && Regex.IsMatch(type.Name, @"^Fix[5-9]RegressionTests$"));
 }

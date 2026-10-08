@@ -114,7 +114,7 @@ public sealed class ConsoleLinkTests
         Assert.Empty(cache.GetLinks(snapshot, snapshot.Entries[1]).Spans);
     }
 
-    /// <summary>Cache keys ignore search and invalidate only through snapshot and policy synchronization.</summary>
+    /// <summary>Cache keys ignore search and invalidate only through snapshot synchronization.</summary>
     [Fact]
     public void CacheReusesLiveEntriesAndRejectsStaleSnapshots()
     {
@@ -132,10 +132,11 @@ public sealed class ConsoleLinkTests
         store.Add(LogLevel.Info, "app", "second");
         using var second = LogStoreTests.Capture(store);
         Assert.Same(index, cache.GetLinks(second, second.Entries[0]));
-        Assert.NotSame(index, cache.GetLinks(second, second.Entries[0], 1));
+        cache.Synchronize(second);
+        Assert.Same(index, cache.GetLinks(second, second.Entries[0]));
         store.Add(LogLevel.Info, "app", "third");
         using var third = LogStoreTests.Capture(store);
-        cache.Synchronize(third, 1);
+        cache.Synchronize(third);
         Assert.False(store.IsCurrent(first.Generation, id, 42));
         Assert.NotSame(index, cache.GetLinks(first, first.Entries[0]));
         store.Clear();

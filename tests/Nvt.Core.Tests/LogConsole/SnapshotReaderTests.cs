@@ -14,7 +14,8 @@ public sealed class SnapshotReaderTests
     [Fact]
     public async Task SnapshotOnSingleThreadSchedulerReturnsBeforeWriterRuns()
     {
-        using var pump = new SingleThreadPump();
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
+        using var pump = new SingleThreadPump(waitCancellation.Token);
         var callbacks = new ConcurrentQueue<Action>();
         await pump.Run(async () =>
         {
@@ -24,19 +25,20 @@ public sealed class SnapshotReaderTests
             using var snapshot = store.CaptureSnapshot();
             Assert.Empty(snapshot.Entries);
             pump.Schedule(Take(callbacks));
-            using var published = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+            using var published = await store.CaptureLatestAsync(waitCancellation.Token);
             Assert.Same(pump, SynchronizationContext.Current);
             Assert.Single(published.Entries);
             store.Dispose();
             pump.Schedule(Take(callbacks));
-        });
+        }).WaitAsync(waitCancellation.Token);
     }
 
     /// <summary>An awaiting dispatcher caller yields to the writer on that same dispatcher.</summary>
     [Fact]
     public async Task LatestCaptureOnDispatcherYieldsToWriterAndCompletes()
     {
-        using var pump = new SingleThreadPump();
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
+        using var pump = new SingleThreadPump(waitCancellation.Token);
         await pump.Run(async () =>
         {
             var dispatcherThread = Environment.CurrentManagedThreadId;
@@ -47,39 +49,40 @@ public sealed class SnapshotReaderTests
                 action();
             }));
             store.Add(LogLevel.Info, "app", "queued");
-            var capture = store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+            var capture = store.CaptureLatestAsync(waitCancellation.Token);
             Assert.False(capture.IsCompleted);
             using var published = await capture;
             Assert.Single(published.Entries);
             Assert.Same(pump, SynchronizationContext.Current);
             Assert.Equal(dispatcherThread, Environment.CurrentManagedThreadId);
             Assert.All(writerThreads, id => Assert.Equal(dispatcherThread, id));
-        });
+        }).WaitAsync(waitCancellation.Token);
     }
 
     /// <summary>An async barrier yields its caller and covers accepted writes and reset markers.</summary>
     [Fact]
     public async Task LatestCaptureYieldsAndCoversAddClearAndRejection()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(maxPendingCharacters: 4, clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         store.Add(LogLevel.Info, "app", "seed");
-        var capture = Latest(store, TestContext.Current.CancellationToken);
+        var capture = Latest(store, waitCancellation.Token);
         Assert.False(capture.IsCompleted);
         Take(callbacks)();
-        using (var added = await capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken))
+        using (var added = await capture.WaitAsync(waitCancellation.Token))
             Assert.Equal("seed", LogText.ReadAll(Assert.Single(added.Entries).TextContent));
         store.Clear();
-        capture = Latest(store, TestContext.Current.CancellationToken);
+        capture = Latest(store, waitCancellation.Token);
         Assert.False(capture.IsCompleted);
         Take(callbacks)();
-        using (var cleared = await capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken))
+        using (var cleared = await capture.WaitAsync(waitCancellation.Token))
         {
             Assert.Equal(store.Generation, cleared.Generation);
             Assert.Empty(cleared.Entries);
         }
         Assert.Equal(0, store.Add(LogLevel.Info, "app", "oversized"));
-        capture = Latest(store, TestContext.Current.CancellationToken);
+        capture = Latest(store, waitCancellation.Token);
         Assert.True(capture.IsCompletedSuccessfully);
         using var rejected = await capture;
         Assert.Empty(rejected.Entries);
@@ -93,6 +96,7 @@ public sealed class SnapshotReaderTests
     [InlineData(true)]
     public async Task LatestCaptureCancelsWithoutWriterTurn(bool dispose)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(schedule: callbacks.Enqueue);
         using var cancellation = new CancellationTokenSource();
@@ -100,18 +104,18 @@ public sealed class SnapshotReaderTests
         var capture = Latest(store, cancellation.Token);
         Assert.False(capture.IsCompleted);
         if (dispose) store.Dispose(); else cancellation.Cancel();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => capture.WaitAsync(waitCancellation.Token));
         Assert.True(capture.IsCanceled);
         if (!dispose)
         {
-            var next = Latest(store, TestContext.Current.CancellationToken);
+            var next = Latest(store, waitCancellation.Token);
             Take(callbacks)();
             using var snapshot = await next;
             Assert.Single(snapshot.Entries);
         }
         else
         {
-            await Assert.ThrowsAsync<ObjectDisposedException>(() => Latest(store, TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => Latest(store, waitCancellation.Token));
             Take(callbacks)();
         }
         using var alreadyCancelled = new CancellationTokenSource();

@@ -18,16 +18,17 @@ public sealed class SnapshotPublicationTests
     [InlineData("reject")]
     public async Task CaptureWaitsForPreviouslyAdmittedOperations(string operation)
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(maxPendingCharacters: 8, clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         store.Add(LogLevel.Info, "app", "old");
         Take(callbacks)(); // Publish only the initial fixture.
         var id = operation == "clear" ? 0 : store.Add(LogLevel.Info, "app", operation == "reject" ? "oversized" : "new");
         if (operation == "clear") store.Clear();
-        var capture = store.CaptureLatestAsync(TestContext.Current.CancellationToken).AsTask();
+        var capture = store.CaptureLatestAsync(waitCancellation.Token).AsTask();
         AwaitCaptureOrFence(store, capture);
         if (operation != "reject") Take(callbacks)(); // Rejection schedules no writer.
-        using var snapshot = await capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        using var snapshot = await capture.WaitAsync(waitCancellation.Token);
         if (operation == "clear")
         {
             Assert.Equal(store.Generation, snapshot.Generation);
@@ -51,6 +52,7 @@ public sealed class SnapshotPublicationTests
     [Fact]
     public async Task LatestExportWaitsForAdmittedAddWithoutFlush()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(clock: LogStoreTests.FixedClock(), schedule: callbacks.Enqueue);
         store.Add(LogLevel.Info, "app", "old");
@@ -58,26 +60,27 @@ public sealed class SnapshotPublicationTests
         store.Add(LogLevel.Info, "app", "latest");
         var export = Task.Run(async () =>
         {
-            using var snapshot = await store.CaptureLatestAsync(TestContext.Current.CancellationToken);
+            using var snapshot = await store.CaptureLatestAsync(waitCancellation.Token);
             using var projection = ConsoleProjector.Project(snapshot, new ConsoleFilter(), new ConsoleViewState());
             return ConsoleExportFormatter.FormatVisible(projection, new ConsoleExportOptions(false, false));
-        }, TestContext.Current.CancellationToken);
+        }, waitCancellation.Token);
         AwaitCaptureOrFence(store, export);
         Take(callbacks)();
-        Assert.Equal("[app] old\n[app] latest", await export.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        Assert.Equal("[app] old\n[app] latest", await export.WaitAsync(waitCancellation.Token));
     }
 
     /// <summary>Closing admission releases a reader waiting for a held writer.</summary>
     [Fact]
     public async Task DisposeReleasesWaitingLatestReader()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         var callbacks = new ConcurrentQueue<Action>();
         using var store = new LogStore(schedule: callbacks.Enqueue);
         store.Add(LogLevel.Info, "app", "queued");
-        var capture = Record.ExceptionAsync(async () => { using var snapshot = await store.CaptureLatestAsync(TestContext.Current.CancellationToken); }).AsTask();
+        var capture = Record.ExceptionAsync(async () => { using var snapshot = await store.CaptureLatestAsync(waitCancellation.Token); }).AsTask();
         AwaitCaptureOrFence(store, capture);
         store.Dispose();
-        Assert.IsAssignableFrom<OperationCanceledException>(await capture.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken));
+        Assert.IsAssignableFrom<OperationCanceledException>(await capture.WaitAsync(waitCancellation.Token));
         Take(callbacks)();
     }
 
@@ -85,6 +88,7 @@ public sealed class SnapshotPublicationTests
     [Fact]
     public async Task CaptureInsideChangedAndContentDisposeDoesNotWaitForItself()
     {
+        using var waitCancellation = StoreRegressionSupport.CreateWaitCancellation();
         using var store = LogStoreTests.CreateStore(entries: 1);
         var observed = new ConcurrentQueue<long>();
         var failures = new ConcurrentQueue<Exception>();
@@ -108,8 +112,8 @@ public sealed class SnapshotPublicationTests
         };
         store.SetReady(true);
         store.Add(new LogWrite(LogLevel.Info, "app", content));
-        await Task.Run(() => LogStoreTests.Flush(store), TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        await Task.Run(() => LogStoreTests.Flush(store), waitCancellation.Token)
+            .WaitAsync(waitCancellation.Token);
         Assert.Empty(failures);
         Assert.Null(content.Failure);
         Assert.Equal(new long[] { 1, 2 }, observed);
