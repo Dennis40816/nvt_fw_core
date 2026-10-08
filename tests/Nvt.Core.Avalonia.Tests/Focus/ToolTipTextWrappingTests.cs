@@ -14,6 +14,7 @@ using static Nvt.Core.Avalonia.Tests.Focus.ToolTipTestHost;
 namespace Nvt.Core.Avalonia.Tests.Focus;
 
 /// <summary>Checks wrapping, subscription ownership, live resources, and keyboard tooltip integration.</summary>
+[Collection("ToolTip text wrapping registration")]
 public sealed class ToolTipTextWrappingTests
 {
     /// <summary>A nonblank string becomes one wrapping TextBlock and opens with the shared foreground.</summary>

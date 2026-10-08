@@ -17,6 +17,7 @@ using static Nvt.Core.Avalonia.Tests.Focus.ToolTipTestHost;
 namespace Nvt.Core.Avalonia.Tests.Focus;
 
 /// <summary>Renders synthetic tooltip content and a Fluent comparison without opening native windows.</summary>
+[Collection("ToolTip text wrapping registration")]
 public sealed class ToolTipStylesRenderer
 {
     private const string LongText = "A longer tooltip explains the option and its effects. " +
