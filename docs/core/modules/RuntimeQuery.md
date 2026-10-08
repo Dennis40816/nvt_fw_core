@@ -81,7 +81,7 @@ Core now provides command routing, request checks, and five generic argument hel
 | --- | --- |
 | `RuntimeQueryCommandRouter(handlers)` | Uses the caller's delegate dictionary without adding commands or changing its key comparer. |
 | `RegisteredCommands` | Read-only names in dictionary enumeration order at construction. Build the dictionary in registration order first. |
-| `RouteAsync(commandText, args, cancellationToken)` | Trims and lowercases the command with invariant culture. Passes the original argument dictionary to the handler. |
+| `RouteAsync(commandText, args, cancellationToken)` | Trims and lowercases the command with invariant culture. Passes the original argument dictionary to the handler. A token that is already cancelled makes the call throw `OperationCanceledException` before any handler runs. |
 | `ExecuteAsync(request, expectedVersion, cancellationToken)` | Checks null first, compares versions with ordinal equality second, then routes. The tool supplies its version. |
 | `RuntimeQueryArgumentParser.TryGetIntArg` | Parses invariant integers and checks an inclusive range. |
 | `TryGetIntListArg` | Splits on commas, trims items, removes empty items, and checks each integer in order. |
@@ -416,7 +416,7 @@ The read limit, shutdown bound, client budget and protocol identity have no prod
 
 Pipe writers use compact JSON, UTF-8 without a BOM, and `StreamWriter.WriteLineAsync` with the platform newline (CRLF on Windows). Readers retain the source's `Encoding.UTF8` and disabled encoding detection. The UTF-8 encoding's own preamble is still consumed by `StreamReader`; other encodings are not detected. An open connection with an unterminated response times out. Closing a pipe without a complete frame can produce an IO error, including during reader/writer disposal, as in the source. Pretty output uses the serializer's default platform line endings (CRLF on the Windows baseline); the caller owns its final output newline.
 
-Cancellation stops waiting for a handler that ignores its token; it cannot terminate that handler's own work. A shutdown timeout is reported through diagnostics. Callers remain responsible for cooperative handler cleanup. These bounded lifecycle changes do not alter request or response bytes.
+The server keeps waiting for a started handler, so the handler finishes its own cleanup. Shutdown signals the token and, after the bound, closes the pipe and reports `ShutdownTimedOut`. A handler that ignores its token keeps running until it returns, because Core cannot terminate its work. Callers remain responsible for cooperative handler cleanup. These bounded lifecycle changes do not alter request or response bytes.
 
 ## Pipe security
 

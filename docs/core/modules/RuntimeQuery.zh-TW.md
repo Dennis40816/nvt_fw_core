@@ -80,7 +80,7 @@ Core 現在提供命令路由、請求檢查與五個通用引數輔助方法。
 | --- | --- |
 | `RuntimeQueryCommandRouter(handlers)` | 使用工具提供的委派字典。不新增命令，也不更改字典的鍵比較方式。 |
 | `RegisteredCommands` | 建構時依字典列舉順序保存唯讀名稱清單。工具須先依登錄順序建立字典。 |
-| `RouteAsync(commandText, args, cancellationToken)` | 去除命令前後空白，以 invariant culture 轉為小寫。將原始引數字典傳給處理委派。 |
+| `RouteAsync(commandText, args, cancellationToken)` | 去除命令前後空白，以 invariant culture 轉為小寫。將原始引數字典傳給處理委派。token 已取消時，呼叫會在任何處理委派執行前擲回 `OperationCanceledException`。 |
 | `ExecuteAsync(request, expectedVersion, cancellationToken)` | 先檢查 null，再以 ordinal 相等比較版本，最後路由命令。版本由工具提供。 |
 | `RuntimeQueryArgumentParser.TryGetIntArg` | 以 invariant culture 解析整數，並檢查包含端點的範圍。 |
 | `TryGetIntListArg` | 以逗號分割、去除項目前後空白及空項目，再依序檢查各整數。 |
@@ -399,8 +399,8 @@ query window-size --size 1280,720
 | `RuntimeQueryRequest(Version, Command, Args)` | 請求欄位依此順序排列；引數可以是 null。 |
 | `RuntimeQueryError(Code, Message)` | 由呼叫端擁有的錯誤代碼與訊息。 |
 | `RuntimeQueryResponseEnvelope(Ok, Data, Error)` | 回應欄位依此順序排列；`Success(data)` 與 `Failure(code, message)` 保留明確的 null 屬性。 |
-| `RuntimeQueryProtocol.CompactJsonOptions` | 唯讀預設選項。 屬性名稱採 camelCase、保留 null、使用預設 JSON 跳脫規則、反序列化區分大小寫、不縮排。字典鍵保留原本大小寫。 |
-| `RuntimeQueryProtocol.PrettyJsonOptions` | 唯讀預設選項。 相同設定，另使用兩個空白縮排與序列化器預設的平台換行字元。用於呼叫端輸出，不用於管道訊息。 |
+| `RuntimeQueryProtocol.CompactJsonOptions` | 唯讀預設選項。屬性名稱採 camelCase、保留 null、使用預設 JSON 跳脫規則、反序列化區分大小寫、不縮排。字典鍵保留原本大小寫。 |
+| `RuntimeQueryProtocol.PrettyJsonOptions` | 唯讀預設選項。相同設定，另使用兩個空白縮排與序列化器預設的平台換行字元。用於呼叫端輸出，不用於管道訊息。 |
 | `RuntimeQueryIpcServer(...)` | 實例接收管道名稱、協定版本、以毫秒計的正數讀取與關閉逾時、錯誤回呼、診斷回呼及請求處理委派。 |
 | `Start()` / `DisposeAsync()` | 啟動一次；執行期間重複啟動與重複釋放皆不產生額外作用。釋放後啟動會擲回例外。釋放會停止接受新連線，並取消尚未送出請求行的連線。已讀到請求的連線可在關閉時間上限內完成處理並寫出回應。超過上限後，釋放會向處理委派發出合作式取消通知並關閉管道。 |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | 同步送出一筆請求，使用涵蓋連線、寫入與讀取的正數總逾時預算。開始寫入／讀取計時前扣除連線耗時，保留來源的整數毫秒取整與至少一毫秒的剩餘預算。 |
@@ -415,7 +415,7 @@ Core 不提供產品預設的讀取限制、關閉上限、用戶端預算或協
 
 管道寫入端使用精簡 JSON、不含 BOM 的 UTF-8，以及採用平台換行字元的 `StreamWriter.WriteLineAsync`（Windows 為 CRLF）。讀取端保留來源的 `Encoding.UTF8` 並停用編碼偵測。`StreamReader` 仍會消耗 UTF-8 編碼本身的前導碼；不偵測其他編碼。連線保持開啟但回應未以換行結尾時會逾時。未完成框架即關閉管道可能產生 IO 錯誤，包含讀取器／寫入器釋放期間，與來源一致。格式化輸出使用序列化器預設的平台換行字元（Windows 基準為 CRLF）；最後的輸出換行由呼叫端負責。
 
-取消會停止等待忽略 token 的處理委派，但無法終止該委派自己的工作。關閉逾時透過診斷回報。呼叫端仍須負責處理委派的合作式清理。這些有時間上限的生命週期調整不改變請求或回應位元組。
+伺服器會持續等待已開始的處理委派，讓它自行完成清理。關閉時會發出 token 取消通知，超過時間上限後關閉管道並回報 `ShutdownTimedOut`。忽略 token 的處理委派會執行到自行返回，因為 Core 無法終止它的工作。呼叫端仍須負責處理委派的合作式清理。這些有時間上限的生命週期調整不改變請求或回應位元組。
 
 ## Pipe security
 
