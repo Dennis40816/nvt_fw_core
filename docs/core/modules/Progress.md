@@ -13,6 +13,13 @@ The owner approved this boundary on 2026-10-06.
 The loading scope waits for its minimum visible time with `Task.Delay` on its `TimeProvider`.
 Apart from that wait, the module has no nested progress, queue, scheduler, replacement mode, shutdown framework, timer, trailing report, or UI code.
 
+## Internal cancellation state
+
+The service derives `CancelRequested` from the current status under `gate`.
+Completion captures that value before publishing a terminal snapshot.
+The captured value preserves result suppression and defers source disposal until the cancellation call finishes.
+The lock also protects job identity, active ownership, and completion flags.
+
 ## Frozen baselines
 
 These commits freeze the extraction sources.

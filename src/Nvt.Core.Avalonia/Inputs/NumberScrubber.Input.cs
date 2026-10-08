@@ -73,7 +73,7 @@ public sealed partial class NumberScrubber
     {
         CommitText();
         _isEditing = false;
-        SetFocused(_isScrubbing);
+        SetFocused(_scrubSession is not null);
         UpdateTextFromValue(force: true);
     }
 

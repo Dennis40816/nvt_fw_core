@@ -29,6 +29,16 @@ Parsing uses `decimal.TryParse` with `NumberStyles.Float` and `CultureInfo.Invar
 
 Wheel input uses the actual vertical delta, with optional Alt gating; zero vertical delta is ignored. Eligible nonzero wheel events are handled even when the rounded delta is zero or `SmallChange` is nonpositive. Dragging starts on left press, captures the pointer and focuses the text box. Upward motion increases the value from the drag's starting value; horizontal motion has no effect. Release or capture loss ends dragging; the focused class remains if the text box is focused. `LargeChange` is unused for all stepping.
 
+## Internal state
+
+One nullable `ScrubSession` stores the drag's start point and start value. Release and capture loss clear the session.
+A second pointer press replaces the session. It starts from the current point and value and captures the pressing pointer.
+Disabling, focus changes, and external value or range changes keep a captured drag active, matching the existing behavior.
+Control references, editing state, and drag state belong to the UI thread.
+
+Editing remains stored because focus loss commits before ending editing. Value observers must see the pending text before formatting.
+Routed focus events control this flag. Deriving it from `IsFocused` would change commit notifications and routed-event behavior.
+
 ## Frozen provenance
 
 Parent repository: `Dennis40816/nvt-freeform-helper`; ref: `1.3.x`; full commit: `e01e07a361b8dc264a06b3741f40274feeeace2d`. The source uses Avalonia 11.3.12 and xUnit 2; Core uses Avalonia 12.1.1 and xUnit v3. All source reads were from this commit.
