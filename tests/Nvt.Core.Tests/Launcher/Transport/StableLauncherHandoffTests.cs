@@ -249,6 +249,96 @@ public sealed class StableLauncherHandoffTests
         finally { Terminate(pid); }
     }
 
+    /// <summary>The legacy restart keeps both executable ancestors stable through contained creation.</summary>
+    [Fact]
+    public async Task StableLauncherHandoffRetainsAncestorCustodyThroughLegacyStart()
+    {
+        RequireWindows();
+        using var workspace = TestWorkspace.Create();
+        string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Bootstrap");
+        string higherAncestor = workspace.PathFor("higher");
+        string managedRoot = Path.Combine(higherAncestor, "managed");
+        _ = Directory.CreateDirectory(higherAncestor);
+        Directory.Move(Path.GetDirectoryName(executable)!, managedRoot);
+        executable = Path.Combine(managedRoot, TransportFixture.Descriptor.BootstrapExecutableFileName);
+        WindowsCustodyCapability.RequireFile(managedRoot);
+        int blocked = 0;
+        int pid = 0;
+        var handoff = Create(managedRoot, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+            beforeProcessStart: _ =>
+            {
+                foreach (string path in new[] { managedRoot, higherAncestor })
+                {
+                    try
+                    {
+                        Directory.Move(path, path + ".displaced");
+                    }
+                    catch (IOException)
+                    {
+                        blocked++;
+                    }
+                }
+            },
+            hasExited: process => { pid = process.Id; return false; });
+        string marker = Path.Combine(managedRoot, "handoff-probe-marker.txt");
+        using var environment = new ProtocolEnvironmentScope(
+            ("CORE_TEST_PROBE_MODE", "tree-grandchild"), ("CORE_TEST_PROBE_TREE_MARKER", marker));
+        try
+        {
+            StableLauncherStartResult started = await handoff.TryStartLauncherAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(new(StableLauncherStartOutcome.Started), started);
+            Assert.Equal(2, blocked);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            while (!File.Exists(marker)) { await Task.Delay(25, timeout.Token); }
+        }
+        finally { Terminate(pid); }
+    }
+
+    /// <summary>An executable observed as exited immediately reports its exact exit code.</summary>
+    [Fact]
+    public async Task StableLauncherHandoffReportsImmediateExitCode()
+    {
+        RequireWindows();
+        using var workspace = TestWorkspace.Create();
+        string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Bootstrap");
+        string root = Path.GetDirectoryName(executable)!;
+        WindowsCustodyCapability.RequireFile(root);
+        int pid = 0;
+        var handoff = Create(root, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+            hasExited: process => { pid = process.Id; return true; }, getExitCode: static _ => 24);
+        using var environment = new ProtocolEnvironmentScope(("CORE_TEST_PROBE_MODE", "silent-wait"));
+        try
+        {
+            StableLauncherStartResult result = await handoff.TryStartLauncherAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(new(StableLauncherStartOutcome.ExitedImmediately, 24), result);
+        }
+        finally { Terminate(pid); }
+    }
+
+    /// <summary>A residual Win32 start failure is converted to the handoff's fail-closed result.</summary>
+    [Fact]
+    public async Task StableLauncherHandoffReportsWin32ProcessCreationFailure()
+    {
+        RequireWindows();
+        using var workspace = TestWorkspace.Create();
+        string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Bootstrap");
+        string root = Path.GetDirectoryName(executable)!;
+        WindowsCustodyCapability.RequireFile(root);
+        bool hookRan = false;
+        var handoff = Create(root, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+            beforeProcessStart: _ =>
+            {
+                hookRan = true;
+                throw new Win32Exception(5);
+            });
+
+        StableLauncherStartResult started = await handoff.TryStartLauncherAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(hookRan);
+        Assert.Equal(new(StableLauncherStartOutcome.ProcessCreationFailed), started);
+    }
+
     /// <summary>Length and digest mismatches cannot satisfy inherited restart authority.</summary>
     [Theory]
     [InlineData(-1)]

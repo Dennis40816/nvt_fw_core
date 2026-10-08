@@ -438,6 +438,8 @@ Parent lifetime authority 將精確 exclusive lease、不可繼承的保留 file
 | 四個 `ManagedStartDeadlineTests` cases，包含 `CallerCancellationCannotWaitForeverForUnfinishedCreation` | 相同 class 與 method names |
 | Bootstrap descendant admission／completion cancellation、pre-admission exit、successful completion 與 later invocation failure | `ImmutableBootstrapProcessLaunchTests` 對應方法，保留原 assertion 與 budget |
 | `AnonymousPipeManagedLauncherProcessTests.Identity` legacy handoff authority、cancellation 與 observation failure | `StableLauncherHandoffTests` 對應方法 |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap` legacy ancestor custody、immediate exit 24 與 Win32 creation failure | `StableLauncherHandoffTests.StableLauncherHandoffRetainsAncestorCustodyThroughLegacyStart`、`StableLauncherHandoffReportsImmediateExitCode` 與 `StableLauncherHandoffReportsWin32ProcessCreationFailure`；保留原 result assertion、兩次 blocked rename 與注入的 Win32 error 5 |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap.BootstrapAdmissionThenExitNineteenRemainsTerminationUnconfirmed` | `ImmutableBootstrapProcessLaunchTests` 同名方法；精確 newline ADMITTED、原 budget，以及 admission 後 completion uncertainty 與 exit code 19 |
 | 有界 inherited identity roundtrip、malformed context 與 environment failure | `InheritedManagedBootstrapIdentityContextTests` |
 | Direct／partial START inheritance、精確 START 與 abort authorization | `BootstrapStartupProtocolTests` |
 | Inherited lifetime 與實體 final-path predicates | `InheritedManagedProcessLifetimeTests` 與 `ManagedLifetimeNativePathTests` |

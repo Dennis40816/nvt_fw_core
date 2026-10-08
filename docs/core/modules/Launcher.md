@@ -438,6 +438,8 @@ Frozen source tests are under `tests/NvtFwCombiner.Infrastructure.Tests/VersionM
 | Four `ManagedStartDeadlineTests` cases, including `CallerCancellationCannotWaitForeverForUnfinishedCreation` | Same class and method names |
 | Bootstrap descendant admission/completion cancellation, pre-admission exit, successful completion and later invocation failure | `ImmutableBootstrapProcessLaunchTests` corresponding methods, with the original assertions and budgets |
 | `AnonymousPipeManagedLauncherProcessTests.Identity` legacy handoff authority, cancellation and observation failures | `StableLauncherHandoffTests` corresponding methods |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap` legacy ancestor custody, immediate exit 24 and Win32 creation failure | `StableLauncherHandoffTests.StableLauncherHandoffRetainsAncestorCustodyThroughLegacyStart`, `StableLauncherHandoffReportsImmediateExitCode` and `StableLauncherHandoffReportsWin32ProcessCreationFailure`; original result assertions, both blocked renames and the injected Win32 error 5 |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap.BootstrapAdmissionThenExitNineteenRemainsTerminationUnconfirmed` | `ImmutableBootstrapProcessLaunchTests` same method; exact newline ADMITTED, original budgets and admitted completion uncertainty with exit code 19 |
 | Bounded inherited identity roundtrip, malformed context and environment failures | `InheritedManagedBootstrapIdentityContextTests` |
 | Direct/partial START inheritance, exact START and abort authorization | `BootstrapStartupProtocolTests` |
 | Inherited lifetime and physical final-path predicates | `InheritedManagedProcessLifetimeTests` and `ManagedLifetimeNativePathTests` |

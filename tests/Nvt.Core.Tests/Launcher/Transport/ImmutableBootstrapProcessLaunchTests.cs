@@ -389,6 +389,32 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         Assert.True(completion.HasValidShape);
     }
 
+    /// <summary>An admitted Root Bootstrap exit 19 preserves typed termination uncertainty.</summary>
+    [Fact]
+    public async Task BootstrapAdmissionThenExitNineteenRemainsTerminationUnconfirmed()
+    {
+        RequireWindows();
+        using var workspace = TestWorkspace.Create();
+        ProcessStartInfo info = ProcessProbe.Create("exit");
+        info.Environment["CORE_TEST_PROBE_EXIT_CODE"] = "19";
+        using Process process = ProcessLaunchGate.StartContained(info, [], static () => true)
+            ?? throw new InvalidOperationException("Exit probe did not start.");
+        using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
+        await using var writer = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
+        pipe.DisposeLocalCopyOfClientHandle();
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        await writer.WriteAsync("ADMITTED\n"u8.ToArray(), TestContext.Current.CancellationToken);
+        await writer.FlushAsync(TestContext.Current.CancellationToken);
+        await process.WaitForExitAsync(TestContext.Current.CancellationToken);
+
+        ImmutableBootstrapAdmissionResult admission = await launch.WaitForAdmissionAsync(AdmissionBudget, TestContext.Current.CancellationToken);
+        ImmutableBootstrapCompletionResult completion = await launch.WaitForCompletionAsync(CompletionBudget, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ImmutableBootstrapAdmissionOutcome.Admitted, admission.Outcome);
+        Assert.Equal(ImmutableBootstrapCompletionOutcome.TerminationUnconfirmed, completion.Outcome);
+        Assert.Equal(19, completion.ExitCode);
+    }
+
     /// <summary>Observed failure codes retain their exact typed reasons when the admission pipe reaches EOF.</summary>
     [Theory]
     [InlineData(18, ImmutableBootstrapExitIssue.StateUnavailable, ImmutableBootstrapAdmissionOutcome.HealthUnavailable)]
