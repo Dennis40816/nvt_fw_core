@@ -62,7 +62,7 @@ internal static partial class WindowsContainedProcessStarter
                     throw new Win32Exception(Marshal.GetLastPInvokeError());
                 }
                 duplicates.Add(duplicate);
-                inheritedEnvironment[binding.EnvironmentVariable] = duplicate.DangerousGetHandle()
+                inheritedEnvironment[binding.EnvironmentVariable!] = duplicate.DangerousGetHandle()
                     .ToInt64()
                     .ToString(CultureInfo.InvariantCulture);
             }

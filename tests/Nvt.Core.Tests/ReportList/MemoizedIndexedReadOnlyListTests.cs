@@ -9,6 +9,23 @@ namespace Nvt.Core.Tests.ReportList;
 /// <summary>Characterizes memoized projection boundaries, identity and failed rows.</summary>
 public sealed class MemoizedIndexedReadOnlyListTests
 {
+    /// <summary>The allocation diagnostic remains internal while row creation remains deferred and cached.</summary>
+    [Fact]
+    public void MaterializationDiagnosticIsImplementationOnly()
+    {
+        Assert.Null(typeof(MemoizedIndexedReadOnlyList<object>).GetProperty("MaterializedCount"));
+        int factoryCalls = 0;
+        var rows = new MemoizedIndexedReadOnlyList<object>(1, _ =>
+        {
+            factoryCalls++;
+            return new object();
+        });
+        Assert.Equal(0, factoryCalls);
+        Assert.Same(rows[0], rows[0]);
+        Assert.Equal(1, factoryCalls);
+        Assert.Equal(1, rows.MaterializedCount);
+    }
+
     /// <summary>Negative counts are rejected before the factory is checked.</summary>
     [Theory]
     [InlineData(-1)]

@@ -10,6 +10,40 @@ namespace Nvt.Core.Tests.Persistence;
 /// <summary>Ports NFC's codec scenarios and characterizes its unchanged stream and JSON behavior.</summary>
 public sealed class LocalJsonDocumentTests
 {
+    /// <summary>Customizing one options copy leaves later copies and the codec's defaults unchanged.</summary>
+    [Fact]
+    public async Task OptionsCopiesKeepCustomizationLocal()
+    {
+        JsonSerializerOptions first = LocalJsonDocument.CreateOptions();
+        JsonSerializerOptions second = LocalJsonDocument.CreateOptions();
+        Assert.NotSame(first, second);
+        Assert.False(first.IsReadOnly);
+        Assert.False(second.IsReadOnly);
+        first.WriteIndented = false;
+        first.PropertyNameCaseInsensitive = true;
+        first.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        first.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never;
+        first.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+
+        Assert.True(second.WriteIndented);
+        Assert.False(second.PropertyNameCaseInsensitive);
+        Assert.Null(second.PropertyNamingPolicy);
+        Assert.Equal(System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull, second.DefaultIgnoreCondition);
+        Assert.Empty(second.Converters);
+        Assert.Equal("{}", JsonSerializer.Serialize(new NullableDocument(null), second));
+        Assert.Contains("reportJson", JsonSerializer.Serialize(new NullableDocument(null), first), StringComparison.Ordinal);
+        using var stream = new MemoryStream("{\"reportJson\":\"ignored\"}"u8.ToArray());
+        NullableDocument? loaded = await LocalJsonDocument.DeserializeAsync<NullableDocument>(
+            stream, TestContext.Current.CancellationToken);
+        Assert.NotNull(loaded);
+        Assert.Null(loaded.ReportJson);
+        JsonSerializerOptions later = LocalJsonDocument.CreateOptions();
+        Assert.False(later.IsReadOnly);
+        Assert.True(later.WriteIndented);
+        Assert.Empty(later.Converters);
+        Assert.Null(typeof(LocalJsonDocument).GetField("Options"));
+    }
+
     // Codec-only portion of ShellPreferenceFileStoreRoundTripsAndInvalidValuesFallBack.
     /// <summary>Preference-shaped JSON retains the original property names, values, and defaults.</summary>
     [Fact]
@@ -17,7 +51,7 @@ public sealed class LocalJsonDocumentTests
     {
         var expected = new PreferenceDocument(1, new PreferenceValues(
             "Dark", "Strict", "Traditional Chinese", true, false));
-        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(expected, LocalJsonDocument.Options);
+        byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(expected, LocalJsonDocument.CreateOptions());
         using (JsonDocument document = JsonDocument.Parse(bytes))
         {
             JsonElement root = document.RootElement;
@@ -78,7 +112,7 @@ public sealed class LocalJsonDocumentTests
         const int reportCharacterCount = 4 * 1024 * 1024;
         string reportJson = $"\"{new string('A', reportCharacterCount - 2)}\"";
         var expected = new PayloadDocument(reportJson);
-        string json = JsonSerializer.Serialize(expected, LocalJsonDocument.Options);
+        string json = JsonSerializer.Serialize(expected, LocalJsonDocument.CreateOptions());
         Encoding encoding = useLegacyUtf16Encoding ? Encoding.Unicode : new UTF8Encoding(false);
         using var stream = new MemoryStream([.. encoding.GetPreamble(), .. encoding.GetBytes(json)]);
         _ = await LocalJsonDocument.DeserializeAsync<PayloadDocument>(
@@ -108,10 +142,10 @@ public sealed class LocalJsonDocumentTests
         const string expected = "{\n  \"Name\": \"\\u003C\\u6E2C\\u8A66\\u003E\",\n  \"Absent\": null,\n  \"Items\": [\n    \"value\",\n    null\n  ],\n  \"Enabled\": false\n}";
 
         Assert.Equal(Encoding.UTF8.GetBytes(expected.Replace("\n", Environment.NewLine, StringComparison.Ordinal)),
-            JsonSerializer.SerializeToUtf8Bytes(value, LocalJsonDocument.Options));
+            JsonSerializer.SerializeToUtf8Bytes(value, LocalJsonDocument.CreateOptions()));
         Assert.Equal($"{{{Environment.NewLine}  \"ReportJson\": \"payload\"{Environment.NewLine}}}", JsonSerializer.Serialize(
-            new PayloadDocument("payload"), LocalJsonDocument.Options));
-        Assert.Equal("{}", JsonSerializer.Serialize(new NullableDocument(null), LocalJsonDocument.Options));
+            new PayloadDocument("payload"), LocalJsonDocument.CreateOptions()));
+        Assert.Equal("{}", JsonSerializer.Serialize(new NullableDocument(null), LocalJsonDocument.CreateOptions()));
     }
 
     /// <summary>Unicode, scalar, and short JSON inputs work without a byte order mark.</summary>

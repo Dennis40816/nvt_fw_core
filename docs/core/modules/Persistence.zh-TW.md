@@ -2,7 +2,28 @@
 
 # Persistence：LocalJsonDocument 與 LatestSnapshotPersistenceCoordinator
 
-[`LocalJsonDocument`](../../../src/Nvt.Core/Persistence/LocalJsonDocument.cs) 提供既有本機狀態 JSON 選項、由 host 傳入的目錄／檔名組合，以及 UTF-8 與帶 BOM 的 UTF-16／UTF-32 串流反序列化。輸入 stream 必須可 seek，且讀取後保持開啟。檔案寫入、原子替換、大小上限、schema 與 fallback 政策仍由 host 負責。本次只變更 namespace、公開可見性、版權標頭與 API 文件。
+## 0.9.0 前的不相容變更
+
+公開的 `Options` 欄位已由 `LocalJsonDocument.CreateOptions()` 取代。
+每次呼叫都回傳獨立且可變的副本。
+Codec 使用私有且已凍結的預設選項。
+
+- 將 `LocalJsonDocument.Options` 讀取改為 `LocalJsonDocument.CreateOptions()`。
+- 在第一次序列化使用前調整回傳的副本。
+- 由擁有組態的呼叫端保存該副本。
+
+```csharp
+JsonSerializerOptions options = LocalJsonDocument.CreateOptions();
+options.WriteIndented = false;
+byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, options);
+```
+
+修改副本不會影響 codec 反序列化或後續副本。
+預設編碼、屬性大小寫、縮排、跳脫與 null 省略行為維持不變。
+測試固定輸出位元組與選項副本的獨立性。
+
+[`LocalJsonDocument`](../../../src/Nvt.Core/Persistence/LocalJsonDocument.cs) 提供既有本機狀態 JSON 選項、由 host 傳入的目錄／檔名組合，以及 UTF-8 與帶 BOM 的 UTF-16／UTF-32 串流反序列化。輸入 stream 必須可 seek，且讀取後保持開啟。檔案寫入、原子替換、大小上限、schema 與 fallback 政策仍由 host 負責。原始抽取變更 namespace、公開可見性、版權標頭與 API 文件。
+副本工廠現在隔離可變的序列化組態。
 
 [`LatestSnapshotPersistenceCoordinator<TSnapshot>`](../../../src/Nvt.Core/Persistence/LatestSnapshotPersistenceCoordinator.cs) 同步擷取 host 提供的 snapshot、序列化儲存、取消被新 snapshot 取代的工作，並以 request generation 回報終止結果。Retry 重用最新已擷取的值。`CompleteAsync` 封閉新工作准入，等待目前 save 與 observer 完成，不取消它們；`Reopen` 在關閉失敗後保留原有序列 tail。Save 失敗會被記錄，不會使 tail fault；後續成功也不會清除 `LastFailure`。Coordinator 沒有 dispose API；host 須等待完成再釋放 persistence 資源。除 namespace、公開可見性、版權標頭與 API 文件外，唯一實作變更是將 `private readonly Lock _gate` 改為 `private readonly object _gate`；所有既有 `lock` 與互斥邊界均維持原樣，以支援 net8.0。
 

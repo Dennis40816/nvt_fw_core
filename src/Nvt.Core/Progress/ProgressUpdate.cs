@@ -3,9 +3,10 @@
 namespace Nvt.Core.Progress;
 
 /// <summary>Stores a fraction from zero to one, or null when progress is unknown, with caller-supplied text.</summary>
+/// <remarks>The uninitialized default has no fraction or step text.</remarks>
 /// <param name="Fraction">The fraction completed, or null when unknown.</param>
-/// <param name="StepText">The text supplied by the operation.</param>
-public readonly record struct ProgressUpdate(double? Fraction, string StepText)
+/// <param name="StepText">The text supplied by the operation, or null when absent.</param>
+public readonly record struct ProgressUpdate(double? Fraction, string? StepText)
 {
     private readonly double? fraction = ValidateFraction(Fraction);
 

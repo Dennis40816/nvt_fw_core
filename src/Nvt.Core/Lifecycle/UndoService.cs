@@ -1,5 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Nvt.Core.Lifecycle;
 
 /// <summary>
@@ -23,11 +25,11 @@ public sealed class UndoService
     /// <summary>Pops the latest entry without executing it.</summary>
     /// <param name="action">The popped entry, or null when the stack is empty.</param>
     /// <returns>True when an entry was popped; otherwise false.</returns>
-    public bool TryPop(out UndoAction action)
+    public bool TryPop([NotNullWhen(true)] out UndoAction? action)
     {
         if (_stack.Count == 0)
         {
-            action = default!;
+            action = null;
             return false;
         }
 

@@ -95,7 +95,7 @@ public sealed class ManagedPackageVerifier
             package.Position = 0;
             BoundedReadResult read = await BoundedFileReader.ReadAndHashAsync(
                 package, observedLength, FileCaptureMode.IdentityOnly, cancellationToken).ConfigureAwait(false);
-            if (!string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(),
+            if (read.Sha256 is null || !string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(),
                     candidate.PackageSha256, StringComparison.Ordinal))
             {
                 return Failure(ManagedVersionInstallIssue.PackageMismatch);
