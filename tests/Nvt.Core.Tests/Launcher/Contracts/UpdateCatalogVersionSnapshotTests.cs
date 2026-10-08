@@ -11,6 +11,23 @@ namespace Nvt.Core.Tests.Launcher.Contracts;
 
 public sealed class UpdateCatalogVersionSnapshotTests
 {
+    /// <summary>The raw default path remains nullable and snapshot admission rejects it.</summary>
+    [Fact]
+    public void SnapshotRejectsDefaultPackagePathAtAdmission()
+    {
+        UpdateCatalogPackagePath path = default;
+        Assert.Null(path.Value);
+        var property = typeof(UpdateCatalogPackagePath).GetProperty(nameof(UpdateCatalogPackagePath.Value));
+        Assert.NotNull(property);
+        Assert.Equal(System.Reflection.NullabilityState.Nullable,
+            new System.Reflection.NullabilityInfoContext().Create(property).ReadState);
+        ArgumentException error = Assert.Throws<ArgumentException>(() => UpdateCatalogVersionSnapshot.Create(
+            ContractFixture.MaximumPackageBytes, ContractFixture.MaximumReleaseNoteBytes,
+            ContractFixture.App100, DateTimeOffset.MinValue, path, 42, ContractFixture.PackageSha,
+            ContractFixture.ManifestSha, "", UpdateNotificationPolicy.Notify));
+        Assert.Equal("packagePath", error.ParamName);
+    }
+
     // Generic assertions ported through Core's guarded factory and synthetic package names.
     [Fact]
     public void PackageIdentityDoesNotIncludeConfiguredSourcePath()

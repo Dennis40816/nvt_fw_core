@@ -9,6 +9,19 @@ namespace Nvt.Core.Tests.Processes;
 /// <summary>Characterizes inherited-handle validation, decimal boundaries, and value equality.</summary>
 public sealed class ProcessInheritedHandleTests
 {
+    /// <summary>The default handle advertises its nullable environment name without validating construction.</summary>
+    [Fact]
+    public void DefaultHandleHasNoEnvironmentName()
+    {
+        ProcessInheritedHandle binding = default;
+        Assert.Null(binding.EnvironmentVariable);
+        Assert.Equal(IntPtr.Zero, binding.Handle);
+        var property = typeof(ProcessInheritedHandle).GetProperty(nameof(ProcessInheritedHandle.EnvironmentVariable));
+        Assert.NotNull(property);
+        Assert.Equal(System.Reflection.NullabilityState.Nullable,
+            new System.Reflection.NullabilityInfoContext().Create(property).ReadState);
+    }
+
     /// <summary>Blank environment names fail before the nonpositive-handle predicate.</summary>
     [Theory]
     [InlineData(null)]

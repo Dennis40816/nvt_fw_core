@@ -36,6 +36,22 @@ public sealed class FontTests
         { "Icon", IconFamily, 16, FontWeight.Normal, "Material Symbols Outlined", "avares://Nvt.Core.Fonts/Assets/MaterialSymbolsOutlined/MaterialSymbolsOutlined-Regular.ttf" },
     };
 
+    /// <summary>Each fallback access gives font options an independent mutable instance with the same embedded family.</summary>
+    [AvaloniaFact]
+    public void CjkFallbackInstancesKeepCustomizationLocal()
+    {
+        var first = new FontManagerOptions { FontFallbacks = [NvtCoreFonts.CjkFallback] };
+        var second = new FontManagerOptions { FontFallbacks = [NvtCoreFonts.CjkFallback] };
+        FontFallback firstFallback = Assert.Single(first.FontFallbacks);
+        FontFallback secondFallback = Assert.Single(second.FontFallbacks);
+        Assert.NotSame(firstFallback, secondFallback);
+        Assert.Equal(new FontFamily(CjkFamily), firstFallback.FontFamily);
+        Assert.Equal(firstFallback.FontFamily, secondFallback.FontFamily);
+        firstFallback.FontFamily = new FontFamily(MonoFamily);
+        Assert.Equal(new FontFamily(CjkFamily), secondFallback.FontFamily);
+        Assert.Equal(new FontFamily(CjkFamily), NvtCoreFonts.CjkFallback.FontFamily);
+    }
+
     /// <summary>Checks all three resources and the actual font file for each role.</summary>
     /// <param name="role">The role name.</param>
     /// <param name="familyUri">The expected single-family URI.</param>

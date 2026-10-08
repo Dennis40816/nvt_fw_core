@@ -20,6 +20,7 @@ public static class ProcessLaunchGate
     }
 
     /// <summary>Starts a child with exactly the declared Windows handle allow-list.</summary>
+    /// <exception cref="ArgumentException">An inherited handle is uninitialized.</exception>
     public static Process? StartContained(
         ProcessStartInfo startInfo,
         IReadOnlyList<ProcessInheritedHandle> inheritedHandles)
@@ -31,6 +32,7 @@ public static class ProcessLaunchGate
     /// Starts a child only when its final custody validation succeeds while the
     /// global start gate is held, immediately before native process creation.
     /// </summary>
+    /// <exception cref="ArgumentException">An inherited handle is uninitialized.</exception>
     public static Process? StartContained(
         ProcessStartInfo startInfo,
         IReadOnlyList<ProcessInheritedHandle> inheritedHandles,
@@ -39,6 +41,11 @@ public static class ProcessLaunchGate
         ArgumentNullException.ThrowIfNull(startInfo);
         ArgumentNullException.ThrowIfNull(inheritedHandles);
         ArgumentNullException.ThrowIfNull(validateImmediatelyBeforeStart);
+        if (inheritedHandles.Any(static value =>
+                string.IsNullOrWhiteSpace(value.EnvironmentVariable) || value.Handle.ToInt64() <= 0))
+        {
+            throw new ArgumentException("Inherited handles must be initialized.", nameof(inheritedHandles));
+        }
         lock (StartLock)
         {
             return OperatingSystem.IsWindows()

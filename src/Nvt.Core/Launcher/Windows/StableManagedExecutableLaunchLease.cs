@@ -339,6 +339,10 @@ internal sealed class StableManagedExecutableLaunchLease : IManagedExecutableLau
         stream.Position = 0;
         BoundedReadResult content = await BoundedFileReader.ReadAndHashAsync(
             stream, length, FileCaptureMode.IdentityOnly, cancellationToken).ConfigureAwait(false);
+        if (content.Sha256 is null)
+        {
+            return StableManagedExecutableMeasurementResult.Failure(ManagedExecutableLaunchIssue.Tampered);
+        }
         string sha256 = Convert.ToHexString(content.Sha256).ToLowerInvariant();
         stream.Position = 0;
         return expectedSha256 is not null &&

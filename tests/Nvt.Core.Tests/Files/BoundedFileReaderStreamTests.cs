@@ -9,6 +9,42 @@ namespace Nvt.Core.Tests.Files;
 /// <summary>Tests complete stream hashing, optional capture, and bounded change detection.</summary>
 public sealed class BoundedFileReaderStreamTests
 {
+    /// <summary>The default result has no hash or content and advertises the nullable hash contract.</summary>
+    [Fact]
+    public void DefaultResultHasNoIdentity()
+    {
+        BoundedReadResult result = default;
+        Assert.Equal(0, result.Length);
+        Assert.Null(result.Sha256);
+        Assert.Null(result.Bytes);
+        var property = typeof(BoundedReadResult).GetProperty(nameof(BoundedReadResult.Sha256));
+        Assert.NotNull(property);
+        Assert.Equal(System.Reflection.NullabilityState.Nullable,
+            new System.Reflection.NullabilityInfoContext().Create(property).ReadState);
+    }
+
+    /// <summary>Successful empty reads supply the complete hash in both capture modes.</summary>
+    [Theory]
+    [InlineData(FileCaptureMode.IdentityOnly)]
+    [InlineData(FileCaptureMode.CaptureBytes)]
+    public async Task SuccessfulEmptyReadHasIdentity(FileCaptureMode mode)
+    {
+        using var stream = new MemoryStream();
+        BoundedReadResult result = await BoundedFileReader.ReadAndHashAsync(
+            stream, 0, mode, TestContext.Current.CancellationToken);
+        Assert.NotNull(result.Sha256);
+        Assert.Equal(SHA256.HashData(Array.Empty<byte>()), result.Sha256);
+        if (mode == FileCaptureMode.CaptureBytes)
+        {
+            Assert.NotNull(result.Bytes);
+            Assert.Empty(result.Bytes);
+        }
+        else
+        {
+            Assert.Null(result.Bytes);
+        }
+    }
+
     /// <summary>Growth is rejected after reading only one byte beyond the measured length.</summary>
     [Fact]
     public async Task ReadAndHashAsyncRejectsGrowthWithOneByteProbe()
@@ -85,6 +121,7 @@ public sealed class BoundedFileReaderStreamTests
 
         Assert.Equal(length, result.Length);
         Assert.Null(result.Bytes);
+        Assert.NotNull(result.Sha256);
         Assert.Equal(expectedSha256, Convert.ToHexString(result.Sha256).ToLowerInvariant());
         Assert.Equal(length, stream.Position);
         Assert.Equal(length, stream.TotalBytesRead);

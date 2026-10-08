@@ -5,6 +5,7 @@ using System.Globalization;
 namespace Nvt.Core.Processes;
 
 /// <summary>Names one handle that a contained Windows child may inherit.</summary>
+/// <remarks>The uninitialized default has a null environment name and zero handle. Contained launch rejects it.</remarks>
 public readonly record struct ProcessInheritedHandle
 {
     /// <summary>Creates one environment-bound inherited handle.</summary>
@@ -23,8 +24,8 @@ public readonly record struct ProcessInheritedHandle
         Handle = handle;
     }
 
-    /// <summary>Environment variable that receives the short-lived duplicate value.</summary>
-    public string EnvironmentVariable { get; }
+    /// <summary>Gets the environment name for the duplicate, or null for an uninitialized default.</summary>
+    public string? EnvironmentVariable { get; }
 
     /// <summary>Non-inheritable original handle retained by the parent.</summary>
     public IntPtr Handle { get; }
