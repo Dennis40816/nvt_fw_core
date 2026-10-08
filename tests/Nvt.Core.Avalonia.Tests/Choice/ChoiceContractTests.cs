@@ -131,7 +131,7 @@ public sealed class ChoiceContractTests
                 Assert.Equal(mark, ColorOf(Part<Ellipse>(control, "ChoiceDot").Fill));
                 Assert.Equal(mark, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
                 Assert.Equal(mark, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
-                Assert.Equal(ResourceColor(control, "NfcTextBrush"), ColorOf(control.Foreground));
+                Assert.Equal(ResourceColor(control, "Nvt.Controls.ChoiceForegroundBrush"), ColorOf(control.Foreground));
             }
         }
 

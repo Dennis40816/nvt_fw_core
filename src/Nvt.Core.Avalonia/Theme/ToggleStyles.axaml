@@ -113,21 +113,21 @@
     <Setter Property="Height" Value="40"/>
     <Setter Property="MinHeight" Value="40"/>
     <Setter Property="Padding" Value="0"/>
-    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.RoundCornerRadius}"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
     <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSwitch, ToggleSwitch">
     <Setter Property="Template">
       <ControlTemplate>
         <Grid Background="{DynamicResource Nvt.Toggle.TransparentBrush}">
-          <Border x:Name="ToggleBody" Width="52" Height="28" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding Background}" BorderThickness="2" CornerRadius="{DynamicResource Nvt.Shape.RoundCornerRadius}"/>
+          <Border x:Name="ToggleBody" Width="52" Height="28" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding Background}" BorderThickness="2" CornerRadius="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
           <Canvas x:Name="PART_SwitchKnob" Width="24" Height="28" Margin="6,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center">
             <Grid x:Name="PART_MovingKnobs" Width="22" Height="22" Canvas.Left="0" Canvas.Top="3">
               <Grid.Transitions><Transitions><DoubleTransition Property="Canvas.Left" Duration="0:0:0.15" Easing="CubicEaseOut"/></Transitions></Grid.Transitions>
               <Ellipse x:Name="ToggleKnob" Fill="{DynamicResource Nvt.Toggle.KnobBrush}"/>
             </Grid>
           </Canvas>
-          <Border x:Name="ToggleFocusRing" Width="60" Height="36" Margin="-4" IsVisible="False" IsHitTestVisible="False" CornerRadius="{DynamicResource Nvt.Shape.RoundCornerRadius}"
+          <Border x:Name="ToggleFocusRing" Width="60" Height="36" Margin="-4" IsVisible="False" IsHitTestVisible="False" CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"
                   BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"/>
         </Grid>
       </ControlTemplate>
@@ -211,7 +211,7 @@
                               RecognizesAccessKey="True" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
           </Border>
           <Border x:Name="ToggleFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
-                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
         </Grid>
       </ControlTemplate>
@@ -236,8 +236,12 @@
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftCheckedBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
   </Style>
-  <Style Selector="ToggleButton.toggleSoft:checked:pointerover:not(:disabled), ToggleButton.toggleSoft:checked:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftPointerOverBrush}"/>
+  <Style Selector="ToggleButton.toggleSoft:checked:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftCheckedPointerOverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftCheckedPressedBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSoft:disabled">

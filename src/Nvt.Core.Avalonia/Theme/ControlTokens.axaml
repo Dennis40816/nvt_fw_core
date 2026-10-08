@@ -1,0 +1,27 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Controls.SelectedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#E3ECFC" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#DCE7FA" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#0E3C9E" />
+      <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#1557C0" />
+      <StaticResource x:Key="Nvt.Controls.ChoiceForegroundBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Controls.ExpanderPressedBrush" ResourceKey="NfcBorderMutedBrush" />
+      <SolidColorBrush x:Key="Nvt.Controls.ExpanderPressedForegroundBrush" Color="#0B1220" />
+      <SolidColorBrush x:Key="Nvt.Controls.ExpanderDisabledForegroundBrush" Color="#637085" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Controls.SelectedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#20334F" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#243C5B" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#BEDAFF" />
+      <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#8FC5FF" />
+      <SolidColorBrush x:Key="Nvt.Controls.ChoiceForegroundBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Nvt.Controls.ExpanderPressedBrush" Color="#29384D" />
+      <SolidColorBrush x:Key="Nvt.Controls.ExpanderPressedForegroundBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="Nvt.Controls.ExpanderDisabledForegroundBrush" Color="#91A1B9" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

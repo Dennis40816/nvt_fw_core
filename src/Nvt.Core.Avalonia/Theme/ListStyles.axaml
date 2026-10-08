@@ -43,8 +43,8 @@
                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"
                   Background="{TemplateBinding Foreground}" CornerRadius="{DynamicResource Nvt.Shape.RoundCornerRadius}" />
           <Border Name="ListFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="2"
-                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                  CornerRadius="{TemplateBinding CornerRadius}" />
+                  BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.List.FocusCornerRadius}" />
         </Grid>
       </ControlTemplate>
     </Setter>

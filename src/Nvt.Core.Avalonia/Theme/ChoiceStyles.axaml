@@ -8,7 +8,7 @@
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
     <Setter Property="BorderThickness" Value="2"/>
-    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.ChoiceForegroundBrush}"/>
     <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}"/>
     <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}"/>
     <Setter Property="FontWeight" Value="Normal"/>
@@ -29,7 +29,9 @@
       <ControlTemplate>
         <!-- The transparent row makes the label, gap, and padding part of the native hit target. -->
         <Grid Background="{DynamicResource Nvt.Toggle.TransparentBrush}">
-          <Border x:Name="ChoiceRow" Padding="{TemplateBinding Padding}">
+          <Border x:Name="ChoiceRow" Padding="{TemplateBinding Padding}"
+                  Background="{DynamicResource NfcSurfaceSubtleBrush}" CornerRadius="{DynamicResource Nvt.Shape.ControlCornerRadius}">
+            <Border.Transitions><Transitions><BrushTransition Property="Background" Duration="0:0:0.15"/></Transitions></Border.Transitions>
             <Grid ColumnDefinitions="Auto,*">
               <Border x:Name="ChoiceIndicator" Width="{DynamicResource Nvt.Choice.IndicatorSize}"
                       Height="{DynamicResource Nvt.Choice.IndicatorSize}" VerticalAlignment="Top"
@@ -57,7 +59,7 @@
             </Grid>
           </Border>
           <Border x:Name="ChoiceFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
-                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
         </Grid>
       </ControlTemplate>
@@ -115,6 +117,24 @@
     <Setter Property="IsVisible" Value="True"/>
   </Style>
   <Style Selector="CheckBox.reducedMotion, RadioButton.reducedMotion, .reducedMotion CheckBox, .reducedMotion RadioButton">
+    <Setter Property="Transitions" Value="{x:Null}"/>
+  </Style>
+  <Style Selector="CheckBox:pointerover:not(:disabled) /template/ Border#ChoiceRow, RadioButton:pointerover:not(:disabled) /template/ Border#ChoiceRow">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:pressed:not(:disabled) /template/ Border#ChoiceRow, RadioButton:pressed:not(:disabled) /template/ Border#ChoiceRow">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:not(:disabled) /template/ Border#ChoiceRow, CheckBox:indeterminate:not(:disabled) /template/ Border#ChoiceRow, RadioButton:checked:not(:disabled) /template/ Border#ChoiceRow">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:pointerover:not(:disabled) /template/ Border#ChoiceRow, CheckBox:indeterminate:pointerover:not(:disabled) /template/ Border#ChoiceRow, RadioButton:checked:pointerover:not(:disabled) /template/ Border#ChoiceRow">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedPointerOverBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:pressed:not(:disabled) /template/ Border#ChoiceRow, CheckBox:indeterminate:pressed:not(:disabled) /template/ Border#ChoiceRow, RadioButton:checked:pressed:not(:disabled) /template/ Border#ChoiceRow">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedPressedBrush}"/>
+  </Style>
+  <Style Selector="CheckBox.reducedMotion /template/ Border#ChoiceRow, RadioButton.reducedMotion /template/ Border#ChoiceRow, .reducedMotion CheckBox /template/ Border#ChoiceRow, .reducedMotion RadioButton /template/ Border#ChoiceRow">
     <Setter Property="Transitions" Value="{x:Null}"/>
   </Style>
 </Styles>
