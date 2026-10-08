@@ -8,7 +8,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## 0.4.0 - 2026-10-08
 
-No breaking changes since 0.3.0.
+Tag `core-v0.4.0` on commit `7bd42ce33eea26f3bd2eeacce958aa1cf701ccae` (#118). No breaking changes since 0.3.0.
 
 ### New modules and features
 
