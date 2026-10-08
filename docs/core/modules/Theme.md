@@ -463,6 +463,7 @@ NFC must also preserve:
 - Static and dynamic resource lookup modes.
 - Font assets, Inter package version, and fallback order.
 
+
 ## Verification and provenance
 
 This replaces the NFC-derived palette and button roles, reusing PR #71 templates and focus approach in the single `ButtonStyles.axaml` while fixing disabled and active priority. `ThemeTokens.xml` and `ButtonStyles.xml` were deliberately regenerated from the newly approved files; they no longer claim to preserve the old NFC appearance. `ExtractedXamlMatchesFrozenBaseline` still freezes the complete XML, expanding the eight existing font aliases for token comparison. Scroll geometry and its baseline are not changed by this palette update.
@@ -553,6 +554,117 @@ What changes in NFH on adoption:
 | Pressed rules | Present | None |
 
 Adopters: none yet.
+
+## ListBox and dropdown items
+
+`ListStyles.axaml` gives `ListBoxItem` and `ComboBoxItem` one shared look.
+The ListBox host has no background, border, or padding. The app supplies its surrounding surface.
+Rows have a 32 DIP minimum height and padding 10,5.
+Add `compact` to a ListBox or individual item for a 24 DIP row with padding 10,0.
+The ComboBox box keeps its existing theme and template.
+
+### List states and tokens
+
+Rest is transparent. Pointer over uses `NfcSelectionSurfaceBrush`, and pressed uses `NfcSecondaryActionPressedBrush`.
+Selected rows use a soft accent surface, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
+Multi-selection uses the same appearance.
+Disabled rows keep opacity 1 and use `NfcTextDisabledBrush`.
+Disabled selected rows use `NfcSelectionSurfaceBrush`.
+Keyboard focus shows one 2 DIP ring inset by 2 DIP, so scrolling does not clip it.
+Pointer focus shows no ring. Focus does not recolor a list row.
+
+The baseline has no `toggleSoft` resources. List aliases therefore map directly to the corresponding Core palette.
+Override the `Nvt.List.Selected*` resources together to replace the selected palette at runtime.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.List.SelectedBrush` | `#F7F9FE`, `NfcAccentSurfaceSubtleBrush` | `#162034`, `NfcAccentSurfaceSubtleBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#EFF3FD`, `NfcAccentSurfaceBrush` | `#1A2940`, `NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#EFF3FD`, `NfcAccentSurfaceBrush` | `#1A2940`, `NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#1148BE`, `NfcAccentStrongBrush` | `#8FBFFB`, `NfcAccentStrongBrush` |
+| `Nvt.List.TransparentBrush` | `#00FFFFFF`, `Nvt.Toggle.TransparentBrush` | Same |
+| `Nvt.List.CompactHeight` | 24 | 24 |
+
+Items use `Nvt.Shape.ControlCornerRadius`: Pill 999 and Square 6.
+The marker uses `Nvt.Shape.RoundCornerRadius`.
+Focus reuses `Nvt.Focus.RingBrush` and `Nvt.Focus.RingThickness`.
+Color transitions last 150 ms. The existing `reducedMotion` class disables them on items or an ancestor.
+
+## Menu, MenuItem, ContextMenu, and menu separators
+
+`MenuStyles.axaml` supplies the menu bar, popup commands, context menus, and menu separators.
+Menu items have a 32 DIP hit area and padding 10,0.
+The item body reserves 4 DIP on each side for the exterior focus ring.
+This keeps one 2 DIP ring with a 2 DIP gap inside the scrolling viewport.
+
+Menu surfaces use `NfcSurfaceBrush`, a 1 DIP `NfcBorderBrush` border, and padding 4.
+Their corner follows the shared shape and caps at the existing surface corner token.
+Pill surfaces use 8 DIP corners, and Square surfaces use 6 DIP corners.
+Transparent shadow space surrounds the surface. Popup offsets compensate for that space.
+
+### Menu states and tokens
+
+Pointer over, native menu selection, and keyboard focus use `NfcSelectionSurfaceBrush`.
+Pressed uses `NfcSecondaryActionPressedBrush`.
+Disabled content uses `NfcTextDisabledBrush` with opacity 1.
+Checked items display a check mark. Icons use a 20 DIP column when present.
+Input gestures use `NfcTextMutedBrush`. Submenus retain their chevron.
+Menu bars use the same item states and height.
+
+Focus rings follow Avalonia's `:focus-visible` state.
+Native arrow navigation retains Avalonia's menu selection behavior.
+The styles preserve arrows, Enter, Escape, access keys, commands, and automation.
+Menu separators are 1 DIP high and use `NfcBorderBrush`.
+The legacy `MenuItem Header="-"` separator receives the same appearance.
+Color transitions last 150 ms. `reducedMotion` also disables menu transitions.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Menu.PopupShadow` | `0 4 12 0 #26000000` | `0 4 12 0 #66000000` |
+| `Nvt.Menu.PopupShadowMargin` | 16 | 16 |
+| `Nvt.Menu.PopupMaximumCornerRadius` | 8, `NfcSurfaceCornerRadius` | 8, `NfcSurfaceCornerRadius` |
+| `Nvt.Menu.ChevronGeometry` | `M1 1 L5 5 L1 9` | Same |
+
+The shadow alpha colors are the only new literal colors. They live in `ListTokens.axaml`.
+Every style color and corner resolves through tokens or the owning control.
+The popup corner converter is internal. This family adds no public C# API.
+
+### List and menu adoption
+
+1. Merge `ThemeTokens.axaml` into application resources.
+2. Load `ListStyles.axaml` and `MenuStyles.axaml` after Fluent and before creating controls.
+3. Remove competing local item themes, colors, padding, corners, and focus adorners.
+4. Keep host surfaces, item templates, selection bindings, commands, icons, and accessible names.
+5. Choose the shared shape at the resource root and verify both themes.
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/MenuStyles.axaml" />
+```
+
+| Adopter | Difference and required removal |
+| --- | --- |
+| NFC | Replaces Fluent list selection and accent-text dropdown overrides. Remove local ListBox and ComboBoxItem appearance rules. |
+| NFH | Restores visible selection where workspace rows suppressed it. Remove those row rules, dropdown item overrides, and the menu font override. |
+| NFU | Replaces accent-filled selection and 34 DIP dropdown rows with soft 32 DIP rows. Remove shared, inspector, and dropdown item appearance rules. |
+| All three | Replaces Fluent popup surfaces and menu states. Keep item generation, navigation, commands, and host-owned surfaces. |
+
+### List and menu verification
+
+Headless tests cover both themes and shapes, state precedence, exact geometry, resource replacement, contrast, and native keyboard input.
+They also check inset focus after scrolling, resizing, and changing render scale.
+The minimum contrast values are identical across shapes.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| Selected list text and marker | 7.018:1 | 7.674:1 |
+| Disabled text | 3.903:1 | 4.275:1 |
+| Focus ring against item fills | 4.006:1 | 4.930:1 |
+
+`ListMenuStylesRenderer` exports only when `NVT_LIST_IMAGES_DIR` is set.
+It writes `list-light.png`, `list-dark.png`, `list-square-light.png`, and `list-before-light.png`.
+All images are 1200 pixels wide at scale 1. Each remains below 1 MB.
+The comparison uses the real Fluent templates beside the Core templates.
 
 ## Resource resolver
 
@@ -816,115 +928,3 @@ Bind a vector icon's fill or stroke to the toggle foreground.
 `ToggleSoftRenderer` checks both shapes, text, icons, and every state through headless rendering.
 It writes `toggle-soft-light.png` and `toggle-soft-dark.png` only when `NVT_TOGGLE_IMAGES_DIR` is set.
 Tests disable transitions locally for stable snapshots, as they do for the existing roles.
-
-## ListBox and dropdown items
-
-`ListStyles.axaml` gives `ListBoxItem` and `ComboBoxItem` one shared look.
-The ListBox host has no background, border, or padding. The app supplies its surrounding surface.
-Rows have a 32 DIP minimum height and padding 10,5.
-Add `compact` to a ListBox or individual item for a 24 DIP row with padding 10,0.
-The ComboBox box keeps its existing theme and template.
-
-### List states and tokens
-
-Rest is transparent. Pointer over uses `NfcSelectionSurfaceBrush`, and pressed uses `NfcSecondaryActionPressedBrush`.
-Selected rows use a soft accent surface, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
-Multi-selection uses the same appearance.
-Disabled rows keep opacity 1 and use `NfcTextDisabledBrush`.
-Disabled selected rows use `NfcSelectionSurfaceBrush`.
-Keyboard focus shows one 2 DIP ring inset by 2 DIP, so scrolling does not clip it.
-Pointer focus shows no ring. Focus does not recolor a list row.
-
-The baseline has no `toggleSoft` resources. List aliases therefore map directly to the corresponding Core palette.
-Override the `Nvt.List.Selected*` resources together to replace the selected palette at runtime.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `Nvt.List.SelectedBrush` | `#F7F9FE`, `NfcAccentSurfaceSubtleBrush` | `#162034`, `NfcAccentSurfaceSubtleBrush` |
-| `Nvt.List.SelectedPointerOverBrush` | `#EFF3FD`, `NfcAccentSurfaceBrush` | `#1A2940`, `NfcAccentSurfaceBrush` |
-| `Nvt.List.SelectedPressedBrush` | `#EFF3FD`, `NfcAccentSurfaceBrush` | `#1A2940`, `NfcAccentSurfaceBrush` |
-| `Nvt.List.SelectedLabelBrush` | `#1148BE`, `NfcAccentStrongBrush` | `#8FBFFB`, `NfcAccentStrongBrush` |
-| `Nvt.List.TransparentBrush` | `#00FFFFFF`, `Nvt.Toggle.TransparentBrush` | Same |
-| `Nvt.List.CompactHeight` | 24 | 24 |
-
-Items use `Nvt.Shape.ControlCornerRadius`: Pill 999 and Square 6.
-The marker uses `Nvt.Shape.RoundCornerRadius`.
-Focus reuses `Nvt.Focus.RingBrush` and `Nvt.Focus.RingThickness`.
-Color transitions last 150 ms. The existing `reducedMotion` class disables them on items or an ancestor.
-
-## Menu, MenuItem, ContextMenu, and menu separators
-
-`MenuStyles.axaml` supplies the menu bar, popup commands, context menus, and menu separators.
-Menu items have a 32 DIP hit area and padding 10,0.
-The item body reserves 4 DIP on each side for the exterior focus ring.
-This keeps one 2 DIP ring with a 2 DIP gap inside the scrolling viewport.
-
-Menu surfaces use `NfcSurfaceBrush`, a 1 DIP `NfcBorderBrush` border, and padding 4.
-Their corner follows the shared shape and caps at the existing surface corner token.
-Pill surfaces use 8 DIP corners, and Square surfaces use 6 DIP corners.
-Transparent shadow space surrounds the surface. Popup offsets compensate for that space.
-
-### Menu states and tokens
-
-Pointer over, native menu selection, and keyboard focus use `NfcSelectionSurfaceBrush`.
-Pressed uses `NfcSecondaryActionPressedBrush`.
-Disabled content uses `NfcTextDisabledBrush` with opacity 1.
-Checked items display a check mark. Icons use a 20 DIP column when present.
-Input gestures use `NfcTextMutedBrush`. Submenus retain their chevron.
-Menu bars use the same item states and height.
-
-Focus rings follow Avalonia's `:focus-visible` state.
-Native arrow navigation retains Avalonia's menu selection behavior.
-The styles preserve arrows, Enter, Escape, access keys, commands, and automation.
-Menu separators are 1 DIP high and use `NfcBorderBrush`.
-The legacy `MenuItem Header="-"` separator receives the same appearance.
-Color transitions last 150 ms. `reducedMotion` also disables menu transitions.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `Nvt.Menu.PopupShadow` | `0 4 12 0 #26000000` | `0 4 12 0 #66000000` |
-| `Nvt.Menu.PopupShadowMargin` | 16 | 16 |
-| `Nvt.Menu.PopupMaximumCornerRadius` | 8, `NfcSurfaceCornerRadius` | 8, `NfcSurfaceCornerRadius` |
-| `Nvt.Menu.ChevronGeometry` | `M1 1 L5 5 L1 9` | Same |
-
-The shadow alpha colors are the only new literal colors. They live in `ListTokens.axaml`.
-Every style color and corner resolves through tokens or the owning control.
-The popup corner converter is internal. This family adds no public C# API.
-
-### List and menu adoption
-
-1. Merge `ThemeTokens.axaml` into application resources.
-2. Load `ListStyles.axaml` and `MenuStyles.axaml` after Fluent and before creating controls.
-3. Remove competing local item themes, colors, padding, corners, and focus adorners.
-4. Keep host surfaces, item templates, selection bindings, commands, icons, and accessible names.
-5. Choose the shared shape at the resource root and verify both themes.
-
-```xml
-<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
-<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/MenuStyles.axaml" />
-```
-
-| Adopter | Difference and required removal |
-| --- | --- |
-| NFC | Replaces Fluent list selection and accent-text dropdown overrides. Remove local ListBox and ComboBoxItem appearance rules. |
-| NFH | Restores visible selection where workspace rows suppressed it. Remove those row rules, dropdown item overrides, and the menu font override. |
-| NFU | Replaces accent-filled selection and 34 DIP dropdown rows with soft 32 DIP rows. Remove shared, inspector, and dropdown item appearance rules. |
-| All three | Replaces Fluent popup surfaces and menu states. Keep item generation, navigation, commands, and host-owned surfaces. |
-
-### List and menu verification
-
-Headless tests cover both themes and shapes, state precedence, exact geometry, resource replacement, contrast, and native keyboard input.
-They also check inset focus after scrolling, resizing, and changing render scale.
-The minimum contrast values are identical across shapes.
-
-| Contrast | Light | Dark |
-| --- | --- | --- |
-| Selected list text and marker | 7.018:1 | 7.674:1 |
-| Disabled text | 3.903:1 | 4.275:1 |
-| Focus ring against item fills | 4.006:1 | 4.930:1 |
-
-`ListMenuStylesRenderer` exports only when `NVT_LIST_IMAGES_DIR` is set.
-It writes `list-light.png`, `list-dark.png`, `list-square-light.png`, and `list-before-light.png`.
-All images are 1200 pixels wide at scale 1. Each remains below 1 MB.
-The comparison uses the real Fluent templates beside the Core templates.
-
