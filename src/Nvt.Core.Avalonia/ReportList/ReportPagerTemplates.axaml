@@ -8,13 +8,15 @@
     <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto" ColumnSpacing="10">
       <TextBlock
           VerticalAlignment="Center"
-          Classes="captionText"
+          FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
+          FontSize="{DynamicResource Nvt.Font.Caption.Size}"
+          FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"
           Text="{Binding PageStatus}"
           AutomationProperties.Name="{Binding PageStatus}"
           AutomationProperties.LiveSetting="Polite" />
       <Button
           Grid.Column="1"
-          Classes="semanticAction secondary"
+          Classes="actionNeutral"
           Command="{Binding LoadMoreCommand}"
           Content="{Binding LoadMoreLabel}"
           AutomationProperties.Name="{Binding LoadMoreLabel}" />
@@ -25,7 +27,9 @@
     <Grid RowDefinitions="Auto,Auto" RowSpacing="{DynamicResource Nvt.ReportList.WindowedSpacing}">
       <TextBlock
           HorizontalAlignment="Center"
-          Classes="captionText"
+          FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
+          FontSize="{DynamicResource Nvt.Font.Caption.Size}"
+          FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"
           Text="{Binding PageStatus}"
           TextWrapping="Wrap"
           ToolTip.Tip="{Binding PageStatus}"
@@ -33,13 +37,13 @@
           AutomationProperties.LiveSetting="Polite" />
       <Grid Grid.Row="1" ColumnDefinitions="*,*" ColumnSpacing="{DynamicResource Nvt.ReportList.WindowedSpacing}">
         <Button
-            Classes="semanticAction secondary"
+            Classes="actionNeutral"
             Command="{Binding PreviousPageCommand}"
             Content="{Binding PreviousPageLabel}"
             AutomationProperties.Name="{Binding PreviousPageLabel}" />
         <Button
             Grid.Column="1"
-            Classes="semanticAction secondary"
+            Classes="actionNeutral"
             Command="{Binding NextPageCommand}"
             Content="{Binding NextPageLabel}"
             AutomationProperties.Name="{Binding NextPageLabel}" />

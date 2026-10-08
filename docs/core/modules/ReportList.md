@@ -162,11 +162,42 @@ The dictionary contains exactly two `DataTemplate` resources:
 | `Nvt.ReportList.WindowedPagerTemplate` | `ReportWindowedListViewModel` | One two-row Grid, wrapping status TextBlock, and a two-column Grid with previous/next Buttons. |
 
 The templates read the existing models; they own no paging state or commands.
-The host supplies `captionText` and `semanticAction secondary` styles and the `Nvt.ReportList.WindowedSpacing` resource.
-Both `Classes` values are unchanged from NFC: `captionText` on each status and `semanticAction secondary` on every pager button.
-At the frozen commit, `Styles/MainWindowControlStyles.axaml:503` selects `TextBlock.captionText`; `Styles/MainWindowButtonStyles.axaml:33,45,48` selects `Button.semanticAction` and `:51,57,62,67` selects `Button.secondary` and its states.
-These selectors continue to apply when NFC loads the shared templates; there is no class-name migration.
-NFC supplies spacing at exactly 8 DIP, retaining both the row and button-column gaps.
+The pager supplies its styling contract through Core resources.
+Load these prerequisites before using either template:
+
+- Load `Theme/ThemeTokens.axaml` for the shared button palette, dimensions, and legacy button fonts.
+- Load `Theme/ButtonStyles.axaml` for the complete `actionNeutral` button role.
+- Load `Nvt.Core.Fonts/FontRoles.axaml` for `Nvt.Font.Caption.Family`, `Nvt.Font.Caption.Size`, and `Nvt.Font.Caption.Weight`.
+
+The [Theme module](Theme.md) documents the button prerequisites.
+The [Fonts module](Fonts.md) documents the font roles and Chinese fallback.
+Merge resources at the existing application scope, then include the button styles after the base Fluent theme:
+
+```xml
+<Application.Resources>
+  <ResourceDictionary>
+    <ResourceDictionary.MergedDictionaries>
+      <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+      <ResourceInclude Source="avares://Nvt.Core.Fonts/FontRoles.axaml" />
+      <ResourceInclude Source="avares://Nvt.Core.Avalonia/ReportList/ReportPagerTemplates.axaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <x:Double x:Key="Nvt.ReportList.WindowedSpacing">8</x:Double>
+  </ResourceDictionary>
+</Application.Resources>
+<Application.Styles>
+  <FluentTheme />
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
+</Application.Styles>
+```
+
+Every pager button uses `actionNeutral`.
+Each status has no style class and applies all three Caption resources explicitly.
+The default Caption uses `avares://Avalonia.Fonts.Inter/Assets#Inter`, 11 DIP, and Normal (400).
+The buttons retain the shared theme's legacy family, 13 DIP size, and normal weight.
+Remove local `semanticAction`, `secondary`, and `captionText` styles that existed only for the pager.
+Keep styles that still serve other controls.
+The host supplies `Nvt.ReportList.WindowedSpacing`.
+An 8 DIP value preserves both windowed gaps.
 The paged tree retains margin `0,8,0,0`, columns `*,Auto`, and a 10 DIP column gap.
 The windowed tree retains centered wrapping status, its bound tooltip, and equal-width button columns.
 Status automation names equal visible status text and `AutomationProperties.LiveSetting` is `Polite`.
@@ -175,10 +206,10 @@ The paged end button remains visible with the all-items-loaded label; windowed e
 The host controls windowed-pager visibility through `HasMultiplePages`, as the frozen caller does.
 No template adds a visibility predicate, row renderer, UserControl wrapper, theme/font import, schema, or export command.
 
-The host retains the existing Theme resource owner and all eight legacy font values.
-The UI family chain remains `fonts:Inter#Inter, Microsoft JhengHei UI, Noto Sans CJK TC, Noto Sans TC, Segoe UI`; the technical chain remains `Cascadia Mono, Consolas`.
-Sizes remain 10, 11, 12, 13, 14, and 16 DIP.
-These templates do not adopt the new Core font roles or redefine a font resource.
+The templates import no theme or font dictionary themselves.
+The caller retains the resource scope and loads the documented prerequisites.
+Caption typography now follows the selected shared font role.
+Legacy button font resources remain unchanged.
 
 ## Tests and provenance
 
@@ -237,15 +268,58 @@ The compiled pager assertions are in `ReportPagerTemplateTests`:
 The frozen comparison dictionary is copied directly from the two source slices, retaining original keys and `NfcSpace8`; only its model namespace is retargeted for compilation.
 Its source is independent of the new template and does not include product row trees.
 
-`ReportPagerCoreThemeGeometryTests` checks the independent frozen slices and shared templates under `ThemeTokens.axaml`, `ButtonStyles.axaml` and `ScrollStyles.axaml`, with Fluent supplying the base control themes.
-Every comparison uses a 960 × 180 DIP window, explicit render scaling 1.0 (96 DPI), manual sizing and layout rounding.
-The pager widths are 240 and 960 DIP; edge-input comparisons use 336 DIP inside the same fixed window.
-Typography resolves through the shared Core Theme's `Nvt.Font.NfcLegacy.Ui.Family` / `NfcUiFontFamily` and size-13 resources.
-Assertions check the resolved family, 13 DIP size, normal weight/style, both 8 DIP windowed gaps, paged margin and 10 DIP gap, equal star columns, and base-control padding, border, corner radius and minimum height.
-The geometry label sets use short and long Latin text covered by bundled Inter; shaped glyphs must be present without font simulation, and each resolved font stream must match the bundled `Inter-Regular.ttf` SHA-256.
-This avoids machine-dependent installed CJK fallback fonts while the compiled binding/accessibility tests retain English and Traditional Chinese labels.
-Navigation comparisons include the first, middle and final states, disabled endpoints and reverse navigation; edge cases include empty, single-row, exact and adjacent pages and maximum batch sizes.
-These checks establish Core Theme geometry; NFC supplies its own caption and secondary-button selectors at adoption.
+`PagerStylesResolveWithoutHostClasses` loads both templates while the application and window define none of the three former host classes.
+It checks role templates, palette brushes, disabled states, and all three Caption resources.
+Replacing Caption resources at runtime updates family, size, and weight together.
+
+`ReportPagerGeometryTests` and `ReportPagerCoreThemeGeometryTests` retain the unchanged frozen source dictionary as independent evidence.
+They migrate only the frozen controls' button classes and Caption properties in memory.
+Every visual property and measurement must then match the compiled Core tree exactly.
+The tests never omit geometry, typography, classes, or descendant controls from comparison.
+This proves template geometry survives the approved styling migration.
+It does not compare an unstyled Fluent button with a styled Core button.
+
+Core Theme checks load `ThemeTokens.axaml`, `ButtonStyles.axaml`, `ScrollStyles.axaml`, and `FontRoles.axaml`.
+Fluent supplies the base control themes.
+Each check uses a 960 by 180 DIP window, scaling 1.0, manual sizing, and layout rounding.
+Pager widths cover 240 and 960 DIP.
+Edge inputs use 336 DIP within the same window.
+Assertions retain both 8 DIP windowed gaps, the paged margin, the 10 DIP gap, and equal star columns.
+Neutral buttons retain the existing role's 32 DIP height, `14,0` padding, one-DIP border, and theme corner radius.
+Short and long Latin labels use bundled Inter without font simulations or missing glyphs.
+Resolved font streams must match the bundled `Inter-Regular.ttf` SHA-256.
+Bilingual binding and accessibility checks retain English and Traditional Chinese labels.
+Navigation checks cover first, middle, final, disabled, and reverse states.
+Edge checks cover empty, single-row, exact, adjacent, and maximum-batch inputs.
+
+`CaptionTypographyRecordsBeforeAndAfterMeasurements` records the intended 13-to-11 DIP caption change.
+It measures the unchanged frozen caption and Core Caption with identical neutral button roles.
+Both use the same bundled Inter Regular bytes and Normal (400) weight.
+Tool adoption records before and after images through the [font workflow](Fonts.md#tool-adoption) and [theme workflow](Theme.md).
+
+The following measurements use short English labels, a 960 DIP pager, bundled Inter Regular, and layout rounding.
+The frozen caption inherits the legacy family at 13 DIP.
+Core resolves the Caption family at 11 DIP.
+Both use Normal (400).
+The Caption family resource contains `avares://Avalonia.Fonts.Inter/Assets#Inter`.
+
+| Caption text | Desired size before | Desired size after | Baseline before | Baseline after | Pager height before | Pager height after |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| `Showing 4/9` | 78 by 16 DIP | 66 by 14 DIP | 12.59375 DIP | 10.65625 DIP | 32 DIP | 32 DIP |
+| `Showing 1-4 of 9` | 105 by 16 DIP | 89 by 14 DIP | 12.59375 DIP | 10.65625 DIP | 56 DIP | 54 DIP |
+
+Both measurement trees use neutral button roles to isolate the Caption change.
+The original frozen controls have no matching host selectors in this headless application.
+Their Fluent buttons measure 29 DIP high, with `8,5,8,6` padding, three-DIP corners, and zero minimum height.
+Role adoption resolves the existing `actionNeutral` geometry: 32 DIP height, `14,0` padding, theme corners, and 32 DIP minimum height.
+The role itself remains unchanged.
+Template margins, gaps, alignments, and column definitions remain unchanged.
+
+Set `NVT_PAGER_IMAGES_DIR` when running the measurement test to save six 960 by 180 PNG frames with SHA-256 output.
+The `before` frames preserve the original frozen controls without host selectors.
+The `before-caption` frames apply only the neutral button migration.
+The `after` frames render the shipped Core templates.
+Compare `before-caption` with `after` to inspect the intended typography change.
 
 After packages are restored, run from the repository root:
 
@@ -267,7 +341,8 @@ The two models and their creation/navigation members become public in `Nvt.Core.
 Language branches become immutable injected labels and formatters; null labels and null label members are rejected after frozen item and page-size validation.
 The frozen model notification sequence and Toolkit command behavior remain intact.
 Pager templates are separate from these models.
-Pager extraction renames only the two resource keys, the model namespace, and the windowed spacing resource key.
+Pager extraction renames the two template keys, the model namespace, and the windowed spacing resource key.
+The styling migration replaces the three host classes with `actionNeutral` buttons and explicit Caption font resources.
 The original deferred resource scopes remain caller-owned; no resource is loaded eagerly by Core.
 The templates introduce no C# state fields and require no changes to the paging models.
 

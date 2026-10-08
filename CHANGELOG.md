@@ -8,6 +8,12 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ### Breaking changes
 
+- ReportList: pager buttons now use the shared `actionNeutral` role.
+  Status captions apply `Nvt.Font.Caption.Family`, `Nvt.Font.Caption.Size`, and `Nvt.Font.Caption.Weight` directly.
+  Load `Theme/ButtonStyles.axaml` and `Nvt.Core.Fonts/FontRoles.axaml` before using the pager templates.
+  Keep `Theme/ThemeTokens.axaml` loaded for the button resources.
+  Remove local `semanticAction`, `secondary`, and `captionText` styles that existed only for the pager.
+
 - `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
 - `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
 - `UndoService.TryPop` changes to `[NotNullWhen(true)] out UndoAction? action`. Use the success branch. Empty stacks still return false and null.

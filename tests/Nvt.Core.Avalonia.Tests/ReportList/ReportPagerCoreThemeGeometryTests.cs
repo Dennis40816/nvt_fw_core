@@ -8,6 +8,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Platform;
 using Avalonia.Styling;
@@ -18,7 +19,8 @@ using Xunit;
 namespace Nvt.Core.Avalonia.Tests.ReportList;
 
 /// <summary>Checks pager geometry under the Core Theme with fixed window, font and DPI inputs.</summary>
-public sealed class ReportPagerCoreThemeGeometryTests
+/// <param name="output">Receives measured typography and optional image evidence.</param>
+public sealed class ReportPagerCoreThemeGeometryTests(ITestOutputHelper output)
 {
     private const double WindowWidth = 960;
     private const double WindowHeight = 180;
@@ -33,7 +35,7 @@ public sealed class ReportPagerCoreThemeGeometryTests
         static (visible, total) => $"Displaying {visible} from {total} available report items",
         static (next, remaining) => $"Load {next} more items ({remaining} left)");
 
-    /// <summary>Checks resolved Core resources and frozen geometry through navigation and both disabled endpoints.</summary>
+    /// <summary>Checks resolved Core roles and migrated frozen geometry through navigation and both disabled endpoints.</summary>
     /// <param name="windowed">Whether to use the fixed-window pager.</param>
     /// <param name="width">The pager width inside the fixed-size window.</param>
     /// <param name="dark">Whether to use the dark Core palette.</param>
@@ -60,6 +62,7 @@ public sealed class ReportPagerCoreThemeGeometryTests
         ReportListLabels labels = longLabels ? LongLabels : ReportListTestData.English;
         using PagerTemplateTestHost frozen = Create(CreateModel(9, 4, windowed, labels), windowed, true, width, dark);
         using PagerTemplateTestHost core = Create(CreateModel(9, 4, windowed, labels), windowed, false, width, dark);
+        ReportPagerGeometryTests.MigrateFrozenStyles(frozen);
         AssertGeometry(frozen, core, windowed, width, dark);
         ReportPagerGeometryTests.Advance(frozen, windowed);
         ReportPagerGeometryTests.Advance(core, windowed);
@@ -98,7 +101,66 @@ public sealed class ReportPagerCoreThemeGeometryTests
     {
         using PagerTemplateTestHost frozen = Create(CreateModel(count, pageSize, windowed, ReportListTestData.English), windowed, true, 336, false);
         using PagerTemplateTestHost core = Create(CreateModel(count, pageSize, windowed, ReportListTestData.English), windowed, false, 336, false);
+        ReportPagerGeometryTests.MigrateFrozenStyles(frozen);
         AssertGeometry(frozen, core, windowed, 336, false);
+    }
+
+    /// <summary>Records caption measurements before and after the approved font change with identical neutral button roles.</summary>
+    /// <param name="windowed">Whether to measure the fixed-window pager.</param>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CaptionTypographyRecordsBeforeAndAfterMeasurements(bool windowed)
+    {
+        using PagerTemplateTestHost frozen = Create(CreateModel(9, 4, windowed, ReportListTestData.English), windowed, true, 960, false);
+        using PagerTemplateTestHost core = Create(CreateModel(9, 4, windowed, ReportListTestData.English), windowed, false, 960, false);
+        Button originalButton = frozen.Root.GetVisualDescendants().OfType<Button>().First();
+        Assert.Equal(new Thickness(8, 5, 8, 6), originalButton.Padding);
+        Assert.Equal(new CornerRadius(3), originalButton.CornerRadius);
+        Assert.Equal(0d, originalButton.MinHeight);
+        output.WriteLine(FormattableString.Invariant(
+            $"Button before role migration: height={originalButton.Bounds.Height}, padding={originalButton.Padding}, border={originalButton.BorderThickness}, corner={originalButton.CornerRadius}, minHeight={originalButton.MinHeight}"));
+        CaptureTypographyFrame(frozen, windowed, "before");
+        ReportPagerGeometryTests.MigrateFrozenButtons(frozen);
+        TextBlock before = Assert.IsType<TextBlock>(frozen.Root.Children[0]);
+        TextBlock after = Assert.IsType<TextBlock>(core.Root.Children[0]);
+        Assert.Equal("captionText", Assert.Single(before.Classes));
+        Assert.Equal(SharedFamily, before.FontFamily);
+        Assert.Equal(13d, before.FontSize);
+        Assert.Equal(FontWeight.Normal, before.FontWeight);
+        PagerTemplateTestHost.AssertCaptionRoles(after);
+        Assert.Equal(new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"), after.FontFamily);
+        Assert.Equal(11d, after.FontSize);
+        Assert.Equal(FontWeight.Normal, after.FontWeight);
+        Assert.Equal(before.Text, after.Text);
+        Assert.Equal(before.TextLayout.TextLines.Count, after.TextLayout.TextLines.Count);
+        Assert.True(after.DesiredSize.Width < before.DesiredSize.Width);
+        Assert.True(after.DesiredSize.Height < before.DesiredSize.Height);
+        output.WriteLine(FormattableString.Invariant(
+            $"Caption {(windowed ? "windowed" : "paged")}: text='{before.Text}'; before size={before.FontSize}, desired={before.DesiredSize}, baseline={before.TextLayout.TextLines[0].Baseline}, pager={frozen.Root.Bounds.Size}; after size={after.FontSize}, desired={after.DesiredSize}, baseline={after.TextLayout.TextLines[0].Baseline}, pager={core.Root.Bounds.Size}"));
+        CaptureTypographyFrame(frozen, windowed, "before-caption");
+        CaptureTypographyFrame(core, windowed, "after");
+        before.Classes.Remove("captionText");
+        before.FontFamily = after.FontFamily;
+        before.FontSize = after.FontSize;
+        before.FontWeight = after.FontWeight;
+        PagerTemplateTestHost.Render(frozen.Window);
+        ReportPagerGeometryTests.AssertTreesEqual(frozen.Root, core.Root);
+    }
+
+    private void CaptureTypographyFrame(PagerTemplateTestHost host, bool windowed, string stage)
+    {
+        string? destination = Environment.GetEnvironmentVariable("NVT_PAGER_IMAGES_DIR");
+        if (string.IsNullOrWhiteSpace(destination)) return;
+        Directory.CreateDirectory(destination);
+        using var frame = host.Window.CaptureRenderedFrame();
+        Assert.NotNull(frame);
+        Assert.Equal(new PixelSize((int)WindowWidth, (int)WindowHeight), frame.PixelSize);
+        Assert.Equal(new Vector(96, 96), frame.Dpi);
+        string name = $"pager-{(windowed ? "windowed" : "paged")}-{stage}.png";
+        string path = System.IO.Path.Combine(destination, name);
+        frame.Save(path, PngBitmapEncoderOptions.Default);
+        output.WriteLine($"Image {name} SHA-256 {Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)))}");
     }
 
     private static object CreateModel(int count, int pageSize, bool windowed, ReportListLabels labels) => windowed
@@ -112,11 +174,8 @@ public sealed class ReportPagerCoreThemeGeometryTests
         {
             var tokens = new Uri("avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml");
             host.Window.Resources.MergedDictionaries.Add(new ResourceInclude(tokens) { Source = tokens });
-            var buttons = new Uri("avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
             var scroll = new Uri("avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml");
-            host.Window.Styles.Add(new StyleInclude(buttons) { Source = buttons });
             host.Window.Styles.Add(new StyleInclude(scroll) { Source = scroll });
-            host.Window.Classes.Add("reducedMotion");
             host.Window.SizeToContent = SizeToContent.Manual;
             host.Window.WindowState = WindowState.Normal;
             host.Window.UseLayoutRounding = true;
@@ -157,7 +216,7 @@ public sealed class ReportPagerCoreThemeGeometryTests
         Assert.Equal(8d, Assert.IsType<double>(host.Window.FindResource("NfcSpace8")));
         Assert.Equal(8d, Assert.IsType<double>(host.Window.FindResource("Nvt.ReportList.WindowedSpacing")));
         TextBlock status = Assert.IsType<TextBlock>(host.Root.Children[0]);
-        Assert.Equal("captionText", Assert.Single(status.Classes));
+        PagerTemplateTestHost.AssertCaptionRoles(status);
         if (windowed)
         {
             Assert.Equal(8d, host.Root.RowSpacing);
@@ -174,20 +233,16 @@ public sealed class ReportPagerCoreThemeGeometryTests
 
         foreach (Button button in host.Root.GetVisualDescendants().OfType<Button>())
         {
-            Assert.Equal("semanticAction secondary", string.Join(' ', button.Classes.Where(name => !name.StartsWith(':'))));
+            PagerTemplateTestHost.AssertNeutralRole(button);
             Assert.Equal(SharedFamily, button.FontFamily);
             Assert.Equal(13d, button.FontSize);
-            Assert.Equal(new Thickness(8, 5, 8, 6), button.Padding);
-            Assert.Equal(new Thickness(1), button.BorderThickness);
-            Assert.Equal(new CornerRadius(3), button.CornerRadius);
-            Assert.Equal(0d, button.MinHeight);
         }
 
         var typefaces = new HashSet<GlyphTypeface>();
         foreach (TextBlock text in host.Root.GetVisualDescendants().OfType<TextBlock>())
         {
-            Assert.Equal(SharedFamily, text.FontFamily);
-            Assert.Equal(13d, text.FontSize);
+            Assert.Equal(text == status ? status.FindResource("Nvt.Font.Caption.Family") : SharedFamily, text.FontFamily);
+            Assert.Equal(text == status ? 11d : 13d, text.FontSize);
             Assert.Equal(FontWeight.Normal, text.FontWeight);
             Assert.Equal(FontStyle.Normal, text.FontStyle);
             foreach (ShapedTextRun run in text.TextLayout.TextLines.SelectMany(line => line.TextRuns).OfType<ShapedTextRun>())

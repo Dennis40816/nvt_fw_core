@@ -12,10 +12,10 @@ using Xunit;
 
 namespace Nvt.Core.Avalonia.Tests.ReportList;
 
-/// <summary>Compares actual compiled trees with the independent frozen fragments under identical host resources.</summary>
+/// <summary>Compares compiled geometry with independent frozen fragments after the explicit styling migration.</summary>
 public sealed class ReportPagerGeometryTests
 {
-    /// <summary>Checks the entire visual tree and exact measurements in both viewports, themes and label sets.</summary>
+    /// <summary>Checks every visual property and exact measurement after migrating only frozen classes and caption typography.</summary>
     /// <param name="windowed">Whether to compare the fixed-window tree.</param>
     /// <param name="width">The host viewport width in DIP.</param>
     /// <param name="dark">Whether the host uses the dark theme.</param>
@@ -37,12 +37,13 @@ public sealed class ReportPagerGeometryTests
     [InlineData(true, 960, false, true)]
     [InlineData(true, 960, true, false)]
     [InlineData(true, 960, true, true)]
-    public void CompiledTreesMatchFrozenGeometryBeforeAndAfterNavigation(bool windowed, double width, bool dark, bool chinese)
+    public void CompiledTreesMatchMigratedFrozenGeometryBeforeAndAfterNavigation(bool windowed, double width, bool dark, bool chinese)
     {
         object frozenModel = PagerTemplateTestHost.CreateModel(9, 4, windowed, chinese);
         object coreModel = PagerTemplateTestHost.CreateModel(9, 4, windowed, chinese);
         using PagerTemplateTestHost frozen = PagerTemplateTestHost.Create(frozenModel, windowed, true, width, dark);
         using PagerTemplateTestHost core = PagerTemplateTestHost.Create(coreModel, windowed, false, width, dark);
+        MigrateFrozenStyles(frozen);
         AssertTreesEqual(frozen.Root, core.Root);
         Advance(frozen, windowed);
         Advance(core, windowed);
@@ -58,7 +59,7 @@ public sealed class ReportPagerGeometryTests
         }
     }
 
-    /// <summary>Empty, single-row, exact and adjacent pages retain the frozen tree with a positive maximum-sized batch.</summary>
+    /// <summary>Empty, single-row, exact and adjacent pages retain migrated frozen geometry, including maximum-sized batches.</summary>
     /// <param name="windowed">Whether to compare the fixed-window tree.</param>
     /// <param name="count">The synthetic row count.</param>
     /// <param name="pageSize">The host batch size, including the largest valid integer and its neighbour.</param>
@@ -77,13 +78,42 @@ public sealed class ReportPagerGeometryTests
     [InlineData(true, 2, int.MaxValue - 1)]
     [InlineData(false, 2, int.MaxValue)]
     [InlineData(true, 2, int.MaxValue)]
-    public void EdgeInputsKeepFrozenGeometry(bool windowed, int count, int pageSize)
+    public void EdgeInputsKeepMigratedFrozenGeometry(bool windowed, int count, int pageSize)
     {
         using PagerTemplateTestHost frozen = PagerTemplateTestHost.Create(
             PagerTemplateTestHost.CreateModel(count, pageSize, windowed, false), windowed, true);
         using PagerTemplateTestHost core = PagerTemplateTestHost.Create(
             PagerTemplateTestHost.CreateModel(count, pageSize, windowed, false), windowed);
+        MigrateFrozenStyles(frozen);
         AssertTreesEqual(frozen.Root, core.Root);
+    }
+
+    internal static void MigrateFrozenStyles(PagerTemplateTestHost host)
+    {
+        MigrateFrozenButtons(host);
+        TextBlock status = Assert.IsType<TextBlock>(host.Root.Children[0]);
+        Assert.Equal("captionText", Assert.Single(status.Classes));
+        Assert.Equal(13d, status.FontSize);
+        Assert.Equal(FontWeight.Normal, status.FontWeight);
+        status.Classes.Remove("captionText");
+        status.FontFamily = Assert.IsType<FontFamily>(status.FindResource("Nvt.Font.Caption.Family"));
+        status.FontSize = Assert.IsType<double>(status.FindResource("Nvt.Font.Caption.Size"));
+        status.FontWeight = Assert.IsType<FontWeight>(status.FindResource("Nvt.Font.Caption.Weight"));
+        PagerTemplateTestHost.Render(host.Window);
+    }
+
+    internal static void MigrateFrozenButtons(PagerTemplateTestHost host)
+    {
+        // The source fixture stays frozen. Only the approved class mapping changes this comparison tree.
+        foreach (Button button in host.Root.GetVisualDescendants().OfType<Button>())
+        {
+            Assert.Equal("semanticAction secondary", string.Join(' ', button.Classes.Where(name => !name.StartsWith(':'))));
+            button.Classes.Remove("semanticAction");
+            button.Classes.Remove("secondary");
+            button.Classes.Add("actionNeutral");
+        }
+
+        PagerTemplateTestHost.Render(host.Window);
     }
 
     internal static void Advance(PagerTemplateTestHost host, bool windowed)
@@ -107,7 +137,7 @@ public sealed class ReportPagerGeometryTests
             new XAttribute("VerticalAlignment", control.VerticalAlignment),
             new XAttribute("Visible", control.IsVisible),
             new XAttribute("EffectivelyEnabled", control.IsEffectivelyEnabled),
-            new XAttribute("Classes", string.Join(' ', control.Classes)),
+            new XAttribute("Classes", string.Join(' ', control.Classes.Order(StringComparer.Ordinal))),
             new XAttribute("Name", AutomationProperties.GetName(control) ?? string.Empty),
             new XAttribute("LiveSetting", AutomationProperties.GetLiveSetting(control)),
             new XAttribute("Tooltip", ToolTip.GetTip(control)?.ToString() ?? string.Empty));
