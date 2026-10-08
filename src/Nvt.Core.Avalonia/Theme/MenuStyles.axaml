@@ -1,0 +1,178 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="using:Avalonia.Controls.Converters" xmlns:theme="using:Nvt.Core.Avalonia.Theme">
+  <Styles.Resources>
+    <ControlTheme x:Key="Nvt.Menu.ItemTheme" TargetType="MenuItem" />
+    <ControlTheme x:Key="Nvt.Menu.SeparatorTheme" TargetType="TemplatedControl" />
+    <conv:PlatformKeyGestureConverter x:Key="Nvt.Menu.KeyGestureConverter" />
+    <theme:MenuCornerRadiusConverter x:Key="Nvt.Menu.CornerConverter" />
+  </Styles.Resources>
+  <Style Selector="Menu">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
+  </Style>
+  <Style Selector="ContextMenu">
+    <Setter Property="HorizontalOffset" Value="-16" />
+    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="WindowManagerAddShadowHint" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="MenuSurface" Margin="{DynamicResource Nvt.Menu.PopupShadowMargin}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
+                Tag="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}"
+                BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}">
+          <Border.CornerRadius>
+            <MultiBinding Converter="{StaticResource Nvt.Menu.CornerConverter}">
+              <Binding Path="CornerRadius" RelativeSource="{RelativeSource TemplatedParent}" />
+              <Binding Path="Tag" RelativeSource="{RelativeSource Self}" />
+            </MultiBinding>
+          </Border.CornerRadius>
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                            KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="Theme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="UseLayoutRounding" Value="False" />
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <!-- Four pixels reserve the exterior keyboard ring inside the scrolling viewport. -->
+          <Border Name="PART_LayoutRoot" Margin="4" Padding="{TemplateBinding Padding}"
+                  Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+            <Border.Transitions>
+              <Transitions><BrushTransition Property="Background" Duration="0:0:0.15" /></Transitions>
+            </Border.Transitions>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" SharedSizeGroup="ToggleIcon" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIcon" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemIGT" />
+                <ColumnDefinition Width="Auto" SharedSizeGroup="MenuItemChevron" />
+              </Grid.ColumnDefinitions>
+              <Path Name="MenuCheck" IsVisible="False" Width="16" Height="16" Margin="2,0" Stretch="Uniform"
+                    Data="{DynamicResource NfcDoneIconGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="2" />
+              <ContentPresenter Name="PART_IconPresenter" Grid.Column="1" Width="20" Height="20"
+                                IsVisible="False" Content="{TemplateBinding Icon}" VerticalAlignment="Center" />
+              <ContentPresenter Name="PART_HeaderPresenter" Grid.Column="2" Content="{TemplateBinding Header}"
+                                ContentTemplate="{TemplateBinding HeaderTemplate}" RecognizesAccessKey="True"
+                                Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+              <TextBlock Name="PART_InputGestureText" Grid.Column="3" Margin="24,0,0,0" VerticalAlignment="Center"
+                         Text="{TemplateBinding InputGesture, Converter={StaticResource Nvt.Menu.KeyGestureConverter}}"
+                         Foreground="{DynamicResource NfcTextMutedBrush}" />
+              <Path Name="PART_ChevronPath" Grid.Column="4" Width="6" Height="10" Margin="16,0,0,0"
+                    Data="{DynamicResource Nvt.Menu.ChevronGeometry}" Stroke="{TemplateBinding Foreground}"
+                    StrokeThickness="1.5" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <Border Name="MenuFocusRing" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+          <Popup Name="PART_Popup" WindowManagerAddShadowHint="False"
+                 IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
+            <Border Name="SubMenuSurface" Margin="{DynamicResource Nvt.Menu.PopupShadowMargin}" Background="{DynamicResource NfcSurfaceBrush}" BorderBrush="{DynamicResource NfcBorderBrush}"
+                    BorderThickness="1" Padding="4" BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}"
+                    Tag="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}">
+              <Border.CornerRadius>
+                <MultiBinding Converter="{StaticResource Nvt.Menu.CornerConverter}">
+                  <Binding Path="CornerRadius" RelativeSource="{RelativeSource TemplatedParent}" />
+                  <Binding Path="Tag" RelativeSource="{RelativeSource Self}" />
+                </MultiBinding>
+              </Border.CornerRadius>
+              <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Grid.IsSharedSizeScope="True" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem TextBlock:not(#PART_InputGestureText), MenuItem AccessText">
+    <Setter Property="Foreground" Value="{Binding $parent[MenuItem].Foreground}" />
+  </Style>
+  <Style Selector="MenuItem:icon /template/ ContentPresenter#PART_IconPresenter">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="MenuItem:checked /template/ Path#MenuCheck">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="MenuItem:empty /template/ Path#PART_ChevronPath, Menu > MenuItem /template/ Path#PART_ChevronPath, Menu > MenuItem /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="MenuItem /template/ Popup#PART_Popup">
+    <Setter Property="Placement" Value="RightEdgeAlignedTop" />
+    <Setter Property="HorizontalOffset" Value="-20" />
+    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="IsLightDismissEnabled" Value="False" />
+  </Style>
+  <Style Selector="Menu > MenuItem /template/ Popup#PART_Popup">
+    <Setter Property="Placement" Value="BottomEdgeAlignedLeft" />
+    <Setter Property="HorizontalOffset" Value="-16" />
+    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="IsLightDismissEnabled" Value="True" />
+    <Setter Property="OverlayInputPassThroughElement" Value="{Binding $parent[Menu]}" />
+  </Style>
+  <Style Selector="MenuItem:pointerover:not(:disabled), MenuItem:selected:not(:disabled), MenuItem:focus-visible:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+  </Style>
+  <Style Selector="MenuItem:pressed:not(:disabled) /template/ Border#PART_LayoutRoot:pointerover">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+  </Style>
+  <Style Selector="MenuItem:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}" />
+  </Style>
+  <Style Selector="MenuItem:disabled /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}" />
+  </Style>
+  <Style Selector="MenuItem:focus-visible:not(:disabled) /template/ Border#MenuFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Menu Separator, ContextMenu Separator, MenuItem Separator, MenuItem:separator">
+    <Setter Property="Theme" Value="{StaticResource Nvt.Menu.SeparatorTheme}" />
+    <Setter Property="Height" Value="1" />
+    <Setter Property="MinHeight" Value="1" />
+    <Setter Property="Margin" Value="10,4" />
+    <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate><Border Name="MenuSeparator" Background="{TemplateBinding Background}" /></ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="MenuItem.reducedMotion /template/ Border#PART_LayoutRoot, .reducedMotion MenuItem /template/ Border#PART_LayoutRoot">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="MenuItem.reducedMotion, .reducedMotion MenuItem">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+</Styles>

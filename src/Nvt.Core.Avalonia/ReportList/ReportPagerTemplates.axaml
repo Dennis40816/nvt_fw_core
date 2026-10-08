@@ -11,6 +11,7 @@
           FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
           FontSize="{DynamicResource Nvt.Font.Caption.Size}"
           FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"
+          Foreground="{DynamicResource NfcTextMutedBrush}"
           Text="{Binding PageStatus}"
           AutomationProperties.Name="{Binding PageStatus}"
           AutomationProperties.LiveSetting="Polite" />
@@ -30,6 +31,7 @@
           FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
           FontSize="{DynamicResource Nvt.Font.Caption.Size}"
           FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"
+          Foreground="{DynamicResource NfcTextMutedBrush}"
           Text="{Binding PageStatus}"
           TextWrapping="Wrap"
           ToolTip.Tip="{Binding PageStatus}"

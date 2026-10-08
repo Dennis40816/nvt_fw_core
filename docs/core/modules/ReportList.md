@@ -165,8 +165,8 @@ The templates read the existing models; they own no paging state or commands.
 The pager supplies its styling contract through Core resources.
 Load these prerequisites before using either template:
 
-- Load `Theme/ThemeTokens.axaml` for the shared button palette, dimensions, and legacy button fonts.
-- Load `Theme/ButtonStyles.axaml` for the complete `actionNeutral` button role.
+- Load `Theme/ThemeTokens.axaml` for the shared button palette, dimensions, legacy button fonts, and the muted status text color `NfcTextMutedBrush`.
+- Load `Theme/ButtonStyles.axaml` for the complete `actionNeutral` button role. The optional `reducedMotion` class on an ancestor only turns off button animation. The pager does not need it.
 - Load `Nvt.Core.Fonts/FontRoles.axaml` for `Nvt.Font.Caption.Family`, `Nvt.Font.Caption.Size`, and `Nvt.Font.Caption.Weight`.
 
 The [Theme module](Theme.md) documents the button prerequisites.
@@ -342,7 +342,7 @@ Language branches become immutable injected labels and formatters; null labels a
 The frozen model notification sequence and Toolkit command behavior remain intact.
 Pager templates are separate from these models.
 Pager extraction renames the two template keys, the model namespace, and the windowed spacing resource key.
-The styling migration replaces the three host classes with `actionNeutral` buttons and explicit Caption font resources.
+The styling migration replaces the three host classes with `actionNeutral` buttons, explicit Caption font resources and the muted status text color `NfcTextMutedBrush`.
 The original deferred resource scopes remain caller-owned; no resource is loaded eagerly by Core.
 The templates introduce no C# state fields and require no changes to the paging models.
 

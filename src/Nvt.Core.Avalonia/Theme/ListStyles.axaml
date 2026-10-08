@@ -1,0 +1,92 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="Nvt.List.ItemTheme" TargetType="ListBoxItem" />
+  </Styles.Resources>
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBoxItem, ComboBoxItem">
+    <Setter Property="Theme" Value="{StaticResource Nvt.List.ItemTheme}" />
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="UseLayoutRounding" Value="False" />
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid>
+          <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}"
+                            Foreground="{TemplateBinding Foreground}" CornerRadius="{TemplateBinding CornerRadius}"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <Border Name="ListSelectionIndicator" IsVisible="False" IsHitTestVisible="False" Width="2" Height="12"
+                  HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"
+                  Background="{TemplateBinding Foreground}" CornerRadius="{DynamicResource Nvt.Shape.RoundCornerRadius}" />
+          <Border Name="ListFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="2"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ListBoxItem TextBlock, ComboBoxItem TextBlock">
+    <Setter Property="Foreground" Value="{Binding $parent[ListBoxItem].Foreground}" />
+  </Style>
+  <Style Selector="ListBox.compact ListBoxItem, ListBoxItem.compact, ComboBoxItem.compact">
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.List.CompactHeight}" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.List.CompactHeight}" />
+    <Setter Property="Padding" Value="10,0" />
+  </Style>
+  <Style Selector="ListBoxItem:pointerover:not(:disabled), ComboBoxItem:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:pressed:not(:disabled), ComboBoxItem:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected:not(:disabled), ComboBoxItem:selected:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.SelectedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.List.SelectedLabelBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected:pointerover:not(:disabled), ComboBoxItem:selected:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.SelectedPointerOverBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected:pressed:not(:disabled), ComboBoxItem:selected:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.SelectedPressedBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:disabled, ComboBoxItem:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:selected:disabled, ComboBoxItem:selected:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+  </Style>
+  <Style Selector="ListBoxItem:focus-visible:not(:disabled) /template/ Border#ListFocusRing, ComboBoxItem:focus-visible:not(:disabled) /template/ Border#ListFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ListBoxItem:selected /template/ Border#ListSelectionIndicator, ComboBoxItem:selected /template/ Border#ListSelectionIndicator">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ListBoxItem.reducedMotion, ComboBoxItem.reducedMotion, .reducedMotion ListBoxItem, .reducedMotion ComboBoxItem">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+</Styles>

@@ -95,6 +95,8 @@ public sealed class ReportPagerGeometryTests
         Assert.Equal("captionText", Assert.Single(status.Classes));
         Assert.Equal(13d, status.FontSize);
         Assert.Equal(FontWeight.Normal, status.FontWeight);
+        // The host class also set the muted text color. The source fixture only carries the class name.
+        status.Foreground = PagerTemplateTestHost.MutedBrush(status);
         status.Classes.Remove("captionText");
         status.FontFamily = Assert.IsType<FontFamily>(status.FindResource("Nvt.Font.Caption.Family"));
         status.FontSize = Assert.IsType<double>(status.FindResource("Nvt.Font.Caption.Size"));

@@ -267,6 +267,7 @@ public sealed class ReportPagerTemplateTests
         AssertNoHostStyles(host.Window.Styles);
         TextBlock status = Assert.IsType<TextBlock>(host.Root.Children[0]);
         PagerTemplateTestHost.AssertCaptionRoles(status);
+        Assert.Equal(Color.Parse(dark ? "#A1AEC2" : "#526176"), Assert.IsAssignableFrom<ISolidColorBrush>(status.Foreground).Color);
         Button[] buttons = [.. host.Root.GetVisualDescendants().OfType<Button>()];
         Assert.Equal(windowed ? 2 : 1, buttons.Length);
         Assert.All(buttons, PagerTemplateTestHost.AssertNeutralRole);
@@ -401,6 +402,9 @@ internal sealed class PagerTemplateTestHost(Window window, ContentControl conten
         {
             window.Show();
             Render(window);
+            var tokens = new Uri("avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml");
+            window.Resources.MergedDictionaries.Add(new ResourceInclude(tokens) { Source = tokens });
+            Render(window);
             return new PagerTemplateTestHost(window, content);
         }
         catch
@@ -432,6 +436,13 @@ internal sealed class PagerTemplateTestHost(Window window, ContentControl conten
         Assert.Equal(Assert.IsType<FontFamily>(status.FindResource("Nvt.Font.Caption.Family")), status.FontFamily);
         Assert.Equal(Assert.IsType<double>(status.FindResource("Nvt.Font.Caption.Size")), status.FontSize);
         Assert.Equal(Assert.IsType<FontWeight>(status.FindResource("Nvt.Font.Caption.Weight")), status.FontWeight);
+        Assert.Equal(MutedBrush(status).Color, Assert.IsAssignableFrom<ISolidColorBrush>(status.Foreground).Color);
+    }
+
+    internal static ISolidColorBrush MutedBrush(Control control)
+    {
+        Assert.True(control.TryFindResource("NfcTextMutedBrush", control.ActualThemeVariant, out object? brush));
+        return Assert.IsAssignableFrom<ISolidColorBrush>(brush);
     }
 
     internal static void AssertNeutralRole(Button button)

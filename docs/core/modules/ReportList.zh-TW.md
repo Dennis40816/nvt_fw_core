@@ -168,8 +168,8 @@ Toolkit `RelayCommand.Execute` 不強制檢查 `CanExecute`：在結尾直接執
 分頁範本透過 Core 資源提供完整樣式契約。
 使用任一範本前，先載入下列必要資源：
 
-- 載入 `Theme/ThemeTokens.axaml`，提供共用按鈕色盤、尺寸與既有按鈕字型。
-- 載入 `Theme/ButtonStyles.axaml`，提供完整的 `actionNeutral` 按鈕角色。
+- 載入 `Theme/ThemeTokens.axaml`，提供共用按鈕色盤、尺寸、既有按鈕字型與次要狀態文字色 `NfcTextMutedBrush`。
+- 載入 `Theme/ButtonStyles.axaml`，提供完整的 `actionNeutral` 按鈕角色。祖先上的選用 class `reducedMotion` 只會關閉按鈕動畫，分頁器不需要它。
 - 載入 `Nvt.Core.Fonts/FontRoles.axaml`，提供 `Nvt.Font.Caption.Family`、`Nvt.Font.Caption.Size` 與 `Nvt.Font.Caption.Weight`。
 
 [Theme 模組](Theme.zh-TW.md) 說明按鈕所需資源。
@@ -347,7 +347,7 @@ dotnet test Nvt.Core.sln --no-build
 凍結模型的通知順序與 Toolkit 命令行為保持不變。
 分頁範本與這些模型分開。
 分頁擷取重新命名兩個範本 key、模型命名空間與固定視窗間距資源 key。
-樣式遷移以 `actionNeutral` 按鈕與明確的 Caption 字型資源，取代三個主應用程式 class。
+樣式遷移以 `actionNeutral` 按鈕、明確的 Caption 字型資源與次要狀態文字色 `NfcTextMutedBrush`，取代三個主應用程式 class。
 原始延後載入資源作用範圍仍由呼叫端擁有，Core 不主動載入資源。
 範本不新增 C# 狀態欄位，也不要求分頁模型變更。
 

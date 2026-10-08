@@ -140,6 +140,7 @@ public sealed class ReportPagerCoreThemeGeometryTests(ITestOutputHelper output)
             $"Caption {(windowed ? "windowed" : "paged")}: text='{before.Text}'; before size={before.FontSize}, desired={before.DesiredSize}, baseline={before.TextLayout.TextLines[0].Baseline}, pager={frozen.Root.Bounds.Size}; after size={after.FontSize}, desired={after.DesiredSize}, baseline={after.TextLayout.TextLines[0].Baseline}, pager={core.Root.Bounds.Size}"));
         CaptureTypographyFrame(frozen, windowed, "before-caption");
         CaptureTypographyFrame(core, windowed, "after");
+        before.Foreground = PagerTemplateTestHost.MutedBrush(before);
         before.Classes.Remove("captionText");
         before.FontFamily = after.FontFamily;
         before.FontSize = after.FontSize;
