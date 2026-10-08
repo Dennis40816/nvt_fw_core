@@ -9,6 +9,7 @@ Edit tokens to tune the controls together. Keep geometry out of style files.
 | MenuItem, ContextMenu and menu separators | `ListTokens.axaml` |
 | Expander, ProgressBar, Separator and GridSplitter | `DividerTokens.axaml` |
 | ToggleButton roles and ToggleSwitch | `ToggleTokens.axaml` |
+| TextBox, NumericUpDown, closed ComboBox, TabControl and TabItem | `FormTokens.axaml` and `TabTokens.axaml` |
 | Shared selected colors and exterior or inset focus margins | `ControlTokens.axaml` |
 | Shape-dependent corners | `ShapePill.axaml` and `ShapeSquare.axaml` |
 | Shared row heights, fonts and focus thickness | `ThemeTokens.axaml` |

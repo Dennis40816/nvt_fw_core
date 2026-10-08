@@ -1423,3 +1423,239 @@ These defaults are identical in both shapes and themes. Shape-dependent corners 
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 
 See [Post-adoption tuning](../post-adoption-tuning.md) for token ownership, shared changes, contrast checks and sheet rendering.
+
+## Astra forms and tabs
+
+Forms and tabs now share the soft Astra control family. This change adds styles and tokens without changing public C# APIs.
+
+Load `FormStyles.axaml` and `TabStyles.axaml` after Fluent. Keep `ListStyles.axaml` for ComboBox popup rows.
+`ThemeTokens.axaml` automatically merges `FormTokens.axaml` and `TabTokens.axaml`.
+
+- TextBox uses a soft field fill, a 32 DIP minimum row, and the native editing presenter.
+- NumericUpDown uses the same outer field, a borderless input, and two compact spin buttons.
+- ComboBox uses the same closed field. Open state uses the pressed fill. Popup rows retain the List look.
+- TabControl adds a soft strip. TabItem adds soft selected fills and a selected indicator toward the content edge.
+- Controls support rest, hover, pressed or open, keyboard focus, disabled, and runtime Pill or Square shapes.
+
+TextBox and NumericUpDown retain native `IsReadOnly` behavior.
+ComboBox has no native read-only property. Its `readOnly` class provides the read-only visual state only.
+The adopting application owns selection restrictions. The style preserves native keyboard behavior.
+
+Add `error` to any form control to use `Nvt.Form.ErrorBorderBrush`.
+Native `:error` validation uses that token too. Error borders take precedence over hover, focus, read-only, and disabled borders.
+Focus uses one 2 DIP ring with a 2 DIP gap. Pointer focus and disabled controls show no ring.
+Numeric input focus surrounds the entire spinner. The validation presenters remain available and do not clip the ring.
+The `reducedMotion` class disables color transitions on a control or ancestor.
+
+The form intent follows compact field rows, a borderless numeric input, and small spin targets.
+The tab intent follows a neutral strip and distinct selection. Core uses its own names and palette.
+Adopting tools remove competing field geometry, closed-selector, spinner, tab-strip, indicator, and focus styles.
+Keep bindings, validation, commands, accessibility names, and existing popup-row logic.
+
+### Form and tab palette tokens
+
+Pill and Square use identical palette defaults. Aliases reuse existing brushes and introduce no literal colors.
+Replace a complete family palette together when tuning its theme.
+
+| Token | Light | Dark | Alias |
+| --- | --- | --- | --- |
+| `Nvt.Form.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Form.FillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Form.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
+| `Nvt.Form.ReadOnlyFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.TextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
+| `Nvt.Form.PlaceholderBrush` | `#526176` | `#A1AEC2` | `NfcTextMutedBrush` |
+| `Nvt.Form.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
+| `Nvt.Form.BorderBrush` | `#718096` | `#708198` | `NfcBorderBrush` |
+| `Nvt.Form.HoverBorderBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
+| `Nvt.Form.PressedBorderBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
+| `Nvt.Form.ErrorBorderBrush` | `#C04A5C` | `#C96579` | `NfcDangerBorderBrush` |
+| `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
+| `Nvt.Form.SelectionBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Tab.FillBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Tab.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
+| `Nvt.Tab.SelectedFillBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Tab.SelectedHoverFillBrush` | `#E3ECFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE7FA` | `#243C5B` | `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.Tab.TextBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
+| `Nvt.Tab.HoverTextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
+| `Nvt.Tab.PressedTextBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
+| `Nvt.Tab.SelectedTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
+| `Nvt.Tab.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Tab.DisabledSelectedFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Tab.IndicatorBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
+
+### Form and tab geometry tokens
+
+The following new defaults are identical in Light and Dark. Internal input corners stay zero because the outer field owns shape.
+Shared control and strip corners use `Nvt.Shape.ControlCornerRadius` and `Nvt.Shape.GroupCornerRadius`: Pill 999, Square 6.
+Focus corners use `Nvt.Shape.FocusCornerRadius`: Pill 999, Square 10.
+The ring thickness and exterior margin reuse `Nvt.Focus.RingThickness` and `Nvt.Controls.FocusRingMargin`.
+
+Keep `SpinnerWidth`, `BorderThickness`, `InnerFocusOffset`, and `LeftSpinnerFocusOffset` aligned when tuning numeric geometry.
+The left offset negates the spinner width plus the border inset. Both 15 DIP spin buttons fit inside the 32 DIP field.
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Form.Padding` | `12,0` | `12,0` |
+| `Nvt.Form.BorderThickness` | `1` | `1` |
+| `Nvt.Form.EmptyThickness` | `0` | `0` |
+| `Nvt.Form.InputCornerRadius` | `0` | `0` |
+| `Nvt.Form.SpinnerWidth` | `28` | `28` |
+| `Nvt.Form.SpinnerButtonHeight` | `15` | `15` |
+| `Nvt.Form.LeftSpinnerFocusOffset` | `-29` | `-29` |
+| `Nvt.Form.SpinnerButtonMinHeight` | `0` | `0` |
+| `Nvt.Form.GlyphWidth` | `10` | `10` |
+| `Nvt.Form.GlyphHeight` | `5` | `5` |
+| `Nvt.Form.GlyphStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.Form.InnerFocusOffset` | `-1` | `-1` |
+| `Nvt.Form.StateTransitionDuration` | `0:0:0.15` | `0:0:0.15` |
+| `Nvt.Form.ChevronGeometry` | `M0 0 L5 5 L10 0` | `M0 0 L5 5 L10 0` |
+| `Nvt.Form.IncreaseGeometry` | `M0 5 L5 0 L10 5` | `M0 5 L5 0 L10 5` |
+| `Nvt.Form.Height` | `32` | `32` |
+| `Nvt.Tab.Padding` | `14,0` | `14,0` |
+| `Nvt.Tab.StripPadding` | `4` | `4` |
+| `Nvt.Tab.ItemMargin` | `4` | `4` |
+| `Nvt.Tab.ContentPadding` | `0,12,0,0` | `0,12,0,0` |
+| `Nvt.Tab.EmptyThickness` | `0` | `0` |
+| `Nvt.Tab.IndicatorMargin` | `14,0,14,3` | `14,0,14,3` |
+| `Nvt.Tab.IndicatorThickness` | `2` | `2` |
+| `Nvt.Tab.IndicatorLength` | `16` | `16` |
+| `Nvt.Tab.StateTransitionDuration` | `0:0:0.15` | `0:0:0.15` |
+| `Nvt.Tab.Height` | `32` | `32` |
+| `Nvt.Tab.BottomIndicatorMargin` | `14,3,14,0` | `14,3,14,0` |
+| `Nvt.Tab.LeftIndicatorMargin` | `0,0,3,0` | `0,0,3,0` |
+| `Nvt.Tab.RightIndicatorMargin` | `3,0,0,0` | `3,0,0,0` |
+
+### Form and tab contrast
+
+These pairs use the existing 37-pair table's WCAG relative-luminance method with opaque sRGB colors.
+The ratios apply to both shapes and are rounded to three decimals.
+Enabled text preserves 4.5:1. Disabled text, borders, active indicators, and focus preserve 3:1.
+The shared selected text and focus pairs retain their existing measured ratios.
+`FormsContrastTests` measures every pair from compiled resources in both shapes and themes.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| Form text, caret and spinner glyph / rest / read-only | 13.982:1 | 12.766:1 |
+| Form placeholder / rest / read-only | 6.027:1 | 7.006:1 |
+| Form border / rest / read-only | 3.838:1 | 3.959:1 |
+| Form error border / rest / read-only | 4.587:1 | 4.212:1 |
+| Form focus / rest / read-only | 6.359:1 | 8.692:1 |
+| Form text, caret and spinner glyph / hover | 12.525:1 | 11.866:1 |
+| Form placeholder / hover | 5.399:1 | 6.512:1 |
+| Form border / hover | 6.488:1 | 9.853:1 |
+| Form error border / hover | 4.109:1 | 3.916:1 |
+| Form focus / hover | 5.696:1 | 8.080:1 |
+| Form text, caret and spinner glyph / pressed / open | 11.866:1 | 10.501:1 |
+| Form placeholder / pressed / open | 5.115:1 | 5.763:1 |
+| Form border / pressed / open | 14.482:1 | 12.373:1 |
+| Form error border / pressed / open | 3.893:1 | 3.465:1 |
+| Form focus / pressed / open | 5.397:1 | 7.150:1 |
+| Form disabled text, placeholder, border and spinner glyph | 4.358:1 | 4.599:1 |
+| Form error border / disabled fill | 4.587:1 | 4.212:1 |
+| Form text selection | 8.759:1 | 10.216:1 |
+| Form and tab focus / application | 6.073:1 | 10.341:1 |
+| Form rest border / application | 3.665:1 | 4.710:1 |
+| Form hover border / application | 6.917:1 | 12.611:1 |
+| Form pressed border / application | 16.296:1 | 17.895:1 |
+| Form error border / application | 4.381:1 | 5.012:1 |
+| Form disabled border / application | 4.162:1 | 5.471:1 |
+| Form and tab focus / surface | 6.653:1 | 9.798:1 |
+| Form rest border / surface | 4.015:1 | 4.462:1 |
+| Form hover border / surface | 7.578:1 | 11.948:1 |
+| Form pressed border / surface | 17.853:1 | 16.955:1 |
+| Form error border / surface | 4.800:1 | 4.748:1 |
+| Form disabled border / surface | 4.559:1 | 5.184:1 |
+| Tab text / rest | 7.243:1 | 10.600:1 |
+| Tab focus / rest | 6.359:1 | 8.692:1 |
+| Tab text / hover | 12.525:1 | 11.866:1 |
+| Tab focus / hover | 5.696:1 | 8.080:1 |
+| Tab text / pressed | 14.482:1 | 12.373:1 |
+| Tab focus / pressed | 5.397:1 | 7.150:1 |
+| Tab text and indicator / selected | 8.759:1 | 10.216:1 |
+| Tab focus / selected | 5.991:1 | 8.082:1 |
+| Tab text and indicator / selected hover | 8.185:1 | 8.898:1 |
+| Tab focus / selected hover | 5.598:1 | 7.039:1 |
+| Tab text and indicator / selected pressed | 7.807:1 | 7.830:1 |
+| Tab focus / selected pressed | 5.340:1 | 6.194:1 |
+| Tab text / disabled | 4.358:1 | 4.599:1 |
+| Tab text and indicator / selected disabled | 3.903:1 | 4.275:1 |
+
+## Text style classes
+
+`TextStyles.axaml` adds opt-in font roles to TextBlock and its SelectableTextBlock subclass.
+Each class sets family, size, and weight from the existing `Nvt.Font.<Role>.*` tokens.
+All roles use `NfcTextBrush`. Add `muted` separately to change only foreground to `NfcTextMutedBrush`.
+
+Reference `Nvt.Core.Fonts`, merge `FontRoles.axaml`, and include `TextStyles.axaml` after Fluent.
+Use `WithNvtCoreFonts()` for the existing Chinese fallback setup in the [Fonts module](Fonts.md).
+The styles require no new font registration or public C# API.
+Remove local duplicate role styles after adopting the shared classes.
+
+The classes leave line height unset. They leave unclassed TextBlock, SelectableTextBlock, and Label defaults unchanged.
+Use one role class per text control. Combine that role with `muted` when needed.
+H1 through H3 hierarchy rules remain outside this change.
+
+| Class | Role token prefix | Family | Size | Weight |
+| --- | --- | --- | ---: | ---: |
+| `title` | `Nvt.Font.Title.*` | Inter | 24 | 600 |
+| `heading` | `Nvt.Font.Heading.*` | Inter | 16 | 600 |
+| `body` | `Nvt.Font.Body.*` | Inter | 13 | 400 |
+| `caption` | `Nvt.Font.Caption.*` | Inter | 11 | 400 |
+| `mono` | `Nvt.Font.Mono.*` | Cascadia Mono | 13 | 400 |
+| `numbers` | `Nvt.Font.Numbers.*` | Cascadia Mono | 13 | 400 |
+| `bodyStrong` | `Nvt.Font.BodyStrong.*` | Inter | 13 | 600 |
+| `captionStrong` | `Nvt.Font.CaptionStrong.*` | Inter | 11 | 600 |
+| `monoStrong` | `Nvt.Font.MonoStrong.*` | Cascadia Mono | 13 | 600 |
+| `monoCaption` | `Nvt.Font.MonoCaption.*` | Cascadia Mono | 11 | 400 |
+
+The role suffixes are `Family` (FontFamily), `Size` (double), and `Weight` (FontWeight).
+
+| Foreground token | Light | Dark |
+| --- | --- | --- |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextMutedBrush` | `#526176` | `#A1AEC2` |
+
+These text pairs use the same sRGB method and retain the 4.5:1 text floor in both shapes.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| All text classes / application | 13.353:1 | 15.188:1 |
+| Muted class / application | 5.756:1 | 8.335:1 |
+| All text classes / surface | 14.629:1 | 14.390:1 |
+| Muted class / surface | 6.306:1 | 7.897:1 |
+| All text classes / subtle | 13.982:1 | 12.766:1 |
+| Muted class / subtle | 6.027:1 | 7.006:1 |
+| All text classes / hover | 12.525:1 | 11.866:1 |
+| Muted class / hover | 5.399:1 | 6.512:1 |
+| All text classes / pressed | 11.866:1 | 10.501:1 |
+| Muted class / pressed | 5.115:1 | 5.763:1 |
+| All text classes / selected | 13.172:1 | 11.870:1 |
+| Muted class / selected | 5.678:1 | 6.514:1 |
+| All text classes / selected hover | 12.309:1 | 10.338:1 |
+| Muted class / selected hover | 5.306:1 | 5.673:1 |
+| All text classes / selected pressed | 11.741:1 | 9.098:1 |
+| Muted class / selected pressed | 5.061:1 | 4.993:1 |
+
+### Rendering and review
+
+Set `NVT_FORMS_IMAGES_DIR` before running the additive renderer tests.
+`FormStylesRenderer`, `TabStylesRenderer`, and `TextStylesRenderer` write English sheets with synthetic data.
+Control sheets use `<control>-<pill|square>-<light|dark>.png`.
+Text sheets use `textstyles-light.png` and `textstyles-dark.png`.
+The Fluent comparisons use `forms-before-light.png` and `tabs-before-light.png`.
+Each sheet is 1200 pixels wide at scale one and stays below one megabyte.
+
+Tests cover runtime corners, token geometry, error precedence, keyboard-only unclipped rings, native editing, spinning, tab navigation, and font-role triplets.
+Owner review still covers popup placement in an actual application, live 150 ms motion, long Traditional Chinese content, and application compositions.
+The closed ComboBox shell is the verified selector scope. The read-only visual class does not enforce selection restrictions.
+See [Post-adoption tuning](../post-adoption-tuning.md) for the token ownership and validation workflow.
