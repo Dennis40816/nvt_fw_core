@@ -10,7 +10,71 @@
 沿用 Core 的配色、32 px 按鈕、捲軸、字型與 Focus B，本案不新增顏色 token。
 本次交付是可審閱的視覺提案；21 項問題的修復契約是下一階段 Core 實作的必要條件。
 
-先看 [新舊比較](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/compare-v2.png)。再看 [Dark 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-dark-v2.png)、[Light 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-light-v2.png)、[Dark 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/states-dark-v2.png) 與 [Light 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/states-light-v2.png)。
+先看 [v2 與 v3 比較](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/compare-v3-zh.png)。再看 [Light 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/proposal-light-v3-zh.png)、[Dark 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/proposal-dark-v3-zh.png)、[Light 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/states-light-v3-zh.png) 與 [Dark 狀態圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/states-dark-v3-zh.png)。灰階檢查看 [灰階圖](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/f5f69b3277d89f7dcc8a85024ff6bb7bcc98550a/pr-assets/console-design/v3/gray-light-v3-en.png)。
+英文版把檔名的 `-zh` 換成 `-en`，灰階圖只有英文版。
+下面第一節「v3 更新」是目前的依據。本文以下各節的 header、等級篩選與去重外觀，若與它不同，以它為準。
+舊版 v2 圖保留供對照：[新舊比較](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/compare-v2.png)、[Dark 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-dark-v2.png)、[Light 主畫面](https://raw.githubusercontent.com/Dennis40816/nvt_fw_core/650491b6271c5e2e991ef7f239baa4b6be706757/pr-assets/console-design/proposal-light-v2.png)。
+
+## v3 更新（2026-10-08，以本節為準）
+
+結論：v3 把外觀定案了。header 改成 B「搜尋優先」，等級篩選改成純圖示，「只看符合」與「去重」改成淡色底切換。版面、欄位與列表內容和 v2 相同。
+
+### 擁有者決定（原話）
+
+- 2026-10-08 08:5x：header 選 **B 搜尋優先**。
+- 2026-10-08 08:5x：「我覺得等級用 icon 點就好目前文字按鈕太重」。
+- 2026-10-08 09:3x：「按鈕好像有些太大了 太笨重」。
+- 2026-10-08 09:4x：「我是覺得 icon 直接不要外框」。
+- 2026-10-08 10:1x：「怎麼感覺 warning 沒有對齊?」，並選「開啟實心、關閉空心 (Recommended)」。
+- 2026-10-08 11:1x：看完對照圖後選「可以，做 v3 (Recommended)」。
+
+### v2 → v3
+
+| v2 | v3 |
+|---|---|
+| 等級在篩選列，搜尋在等級後面 | 第一列放標題與搜尋，第二列放等級、來源與去重 |
+| 六個文字膠囊，旁邊顯示筆數 | 六個純圖示，沒有底色也沒有外框，選取時也一樣 |
+| 選取用底色表示 | 開啟：實心圖示加等級色。關閉：空心圖示加灰色 |
+| 筆數顯示在按鈕旁 | 筆數只在提示，例如 `Error · 1`；零筆仍可切換 |
+| 等級按鈕約 32 px 高的膠囊 | 點擊範圍 32 × 32 DIP，圖示 18 DIP，六個圖示間距 4 DIP，成一組 |
+| 滑過、按下用同一種底色 | 滑過顯示極淡底，按下稍深；鍵盤焦點才出現焦點環 |
+| 「只看符合」與「去重」選取時是外框膠囊 | 淡色底加藍字；關閉時透明，滑過才有淡底 |
+| 時間格式、欄位各有按鈕 | 收進「顯示」選單 |
+| 匯出是獨立動作 | 匯出選單顯示複製、儲存與包含欄位 |
+
+### 功能位置
+
+| 功能 | v3 位置 |
+|---|---|
+| 搜尋與「只看符合」 | header 第一列 |
+| 等級篩選 | header 第二列，名稱與筆數在提示 |
+| 來源選單與「去重 ×N」 | header 第二列，等級右側 |
+| 絕對、相對、隱藏時間 | 顯示 → 時間格式 |
+| 時間、等級、來源、訊息欄位的可見性 | 顯示 → 欄位 |
+| 複製選取、複製可見列、儲存為 .log、包含時間與等級 | 匯出選單 |
+| 跟隨最新 | 狀態列 |
+| 收合 | header 第一列最右側 |
+
+### 等級圖示規則
+
+- 每個等級的圖形不同，灰階下仍分得出來。Trace、Debug、Info、Warn、Error、Fatal 的圖示不變。
+- 開啟與關閉使用同一個字形的實心（FILL 1）與空心（FILL 0）版本，可見範圍相同，切換時圖示不位移。
+- 六個圖示依可見筆畫置中，垂直中心差：Light 0 px、Dark 0.5 px，測試門檻 0.5 px。Warn 三角形底邊對齊整數像素。
+- 灰階下，六個等級開與關的亮度差都大於 0.025，測試鎖定這個門檻。
+- 圖示對背景至少 3:1，實測最低約 5.1:1。「只看符合」與「去重」的淡色底切換，文字對比至少 4.5:1。
+- 主畫面範例是 Debug 關閉、其餘開啟；去重開啟、「只看符合」關閉。
+
+### 這次新增或變動的樣式
+
+- 不新增顏色 token。等級色沿用 `NfcInfoTextBrush`、`NfcWarningTextStrongBrush`、`NfcDangerTextStrongBrush`、`NfcTextMutedBrush` 等既有資源。
+- Error 與 Fatal 的 ToggleButton 危險色沿用已合併的 FluentPill 修正（Core #120）。
+- 淡色底切換（暫名 `toggleSoft`）先放在測試專案的樣式，之後另開一張小 PR 搬進 Core，全部使用 token，沒有寫死的顏色或圓角。
+- 實作時，Console 的外觀要和這幾張 v3 圖一致。實作 PR 附「示意圖與實作並排」截圖，差異逐項列出，不同的地方要擁有者同意。
+
+### v3 沒有重畫的部分
+
+- 960 DIP 以下的窄版配置沒有重畫。header 改成兩列後，窄版要怎麼收，留到實作時依 v3 重新檢討。
+- 本文以下各節講到 header、等級膠囊、等級筆數與選取外觀的地方，已被本節取代。
 
 ## 擁有者決定（2026-10-07 23:5x）
 
@@ -28,9 +92,8 @@
 - 等級圖示置中。
 - 下文「21 項問題如何在新設計中解決」的修復做法。
 
-尚未定案的部分如下：
+當時尚未定案的部分如下，2026-10-08 已由上面的「v3 更新」定案：
 - 工具列按鈕、等級篩選膠囊、顏色與圓角。
-- 擁有者選定 ToggleButton 的外觀方向後，這些部分照同一風格重畫，再請擁有者確認。
 - 實作時，這些樣式集中在 token 與樣式檔，之後可以整組更換。
 
 ## 版面與欄位（欄寬規則、列高、字型、截斷與展開）
@@ -128,6 +191,8 @@ NFH 與 NFU 實作時依 Theme.md 注入各自的七個 `NfcAccent*` 值。
 
 ## 等級圖示置中
 
+> 2026-10-08 更新：header 的六個等級篩選圖示改用「可見筆畫置中」（見上面的「v3 更新」）。下面的校正表只適用於事件列裡的等級欄圖示。
+
 Material Symbols 的上下留白不一致，對齊文字盒仍會讓 Debug 與 Warn 偏高。
 列模板改用共用的字形與渲染尺度校正表，只移動圖示，保留原本列高與欄位。
 100% 的 Debug、Warn 下移 1 DIP；150% 的 Debug 下移 1 DIP、Warn 下移 0.5 DIP。
@@ -151,7 +216,7 @@ Core 正式實作必須保留這項像素墨跡測試。字型、DPI 或列模�
 
 ## 互動（篩選、搜尋、去重、連結、右鍵選單、匯出、自動跟隨、鍵盤操作與快捷鍵、選取與複製）
 
-- 等級切換是可複選的 ToggleButton，旁邊顯示保留事件的原始筆數。
+- 等級切換是可複選的純圖示 ToggleButton，筆數只在提示顯示（例如 `Error · 1`），保留事件的原始筆數。
 - 等級筆數套用來源條件，但不套用等級、文字搜尋或去重，避免數字互相消失。
 - 零筆等級仍可操作，新事件進來後可立即顯示。
 - 來源選單提供「所有來源」與 app 注入的來源名稱，可複選並顯示筆數。
@@ -330,7 +395,7 @@ NLog 設定、全域 target 註冊與 app log 目錄不屬於 panel。
 
 ## 未決事項
 
-- 本次版面與互動狀態仍待 owner 核准，核准後才開始 Core 正式實作。
+- v3 版面與互動狀態仍待 owner 重新核准，核准後才開始 Core 正式實作。
 - 各 app 的 opener 是否支援跳到行列，須由能力契約回報；不支援時提示必須明確寫「開啟檔案」。
 - 記憶體預算的建議初始值須以 4,000／10,000 entries、長訊息與慢 resolver 測量後定案，不能取消有界設計。
 - Avalonia 可變列高回收、真實 clipboard、screen reader、競態與跨螢幕 DPI 都須進入實作驗收。
