@@ -15,7 +15,7 @@
       <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
-  <StaticResource x:Key="Nvt.Divider.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+  <SolidColorBrush x:Key="Nvt.Divider.TransparentBrush" Color="#00FFFFFF" />
   <x:Double x:Key="Nvt.Expander.SectionHeaderHeight">44</x:Double>
   <x:Double x:Key="Nvt.Progress.Height">6</x:Double>
   <x:Double x:Key="Nvt.Progress.ThinHeight">3</x:Double>

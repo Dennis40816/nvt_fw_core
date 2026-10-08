@@ -463,6 +463,7 @@ NFC must also preserve:
 - Static and dynamic resource lookup modes.
 - Font assets, Inter package version, and fallback order.
 
+
 ## Verification and provenance
 
 This replaces the NFC-derived palette and button roles, reusing PR #71 templates and focus approach in the single `ButtonStyles.axaml` while fixing disabled and active priority. `ThemeTokens.xml` and `ButtonStyles.xml` were deliberately regenerated from the newly approved files; they no longer claim to preserve the old NFC appearance. `ExtractedXamlMatchesFrozenBaseline` still freezes the complete XML, expanding the eight existing font aliases for token comparison. Scroll geometry and its baseline are not changed by this palette update.
@@ -490,6 +491,156 @@ Each tool follows two separate PRs (owner decision 2026-10-07, which replaces th
 2. Look PR, approved by the owner: adopt `ThemeTokens`, `ButtonStyles` and `ScrollStyles` in one change. Keep only the seven `NfcAccent*` keys for the tool's accent; set all seven. Move buttons to the Core roles and delete local styles with the same purpose. Do not add compatibility variants to Core to restore an old look. Before-and-after images cover every main screen in Light and Dark.
 
 Images cover Light/Dark, English/Traditional Chinese, states, DPI and long labels. Product behavior and data colors stay in tools.
+
+## Expander
+
+Load `Theme/ExpanderStyles.axaml` after Fluent and merge `ThemeTokens.axaml` into application resources.
+Plain `Expander` headers measure 32 DIP. Add `section` for a 44 DIP header with a one-DIP top divider.
+Headers have no border and use the shared Pill or Square corners.
+The 12 × 6 chevron, 20-DIP chevron host, and 10-DIP spacing match `CollapsiblePanel`.
+`CollapsiblePanel` retains its existing template and behavior.
+
+Rest and expanded headers remain transparent. Pointer over uses the selection surface. Pressed headers use the secondary pressed surface.
+Disabled headers use disabled text and ignore pointer, pressed, and focus visuals.
+Keyboard focus shows one two-DIP ring with a two-DIP outside gap. Pointer focus shows no ring.
+Down and up expansion position the content below or above the header. The chevron rotates with the direction and expansion state.
+Color and chevron transitions last 150 ms. Add `reducedMotion` to the control or an ancestor to disable these transitions.
+Avalonia retains Space toggling, access keys, expansion events, and automation names.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `NfcControlHeight` | 32 | 32 |
+| `Nvt.Expander.SectionHeaderHeight` | 44 | 44 |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Divider.TransparentBrush` | `#00FFFFFF` | Same |
+
+Header corners use `Nvt.Shape.ControlCornerRadius`: Pill 999, Square 6 in both themes.
+Focus corners use `Nvt.Shape.FocusCornerRadius`: Pill 999, Square 10 in both themes.
+The divider and focus colors use the shared tokens documented below.
+Remove local header templates, heights, hover borders, corner rules, and focus adorners when adopting this style.
+Keep header content, commands, access keys, and bindings in the host.
+
+```xml
+<Expander Header="Details" />
+<Expander Classes="section" Header="Advanced options" ExpandDirection="Up" />
+```
+
+## ProgressBar
+
+Load `Theme/ProgressStyles.axaml` after Fluent. The style retains Fluent's range projection, percentage text, and indeterminate animations.
+The default thickness is six DIP. Add `thin` for three DIP or `thick` for ten DIP.
+Determinate and indeterminate tracks retain the same thickness. Vertical bars apply the thickness to their width.
+`ShowProgressText` defaults to false. Callers still own ranges, values, text settings, visibility, and indeterminate policy.
+Disabled bars retain their track and use the disabled indicator token.
+Brush transitions last 150 ms.
+
+`ProgressIndicator` keeps its public API and `ProgressBar` style identity.
+Its existing `Progress` property still projects known fractions into `Value` and retains the last value for missing fractions.
+It receives these tokens through its existing style key. No separate component template or selector is required.
+Keep `Progress/ProgressStyles.axaml` when using `LoadingSurface`. That component stylesheet serves a separate purpose.
+
+Add `reducedMotion` to a bar or an ancestor to replace indeterminate animation with a stationary middle third of the track.
+Removing indeterminate mode restores the native determinate template. Reduced motion also disables brush transitions.
+The static template preserves the native required indicator part and the progress automation peer.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Progress.Height` | 6 | 6 |
+| `Nvt.Progress.ThinHeight` | 3 | 3 |
+| `Nvt.Progress.ThickHeight` | 10 | 10 |
+| `Nvt.Progress.TrackBrush` | `#94A3B8`, `NfcBorderSoftBrush` | `#475569`, same alias |
+| `Nvt.Progress.IndicatorBrush` | `#0E3C9E` | `#8FBFFB`, `NfcAccentStrongBrush` |
+| `Nvt.Progress.DisabledIndicatorBrush` | `#68778C`, `NfcTextDisabledBrush` | `#7B8CA5`, same alias |
+
+The light indicator uses Core's deeper blue accent tone because the standard accent misses three-to-one contrast against the required track.
+The dark indicator reuses the existing strong accent for the same reason. Existing shared colors remain unchanged.
+This adds one color literal, `#0E3C9E`, already used by the dark toggle palette.
+The internal radius converter clamps `Nvt.Shape.ControlCornerRadius` to half the track's shorter dimension.
+The shipped thicknesses therefore use 1.5, 3, and 5 DIP ends in both shapes and themes.
+Replace the `Nvt.Progress.*` palette dictionary to update attached bars and indicators together.
+Remove local track colors, indicator colors, thicknesses, corners, and competing templates when adopting this style.
+
+```xml
+<ProgressBar Value="42" />
+<ProgressBar Classes="thin" IsIndeterminate="True" />
+<ProgressBar Classes="thick reducedMotion" IsIndeterminate="True" />
+```
+
+## Separator
+
+Load `Theme/DividerStyles.axaml` after Fluent.
+`Separator` and `Border.divider` render the same one-DIP line without a default margin.
+The default line is horizontal. Add `vertical` for a vertical line and `strong` for the stronger border color.
+Separators remain noninteractive and retain their native accessibility behavior.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+
+Remove local separator backgrounds, thicknesses, and default margin rules. Keep caller-owned layout spacing outside the control.
+Use the same classes on native separators and plain divider borders.
+
+```xml
+<Separator />
+<Separator Classes="vertical strong" />
+<Border Classes="divider" />
+<Border Classes="divider vertical strong" />
+```
+
+## GridSplitter
+
+Load `Theme/DividerStyles.axaml` after Fluent.
+The default vertical divider has a six-DIP hit area and a centered one-DIP line.
+Add `vertical` to resize columns or `horizontal` to resize rows. An explicit `ResizeDirection="Rows"` also selects the horizontal appearance.
+Pointer over and dragging use a two-DIP accent line. Dragging retains the accent after the pointer leaves the target.
+Disabled splitters retain the resting line and suppress interaction visuals.
+Keyboard focus shows one two-DIP ring with a two-DIP outside gap. Pointer focus shows no ring.
+The cursor follows the resize direction. Avalonia retains drag handling, arrow resizing, and resize constraints.
+With `ShowsPreview="True"`, a drag shows a 50% accent preview bar (`Nvt.GridSplitter.PreviewBrush`, `Nvt.GridSplitter.PreviewOpacity`). The neighbors resize when the pointer is released.
+Color transitions last 150 ms. Add `reducedMotion` to the splitter or an ancestor to disable them.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.GridSplitter.HitSize` | 6 | 6 |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `Nvt.GridSplitter.ActiveLineThickness` | 2 | 2 |
+| `Nvt.GridSplitter.PreviewBrush` | `NfcAccentBrush` | `NfcAccentBrush` |
+| `Nvt.GridSplitter.PreviewOpacity` | 0.5 | 0.5 |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.RingThickness` | 2 | 2 |
+
+Focus corners follow `Nvt.Shape.FocusCornerRadius` in both orientations.
+Remove local splitter templates, widths, hover fills, cursors, and focus adorners when adopting this style.
+Keep grid placement, resize behavior, drag increments, keyboard increments, and preview settings in the host.
+
+```xml
+<GridSplitter Classes="vertical" Grid.Column="1" ResizeBehavior="PreviousAndNext" />
+<GridSplitter Classes="horizontal" Grid.Row="1" ResizeBehavior="PreviousAndNext" />
+```
+
+`DividerStylesRenderer` checks the layouts headlessly and writes images only when `NVT_DIVIDER_IMAGES_DIR` is set.
+It exports `divider-light.png`, `divider-dark.png`, `divider-square-light.png`, and the side-by-side `divider-before-light.png`.
+Every image is 1200 pixels wide at scale one and stays below one megabyte.
+Divider tests pin geometry, all header states, contrast, runtime shapes, token replacement, motion policy, automation names, and native keyboard behavior.
+Real pointer drags verify that both neighboring cells resize by the dragged distance.
+
+The shipped styles meet these minimum contrast ratios in both shapes.
+Indicator checks cover enabled progress bars. Focus checks cover the adjacent surface, application background, and selection surface.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| Header text across enabled states | 12.525:1 | 11.866:1 |
+| Disabled header text | 4.559:1 | 5.184:1 |
+| Progress indicator against track | 3.794:1 | 3.974:1 |
+| Focus ring against adjacent surfaces | 4.228:1 | 5.572:1 |
 
 ## Scroll styles
 
@@ -816,154 +967,3 @@ Bind a vector icon's fill or stroke to the toggle foreground.
 `ToggleSoftRenderer` checks both shapes, text, icons, and every state through headless rendering.
 It writes `toggle-soft-light.png` and `toggle-soft-dark.png` only when `NVT_TOGGLE_IMAGES_DIR` is set.
 Tests disable transitions locally for stable snapshots, as they do for the existing roles.
-
-## Expander
-
-Load `Theme/ExpanderStyles.axaml` after Fluent and merge `ThemeTokens.axaml` into application resources.
-Plain `Expander` headers measure 32 DIP. Add `section` for a 44 DIP header with a one-DIP top divider.
-Headers have no border and use the shared Pill or Square corners.
-The 12 × 6 chevron, 20-DIP chevron host, and 10-DIP spacing match `CollapsiblePanel`.
-`CollapsiblePanel` retains its existing template and behavior.
-
-Rest and expanded headers remain transparent. Pointer over uses the selection surface. Pressed headers use the secondary pressed surface.
-Disabled headers use disabled text and ignore pointer, pressed, and focus visuals.
-Keyboard focus shows one two-DIP ring with a two-DIP outside gap. Pointer focus shows no ring.
-Down and up expansion position the content below or above the header. The chevron rotates with the direction and expansion state.
-Color and chevron transitions last 150 ms. Add `reducedMotion` to the control or an ancestor to disable these transitions.
-Avalonia retains Space toggling, access keys, expansion events, and automation names.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `NfcControlHeight` | 32 | 32 |
-| `Nvt.Expander.SectionHeaderHeight` | 44 | 44 |
-| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
-| `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
-| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
-| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
-| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
-| `Nvt.Divider.TransparentBrush` | `#00FFFFFF`, existing toggle alias | Same |
-
-Header corners use `Nvt.Shape.ControlCornerRadius`: Pill 999, Square 6 in both themes.
-Focus corners use `Nvt.Shape.FocusCornerRadius`: Pill 999, Square 10 in both themes.
-The divider and focus colors use the shared tokens documented below.
-Remove local header templates, heights, hover borders, corner rules, and focus adorners when adopting this style.
-Keep header content, commands, access keys, and bindings in the host.
-
-```xml
-<Expander Header="Details" />
-<Expander Classes="section" Header="Advanced options" ExpandDirection="Up" />
-```
-
-## ProgressBar
-
-Load `Theme/ProgressStyles.axaml` after Fluent. The style retains Fluent's range projection, percentage text, and indeterminate animations.
-The default thickness is six DIP. Add `thin` for three DIP or `thick` for ten DIP.
-Determinate and indeterminate tracks retain the same thickness. Vertical bars apply the thickness to their width.
-`ShowProgressText` defaults to false. Callers still own ranges, values, text settings, visibility, and indeterminate policy.
-Disabled bars retain their track and use the disabled indicator token.
-Brush transitions last 150 ms.
-
-`ProgressIndicator` keeps its public API and `ProgressBar` style identity.
-Its existing `Progress` property still projects known fractions into `Value` and retains the last value for missing fractions.
-It receives these tokens through its existing style key. No separate component template or selector is required.
-Keep `Progress/ProgressStyles.axaml` when using `LoadingSurface`. That component stylesheet serves a separate purpose.
-
-Add `reducedMotion` to a bar or an ancestor to replace indeterminate animation with a stationary middle third of the track.
-Removing indeterminate mode restores the native determinate template. Reduced motion also disables brush transitions.
-The static template preserves the native required indicator part and the progress automation peer.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `Nvt.Progress.Height` | 6 | 6 |
-| `Nvt.Progress.ThinHeight` | 3 | 3 |
-| `Nvt.Progress.ThickHeight` | 10 | 10 |
-| `Nvt.Progress.TrackBrush` | `#94A3B8`, `NfcBorderSoftBrush` | `#475569`, same alias |
-| `Nvt.Progress.IndicatorBrush` | `#0E3C9E` | `#8FBFFB`, `NfcAccentStrongBrush` |
-| `Nvt.Progress.DisabledIndicatorBrush` | `#68778C`, `NfcTextDisabledBrush` | `#7B8CA5`, same alias |
-
-The light indicator uses Core's deeper blue accent tone because the standard accent misses three-to-one contrast against the required track.
-The dark indicator reuses the existing strong accent for the same reason. Existing shared colors remain unchanged.
-This adds one color literal, `#0E3C9E`, already used by the dark toggle palette.
-The internal radius converter clamps `Nvt.Shape.ControlCornerRadius` to half the track's shorter dimension.
-The shipped thicknesses therefore use 1.5, 3, and 5 DIP ends in both shapes and themes.
-Replace the `Nvt.Progress.*` palette dictionary to update attached bars and indicators together.
-Remove local track colors, indicator colors, thicknesses, corners, and competing templates when adopting this style.
-
-```xml
-<ProgressBar Value="42" />
-<ProgressBar Classes="thin" IsIndeterminate="True" />
-<ProgressBar Classes="thick reducedMotion" IsIndeterminate="True" />
-```
-
-## Separator
-
-Load `Theme/DividerStyles.axaml` after Fluent.
-`Separator` and `Border.divider` render the same one-DIP line without a default margin.
-The default line is horizontal. Add `vertical` for a vertical line and `strong` for the stronger border color.
-Separators remain noninteractive and retain their native accessibility behavior.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `Nvt.Divider.LineThickness` | 1 | 1 |
-| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
-| `NfcBorderBrush` | `#718096` | `#708198` |
-
-Remove local separator backgrounds, thicknesses, and default margin rules. Keep caller-owned layout spacing outside the control.
-Use the same classes on native separators and plain divider borders.
-
-```xml
-<Separator />
-<Separator Classes="vertical strong" />
-<Border Classes="divider" />
-<Border Classes="divider vertical strong" />
-```
-
-## GridSplitter
-
-Load `Theme/DividerStyles.axaml` after Fluent.
-The default vertical divider has a six-DIP hit area and a centered one-DIP line.
-Add `vertical` to resize columns or `horizontal` to resize rows. An explicit `ResizeDirection="Rows"` also selects the horizontal appearance.
-Pointer over and dragging use a two-DIP accent line. Dragging retains the accent after the pointer leaves the target.
-Disabled splitters retain the resting line and suppress interaction visuals.
-Keyboard focus shows one two-DIP ring with a two-DIP outside gap. Pointer focus shows no ring.
-The cursor follows the resize direction. Avalonia retains drag handling, arrow resizing, and resize constraints.
-With `ShowsPreview="True"`, a drag shows a 50% accent preview bar (`Nvt.GridSplitter.PreviewBrush`, `Nvt.GridSplitter.PreviewOpacity`). The neighbors resize when the pointer is released.
-Color transitions last 150 ms. Add `reducedMotion` to the splitter or an ancestor to disable them.
-
-| Token | Light | Dark |
-| --- | --- | --- |
-| `Nvt.GridSplitter.HitSize` | 6 | 6 |
-| `Nvt.Divider.LineThickness` | 1 | 1 |
-| `Nvt.GridSplitter.ActiveLineThickness` | 2 | 2 |
-| `Nvt.GridSplitter.PreviewBrush` | `NfcAccentBrush` | `NfcAccentBrush` |
-| `Nvt.GridSplitter.PreviewOpacity` | 0.5 | 0.5 |
-| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
-| `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
-| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
-| `Nvt.Focus.RingThickness` | 2 | 2 |
-
-Focus corners follow `Nvt.Shape.FocusCornerRadius` in both orientations.
-Remove local splitter templates, widths, hover fills, cursors, and focus adorners when adopting this style.
-Keep grid placement, resize behavior, drag increments, keyboard increments, and preview settings in the host.
-
-```xml
-<GridSplitter Classes="vertical" Grid.Column="1" ResizeBehavior="PreviousAndNext" />
-<GridSplitter Classes="horizontal" Grid.Row="1" ResizeBehavior="PreviousAndNext" />
-```
-
-`DividerStylesRenderer` checks the layouts headlessly and writes images only when `NVT_DIVIDER_IMAGES_DIR` is set.
-It exports `divider-light.png`, `divider-dark.png`, `divider-square-light.png`, and the side-by-side `divider-before-light.png`.
-Every image is 1200 pixels wide at scale one and stays below one megabyte.
-Divider tests pin geometry, all header states, contrast, runtime shapes, token replacement, motion policy, automation names, and native keyboard behavior.
-Real pointer drags verify that both neighboring cells resize by the dragged distance.
-
-The shipped styles meet these minimum contrast ratios in both shapes.
-Indicator checks cover enabled progress bars. Focus checks cover the adjacent surface, application background, and selection surface.
-
-| Contrast | Light | Dark |
-| --- | --- | --- |
-| Header text across enabled states | 12.525:1 | 11.866:1 |
-| Disabled header text | 4.559:1 | 5.184:1 |
-| Progress indicator against track | 3.794:1 | 3.974:1 |
-| Focus ring against adjacent surfaces | 4.228:1 | 5.572:1 |
-
