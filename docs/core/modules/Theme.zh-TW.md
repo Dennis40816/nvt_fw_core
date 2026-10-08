@@ -635,7 +635,9 @@ Pill 表面圓角為 8 DIP，Square 為 6 DIP。
 2. 在 Fluent 之後、建立控制項之前載入 `ListStyles.axaml` 與 `MenuStyles.axaml`。
 3. 移除衝突的本地項目主題、顏色、padding、圓角與焦點裝飾。
 4. 保留容器表面、項目內容範本、選取繫結、命令、圖示與無障礙名稱。
-5. 在資源根節點設定共用形狀，並驗證兩種主題。
+5. 檢查項目內的次要文字。項目樣式會把所有子孫 `TextBlock` 的前景綁到項目前景，所以用樣式類別設定的淡色會失效。請改用區域 `Foreground` 值設定淡色文字。
+6. 在資源根節點設定共用形狀，並驗證兩種主題。
+7. 在真實桌面視窗開啟一次右鍵選單與兩層子選單。彈出陰影需要視窗支援逐像素透明，無頭測試看不出來。
 
 ```xml
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />

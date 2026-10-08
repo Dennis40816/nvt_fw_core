@@ -635,7 +635,9 @@ The popup corner converter is internal. This family adds no public C# API.
 2. Load `ListStyles.axaml` and `MenuStyles.axaml` after Fluent and before creating controls.
 3. Remove competing local item themes, colors, padding, corners, and focus adorners.
 4. Keep host surfaces, item templates, selection bindings, commands, icons, and accessible names.
-5. Choose the shared shape at the resource root and verify both themes.
+5. Check secondary text inside items. The item styles bind every descendant `TextBlock` foreground to the item foreground, so a style class that sets a muted color loses. Set muted text with a local `Foreground` value.
+6. Choose the shared shape at the resource root and verify both themes.
+7. Open a context menu and a two-level submenu on a real desktop window once. The popup shadow needs a window with per-pixel transparency, which headless tests cannot show.
 
 ```xml
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
