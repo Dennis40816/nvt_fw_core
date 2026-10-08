@@ -6,18 +6,19 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-08
+
+No breaking changes since 0.4.0.
+
 ### New modules and features
 
-- Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus.
-- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
-- Theme: add flat Expander headers, section dividers, directional chevrons, and keyboard focus rings.
-- Theme: add token-based ProgressBar thicknesses and reduced motion while preserving ProgressIndicator projection and identity.
-- Theme: align Separator and Border dividers in both orientations, with an optional strong line.
-- Theme: add six-DIP GridSplitter targets, accent interaction lines, and keyboard focus without changing native resizing.
+- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners (#120).
+- Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus (#124).
 
 ### Internal
 
-- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#86).
+- Launcher: add the four frozen handoff tests that the READY transport was missing (#121).
+- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#122).
 
 ## 0.4.0 - 2026-10-08
 
