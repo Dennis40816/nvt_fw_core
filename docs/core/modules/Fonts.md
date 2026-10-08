@@ -2,6 +2,16 @@
 
 # Fonts
 
+## Breaking changes before 0.9.0
+
+`NvtCoreFonts.CjkFallback` returns a fresh `FontFallback` on every access. Read it once per builder or options object and reuse that instance. Do not read it inside a loop.
+Each builder receives its own mutable fallback instance.
+The embedded family URI and `WithNvtCoreFonts()` behavior remain unchanged.
+
+Retrieve one fallback per builder or owned `FontManagerOptions` instance.
+Customize that instance without relying on reference equality between property accesses.
+Tests verify that changing one fallback leaves other instances and later accesses unchanged.
+
 `Nvt.Core.Fonts` provides font role resources and an embedded Chinese fallback for `net10.0` and Avalonia 12.1.1.
 The library is the Fonts module. Its namespace is `Nvt.Core.Fonts`.
 It provides no styles, controls, icon name constants, or additional font registrations.

@@ -2,6 +2,23 @@
 
 # Lifecycle
 
+## Breaking changes before 0.9.0
+
+`UndoService.TryPop` now declares `[NotNullWhen(true)] out UndoAction? action`.
+An empty stack still returns false and null.
+A successful pop still returns the latest action without executing it.
+Use the success branch to access the action without null suppression:
+
+```csharp
+if (undoService.TryPop(out UndoAction? action))
+{
+    action.Undo();
+}
+```
+
+Rebuild callers against the conditional annotation.
+Keep empty-stack handling and caller-owned execution unchanged.
+
 UI-independent refresh coalescing and an undo stack in `src/Nvt.Core/Lifecycle/`, namespace `Nvt.Core.Lifecycle`.
 Both helpers use caller-supplied delegates and depend only on .NET. They contain
 no Avalonia, dispatcher, or NFH types.
@@ -20,9 +37,9 @@ no Avalonia, dispatcher, or NFH types.
   clears it. There is no automatic retry.
 - `UndoService.CanUndo` reports whether the stack contains entries.
   `Push(Action undo, string description)` stores an entry without executing it.
-  `TryPop(out UndoAction action)` removes the newest entry in LIFO order without
-  executing it. An empty stack returns `false` and a null `action`, preserving the
-  source signature. The stack is not synchronized.
+  `TryPop([NotNullWhen(true)] out UndoAction? action)` removes the newest entry in LIFO order without
+  executing it. An empty stack returns `false` and a null `action`.
+  A true result guarantees a nonnull action. The stack is not synchronized.
 - `UndoAction(string Description, Action Undo)` is a sealed record. The stack
   preserves the description and delegate as supplied; the caller invokes `Undo`.
 
@@ -44,7 +61,7 @@ no Avalonia, dispatcher, or NFH types.
     (`RotateSelectedCadPadsCommand_RotatesSelectedPadAndCanUndo`,
     `OffsetSelectedCadOutputFwDiffIndicesCommand_ShiftsSelectedVisibleCadDiffsAndCanUndo`)
 
-Implementation changes are limited to the namespace, making `CoalescedRefresh`
+Original extraction changes were limited to the namespace, making `CoalescedRefresh`
 public, copyright headers, and API documentation. Method bodies and the undo
 record declaration retain the frozen implementation. The four refresh tests are
 ported; the reset test is renamed to describe scheduling rather than suggest

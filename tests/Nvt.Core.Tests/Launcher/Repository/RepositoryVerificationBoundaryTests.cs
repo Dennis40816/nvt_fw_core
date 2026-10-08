@@ -20,7 +20,7 @@ public sealed class RepositoryVerificationBoundaryTests
     {
         using var fixture = new RepositoryFixture();
         byte[] bytes = PackageFixture.PadPackageTo(fixture.Package.PackageBytes, 134_217_728 + delta);
-        string packagePath = Path.Combine(fixture.SourceRoot, fixture.Package.Candidate.PackagePath.Value);
+        string packagePath = Path.Combine(fixture.SourceRoot, Assert.IsType<string>(fixture.Package.Candidate.PackagePath.Value));
         await File.WriteAllBytesAsync(packagePath, bytes, TestContext.Current.CancellationToken);
         var result = await fixture.Repository.VerifyPackageAsync(fixture.SourceRoot, fixture.Package.CandidateFor(bytes),
             TestContext.Current.CancellationToken);

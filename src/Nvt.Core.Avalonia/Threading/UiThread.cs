@@ -63,13 +63,4 @@ public static class UiThread
 
         return true;
     }
-
-    /// <summary>Checks whether thread access and dispatcher run-loop support are both present.</summary>
-    /// <param name="hasThreadAccess">Whether the calling thread has dispatcher access.</param>
-    /// <param name="dispatcherRunsLoops">Whether the dispatcher supports run loops.</param>
-    /// <returns>The conjunction of the two supplied values.</returns>
-    public static bool IsUiThreadThatRunsALoop(bool hasThreadAccess, bool dispatcherRunsLoops)
-    {
-        return hasThreadAccess && dispatcherRunsLoops;
-    }
 }

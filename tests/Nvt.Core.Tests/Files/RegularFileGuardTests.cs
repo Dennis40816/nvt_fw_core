@@ -10,6 +10,15 @@ namespace Nvt.Core.Tests.Files;
 /// <summary>Tests regular filesystem paths, open handle admission, and Unix identities.</summary>
 public sealed class RegularFileGuardTests
 {
+    /// <summary>Only the regular-path and open-handle guards remain public.</summary>
+    [Fact]
+    public void UnixIdentityReaderIsImplementationOnly()
+    {
+        Assert.Null(typeof(RegularFileGuard).GetMethod("ReadUnixIdentity"));
+        Assert.NotNull(typeof(RegularFileGuard).GetMethod(nameof(RegularFileGuard.RequirePath)));
+        Assert.NotNull(typeof(RegularFileGuard).GetMethod(nameof(RegularFileGuard.RequireOpenHandle)));
+    }
+
     /// <summary>A regular path and its valid open handle are accepted by the native guard.</summary>
     [Fact]
     public void RequirePathAndOpenHandleAcceptRegularFile()

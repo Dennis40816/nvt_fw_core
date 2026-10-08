@@ -15,8 +15,9 @@ public enum UpdateNotificationPolicy
 }
 
 /// <summary>Catalog-relative package path supplied by the product catalog adapter.</summary>
-/// <param name="Value">Exact relative path; the snapshot factory checks structural safety.</param>
-public readonly record struct UpdateCatalogPackagePath(string Value);
+/// <remarks>The uninitialized default has a null value. The snapshot factory rejects it.</remarks>
+/// <param name="Value">Exact relative path, or null when uninitialized. The snapshot factory checks structural safety.</param>
+public readonly record struct UpdateCatalogPackagePath(string? Value);
 
 /// <summary>Immutable normalized package metadata whose identity excludes the configured source root.</summary>
 public sealed class UpdateCatalogVersionSnapshot

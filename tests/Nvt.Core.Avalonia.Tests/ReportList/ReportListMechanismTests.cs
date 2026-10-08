@@ -15,8 +15,12 @@ public sealed class ReportListMechanismTests
     {
         const int differenceCount = 1_000;
         const int sectionCount = 40;
-        var rows = new MemoizedIndexedReadOnlyList<SyntheticRow>(
-            differenceCount, static index => new SyntheticRow($"diff-{index:D5}"));
+        int factoryCalls = 0;
+        var rows = new MemoizedIndexedReadOnlyList<SyntheticRow>(differenceCount, index =>
+        {
+            factoryCalls++;
+            return new SyntheticRow($"diff-{index:D5}");
+        });
         SyntheticGroup[] groups = [.. Enumerable.Range(0, sectionCount).Select(index =>
         {
             var selectedRows = new IndexedReadOnlyList<SyntheticRow>(
@@ -29,7 +33,7 @@ public sealed class ReportListMechanismTests
         var summaryPage = ReportPagedListViewModel.Create(expectedSectionOrder, 8, ReportListTestData.English);
 
         Assert.Equal(differenceCount, rows.Count);
-        Assert.Equal(0, rows.MaterializedCount);
+        Assert.Equal(0, factoryCalls);
         Assert.Equal(sectionCount, groups.Length);
         Assert.Equal(expectedSectionOrder, groups.Select(static group => group.Title));
         Assert.Equal(expectedSectionOrder.Take(8).Cast<object>(), summaryPage.Items);
@@ -41,23 +45,23 @@ public sealed class ReportListMechanismTests
         Assert.Equal("Section 00", firstGroup.Title);
         Assert.Equal(25, firstGroup.RowsPage.TotalCount);
         Assert.Equal(0, firstGroup.RowsPage.VisibleCount);
-        Assert.Equal(0, rows.MaterializedCount);
+        Assert.Equal(0, factoryCalls);
         firstGroup.RowsPage.EnsureInitialPage();
         Assert.Equal(24, firstGroup.RowsPage.VisibleCount);
-        Assert.Equal(24, rows.MaterializedCount);
+        Assert.Equal(24, factoryCalls);
         SyntheticRow firstRow = Assert.IsType<SyntheticRow>(firstGroup.RowsPage.Items[0]);
         Assert.Equal("diff-00000", firstRow.Title);
         Assert.Same(firstRow, firstGroup.Rows[0]);
         Assert.Same(firstRow, rows[0]);
-        Assert.Equal(24, rows.MaterializedCount);
+        Assert.Equal(24, factoryCalls);
         firstGroup.RowsPage.EnsureInitialPage();
         firstGroup.RowsPage.EnsureInitialPage();
         Assert.Equal(24, firstGroup.RowsPage.VisibleCount);
-        Assert.Equal(24, rows.MaterializedCount);
+        Assert.Equal(24, factoryCalls);
         Assert.True(firstGroup.RowsPage.LoadMoreCommand.CanExecute(null));
         firstGroup.RowsPage.LoadMoreCommand.Execute(null);
         Assert.Equal(25, firstGroup.RowsPage.VisibleCount);
-        Assert.Equal(25, rows.MaterializedCount);
+        Assert.Equal(25, factoryCalls);
         Assert.False(firstGroup.RowsPage.HasMoreItems);
         Assert.False(firstGroup.RowsPage.LoadMoreCommand.CanExecute(null));
         Assert.Equal("Showing 25/25", firstGroup.RowsPage.PageStatus);
@@ -66,23 +70,28 @@ public sealed class ReportListMechanismTests
         groupPage.LoadMoreCommand.Execute(null);
         Assert.Equal(16, groupPage.VisibleCount);
         Assert.Equal(differenceCount, rows.Count);
-        Assert.Equal(25, rows.MaterializedCount);
+        Assert.Equal(25, factoryCalls);
     }
 
     /// <summary>Windowed revisits reuse memoized rows while non-retained factories create only each current window.</summary>
     [Fact]
     public void WindowNavigationUsesTheSharedCollectionOwners()
     {
-        var memoized = new MemoizedIndexedReadOnlyList<object>(130, static _ => new object());
+        int factoryCalls = 0;
+        var memoized = new MemoizedIndexedReadOnlyList<object>(130, _ =>
+        {
+            factoryCalls++;
+            return new object();
+        });
         var navigator = ReportWindowedListViewModel.Create(memoized, 64, ReportListTestData.Custom);
         object first = navigator.Items[0];
-        Assert.Equal(64, memoized.MaterializedCount);
+        Assert.Equal(64, factoryCalls);
         navigator.ShowItemAt(129);
-        Assert.Equal(66, memoized.MaterializedCount);
+        Assert.Equal(66, factoryCalls);
         Assert.Equal(2, navigator.VisibleCount);
         navigator.ShowItemAt(0);
         Assert.Same(first, navigator.Items[0]);
-        Assert.Equal(66, memoized.MaterializedCount);
+        Assert.Equal(66, factoryCalls);
     }
 
     /// <summary>Null source elements pass through the internal object adapter just as value and reference rows do.</summary>

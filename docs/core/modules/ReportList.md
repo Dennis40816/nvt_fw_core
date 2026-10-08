@@ -2,6 +2,15 @@
 
 # ReportList
 
+## Breaking changes before 0.9.0
+
+`MemoizedIndexedReadOnlyList<T>.MaterializedCount` is internal.
+Collection counts, deferred creation, cached failures, and shared row references remain unchanged.
+
+Tests outside Core's internal visibility must count their own factory calls.
+Increment a test counter inside the supplied factory and assert it after row access.
+The Avalonia paging tests use this pattern to retain their bounded allocation assertions.
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportIndexedReadOnlyLists.cs`
@@ -28,7 +37,7 @@ The two model algorithms are extracted in full; NFC retains their language mappi
 `MemoizedIndexedReadOnlyList<T>(int count, Func<int, T> factory)` implements `IReadOnlyList<T>`.
 `T` must be a reference type.
 `Count` exposes the declared count.
-`MaterializedCount` counts successful row creation.
+`MaterializedCount` is an internal diagnostic for successful row creation.
 Each index allocates its lazy holder on first access.
 Concurrent readers share one published row per index.
 Factory exceptions are cached per index.

@@ -2,6 +2,15 @@
 
 # ReportList
 
+## 0.9.0 前的不相容變更
+
+`MemoizedIndexedReadOnlyList<T>.MaterializedCount` 已改為 internal。
+集合筆數、延遲建立、失敗快取與共用列參考維持不變。
+
+沒有 Core 內部可見性的測試須自行計算 factory 呼叫次數。
+在傳入的 factory 內增加測試計數器，並在存取列後驗證它。
+Avalonia 分頁測試已使用此方式保留配置量上限斷言。
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Presentation.Avalonia/ViewModels/ReportIndexedReadOnlyLists.cs`
@@ -28,7 +37,7 @@ internal 的非複製 `ObjectReadOnlyList<T>` 轉接器來自 `ReportIndexedRead
 `MemoizedIndexedReadOnlyList<T>(int count, Func<int, T> factory)` 實作 `IReadOnlyList<T>`。
 `T` 必須是參考型別。
 `Count` 傳回宣告的筆數。
-`MaterializedCount` 計算成功建立的列數。
+`MaterializedCount` 是計算成功建立列數的內部診斷成員。
 每個索引首次存取時才配置 lazy 容器。
 並行讀取者共用每個索引發布的同一列。
 工廠例外依索引快取。

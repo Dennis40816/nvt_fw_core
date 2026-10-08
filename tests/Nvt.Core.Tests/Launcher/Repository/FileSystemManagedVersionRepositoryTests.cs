@@ -51,7 +51,7 @@ public sealed class FileSystemManagedVersionRepositoryTests
             : PackageFixture.Create();
         using var fixture = new RepositoryFixture(package);
         string packagePath = Path.Combine(fixture.SourceRoot,
-            package.Candidate.PackagePath.Value.Replace('/', Path.DirectorySeparatorChar));
+            Assert.IsType<string>(package.Candidate.PackagePath.Value).Replace('/', Path.DirectorySeparatorChar));
         if (kind == 0)
         {
             // A package whose length differs from the admitted catalog entry is unavailable.
@@ -108,7 +108,7 @@ public sealed class FileSystemManagedVersionRepositoryTests
         var second = await fixture.InstallAsync();
         var changed = PackageFixture.Create(mutateManifest: bytes => [.. bytes, (byte)' ']);
         string otherSource = fixture.PathFor("other-source");
-        string changedPath = Path.Combine(otherSource, changed.Candidate.PackagePath.Value);
+        string changedPath = Path.Combine(otherSource, Assert.IsType<string>(changed.Candidate.PackagePath.Value));
         Directory.CreateDirectory(Path.GetDirectoryName(changedPath)!);
         await File.WriteAllBytesAsync(changedPath, changed.PackageBytes, TestContext.Current.CancellationToken);
         var conflict = await new FileSystemManagedVersionRepository(ContractFixture.Descriptor, changed.Policy,

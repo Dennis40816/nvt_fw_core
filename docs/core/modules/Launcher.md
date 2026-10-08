@@ -2,6 +2,20 @@
 
 # Launcher
 
+## Breaking changes before 0.9.0
+
+`UpdateCatalogPackagePath.Value` is now `string?`.
+Its positional constructor parameter and `Deconstruct` output carry the same annotation.
+The uninitialized default has a null value.
+`UpdateCatalogVersionSnapshot.Create` remains the admission boundary and rejects that default.
+Validated snapshot identities retain the same composition and bytes.
+
+Guard a raw path before string operations.
+Admit catalog data through `Create` before repository use.
+Repository callers check the path before resolution.
+Hash consumers also check nullable `BoundedReadResult.Sha256` before verification or executable measurement.
+Tests retain identity parity and verify default-path rejection at admission.
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedAppVersion.cs`

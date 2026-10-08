@@ -132,7 +132,7 @@ public sealed class FileSystemInstalledLauncherRepository : IInstalledLauncherRe
             }
             BoundedReadResult read = await BoundedFileReader.ReadAndHashAsync(stream, identity.Size,
                 FileCaptureMode.IdentityOnly, cancellationToken).ConfigureAwait(false);
-            return string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(), identity.Sha256, StringComparison.Ordinal)
+            return read.Sha256 is not null && string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(), identity.Sha256, StringComparison.Ordinal)
                 ? new(identity, InstalledLauncherIssue.None) : new(null, InstalledLauncherIssue.Tampered);
         }
         catch (OperationCanceledException)
