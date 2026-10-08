@@ -32,6 +32,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         ("SoftPointerOverForegroundBrush", "NfcTextBrush"),
         ("SoftPressedForegroundBrush", "NfcTextStrongBrush"),
         ("SoftDisabledForegroundBrush", "NfcTextDisabledBrush"),
+        ("SoftDisabledCheckedBrush", "NfcSelectionSurfaceBrush"),
     ];
 
     /// <summary>Checks text and icon colors, state precedence, and contrast on both themes and shapes.</summary>
@@ -138,6 +139,55 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         finally { host.Close(); }
     }
 
+    /// <summary>Keeps the checked state visible while disabled and still distinguishable from the unchecked state.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DisabledCheckedStaysDistinctFromDisabledUnchecked(bool dark)
+    {
+        ToggleButton button = SampleContent(new ToggleState("Disabled checked", Checked: true, Disabled: true), true);
+        Window host = Create(button, dark);
+        try
+        {
+            Show(host);
+            Flush(host);
+            Color checkedFill = ColorOf(Part(button, "ToggleBody").Background);
+            Assert.NotEqual(0, checkedFill.A);
+            Assert.Equal(ResourceColor(button, "NfcSelectionSurfaceBrush"), checkedFill);
+            double textRatio = ToggleStylesTests.Contrast(ColorOf(button.Foreground), checkedFill);
+            Assert.True(textRatio >= 3, $"{(dark ? "Dark" : "Light")} disabled checked text: {textRatio:F3}:1");
+            output.WriteLine($"{(dark ? "Dark" : "Light")} disabled checked text: {textRatio:F3}:1");
+            SetState(button, new ToggleState("Disabled", Disabled: true));
+            Flush(host);
+            Assert.Equal(0, ColorOf(Part(button, "ToggleBody").Background).A);
+            Assert.NotEqual(checkedFill, ColorOf(Part(button, "ToggleBody").Background));
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Requires the focus ring to reach 3:1 against the page surfaces and the checked tint.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FocusRingContrastsWithSurfacesAndCheckedTint(bool dark)
+    {
+        ToggleButton button = SampleContent(new ToggleState("Checked", Checked: true), false);
+        Window host = Create(button, dark);
+        try
+        {
+            Show(host);
+            Flush(host);
+            Color ring = ResourceColor(button, "Nvt.Focus.RingBrush");
+            foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "Nvt.Toggle.SoftCheckedBrush" })
+            {
+                double ratio = ToggleStylesTests.Contrast(ring, ResourceColor(button, surface));
+                Assert.True(ratio >= 3, $"{(dark ? "Dark" : "Light")} ring on {surface}: {ratio:F3}:1");
+                output.WriteLine($"{(dark ? "Dark" : "Light")} ring on {surface}: {ratio:F3}:1");
+            }
+        }
+        finally { host.Close(); }
+    }
+
     /// <summary>Replaces one soft palette dictionary and updates every state on an attached control.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
@@ -236,7 +286,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
 
     private static (string Background, string Foreground) Expected(ToggleState state)
     {
-        if (state.Disabled) return ("Nvt.Toggle.TransparentBrush", "Nvt.Toggle.SoftDisabledForegroundBrush");
+        if (state.Disabled) return (state.Checked ? "Nvt.Toggle.SoftDisabledCheckedBrush" : "Nvt.Toggle.TransparentBrush", "Nvt.Toggle.SoftDisabledForegroundBrush");
         string background = state.Checked ? state.Hover || state.Pressed ? "SoftPointerOverBrush" : "SoftCheckedBrush"
             : state.Pressed ? "SoftPressedBrush" : state.Hover ? "SoftPointerOverBrush" : "TransparentBrush";
         string foreground = state.Checked ? "SoftCheckedForegroundBrush"

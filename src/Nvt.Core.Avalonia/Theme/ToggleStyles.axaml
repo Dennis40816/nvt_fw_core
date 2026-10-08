@@ -244,6 +244,9 @@
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftDisabledForegroundBrush}"/>
   </Style>
+  <Style Selector="ToggleButton.toggleSoft:disabled:checked">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftDisabledCheckedBrush}"/>
+  </Style>
   <Style Selector="ToggleButton.toggleSoft:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing">
     <Setter Property="IsVisible" Value="True"/>
   </Style>

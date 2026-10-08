@@ -761,7 +761,8 @@ The role uses `NfcControlHeight` at 32 DIP and horizontal padding of 12 DIP.
 | Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
 | On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
 | On pointer over or pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
-| Disabled, on or off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Keyboard focus | Retains the current fill. | Retains the current foreground. |
 
 The following aliases reuse existing Core resources in both themes.
@@ -778,6 +779,7 @@ Replace one dictionary containing these `Nvt.Toggle.Soft*` keys to update attach
 | `Nvt.Toggle.SoftPointerOverForegroundBrush` | `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
 | `Nvt.Toggle.SoftPressedForegroundBrush` | `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
 | `Nvt.Toggle.SoftDisabledForegroundBrush` | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Toggle.SoftDisabledCheckedBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
 
 `Nvt.Shape.ControlCornerRadius` supplies the body corners: Pill 999 and Square 6.
 `Nvt.Shape.FocusCornerRadius` supplies the ring corners: Pill 999 and Square 10.
@@ -792,6 +794,8 @@ Space toggles the value, Tab focuses the control, and disabled controls ignore i
 Text and icons share the inherited foreground and meet 4.5:1 contrast in both themes.
 On contrast measures 7.018:1 in Light and 7.674:1 in Dark.
 On pointer over and pressed measure 6.673:1 and 7.672:1 respectively.
+The focus ring measures 4.446:1 to 4.938:1 in light and 5.573:1 to 7.131:1 in dark against the page surfaces and the checked tint. Tests require at least 3:1.
+Disabled on text measures 3.903:1 in light and 4.275:1 in dark against its selection fill.
 
 Adopt the role in three steps:
 

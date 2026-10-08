@@ -10,6 +10,7 @@
       <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftDisabledCheckedBrush" ResourceKey="NfcSelectionSurfaceBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedBrush" ResourceKey="NfcAccentBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedPointerOverBrush" ResourceKey="NfcAccentStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedPressedBrush" ResourceKey="NfcAccentStrongBrush" />
@@ -26,6 +27,7 @@
       <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftDisabledCheckedBrush" ResourceKey="NfcSelectionSurfaceBrush" />
       <!-- Deep fills preserve white content contrast in the dark theme. -->
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" Color="#1148BE" />
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" Color="#0E3C9E" />

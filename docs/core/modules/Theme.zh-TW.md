@@ -761,7 +761,8 @@ Light 與 Dark 使用相同數值。
 | Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
 | On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
 | On pointer over 或 pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
-| Disabled，on 或 off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled，off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled，on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Keyboard focus | 保留目前填色。 | 保留目前前景色。 |
 
 以下別名在兩種主題皆重用既有 Core 資源，不新增寫死的顏色。
@@ -777,6 +778,7 @@ Light 與 Dark 使用相同數值。
 | `Nvt.Toggle.SoftPointerOverForegroundBrush` | `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
 | `Nvt.Toggle.SoftPressedForegroundBrush` | `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
 | `Nvt.Toggle.SoftDisabledForegroundBrush` | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Toggle.SoftDisabledCheckedBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
 
 本體圓角使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
 焦點圓角使用 `Nvt.Shape.FocusCornerRadius`：Pill 為 999，Square 為 10。
@@ -791,6 +793,8 @@ Space 切換數值，Tab 聚焦控制項，停用控制項忽略輸入。
 文字與圖示繼承相同前景色，在兩種主題皆達到 4.5:1 對比。
 On 的對比在 Light 為 7.018:1，Dark 為 7.674:1。
 On pointer over 與 pressed 分別為 6.673:1 與 7.672:1。
+焦點環對頁面底與勾選淡色底的對比，亮色為 4.446:1 至 4.938:1，暗色為 5.573:1 至 7.131:1。測試要求至少 3:1。
+Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1。
 
 採用分成三步：
 
