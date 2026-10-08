@@ -4,7 +4,7 @@
 
 ## Breaking changes before 0.9.0
 
-`NvtCoreFonts.CjkFallback` returns a fresh `FontFallback` on every access.
+`NvtCoreFonts.CjkFallback` returns a fresh `FontFallback` on every access. Read it once per builder or options object and reuse that instance. Do not read it inside a loop.
 Each builder receives its own mutable fallback instance.
 The embedded family URI and `WithNvtCoreFonts()` behavior remain unchanged.
 

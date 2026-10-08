@@ -4,7 +4,7 @@
 
 ## 0.9.0 前的不相容變更
 
-`NvtCoreFonts.CjkFallback` 每次存取都回傳新的 `FontFallback`。
+`NvtCoreFonts.CjkFallback` 每次存取都回傳新的 `FontFallback`。每個 builder 或 options 物件只讀取一次並重複使用該實例，不要在迴圈內讀取。
 每個 builder 都取得自己的可變 fallback 實例。
 內嵌字型 URI 與 `WithNvtCoreFonts()` 行為維持不變。
 
