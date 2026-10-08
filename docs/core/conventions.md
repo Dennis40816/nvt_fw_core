@@ -124,71 +124,72 @@ The owner chose this two-step adoption on 2026-10-07. It replaces the 2026-10-06
 
 ## State management
 
-Owner rule of 2026-10-07: 「請評估這些內部狀態是否必要以及是否可以用更結構化的方式去組織，而不是無腦堆疊」 ("Check whether each internal state is needed and whether it can be organized in a more structured way, instead of piling it up.")
+Applies to all C# code in NVT repositories. New code follows these rules from the first PR. Existing code is migrated in separate PRs, not inside unrelated changes.
 
-These rules apply to C# code in Core, NFC, NFH and NFU. New code follows them now. Reviews check them; see [Review and approval](../agents/review.md).
+Reviews check every pull request against the 11 rules below; see [Review and approval](../agents/review.md).
 
-1. Store one fact once. Compute a value that other state determines with a get-only property or a pure function, and raise its change notification with the source. Do not store `HasX` or `XCount` next to `X`.
-2. Fields that are always set and cleared together belong in one record or child view model. Replace the whole value at once.
-3. Two or more flags that describe one lifecycle or mode become one enum or a closed record hierarchy. Each method checks that the current phase allows the operation.
-4. Represent temporary state with a nullable object; null means none. Examples are an open dialog, a drag in progress and a confirmation prompt. Do not use a flag plus loose fields.
-5. Event-suppression flags must nest. Use a counter or a `using` scope inside `try`/`finally`. A flag must not span an `await`; use an explicit mode state instead.
-6. Each cache has one invalidation point, such as a revision number. Do not clear it from several files.
-7. Each piece of state has one owner. A view reads its view model and keeps no copy. Bind a setting in one place; do not push it into a control and read it back.
-8. Check stale asynchronous results with one shared generation helper. Do not add a separate counter for each operation.
-9. Route every user action through a command, so shortcuts and menus share the same running and `CanExecute` checks.
-10. A partial file that needs its own state fields shows a missing type. Extract that state into its own class.
-11. Document what protects each mutable field: a named lock, or UI-thread-only access.
-
-Bugs found against these rules are tracked as GitHub issues. Core fixes its own before 1.0.0.
+1. **Store each fact once.** If a value can be computed from other state, use a get-only property or a pure function. Raise `NotifyPropertyChangedFor` on the sources. Do not store `HasX` or `XCount` next to `X`.
+2. **Group fields that are set and cleared together.** Put them in one `record` or one child ViewModel. Replace the whole object in one step.
+3. **Use one enum for one mode.** If two or more `bool` fields describe the same lifecycle or mode, replace them with an `enum` or a closed `record` hierarchy. Each method checks that the current phase allows its operation.
+4. **Show temporary state with a nullable object.** `null` means "not active". Examples: an open dialog, a drag in progress, a confirmation prompt. Do not use one `bool` plus several loose fields.
+5. **Make suppress flags nestable.** Implement them as a counter or a `using` scope, inside `try`/`finally`. A flag must not stay set across an `await`. If it must, model it as an explicit mode.
+6. **Give each cache one invalidation point.** Use a revision number, for example. Do not clear the same cache in several files.
+7. **Give each piece of state one holder.** A View reads the ViewModel and keeps no copy. Bind a setting to one place. Do not push a value into a control and read it back.
+8. **Check stale async results in one way.** Use one shared generation helper. Do not add a separate `long` counter for each operation.
+9. **Route every user action through a `Command`.** Then shortcuts and menus share the same running-state and `CanExecute` checks.
+10. **Extract a type when a partial file needs its own state.** A partial file with its own state fields means a type is missing.
+11. **State who protects each mutable field.** Name the `lock`, or write "UI thread only".
 
 ### When to group state into one type
 
-Owner request of 2026-10-07: 「另外提出狀態變數管理方法論 什麼時候該整合成一個 data class」 ("Also propose a method for managing state variables: when to combine them into one data class.")
+Ask the questions below for each field, from top to bottom. Stop at the first "yes".
 
-Ask these questions for each field, from top to bottom. Stop at the first "yes".
+1. **Can it be computed?** Delete the field and use a computed property. Do not combine it.
+2. **Are the fields mutually exclusive?** If several `bool` fields are never true together, use one `enum`.
+3. **Do the fields exist together and disappear together?** Examples: a dialog request, a drag, a confirmation prompt. Use a nullable `record`. `null` means "none".
+4. **Are the fields always changed together, or copied together from one source?** Use a `record`. Change it with `with` or replace it whole.
+5. **Does the user edit the fields one by one, but they belong to one panel?** Use a child ViewModel, not a `record`.
+6. **None of the above.** Keep separate fields.
 
-1. **Can it be computed?** Delete the field and compute the value with a get-only property. Do not group it.
-2. **Are the flags mutually exclusive?** Replace them with one enum.
-3. **Do the fields appear and disappear together?** Examples are a dialog request, a drag in progress and a confirmation prompt. Use one nullable record; null means none.
-4. **Do the fields always change together, or come from one source together?** Use one record. Replace it whole or with `with`.
-5. **Does the user edit them one by one, but they belong to one panel?** Use a child view model, not a record.
-6. Otherwise, keep a separate field.
+**Signals that mean you must combine** (any one is enough):
 
-Group fields when any of these signals holds:
+- **Changed together.** Every write to A also writes B. Search all assignments to check.
+- **Valid together.** A state with A set and B unset is not legal.
+- **Passed together.** A and B are passed as arguments to two or more methods, or copied together from one projection.
+- **Invariant.** Examples: `start <= end`, or `count` equals `list.Count`. The second example belongs to question 1: compute it.
+- **Common prefix.** Three or more fields share a prefix, such as `ExportPath`, `ExportFormat` and `ExportOverwrite`. The prefix is the name of the missing type.
+- **String keys tell values apart.** Example: `"top-left"`. Make a `record` and create one instance per key.
 
-- **Written together.** Every place that writes A also writes B. Search all assignments to check.
-- **Valid together.** A without B is an invalid state.
-- **Passed together.** A and B travel as arguments to two or more methods, or are copied from one projection together.
-- **Bound by an invariant.** For example, start ≤ end. When the invariant is "count equals list.Count", the count is computed instead (step 1).
-- **Shared prefix.** Three or more fields share a prefix. The prefix is the missing type name.
-- **Keyed by strings.** One set of values is told apart by string keys, such as `"top-left"`. Make a record and create one instance per key.
+**Do not combine when:**
 
-Do not group in these cases:
+- The fields change independently and the UI binds them one by one. If you want a group, use a child ViewModel.
+- The fields share a topic but have different lifecycles or holders.
+- The code is a hot path that changes every frame, such as canvas drawing. Measure the allocation cost first. If needed, use a mutable `struct`.
 
-- The fields change independently and the UI binds each one. Group them in a child view model if they need grouping.
-- The fields share a topic but have different lifetimes or owners.
-- The fields change on every frame in a hot path, such as canvas drawing. Measure the allocation cost first; use a mutable struct if needed.
+**Choose the form:**
 
-Pick the form by the case:
-
-| Case | Form |
+| Situation | Form |
 |---|---|
-| Snapshot, computed result or loaded data | `sealed record`, replaced whole |
-| Temporary state that exists or not | Nullable `record`; `null` means none |
-| Mutually exclusive modes | `enum`, or a closed record hierarchy |
-| A set of UI fields edited one by one | Child view model (`ObservableObject`) |
+| Snapshot, computed result, loaded data | `sealed record`, replaced whole |
+| Temporary state that is present or absent | nullable `record` (`null` means none) |
+| Mutually exclusive modes | `enum`, or a closed `record` hierarchy |
+| A group of UI fields that the user edits one by one | child ViewModel (`ObservableObject`) |
 
-Review thresholds:
+**Review thresholds:**
 
-- A class with more than 30 state members needs a reason in the pull request for not splitting it.
-- When two fields match a grouping signal, the reviewer decides. When three or more match, group them.
+- A class with more than 30 state members needs a PR note that explains why it is not split.
+- If two fields match a combine signal, the reviewer decides. If three or more fields match, combine them.
 
-Examples in Core:
+### Examples in Core
+
 
 - `NumberScrubber` keeps three drag fields. They exist only during a drag, so they become one nullable `ScrubSession` (step 3). Its `_isEditing` repeats the focus state, so it is computed (step 1). See #86.
 - `BackgroundJobService.CancelRequested` repeats `Status == Cancelling`. It becomes a get-only property (step 1). See #86.
 - `WindowsStableRelativeWriteTree` tracks one lifecycle with six fields. They become one phase value (step 2). See #85.
+
+## Where records live
+
+Keep bugs, review records, images, decisions and handoff notes in their one home. See [Where project records live](repo-content-homes.md).
 
 ## Public repository hygiene and license
 
