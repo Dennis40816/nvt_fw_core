@@ -2,12 +2,13 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入兩個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
+Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入三個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
 ```
 
 ## 共用色票
@@ -603,3 +604,146 @@ NFH 零差異採用：
 - NFH 的所有呼叫端共用同一份 dispatcher 註冊：把 NFH 的 `UiThread` 呼叫改成 Core 的 `UiThread`，或在兩份並存期間兩邊都註冊。NFH 約有 20 處讀自己的 `UiThread`，只註冊 Core 的會讓它們失效；只註冊 NFH 的則會略過第 2 步且不報錯。
 
 目前尚無採用工具，NFH 採用仍待進行。
+
+## ToggleButton
+
+`ToggleStyles.axaml` 提供共用的 FluentPill 切換控制項外觀。
+`ThemeTokens.axaml` 已包含其色票與預設 Pill 形狀。
+請在 Fluent 之後，與其他 Core 主題樣式一起載入。
+
+| 角色 | 控制項與用途 | 幾何 |
+| --- | --- | --- |
+| `toggleSegment` | 位於 `Border.toggleSegmentGroup > StackPanel` 內的 `ToggleButton`，用於群組選項。 | 高度 40，水平內距 20。 |
+| `toggleSegmentGroup` | 包住分段選項的中性底槽。 | 內距 4、間距 2、高度 48。 |
+| `toggleTab` | 導覽用 `ToggleButton`，由宿主提供導覽基線。 | 高度 40，水平內距 20。 |
+| `toggleIcon` | 由宿主提供圖示與無障礙名稱的 `ToggleButton`。 | 40 × 40。 |
+| `toggleSwitch` | 套用開關模板的 `ToggleButton`。 | 點擊區 58 × 40。 |
+| `ToggleSwitch` | 原生控制項不需 class，即使用相同開關外觀。 | 軌道 52 × 28、旋鈕 22 × 22、位移 24。 |
+
+所有尺寸皆為裝置獨立像素。
+兩種主題與形狀下，開關旋鈕皆維持圓形與白色。
+開關模板只顯示軌道。可見標籤請放在旁邊，並提供無障礙名稱。
+宿主負責選取規則、命令與內容。
+每個控制項只使用一個切換角色。
+
+### 切換狀態與 danger
+
+每個角色皆支援以下九種狀態。
+滑鼠取得焦點時不顯示焦點框。Tab 焦點顯示單一 2 px 焦點框，外側間隙為 2 px。
+Space 切換勾選狀態。
+筆刷與旋鈕轉場皆為 150 ms。
+按下 ToggleButton 角色時，繪製縮放為 0.98；原生 ToggleSwitch 維持原尺寸。
+配置尺寸與點擊範圍不變。
+
+| 狀態 | Segment、tab 與 icon 填色 | 內容 | 開關軌道 |
+| --- | --- | --- | --- |
+| Rest | Segment 與 tab 透明；icon 使用 `NfcSurfaceSubtleBrush`。 | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
+| Pointer over | Segment 使用 `NfcSurfaceSubtleBrush`；tab 與 icon 使用 `NfcSelectionSurfaceBrush`。 | `NfcTextBrush` | `NfcTextDisabledBrush` |
+| Pressed | `NfcSecondaryActionPressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
+| Checked | `Nvt.Toggle.SelectedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchOnBrush` |
+| Checked pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPointerOverBrush` |
+| Checked pressed | `Nvt.Toggle.SelectedPressedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPressedBrush` |
+| Disabled | `NfcSurfaceSubtleBrush` | `NfcTextDisabledBrush` | `NfcBorderBrush` |
+| Disabled checked | `NfcSelectionSurfaceBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| Keyboard focus | 保留目前填色。 | 保留目前內容顏色。 | 保留目前軌道顏色。 |
+
+對任一切換角色或原生 `ToggleSwitch` 加上 `danger`，啟用且勾選時即顯示紅底白色內容。
+勾選後的 pointer over 與 pressed 使用同一個較深紅色。
+Danger 控制項使用 `Nvt.Focus.RingBrush`，勾選後的鍵盤焦點也相同。
+停用且勾選的控制項維持核准圖片的中性外觀，danger 亦同。
+停用控制項忽略 hover、pressed 與 focus 覆寫，透明度維持 1。
+
+### 切換 token
+
+樣式中的每個顏色與圓角都透過資源取得。
+以下色票適用兩種形狀。
+Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持白色內容對比。
+請在同一個資源字典一起覆寫 `Nvt.Toggle.*`，即可替換切換控制項色票。
+替換應用程式或視窗中的該字典，即會更新已掛載的控制項。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#1148BE` |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#A82035` |
+| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
+| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
+| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2563EB` |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#1D4ED8` |
+| `Nvt.Toggle.SwitchPressedBrush` | `#1D4ED8` | `#1D4ED8` |
+| `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
+
+中性狀態重用上方列出的共用色票。
+焦點重用 `Nvt.Focus.RingBrush`：Light 為 `#1F6FD1`，Dark 為 `#4DA3FF`。
+`Nvt.Focus.RingThickness` 在兩種主題皆為 2。
+
+測試在兩種形狀下量得以下最低對比。
+勾選填色檢查涵蓋啟用狀態。停用且勾選時使用上表的中性色。
+
+| 對比 | Light | Dark |
+| --- | --- | --- |
+| 白色對勾選的 segment、tab 與 icon | 5.879:1 | 7.794:1 |
+| 白色對勾選的開關 | 5.169:1 | 5.169:1 |
+| 白色對勾選的 danger | 7.184:1 | 7.184:1 |
+| 標準焦點框對相鄰表面 | 4.228:1 | 5.572:1 |
+| 停用文字 | 3.903:1 | 4.275:1 |
+| 所有狀態的旋鈕對軌道 | 4.015:1 | 3.422:1 |
+
+### 共用形狀設定
+
+`ThemeShape` 定義 `Pill` 與 `Square`。
+請在 UI 執行緒呼叫 `ThemeShapes.SetShape(IResourceDictionary resources, ThemeShape shape)`。
+傳入應用程式、視窗或子樹資源，作用範圍與主題變體的根節點方式一致。
+此方法只替換一個形狀字典，保留其他資源。
+透過 `RequestedThemeVariant` 切換 Light 或 Dark，不會改變形狀。
+控制項保留原有模板，且不會收到個別的本機圓角設定。
+
+```csharp
+using Avalonia;
+using Avalonia.Styling;
+using Nvt.Core.Avalonia.Theme;
+
+ThemeShapes.SetShape(Application.Current!.Resources, ThemeShape.Square);
+Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
+ThemeShapes.SetShape(Application.Current.Resources, ThemeShape.Pill);
+```
+
+`ShapePill.axaml` 與 `ShapeSquare.axaml` 提供可重用的資源，供後續工具列按鈕與篩選膠囊採用。
+Light 與 Dark 使用相同數值。
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Shape.ControlCornerRadius` | 999 | 6 |
+| `Nvt.Shape.GroupCornerRadius` | 999 | 6 |
+| `Nvt.Shape.FocusCornerRadius` | 999 | 10 |
+| `Nvt.Shape.RoundCornerRadius` | 999 | 999 |
+
+兩種形狀下，開關軌道與開關焦點框皆使用 `Nvt.Shape.RoundCornerRadius`。
+既有 Button 角色維持目前的圓角資源。
+
+### 切換控制項採用步驟
+
+1. 將 `ThemeTokens.axaml` 合併至應用程式資源，並在 Fluent 後載入 `ToggleStyles.axaml`。
+2. 指定切換角色並繫結 `IsChecked`。分段選項請放入下方群組結構。
+3. 由宿主提供圖示內容、無障礙名稱與選取規則。
+4. 在需要的地方加上 `danger`，並於資源根節點選擇共用形狀。
+5. 移除衝突的本機顏色與圓角。驗證兩種主題、兩種形狀、鍵盤操作與停用狀態。
+
+```xml
+<Border Classes="toggleSegmentGroup">
+  <StackPanel>
+    <ToggleButton Classes="toggleSegment" Content="Overview" IsChecked="True" />
+    <ToggleButton Classes="toggleSegment" Content="Details" />
+  </StackPanel>
+</Border>
+<ToggleButton Classes="toggleTab" Content="Overview" />
+<ToggleButton Classes="toggleSwitch danger" AutomationProperties.Name="Enable option" />
+<ToggleSwitch AutomationProperties.Name="Enable option" />
+```
+
+`ToggleStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_TOGGLE_IMAGES_DIR` 時寫入圖片。
+輸出 `toggle-src-light.png` 與 `toggle-src-dark.png`，尺寸為 1320 × 2920，包含兩種形狀與所有狀態。
+測試涵蓋對比、執行期資源替換、精確開關幾何、鍵盤操作，以及禁止樣式內寫死顏色或圓角。

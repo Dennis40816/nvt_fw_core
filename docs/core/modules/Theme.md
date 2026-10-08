@@ -2,12 +2,13 @@
 
 # Theme (`Nvt.Core.Avalonia.Theme`)
 
-Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the two style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file. The eight legacy font values and resource resolver remain unchanged.
+Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the three style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file. The eight legacy font values and resource resolver remain unchanged.
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
 ```
 
 ## Shared palette
@@ -603,3 +604,146 @@ For zero-difference adoption in NFH:
 - All NFH callers share one dispatcher registration. Either NFH's `UiThread` calls move to Core's `UiThread`, or NFH registers the dispatcher with both while both exist. About 20 NFH call sites read NFH's own `UiThread`, so registering only with Core's breaks them. Registering only with NFH's skips step 2 without an error.
 
 Adopters: none. NFH adoption is pending.
+
+## ToggleButton
+
+FluentPill supplies the shared toggle look in `ToggleStyles.axaml`.
+`ThemeTokens.axaml` includes its palette and the default Pill shape.
+Load the style after Fluent alongside the other Core theme styles.
+
+| Role | Control and use | Geometry |
+| --- | --- | --- |
+| `toggleSegment` | `ToggleButton` inside `Border.toggleSegmentGroup > StackPanel` for grouped choices. | Height 40, horizontal padding 20. |
+| `toggleSegmentGroup` | Neutral track around segment choices. | Padding 4, spacing 2, height 48. |
+| `toggleTab` | `ToggleButton` for navigation. The host supplies the navigation baseline. | Height 40, horizontal padding 20. |
+| `toggleIcon` | `ToggleButton` with a host-supplied glyph and accessible name. | 40 × 40. |
+| `toggleSwitch` | `ToggleButton` with a switch template. | 58 × 40 click area. |
+| `ToggleSwitch` | The native control receives the same switch look without a class. | Track 52 × 28, knob 22 × 22, travel 24. |
+
+All measurements use device-independent pixels.
+Switch knobs stay round and white in both themes and shapes.
+The switch template shows the track only. Place any visible label beside it and provide an accessible name.
+The host owns selection rules, commands, and content.
+Use one toggle role per control.
+
+### Toggle states and danger
+
+These nine states apply to each role.
+Pointer focus shows no ring. Tab focus shows one 2 px ring with a 2 px exterior gap.
+Space toggles the checked state.
+Brush and knob transitions last 150 ms.
+Pressed ToggleButton roles use a 0.98 render scale. The native ToggleSwitch retains its full scale.
+Layout dimensions and hit targets stay unchanged.
+
+| State | Segment, tab, and icon fill | Content | Switch track |
+| --- | --- | --- | --- |
+| Rest | Segment and tab transparent; icon `NfcSurfaceSubtleBrush`. | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
+| Pointer over | Segment `NfcSurfaceSubtleBrush`; tab and icon `NfcSelectionSurfaceBrush`. | `NfcTextBrush` | `NfcTextDisabledBrush` |
+| Pressed | `NfcSecondaryActionPressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
+| Checked | `Nvt.Toggle.SelectedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchOnBrush` |
+| Checked pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPointerOverBrush` |
+| Checked pressed | `Nvt.Toggle.SelectedPressedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPressedBrush` |
+| Disabled | `NfcSurfaceSubtleBrush` | `NfcTextDisabledBrush` | `NfcBorderBrush` |
+| Disabled checked | `NfcSelectionSurfaceBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| Keyboard focus | Retains the current fill. | Retains the current content color. | Retains the current track color. |
+
+Add `danger` to any toggle role or native `ToggleSwitch` for a red checked fill and white content.
+Checked pointer over and pressed share the same darker red.
+Danger toggles use `Nvt.Focus.RingBrush`, including checked keyboard focus.
+Disabled checked controls retain the approved neutral appearance, including danger controls.
+Disabled controls ignore hover, pressed, and focus overrides and keep opacity 1.
+
+### Toggle tokens
+
+Styles resolve every color and corner through resources.
+The following palette applies to both shapes.
+Light aliases reuse existing Core brushes. Dark fills use deeper colors to preserve white content contrast.
+Override the `Nvt.Toggle.*` keys together in one resource dictionary to replace the toggle palette.
+Replace that dictionary in the application or window resources to update attached controls.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#1148BE` |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#A82035` |
+| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
+| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
+| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2563EB` |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#1D4ED8` |
+| `Nvt.Toggle.SwitchPressedBrush` | `#1D4ED8` | `#1D4ED8` |
+| `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
+
+Neutral states reuse the shared palette listed above.
+Focus reuses `Nvt.Focus.RingBrush`: Light `#1F6FD1`, Dark `#4DA3FF`.
+`Nvt.Focus.RingThickness` is 2 in both themes.
+
+The tests measure these minimum contrast ratios in both shapes.
+Checked fill checks cover enabled states. Disabled checked states use the neutral colors listed above.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| White on checked segment, tab, and icon | 5.879:1 | 7.794:1 |
+| White on checked switch | 5.169:1 | 5.169:1 |
+| White on checked danger | 7.184:1 | 7.184:1 |
+| Standard focus ring against adjacent surfaces | 4.228:1 | 5.572:1 |
+| Disabled text | 3.903:1 | 4.275:1 |
+| Knob against track across all states | 4.015:1 | 3.422:1 |
+
+### Shared shape setting
+
+`ThemeShape` defines `Pill` and `Square`.
+Call `ThemeShapes.SetShape(IResourceDictionary resources, ThemeShape shape)` on the UI thread.
+Pass application, window, or subtree resources, just as the requested theme variant uses a theme root.
+The method replaces one shape dictionary and preserves unrelated resources.
+Changing light or dark through `RequestedThemeVariant` leaves the shape unchanged.
+Controls keep their templates and receive no local corner settings.
+
+```csharp
+using Avalonia;
+using Avalonia.Styling;
+using Nvt.Core.Avalonia.Theme;
+
+ThemeShapes.SetShape(Application.Current!.Resources, ThemeShape.Square);
+Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
+ThemeShapes.SetShape(Application.Current.Resources, ThemeShape.Pill);
+```
+
+`ShapePill.axaml` and `ShapeSquare.axaml` define reusable resources for future toolbar buttons and filter pills.
+The values stay the same in Light and Dark.
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Shape.ControlCornerRadius` | 999 | 6 |
+| `Nvt.Shape.GroupCornerRadius` | 999 | 6 |
+| `Nvt.Shape.FocusCornerRadius` | 999 | 10 |
+| `Nvt.Shape.RoundCornerRadius` | 999 | 999 |
+
+Switch tracks and switch focus rings use `Nvt.Shape.RoundCornerRadius` in both shapes.
+The existing Button roles continue using their current radius resources.
+
+### Toggle adoption
+
+1. Merge `ThemeTokens.axaml` into application resources and load `ToggleStyles.axaml` after Fluent.
+2. Assign a toggle role and bind `IsChecked`. Put segments inside the group structure shown below.
+3. Supply icon content, accessible names, and selection rules in the host.
+4. Add `danger` where required and select the shared shape at the resource root.
+5. Remove competing local colors and corners. Verify both themes, both shapes, keyboard input, and disabled states.
+
+```xml
+<Border Classes="toggleSegmentGroup">
+  <StackPanel>
+    <ToggleButton Classes="toggleSegment" Content="Overview" IsChecked="True" />
+    <ToggleButton Classes="toggleSegment" Content="Details" />
+  </StackPanel>
+</Border>
+<ToggleButton Classes="toggleTab" Content="Overview" />
+<ToggleButton Classes="toggleSwitch danger" AutomationProperties.Name="Enable option" />
+<ToggleSwitch AutomationProperties.Name="Enable option" />
+```
+
+`ToggleStylesRenderer` checks the layout headlessly and writes images only when `NVT_TOGGLE_IMAGES_DIR` is set.
+It exports `toggle-src-light.png` and `toggle-src-dark.png` at 1320 × 2920 with both shapes and all states.
+Tests cover contrast, runtime resource replacement, exact switch geometry, keyboard input, and literal-free style rules.
