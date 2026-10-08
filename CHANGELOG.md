@@ -9,6 +9,10 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 ### New modules and features
 
 - Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus.
+- Theme: add flat Expander headers, section dividers, directional chevrons, and keyboard focus rings.
+- Theme: add token-based ProgressBar thicknesses and reduced motion while preserving ProgressIndicator projection and identity.
+- Theme: align Separator and Border dividers in both orientations, with an optional strong line.
+- Theme: add six-DIP GridSplitter targets, accent interaction lines, and keyboard focus without changing native resizing.
 - Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
 
 ### Internal

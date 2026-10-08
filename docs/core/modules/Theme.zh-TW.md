@@ -463,7 +463,6 @@ NFC 也須保留：
 - Static 與 DynamicResource 查找方式。
 - 字型資產、Inter 套件版本及 fallback 順序。
 
-
 ## 驗證與來源
 
 本次取代 NFC 衍生色票與舊按鈕角色，合併 PR #71 的範本與焦點方案到唯一的 `ButtonStyles.axaml`，修正停用與 active 疊加。`ThemeTokens.xml`、`ButtonStyles.xml` 刻意依新的核准檔案重新產生，不再宣稱保留舊 NFC 外觀。`ExtractedXamlMatchesFrozenBaseline` 仍鎖定完整 XML；token 比對先展開八個既有字型別名。捲軸幾何與 baseline 不因本次色票調整而變動。
@@ -816,3 +815,154 @@ Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1�
 `ToggleSoftRenderer` 以 headless 方式檢查兩種形狀、純文字、圖示與所有狀態。
 只有設定 `NVT_TOGGLE_IMAGES_DIR` 時，才寫入 `toggle-soft-light.png` 與 `toggle-soft-dark.png`。
 測試與既有角色一樣，在本機停用轉場以取得穩定快照。
+
+## Expander
+
+在 Fluent 後載入 `Theme/ExpanderStyles.axaml`，並將 `ThemeTokens.axaml` 合併至應用程式資源。
+一般 `Expander` 標頭高 32 DIP。加上 `section` 後，標頭高 44 DIP，頂部增加一 DIP 分隔線。
+標頭預設無邊框，圓角跟隨共用 Pill 或 Square 形狀。
+12 × 6 箭頭、20 DIP 箭頭容器與 10 DIP 間距均與 `CollapsiblePanel` 一致。
+`CollapsiblePanel` 保留原有模板與行為。
+
+靜止與展開標頭保持透明。滑鼠移入使用選取表面；按下使用次要按壓表面。
+停用標頭使用停用文字色，並忽略滑鼠移入、按下與焦點視覺。
+鍵盤焦點顯示一個兩 DIP 焦點框，與控制項外緣相隔兩 DIP。滑鼠焦點不顯示焦點框。
+向下或向上展開時，內容分別位於標頭下方或上方。箭頭隨方向及展開狀態旋轉。
+顏色與箭頭轉場持續 150 毫秒。在控制項或祖先加上 `reducedMotion` 可停用轉場。
+Avalonia 保留 Space 切換、存取鍵、展開事件與無障礙名稱。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `NfcControlHeight` | 32 | 32 |
+| `Nvt.Expander.SectionHeaderHeight` | 44 | 44 |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Divider.TransparentBrush` | `#00FFFFFF`，既有 toggle 別名 | 相同 |
+
+標頭使用 `Nvt.Shape.ControlCornerRadius`：兩種主題下，Pill 為 999、Square 為 6。
+焦點框使用 `Nvt.Shape.FocusCornerRadius`：兩種主題下，Pill 為 999、Square 為 10。
+分隔線與焦點框顏色使用下方記載的共用 token。
+採用時移除本機標頭模板、高度、滑鼠移入邊框、圓角規則與焦點裝飾。
+標頭內容、命令、存取鍵與繫結仍由宿主管理。
+
+```xml
+<Expander Header="Details" />
+<Expander Classes="section" Header="Advanced options" ExpandDirection="Up" />
+```
+
+## ProgressBar
+
+在 Fluent 後載入 `Theme/ProgressStyles.axaml`。樣式保留 Fluent 的範圍投影、百分比文字與不確定進度動畫。
+預設粗細為六 DIP。加上 `thin` 為三 DIP，`thick` 為十 DIP。
+確定與不確定進度軌道維持相同粗細。垂直進度列將粗細套用至寬度。
+`ShowProgressText` 預設為 false。呼叫端仍管理範圍、數值、文字設定、可見性與不確定模式。
+停用進度列保留軌道，指示器改用停用 token。
+筆刷轉場持續 150 毫秒。
+
+`ProgressIndicator` 保留公開 API 與 `ProgressBar` 樣式身分。
+既有 `Progress` 屬性仍將已知比例投影至 `Value`；缺少比例時保留最後數值。
+控制項透過既有樣式鍵取得這些 token，不需要另一套元件模板或 selector。
+使用 `LoadingSurface` 時仍保留 `Progress/ProgressStyles.axaml`。該元件樣式檔服務不同用途。
+
+在進度列或祖先加上 `reducedMotion`，可將不確定動畫替換為位於軌道中間三分之一的靜止指示器。
+離開不確定模式後，恢復原生確定進度模板。減少動作也會停用筆刷轉場。
+靜止模板保留原生必要指示器部件與進度無障礙 peer。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Progress.Height` | 6 | 6 |
+| `Nvt.Progress.ThinHeight` | 3 | 3 |
+| `Nvt.Progress.ThickHeight` | 10 | 10 |
+| `Nvt.Progress.TrackBrush` | `#94A3B8`，`NfcBorderSoftBrush` | `#475569`，相同別名 |
+| `Nvt.Progress.IndicatorBrush` | `#0E3C9E` | `#8FBFFB`，`NfcAccentStrongBrush` |
+| `Nvt.Progress.DisabledIndicatorBrush` | `#68778C`，`NfcTextDisabledBrush` | `#7B8CA5`，相同別名 |
+
+Light 指示器使用 Core 的較深藍色強調色，因為標準強調色對指定軌道達不到三比一對比。
+Dark 指示器因相同原因重用既有較強強調色。既有共用顏色保持不變。
+這新增一個顏色常值 `#0E3C9E`；Dark toggle 色盤已使用相同顏色。
+內部圓角轉換器將 `Nvt.Shape.ControlCornerRadius` 限制為軌道短邊的一半。
+因此既定粗細在兩種形狀與主題中，端點圓角分別為 1.5、3 與 5 DIP。
+替換 `Nvt.Progress.*` 色盤字典，可同步更新已附加的進度列與指示器。
+採用時移除本機軌道色、指示器色、粗細、圓角與衝突模板。
+
+```xml
+<ProgressBar Value="42" />
+<ProgressBar Classes="thin" IsIndeterminate="True" />
+<ProgressBar Classes="thick reducedMotion" IsIndeterminate="True" />
+```
+
+## Separator
+
+在 Fluent 後載入 `Theme/DividerStyles.axaml`。
+`Separator` 與 `Border.divider` 顯示相同的一 DIP 線，預設不留 margin。
+預設為水平線。加上 `vertical` 改為垂直線；加上 `strong` 改用較強邊框色。
+分隔線維持非互動控制項，並保留原生無障礙行為。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+
+移除本機分隔線背景、粗細與預設 margin 規則。呼叫端配置間距保留在控制項外部。
+原生分隔線與一般 divider 邊框使用相同類別。
+
+```xml
+<Separator />
+<Separator Classes="vertical strong" />
+<Border Classes="divider" />
+<Border Classes="divider vertical strong" />
+```
+
+## GridSplitter
+
+在 Fluent 後載入 `Theme/DividerStyles.axaml`。
+預設垂直分隔線提供六 DIP 點擊區域，中央顯示一 DIP 線。
+加上 `vertical` 調整欄寬，或 `horizontal` 調整列高。明確指定 `ResizeDirection="Rows"` 也會選用水平外觀。
+滑鼠移入與拖曳時顯示兩 DIP 強調色線。拖曳指標離開目標後仍保留強調色。
+停用時保留靜止線，並抑制互動視覺。
+鍵盤焦點顯示一個兩 DIP 焦點框，與控制項外緣相隔兩 DIP。滑鼠焦點不顯示焦點框。
+游標跟隨調整方向。Avalonia 保留拖曳、方向鍵調整與尺寸限制。
+設定 `ShowsPreview="True"` 時，拖曳會顯示 50% 透明的主色預覽條（`Nvt.GridSplitter.PreviewBrush`、`Nvt.GridSplitter.PreviewOpacity`），放開指標後才調整相鄰區域。
+顏色轉場持續 150 毫秒。在 splitter 或祖先加上 `reducedMotion` 可停用轉場。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.GridSplitter.HitSize` | 6 | 6 |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `Nvt.GridSplitter.ActiveLineThickness` | 2 | 2 |
+| `Nvt.GridSplitter.PreviewBrush` | `NfcAccentBrush` | `NfcAccentBrush` |
+| `Nvt.GridSplitter.PreviewOpacity` | 0.5 | 0.5 |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.RingThickness` | 2 | 2 |
+
+兩種方向的焦點圓角均跟隨 `Nvt.Shape.FocusCornerRadius`。
+採用時移除本機 splitter 模板、寬度、滑鼠移入填色、游標與焦點裝飾。
+Grid 位置、調整行為、拖曳增量、鍵盤增量與預覽設定仍由宿主管理。
+
+```xml
+<GridSplitter Classes="vertical" Grid.Column="1" ResizeBehavior="PreviousAndNext" />
+<GridSplitter Classes="horizontal" Grid.Row="1" ResizeBehavior="PreviousAndNext" />
+```
+
+`DividerStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_DIVIDER_IMAGES_DIR` 時寫入圖片。
+輸出 `divider-light.png`、`divider-dark.png`、`divider-square-light.png` 與左右並排的 `divider-before-light.png`。
+每張圖片寬 1200 像素，縮放為一，檔案小於一 MB。
+Divider 測試固定幾何、所有標頭狀態、對比、執行期形狀、token 替換、動作政策、無障礙名稱與原生鍵盤行為。
+實際指標拖曳驗證兩側相鄰格均依拖曳距離調整。
+
+既定樣式在兩種形狀下均達到以下最低對比。
+指示器檢查涵蓋啟用進度列。焦點框檢查涵蓋相鄰表面、應用程式背景與選取表面。
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| 啟用標頭各狀態的文字 | 12.525:1 | 11.866:1 |
+| 停用標頭文字 | 4.559:1 | 5.184:1 |
+| 進度指示器對軌道 | 3.794:1 | 3.974:1 |
+| 焦點框對相鄰表面 | 4.228:1 | 5.572:1 |
+

@@ -3,6 +3,7 @@
   <ResourceDictionary.MergedDictionaries>
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/NfcLegacyFontTokens.axaml" />
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleTokens.axaml" />
+    <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/DividerTokens.axaml" />
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ShapePill.axaml" />
   </ResourceDictionary.MergedDictionaries>
   <ResourceDictionary.ThemeDictionaries>

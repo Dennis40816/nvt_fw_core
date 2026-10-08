@@ -1,0 +1,27 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderSoftBrush" />
+      <!-- The deeper Core accent tone reaches 3:1 against the required soft-border track. -->
+      <SolidColorBrush x:Key="Nvt.Progress.IndicatorBrush" Color="#0E3C9E" />
+      <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderSoftBrush" />
+      <StaticResource x:Key="Nvt.Progress.IndicatorBrush" ResourceKey="NfcAccentStrongBrush" />
+      <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <StaticResource x:Key="Nvt.Divider.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+  <x:Double x:Key="Nvt.Expander.SectionHeaderHeight">44</x:Double>
+  <x:Double x:Key="Nvt.Progress.Height">6</x:Double>
+  <x:Double x:Key="Nvt.Progress.ThinHeight">3</x:Double>
+  <x:Double x:Key="Nvt.Progress.ThickHeight">10</x:Double>
+  <x:Double x:Key="Nvt.Divider.LineThickness">1</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.HitSize">6</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.ActiveLineThickness">2</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.PreviewOpacity">0.5</x:Double>
+</ResourceDictionary>
