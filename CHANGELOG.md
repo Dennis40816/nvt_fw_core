@@ -8,6 +8,8 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ### New modules and features
 
+- Theme: add shared CheckBox and RadioButton styles with compact rows, wrapped labels, keyboard focus, and runtime Pill/Square shapes.
+
 - Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
 
 ## 0.4.0 - 2026-10-08
