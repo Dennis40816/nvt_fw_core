@@ -261,6 +261,19 @@ internal WindowsStableCustodyIssue TryCreateVersionTree(
 
 `CapturePromotedImmutableTree` 捕捉相同 held root 並逐一比對 snapshot identity。`TryTransitionPromotedTreeToImmutableCustody` 以 read bridge 保留同一身分，將 delete-capable promotion custody 轉換為 immutable custody。rename 結構保留 32-bit 與 64-bit layout，filename offset 分別為 12 與 20。`Cleanup` 與 `RollbackPromotionAndCleanup` 只移除 owned identity；foreign child 或被替換的 descendant 會保留並回傳 `Changed`。重用的 staging 名稱不會被當成 promoted tree。cleanup 具冪等性，取消不能免除精確 rollback 責任。
 
+write tree 只儲存一個封閉的生命週期 phase：`Writing`、`Prepared`、`Promoted`、`CleanedUp` 或 `Disposed`。owned snapshot 屬於 `Prepared` 與 `Promoted`；快取的 cleanup 結果屬於 `CleanedUp`。準備成功時由 `Writing` 轉為 `Prepared`，promotion 成功時由 `Prepared` 轉為 `Promoted`；準備或 promotion 失敗時維持原 phase。cleanup（含 rollback）將仍持有樹的 phase 轉為 `CleanedUp`，重複 cleanup 回傳快取結果。Dispose 先清理 `Writing` 或 `Prepared` 的樹，再進入 `Disposed`；對 `Promoted` 只釋放 handle，不刪除樹；對 `CleanedUp` 釋放 parent handle。重複 Dispose 不產生副作用。有效呼叫順序的原生呼叫次序、reservation 檢查、結果值與既有 IO 錯誤訊息均不變。
+
+| 成員 | 允許的 phase |
+| --- | --- |
+| `StagingPath` | 除 `Disposed` 外的所有 phase |
+| `CreateFile`、`PrepareForPromotion` | `Writing` |
+| `Promote` | `Prepared` |
+| `CapturePromotedImmutableTree` | `Promoted` |
+| `Cleanup`、`RollbackPromotionAndCleanup` | `Writing`、`Prepared`、`Promoted`、`CleanedUp` |
+| `Dispose` | 所有 phase；在 `Disposed` 具冪等性 |
+
+所有操作均先檢查 phase，才存取 handle 或呼叫 callback。尚未 Dispose 但 phase 不符時，擲出 `InvalidOperationException`，訊息指出目前 phase 與嘗試的操作。Dispose 後除 `Dispose` 外的所有成員均擲出 `ObjectDisposedException`，包含 `StagingPath` 與兩個 cleanup 方法。
+
 ### Custody 測試對照
 
 來源檔案均位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`；Core Files 測試位於 `tests/Nvt.Core.Tests/Files/Windows/`。

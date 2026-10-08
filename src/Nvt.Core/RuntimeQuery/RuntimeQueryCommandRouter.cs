@@ -117,7 +117,7 @@ public sealed partial class RuntimeQueryCommandRouter
                 }
             }
 
-            if (!isStartup && args is not null)
+            if (!isStartup && args is not null && !_commands![command].ReceivesConfirmation)
             {
                 var handlerArgs = new Dictionary<string, string>(StringComparer.Ordinal);
                 foreach (var argument in args)
@@ -132,6 +132,8 @@ public sealed partial class RuntimeQueryCommandRouter
             }
         }
 
-        return handler(args);
+        return _commands?.GetValueOrDefault(command)?.InvocationHandler is { } invocationHandler
+            ? invocationHandler(isStartup ? RuntimeQueryInvocation.Startup : RuntimeQueryInvocation.Runtime, args)
+            : handler(args);
     }
 }

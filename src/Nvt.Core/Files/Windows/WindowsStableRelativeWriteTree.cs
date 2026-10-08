@@ -25,6 +25,7 @@ internal readonly record struct WindowsStableTreeReservation(
 internal sealed class WindowsStableRelativeWriteRoot : IDisposable
 {
     private readonly WindowsStablePathCustody? _custody;
+    // Guard: owned until Dispose; RootHandle rejects access after the handle is cleared.
     private SafeFileHandle? _rootHandle;
 
     private WindowsStableRelativeWriteRoot(
@@ -260,23 +261,35 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
     private readonly int _maximumRelativePathCharacters;
     private readonly Func<string, bool> _isSafeRelativePayloadPath;
     private readonly Action<string>? _afterDirectoryCreated;
+    // Guard: entries are added in Writing and cleared by Cleanup or Dispose before leaving ownership.
     private readonly Dictionary<string, SafeFileHandle> _directories =
         new(StringComparer.OrdinalIgnoreCase);
+    // Guard: entries are added in Writing; handles are released on preparation, cleanup or disposal.
     private readonly Dictionary<string, SafeFileHandle> _files =
         new(StringComparer.OrdinalIgnoreCase);
+    // Guard: entries are added in Writing; descendants are released in Prepared, all entries on cleanup/disposal.
     private readonly List<SafeFileHandle> _ownedDirectories = [];
+    // Guard: retained in every live phase and released only by Dispose.
     private readonly SafeFileHandle _stagingParent;
+    // Guard: retained in every live phase and released only by Dispose.
     private readonly SafeFileHandle _versionsParent;
     private readonly WindowsStableTreeReservation _reservation;
+    private readonly string _stagingPath;
     private readonly string _finalPath;
     private readonly string _versionName;
-    private bool _disposed;
-    private bool _descendantsReleased;
-    private bool _cleanupAttempted;
-    private WindowsStableCustodyIssue _cleanupIssue;
-    private bool _prepared;
-    private bool _promoted;
-    private WindowsStableOwnedTreeSnapshot? _snapshot;
+    // Guard: each operation validates this phase before accessing handles; successful transitions replace it.
+    private Phase _phase = new Phase.Writing();
+
+    private abstract record Phase
+    {
+        private Phase() { }
+
+        internal sealed record Writing : Phase;
+        internal sealed record Prepared(WindowsStableOwnedTreeSnapshot Snapshot) : Phase;
+        internal sealed record Promoted(WindowsStableOwnedTreeSnapshot Snapshot) : Phase;
+        internal sealed record CleanedUp(WindowsStableCustodyIssue Issue) : Phase;
+        internal sealed record Disposed : Phase;
+    }
 
     internal WindowsStableRelativeWriteTree(
         string stagingPath,
@@ -293,7 +306,7 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumRelativePathCharacters);
         ArgumentNullException.ThrowIfNull(isSafeRelativePayloadPath);
         reservation.Limits.Validate();
-        StagingPath = stagingPath;
+        _stagingPath = stagingPath;
         _finalPath = finalPath;
         _versionName = versionName;
         _reservation = reservation;
@@ -306,13 +319,20 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         _ownedDirectories.Add(stagingRoot);
     }
 
-    internal string StagingPath { get; }
+    internal string StagingPath
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _stagingPath;
+        }
+    }
 
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
         "The original handle stays in custody; the duplicate transfers to the returned FileStream.")]
     internal FileStream CreateFile(string relativePath)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        _ = RequirePhase<Phase.Writing>(nameof(CreateFile));
         if ((relativePath is null || relativePath.Length > _maximumRelativePathCharacters ||
              !_isSafeRelativePayloadPath(relativePath)) ||
             _files.Count >= _reservation.Files)
@@ -376,7 +396,7 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
 
     internal WindowsStableCustodyIssue PrepareForPromotion(Action<string>? afterExactTopologyChecked = null)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        _ = RequirePhase<Phase.Writing>(nameof(PrepareForPromotion));
         long bytes = 0;
         foreach (SafeFileHandle file in _files.Values)
         {
@@ -399,8 +419,8 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
             !WindowsStablePathCustody.TrySnapshotOwnedTree(
                 _files,
                 _directories,
-                out _snapshot) ||
-            _snapshot is null)
+                out WindowsStableOwnedTreeSnapshot? snapshot) ||
+            snapshot is null)
         {
             return WindowsStableCustodyIssue.Changed;
         }
@@ -412,18 +432,13 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         {
             directory.Dispose();
         }
-        _descendantsReleased = true;
-        _prepared = true;
+        _phase = new Phase.Prepared(snapshot);
         return WindowsStableCustodyIssue.None;
     }
 
     internal WindowsStableCustodyIssue Promote()
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!_prepared)
-        {
-            return WindowsStableCustodyIssue.Unavailable;
-        }
+        Phase.Prepared prepared = RequirePhase<Phase.Prepared>(nameof(Promote));
 
         int status = WindowsStablePathCustody.RenameRelative(
             _directories[string.Empty],
@@ -433,7 +448,7 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         {
             return WindowsStablePathCustody.MapStatus(status);
         }
-        _promoted = true;
+        _phase = new Phase.Promoted(prepared.Snapshot);
         return WindowsStableCustodyIssue.None;
     }
 
@@ -441,18 +456,14 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         string finalPath,
         CancellationToken cancellationToken)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!_promoted || _snapshot is null)
-        {
-            return WindowsStableCustodyResult.Failure(WindowsStableCustodyIssue.Unavailable);
-        }
+        Phase.Promoted promoted = RequirePhase<Phase.Promoted>(nameof(CapturePromotedImmutableTree));
         WindowsStableCustodyResult captured =
             WindowsStablePathCustody.TryCaptureImmutableTreeFromHeldDirectory(
                 finalPath,
                 _directories[string.Empty],
                 _reservation.Limits,
                 cancellationToken);
-        if (!captured.IsAcquired || captured.Custody!.MatchesOwnedSnapshot(_snapshot))
+        if (!captured.IsAcquired || captured.Custody!.MatchesOwnedSnapshot(promoted.Snapshot))
         {
             return captured;
         }
@@ -462,33 +473,33 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
 
     internal WindowsStableCustodyIssue RollbackPromotionAndCleanup()
     {
+        ThrowIfDisposed();
         return Cleanup();
     }
 
     internal WindowsStableCustodyIssue Cleanup()
     {
-        if (_disposed)
+        ThrowIfDisposed();
+        if (_phase is Phase.CleanedUp cleanedUp)
         {
-            return WindowsStableCustodyIssue.Unavailable;
+            return cleanedUp.Issue;
         }
-        if (_cleanupAttempted)
+        WindowsStableCustodyIssue issue;
+        if (_phase is Phase.Prepared or Phase.Promoted)
         {
-            return _cleanupIssue;
-        }
-        _cleanupAttempted = true;
-        if (_descendantsReleased)
-        {
-            _cleanupIssue = _snapshot is null
-                ? WindowsStableCustodyIssue.Changed
-                : WindowsStablePathCustody.TryDeleteExactTreeFromHeldDirectory(
-                    _promoted ? _finalPath : StagingPath,
-                    _directories[string.Empty],
-                    _snapshot,
-                    _reservation.Limits);
+            WindowsStableOwnedTreeSnapshot snapshot = _phase is Phase.Prepared prepared
+                ? prepared.Snapshot
+                : ((Phase.Promoted)_phase).Snapshot;
+            issue = WindowsStablePathCustody.TryDeleteExactTreeFromHeldDirectory(
+                _phase is Phase.Promoted ? _finalPath : StagingPath,
+                _directories[string.Empty],
+                snapshot,
+                _reservation.Limits);
             ReleaseOwnedHandles();
-            return _cleanupIssue;
+            _phase = new Phase.CleanedUp(issue);
+            return issue;
         }
-        WindowsStableCustodyIssue issue = WindowsStableCustodyIssue.None;
+        issue = WindowsStableCustodyIssue.None;
         foreach (SafeFileHandle file in _files.Values.Reverse())
         {
             if (!WindowsStablePathCustody.MarkDeleteOnClose(file))
@@ -508,31 +519,44 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
         }
         _ownedDirectories.Clear();
         _directories.Clear();
-        _cleanupIssue = issue;
-        return _cleanupIssue;
+        _phase = new Phase.CleanedUp(issue);
+        return issue;
     }
 
     public void Dispose()
     {
-        if (_disposed)
+        if (_phase is Phase.Disposed)
         {
             return;
         }
-        if (!_promoted)
+        if (_phase is Phase.Writing or Phase.Prepared)
         {
             _ = Cleanup();
         }
-        else if (!_cleanupAttempted)
+        else if (_phase is Phase.Promoted)
         {
             ReleaseOwnedHandles();
         }
         _stagingParent.Dispose();
         _versionsParent.Dispose();
-        _disposed = true;
+        _phase = new Phase.Disposed();
+    }
+
+    private TPhase RequirePhase<TPhase>(string operation) where TPhase : Phase
+    {
+        ThrowIfDisposed();
+        return _phase as TPhase ?? throw new InvalidOperationException(
+            $"Cannot {operation} while the write tree is in the {_phase.GetType().Name} phase.");
+    }
+
+    private void ThrowIfDisposed()
+    {
+        ObjectDisposedException.ThrowIf(_phase is Phase.Disposed, this);
     }
 
     private void ReleaseOwnedHandles()
     {
+        ThrowIfDisposed();
         foreach (SafeFileHandle file in _files.Values.Reverse())
         {
             file.Dispose();
@@ -570,6 +594,7 @@ internal sealed class WindowsStableRelativeWriteTree : IDisposable
 
     private bool HasExactOwnedTopology()
     {
+        _ = RequirePhase<Phase.Writing>(nameof(HasExactOwnedTopology));
         foreach (string directory in _directories.Keys)
         {
             string[] expected =

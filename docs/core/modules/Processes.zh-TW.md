@@ -16,9 +16,15 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ProcessLaunchGateTests.cs`（全部八個案例及輔助行為）。
 - `tests/NvtFwCombiner.TestSupport/TempWorkspace.cs`（暫存路徑、位元組寫入及有界清理支援；產品前綴及儲存庫路徑轉接保留在 NFC）。
 
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.cs`（完整 runner、清理時間、schedule、容量、階段及 seams；輔助型別分成獨立 Core 檔案）。
+- `src/NvtFwCombiner.Infrastructure/ExternalTools/SystemExternalProcessRunner.Invocation.cs`（完整 invocation custody 及終止清理）。
+- `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerTests.cs`（全部六個案例及程序身分／退出斷言；子程序 fixture 使用共用 test probe）。
+
+- `tests/NvtFwCombiner.Infrastructure.Tests/ExternalTools/SystemExternalProcessRunnerLifetimeTests.cs`（25 個 runner、排程、容量及取消方法與其 nested helpers；清理文字方法保留於 NFC）。
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
+僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約及命令執行、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
 
 ## API
 
@@ -45,6 +51,13 @@ public static class ProcessLaunchGate
 public interface IExternalProcessRunner
 {
     ValueTask<ExternalProcessResult> RunAsync(
+        ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
+}
+
+public sealed partial class SystemExternalProcessRunner : IExternalProcessRunner
+{
+    public SystemExternalProcessRunner();
+    public ValueTask<ExternalProcessResult> RunAsync(
         ExternalProcessStartInfo startInfo, CancellationToken cancellationToken);
 }
 
@@ -85,7 +98,7 @@ public sealed class ExternalProcessStartFailedException : Exception
 
 供受控啟動及外部 runner 使用的內部契約為 `BoundedProcessOutputReader.ReadAsync(TextReader) : Task<string>`、`DrainProcessStreamAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>` 及 `DrainAsync(TextReader, CancellationToken) : Task<BoundedProcessOutput>`。`BoundedProcessOutput` 是內部 readonly record struct，包含 `string Text` 及 `bool ReachedEndOfStream`。`WindowsSynchronousReadCancellation` 維持 internal、sealed、partial、可釋放，並保留 `[SupportedOSPlatform("windows")]`。
 
-指定的凍結來源沒有產品專屬的路徑、引數或程序容量准入上限，只有下列固定讀取機制界限及暫停子程序終止確認的五秒界限。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式及外部 runner 契約負責。
+指定的凍結來源沒有產品專屬的路徑或引數上限。正式 invocation 容量是八個的固定機制界限，由所有預設 runner 實例共用。讀取器、終止時間及暫停子程序終止確認的五秒界限均保持固定。啟動要求唯一必須為正的數值參數是 `timeout`；容量例外只記錄傳入整數，不加驗證。產品准入政策仍由主應用程式負責。
 
 ## 保留行為
 
@@ -212,7 +225,117 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 `WindowsContainedProcessStarterContractTests` 固定空／非空 command line、原始引數、零／一／二反斜線、空格／tab／引號／換行邊界、Unicode、ordinal 忽略大小寫環境排序、null 省略、空值、零／一／二環境項目及精確結尾。它固定 5,000-ms 確認常數；此期限沒有呼叫者可傳入的前一值／後一值。原生建立後案例證明暫停子程序不能執行，且其實體管線在原有兩秒門檻內關閉。
 
-`OptionalPowerShellQuotedArguments` 獨立透過 PowerShell 測試 `two words`、`quote"inside` 及 `trail\`，保留十分鐘 checkpoint。執行檔不可用或 PowerShell 引數解讀不同時報告 skip，不修改受控啟動器。
+`OptionalPowerShellQuotedArguments` 獨立透過 PowerShell 測試 `two words`、`quote"inside` 及 `trail\`。執行檔不可用或 PowerShell 引數解讀不同時報告 skip，不修改受控啟動器。
+
+## 外部命令執行
+
+`SystemExternalProcessRunner` 是單次外部命令 invocation 的唯一擁有者。建立只使用 `ProcessLaunchGate.Start(CreateProcessStartInfo(startInfo))`；輸出使用既有的 `BoundedProcessOutputReader.DrainProcessStreamAsync`。Launcher 另外擁有 READY、ADMITTED、協定 Job 及准入期限。
+
+`RunAsync` 依序檢查 null 輸入、呼叫者取消，再於建立程序前以原子方式保留容量。容量拒絕不啟動程序，並回報保留時觀察到的數量。所有啟動失敗均歸還槽位。`Win32Exception` 轉成 `ExternalProcessStartFailedException`；其他失敗原樣傳播。null 程序保留 `External process did not start.`。啟動資訊保留執行檔、工作目錄及每個有序的 `ArgumentList` 項目，停用 shell、不建立 console，並重新導向兩個輸出串流。
+
+| 機制 | 凍結 runner 契約 |
+| --- | --- |
+| 正式容量 | 所有預設實例共用八個 invocation，包含 detached 清理；沒有公開容量設定。 |
+| 終止總期限 | 終止訊號後五秒，由所有終止等待共用。 |
+| held-output grace | 自然退出後兩秒。 |
+| reader-stop reserve | 總期限內最後一秒。 |
+| 取消回呼 | 只送出訊號，不執行 OS 終止或資源釋放。 |
+| 終止 | 每次 invocation 一個背景工作，使用 `Kill(entireProcessTree: true)`。 |
+| 退出及輸出 | 觀察 `WaitForExitAsync`，並行排空兩個串流，保留有界部分輸出。 |
+| 正式 observer | null；排序及故障 seams 維持 internal。 |
+
+兩個串流及退出觀察先啟動，之後才註冊取消並送出 `Started`。選取終止訊號時已觀察到的呼叫者取消，優先於同時發生的退出或 timeout。自然退出等待串流或取消直到 grace 時點；仍開啟的串流啟動終止，而沒有取消的 grace 到期送出 `OutputHeldAfterExit`。其他終止訊號立即啟動終止。終止、退出及串流 settlement 共用 reader-stop 時點。未完成的 reader 收到 `CancelAsync`，全部終止工作及取消派送共用最後期限。
+
+清理優先順序維持 `TerminationUnconfirmed`、`OutputStreamHeldOpen`、`OutputReadFailed`，最後為 `Complete`。aggregate、Win32、invalid-operation 及 unsupported 終止失敗使用既有外部清理結果。Timeout 回傳 exit code -1 及 `TimedOut == true`；自然退出保留直接子程序的 exit code。取消使用呼叫者 token 並保留完整文字 `The external process run was canceled; observed cleanup: {cleanup}.`。
+
+只要任何追蹤工作尚未完成，`Release` 就保留原有容量。完成後先觀察所有晚到的 fault，個別釋放 stdout、stderr、process、reader-stop source 及 exit-observation source，最後歸還容量。全部釋放成功送出 `ResourcesReleased`；任一釋放失敗送出 `ResourcesReleaseFailed`。net8.0 移植以 private `object` 作為 invocation gate，保留兩個 lock statement。Runner 不承接 Launcher Job 或 READY 狀態。未持有任何重新導向串流的後代仍不在其觀察契約內。
+
+內部契約為 `ExternalProcessCleanupTiming`、`CleanupSchedule`、`ExternalProcessCapacity`、`ExternalProcessRunnerPhase` 及 `ExternalProcessRunnerSeams`。時間驗證依序保留：正值 deadline、正值 grace、正值 reserve、grace 加 reserve 不超過 deadline，最後 deadline 不超過 `int.MaxValue` 毫秒。總和超限維持 `ParamName == "HeldOutputGrace"`。Schedule 保留 `(long)(span.TotalSeconds * Stopwatch.Frequency)`，並以終止訊號建立絕對時間戳。內部測試容量必須為正；正式容量仍為八個。
+
+## Runner 測試及來源對應
+
+`SystemExternalProcessRunnerTests` 保留全部六個凍結案例的名稱、斷言及執行／退出觀察門檻。凍結類別沒有 collection attribute，這個選擇保持不變。共用 probe 契約為 [probe README](../../../tests/Nvt.Core.TestProbe/README.md)，不需私人子程序 harness 或修改 probe。
+
+| 凍結案例及 Core 方法 | 共用 probe 及保留證據 |
+| --- | --- |
+| `CreateProcessStartInfoIsHeadlessAndShellFree` | 不建立子程序；旗標、執行檔、工作目錄及引數順序。 |
+| `RunAsyncTranslatesOperatingSystemStartFailureToTypedExceptionAndReleasesCapacity` | 不存在的執行檔，再使用 `exit`；typed Win32 失敗、容量歸零及成功重用。 |
+| `RunAsyncCancellationKillsChildProcessBeforeThrowing` | `tree-root-wait`；取消前擷取 root／child 的 PID 及 start-time 身分，30 秒執行 timeout，各程序三秒退出觀察。 |
+| `RunAsyncTimeoutKillsChildProcessBeforeReturning` | `tree-root-wait`；十秒 timeout 前擷取身分，timeout 旗標、exit -1 及三秒退出觀察。 |
+| `RunAsyncBoundsAndDrainsBothOutputStreams` | `dual-output-exit`；各串流 131,072 字元加 `OUT-END`／`ERR-END`，十秒 timeout，精確擷取長度、前綴、截斷標記及後綴斷言。 |
+| `RunAsyncTimeoutRetainsBoundedPartialOutputAfterKill` | `dual-output-wait`；各串流 131,072 字元加 `OUT-PARTIAL-END`／`ERR-PARTIAL-END`，十秒 timeout（NFC 為兩秒；負載高時 probe 啟動可能超過一秒，probe 仍會等待 30 秒），exit -1、timeout 旗標、精確有界長度及後綴。 |
+
+`SystemExternalProcessRunnerBoundaryTests` 新增 23 個方法及 56 個靜態列舉案例：
+
+- 預設時間、八槽正式容量、null observer，以及全部 phase 名稱與值。
+- 精確的 `Schedule(1000)` 時間戳及小數 tick 轉換，包含最大相容 deadline。
+- 每個正值 timing 欄位及 private capacity 參數的零／負值；最小正值時間；驗證順序及來源的 overflow 行為。
+- Grace 加 reserve 及最大 deadline 的前一 tick／精確邊界／後一 tick；建構函式時間驗證。
+- 一、七、八、九及 `int.MaxValue` 的 private capacity，涵蓋精確准入、拒絕、觀察數量、歸還及重用。
+- Null seams、null 輸入優先順序、空／滿容量下已取消的輸入，以及嘗試不存在執行檔前的 private 單槽拒絕。
+- 精確啟動引數／工作目錄；真正的 `exit --exit-code 7`、phase 順序，以及五秒內觀察到容量歸還。
+- 真正 stdout／stderr 的獨立路由，以及 65,535／65,536／65,537 擷取長度。
+- 共用 OS 終止失敗歸類為 `TerminationUnconfirmed`、單一終止工作及 private capacity 歸還。
+
+測試使用合成資料、獨立暫存資料夾中的 tree marker 及 test-context 取消 token。原生案例執行 Windows 程序，其他平台透過 xUnit skip 明確略過。Marker 輪詢只在 fixture 界限內重試短暫分享違規；PID 加 start time 避免緊急清理誤殺重用的 PID。這些測試描述外部命令行為；長期 Job 證據屬於 Launcher。
+
+## Runner 生命週期測試對應
+
+26 個凍結生命週期情境中，Core 包含其中 25 個。這些測試 runner、排程、容量及取消機制的方法，在 `SystemExternalProcessRunnerLifetimeTests` 保留原名及來源順序。NFC 保留 `CleanupDiagnosticsDescribeOnlyTheObservation` 及其三組 theory 案例，因為它們測試 NFC 的產品 formatter `ExternalProcessCleanupText.Describe`。Core 沒有清理文字 API，也不複製該 formatter；精確文字斷言留在 NFC。
+
+| 凍結來源方法 | Core 方法或保留擁有者 | 共用 probe 及凍結證據 |
+| --- | --- | --- |
+| `CancelReturnsAtOnceAndRunEndsWithinDeadlineWhileTerminationBlocks` | 同名方法 | `silent-wait`；阻擋終止、取消在一秒內返回、有界執行及晚到釋放。 |
+| `TimeoutWithBlockedTerminationReturnsUnconfirmedWithinDeadline` | 同名方法 | `silent-wait`；300-ms timeout、阻擋終止及未確認清理。 |
+| `RefusedTerminationIsClassifiedAsUnconfirmed` | 同名方法 | `silent-wait`；aggregate、Win32、invalid-operation 及 unsupported 拒絕資料。 |
+| `RefusedTerminationOnCancellationEndsCanceled` | 同名方法 | `silent-wait`；拒絕終止仍以呼叫者取消結束。 |
+| `TerminationWithoutObservedExitIsBoundedAndUnconfirmed` | 同名方法 | `silent-wait`；忽略終止及單一有界清理期限。 |
+| `CancellationRightAfterTimeoutSignalEndsCanceled` | 同名方法 | `silent-wait`；在 `TimeoutSignaled` 注入取消。 |
+| `CancellationRightAfterExitSignalEndsCanceled` | 同名方法 | `exit`；在 `ExitSignaled` 注入取消。 |
+| `CancellationAfterTerminalDecisionKeepsResult` | 同名方法 | `exit`；在 `Returning` 注入取消並保留結果。 |
+| `UncooperativeReaderIsDetachedAtDeadlineAndObservedLater` | 同名方法 | `exit`；被阻擋的 reader 脫離、晚到失敗及釋放持有資源。 |
+| `ReaderFaultWithoutCancellationIsOutputReadFailed` | 同名方法 | `exit`；reader 失敗以清理分類回報。 |
+| `ReaderStartupFaultIsOutputReadFailed` | 同名方法 | `exit`；正式 drain 啟動失敗及單槽釋放。 |
+| `ReaderFaultWithCancellationEndsCanceled` | 同名方法 | `silent-wait`；取消優先於 reader 失敗。 |
+| `ExitObservationFaultIsUnconfirmedOrCanceled` | 同名方法 | `silent-wait`；原有兩組取消 theory 資料及退出觀察失敗。 |
+| `HeldOutputAfterNaturalExitIsBoundedAndReported` | 同名方法 | `tree-root-exit`；正式時間及 output-held phase。 |
+| `CancellationDuringHeldDrainEndsCanceledWithinDeadline` | 同名方法 | `tree-root-exit`；正式時間下於直接 root 退出時取消。 |
+| `OrphanHoldingOutputAfterTimeoutIsBoundedAndReported` | 同名方法 | `orphan-chain-root`；leaf PID、`.middle` 及 `.ready`；三秒 timeout 前完成父程序退出交握。 |
+| `OrphanHoldingOutputAfterExitStopsWithoutDetachingAndKeepsText` | 同名方法 | `orphan-chain-exit --stdout-text before-reader-stop`；middle 先退出，再由 root 以 code 0 自然退出，存活的 leaf 仍持有兩個串流。 |
+| `DescendantWithoutRedirectedStreamIsNotObserved` | 同名方法 | `detached-descendant-root`；完整清理可與無法觀察的存活後代同時存在。 |
+| `CleanupScheduleKeepsReaderStopWithinTheSingleDeadline` | 同名方法 | 不建立子程序；精確正式 schedule 及期限內的 reserve。 |
+| `CleanupDiagnosticsDescribeOnlyTheObservation` | NFC 產品 formatter | 三組 theory 案例測試 `ExternalProcessCleanupText.Describe`；NFC 保留精確文字及禁止歸因於未觀察原因的兩個斷言。 |
+| `CancelWithinGuardFailsPromptlyOnBlockingCancel` | 同名方法 | 不建立子程序；一秒阻擋取消 guard 及十秒回報上限。 |
+| `DetachedCleanupIsBoundedAndRefusesNewRunsAtTheLimit` | 同名方法 | 先 `silent-wait` 再 `exit`；單槽拒絕及晚到終止後重用。 |
+| `CapacityIsAHardCapUnderConcurrentStarts` | 同名方法 | `exit`；八個專用執行緒以 barrier 爭取三槽，共十輪。 |
+| `TryReserveIsAtomicUnderContention` | 同名方法 | 不建立子程序；32 個專用競爭者、八槽及 200 輪。 |
+| `DisposalFailureStillReturnsSlotAndSignalsFailure` | 同名方法 | `exit`；全部五次釋放、失敗通知及槽位重用。 |
+| `DetachedDisposalFailureStillReturnsSlotAndSignalsFailure` | 同名方法 | `silent-wait`；脫離終止後執行五次釋放及失敗通知。 |
+
+類別保留來源沒有 collection attribute 的選擇。所有原生案例需要真正的 Windows 程序，並在其他作業系統透過 xUnit skip 略過。Schedule、原子保留及阻擋取消 guard 案例可跨平台執行。`TestToken` 為 `TestContext.Current.CancellationToken`；排序由 phase hooks、阻擋終止、被阻擋的 readers 及專用執行緒 barrier 驅動。每個原有執行皆在 40 秒 watchdog 下等待，計時從觸發呼叫之前開始，包括 `Cancel()`。
+
+| 凍結測試界限 | 值及意義 |
+| --- | --- |
+| Helper 生命週期 | 30 秒；共用 `silent-wait` 及後代模式的存活時間超過所有終止界限。 |
+| Watchdog | 執行及 phase 等待均為 40 秒。 |
+| 排程餘裕 | 選定清理 deadline 之外四秒。 |
+| 取消返回 | 嚴格少於一秒，在 `Cancel()` 之前開始計時。 |
+| Fast 清理 | Deadline 1,500 ms；held-output grace 300 ms；reader-stop reserve 500 ms。 |
+| 正式清理 | Deadline 五秒；grace 兩秒；reserve 一秒。 |
+| Timeout fixtures | 慢 runner 案例為 300 ms；orphan-chain 父程序退出交握為三秒；原有 30 秒及 60 秒啟動 timeout 全數保持不變。 |
+| Guard fixture | 阻擋取消界限一秒；嚴格在十秒前回報。 |
+| 容量競爭 | 三槽／八次啟動／十輪；八槽／32 個競爭者／200 輪。 |
+| Marker 及競爭輪詢 | 原有就緒輪詢 100 ms、predicate 輪詢 20 ms。Probe 另使用文件指定的五秒交握及 10-ms 輪詢。 |
+
+300-ms 慢 runner timeout 限制執行時間，並不證明 probe 已完成啟動。負載高的 Windows 主機可能需要超過一秒啟動 probe。三秒 orphan-chain 門檻還要求 timeout 前取得 leaf marker 並確認 middle 已實際退出；此門檻保持不變。兩個等待均不縮短或放寬。
+
+來源 helpers `PhaseRecorder`、`TerminationSeam`、`ThrowingDisposal`、`FirstReader`、`CancelWithinAsync`、`SpinUntilAsync`、`HasExited`、`ReadPidAsync`、`WaitForFileAsync` 及 `KillById` 的機制保持不變。只有啟動設定以共用 probe 取代 shell scripts。Probe 輸入使用引數，markers 放在系統暫存目錄內的 Processes `TestWorkspace`。Orphan-chain marker 包含 leaf PID；`.middle` 包含 middle PID，而 `.ready` 在該程序退出後才出現。Fixtures 先等待 `.ready` 再讀取 PID，接著觀察 middle 退出，再等待執行結果。
+
+`orphan-chain-exit` 在啟動 middle 前寫入並 flush `before-reader-stop`。Middle 啟動繼承 stdout 及 stderr 的 leaf 後退出；root 在 ready marker 出現後以 code 0 自然退出。Windows 上保留的完整文字為 `before-reader-stop\r\n`。執行以 `OutputStreamHeldOpen` 返回時 leaf 仍存活；reader stop 保留該行、不脫離，並釋放資源及容量。Fixture 在 `finally` 終止 leaf。
+
+`Complete` 仍只觀察直接子程序退出及兩個串流結尾。未持有任一重新導向串流的 detached descendant 無法觀察，因此完整清理不證明整棵程序樹已空。清理不確定性的優先順序、取消優先順序、晚到失敗觀察、全部五次釋放嘗試、失敗通知及只在 settlement 後釋放均保持不變。
+
+`SystemExternalProcessRunnerLifetimeBoundaryTests.DetachedReadersRetainExactCapacityUntilLateSettlement` 新增 12 個原生案例：容量一、二、三及八，各搭配晚到 reader 完成、失敗或取消。確定性 gates 保留真正已退出程序的資源。案例在容量前一個值准入、填滿精確容量、拒絕下一個請求且不增加槽位、只釋放已 settlement 的一槽、重用該槽，最後回到零。既有 `SystemExternalProcessRunnerBoundaryTests` 提供正值參數的零／負值案例、一 tick 最小值、grace 加 reserve 在 deadline 前一值／精確邊界／後一值，以及 deadline 在 `int.MaxValue` 毫秒前一值／精確邊界／後一值。固定 fixture 等待是排程界限，不是由呼叫者調整的正值上限參數。
 
 ## NFC 擁有權及採用
 
@@ -220,10 +343,10 @@ Windows 僅由一個 internal `WindowsContainedProcessStarter` 執行下列步�
 
 NFC 以獨立的 PR 採用本模組，與本次抽取分開。所有受控 launcher 呼叫者使用 `StartContained(startInfo, inheritedHandles, validateImmediatelyBeforeStart)`；一般外部工具啟動使用 `Start(startInfo)`。原始程序建立留在 Processes，不置入 Launcher。採用結案前，生命週期證據必須通過。
 
-只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用讀取器、同步取消、啟動閘門、繼承控制代碼 record 及受控啟動器副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
+只有在所有呼叫者都改用驗證過的 Processes 套件，且採用案證明零差異（凍結行為、原生生命週期及必要的 UI 證據）之後，NFC 才刪除自己的通用外部 runner、invocation 輔助型別、讀取器、同步取消、啟動閘門、繼承控制代碼 record 及受控啟動器副本。NFC 的 Platform 副本要等剩餘的 Platform 呼叫者全部遷移，且主機結構試驗通過後才刪除。NFC 保留歷史 executor 證據。
 
 UI 比較使用共用環境 manifest，並要求解碼後變更像素數為零。適用時，比較也涵蓋完整輸出位元組及事件軌跡，並記錄每個證據檔的 SHA-256。八個 legacy font 值保持不變。
 
 NFC 在建置時透過自己的 `core-packages.json` 下載已驗證、版本化的 nupkg，採用精確 `[x]` 版本、source mapping、lock files 及 locked restore。清單記錄每個套件的 Release 標籤與 SHA-256。套件參照、版本鎖定、source mapping 及 lock files 由 NFC 擁有。NFC 不加入指向 Core checkout 的 ProjectReference。
 
-Core 與 NFC 保持各自獨立的版本與發布。兩階段獨立審查都涵蓋抽取 PR 及採用 PR 的精確 head。
+Core 與 NFC 保持各自獨立的版本與發布。

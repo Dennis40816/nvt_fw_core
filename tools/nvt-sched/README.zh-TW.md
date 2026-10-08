@@ -18,6 +18,40 @@
 根目錄的舊排程保留來源的動作，沒有 `-CommanderDir`。它的 runner 讀 `COMMANDER_DIR`，沒設定時以代碼 2 結束。
 host 執行檔與本機紀錄資料夾由 Windows 系統資料夾推導。
 
+## 無視窗排程動作
+
+排程使用 `conhost.exe --headless` 啟動 PowerShell，不開終端機視窗。
+即使 PowerShell 指定 `-WindowStyle Hidden`，Windows Terminal 仍可能開啟視窗。
+headless console 避免這個視窗，因此 action 不再使用 `-WindowStyle`。
+
+`--headless` 是未公開文件的 conhost 選項，需要 Windows 10 版本 1809 或更新版本。
+Microsoft 的 [pseudoconsole API 文件](https://learn.microsoft.com/en-us/windows/console/createpseudoconsole) 列出相同的底層版本需求。
+舊系統可能無法啟動工作，或會開啟 console 視窗。
+安裝前在「設定 > 系統 > 關於」檢查版本與組建；Windows 10 1809 的組建為 17763。
+owner 授權執行後，用 `list` 檢查 `Result` 與 `ResultSource`，並確認沒有出現 console 視窗。
+
+nvt-sched 讀取 headless `\NVT\commander-tick` action 的 runner 狀態檔。
+conhost 丟棄子程序退出碼，排程器的 `LastTaskResult` 通常只會是 0。
+[上游回報](https://github.com/microsoft/terminal/issues/17178) 說明了這個行為。
+
+- 從 `[Environment]::SystemDirectory` 取得 `conhost.exe`，並用 `Assert-NvtPath` 檢查。
+- 從 `Program Files\PowerShell\7` 取得 `pwsh.exe`，不查 PATH，也不接受呼叫者指定執行檔。
+- 檢查固定 runner，工作目錄仍只接受白名單 tick 所在的資料夾。
+
+action 引數格式如下：
+
+```text
+--headless "<pwsh path>" -NoLogo -NoProfile -NonInteractive -File "<runner>" -Id commander-tick -TaskPath \NVT\ -CommanderDir "<commander folder>"
+```
+
+不使用密碼、encoded command 或 execution policy switch。
+`list`／`status` 將舊的 `pwsh.exe -WindowStyle Hidden` action 標為 `DefinitionOutdated`。
+`run`／`remove` 以代碼 4 拒絕這個過期定義。
+`install`／`add` 只在其餘欄位完全符合要求的白名單定義時重新註冊。
+更新須取得 runner 鎖、確認程序已退出，且排程狀態為 Ready。
+重新匯出並確認 headless 定義後，才清理根目錄舊排程。
+其他定義改動與已停用工作仍拒絕處理。
+
 ## owner 重新註冊的一行指令
 
 先將 `COMMANDER_DIR` 設為已審核的 commander 資料夾，再於 repository 根目錄執行：
@@ -37,7 +71,8 @@ pwsh -NoProfile -File tools/nvt-sched/nvt-sched.ps1 install -Id commander-tick -
 執行腳本與維護者。說明模板放在 `allowlist.psd1` 的必要欄位 `Description`；少了它，
 排程器畫面無法說明用途、週期及維護者。週期會填入實際分鐘數。
 Principal 仍是目前使用者 SID，採 `InteractiveToken`／`LeastPrivilege`。
-`install` 與相容的 `add` 做同一件事；已存在但設定不同或停用的排程，不覆寫、不啟用。
+`install` 與相容的 `add` 做同一件事，只更新上述完全相符的過期 action。
+已存在但有其他設定改動或停用的排程，不覆寫、不啟用。
 
 先註冊新工作，再重新匯出核對 action、SID、設定、作者與說明；成功後才核對、
 停用並移除根目錄舊工作 `\NVT-S-<SID>-commander-tick`。新註冊／驗證失敗會報錯，
@@ -63,10 +98,22 @@ pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 remove -Id commander-tick
 `list`／`status` 是同一個唯讀查詢：顯示 `\NVT\` 工作及根目錄本 SID 的舊名稱。
 舊名稱標 `Legacy: True`、`Unmanaged`，一般 run／remove 不操作它們。
 原有 `Installed`、`DefinitionMismatch`、`NotInstalled`、`Unmanaged` 意義不變；
+新增的 `DefinitionOutdated` 表示舊 action 尚未更新。
 定義不符仍可查完成紀錄，但不能執行。`-Json` 固定輸出陣列；新增 `TaskPath` 是為了
 區分資料夾，`Legacy` 是為了指出遷移殘留。最近成功、退出碼、排程結果、下次時間及
 最近五筆歷史照舊。證據讀不到即顯示未知，不修復檔案。查詢失敗回非零，不落錯誤紀錄，
 不輸出半份 JSON 或底層錯誤全文。`run` 只送請求，完成結果要看 `list`。
+
+`Result` 顯示有效結果，`ResultSource` 說明證據來源：
+
+- `RunnerState`：狀態已完成、`ExitCode` 為整數，且 `UpdatedAtUtc` 足以對應排程器的 `LastRunTime`，使用該退出碼。
+- `Scheduler`：執行中代碼 267009、從沒跑過代碼 267011、根目錄舊工作及未使用 conhost headless 的 action，沿用 `LastTaskResult`。
+- `Unknown`：headless 工作的狀態遺失、無法讀取、尚未完成、時間無效，或比最新執行時間舊且超過容許誤差。
+
+比較時將排程器的本機時間轉成 UTC，容許狀態時間比 `LastRunTime` 早最多五秒。
+這五秒涵蓋時間精度與小幅時鐘差異；更早即顯示 `Unknown`，即使舊狀態記錄成功也一樣。
+`LastTaskResult`、`ExitCode` 及原有完成欄位保持不變，維持相容性。
+`status`、JSON 與文字輸出都包含相同的有效結果欄位。
 
 `remove` 只處理 `\NVT\`，先停用、確認程序退出後才註銷，不強殺、不清紀錄。
 PID 重用須核對啟動時間。`EveryMinutes`（1–44640，預設 20）、`DataDir`、`DryRun`
@@ -81,12 +128,12 @@ PID 重用須核對啟動時間。`EveryMinutes`（1–44640，預設 20）、`D
 pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 audit
 ```
 
-只讀取排程器資料，排除 `\Microsoft\` 及其子資料夾；`\MicrosoftVendor\` 等廠商
+只讀取排程器資料與 headless runner 狀態，排除 `\Microsoft\` 及其子資料夾；`\MicrosoftVendor\` 等廠商
 資料夾仍列入。輸出 `%LOCALAPPDATA%\NVT\sched\audit\audit-<yyyyMMdd>.md` 與
 `latest.json`，畫面只回報清單路徑。繁中手機版先一行結論，再分「需要注意」「我們的」
-「廠商的」；每個工作有路徑、名稱、狀態、上次時間、上次結果、下次時間、作者與說明。
+「廠商的」；每個工作有路徑、名稱、狀態、上次時間、有效結果、結果來源、下次時間、作者與說明。
 
-標記失敗（結果不等於 0／267009／267011）、從沒跑過、已停用、沒有作者，以及我們的
+標記失敗（runner 結果非零、Unknown，或排程器結果不等於 0／267009／267011）、從沒跑過、已停用、沒有作者，以及我們的
 （`\NVT\`，含子資料夾）。首次建立基準；之後用完整路徑加名稱比較新增與刪除。
 「建議可停用」只列就緒、從沒跑過且沒有作者的廠商工作，附理由並提醒先確認用途，
 不列我們的與舊名稱，也絕不自動停用。依指定分類，tick 的結果 10 仍標非零失敗，
@@ -104,6 +151,7 @@ pwsh -NoProfile -File .\tools\nvt-sched\nvt-sched.ps1 audit
 歷史最多 50 筆，查詢顯示最近五筆，不存 tick 原始輸出或例外全文。tick 的 0／10 都成功。
 新 `latest.json` 只存 `At`（判定 ISO 週）及 `Tasks`（指定中繼資料，供下次比較），也用
 此檔的獨占 handle 防止稽核重疊，不另加鎖檔。日期 Markdown 供 owner 閱讀。
+每個工作新增 `Result` 與 `ResultSource`，並保留原本的 `LastTaskResult`。
 `snapshot.json` 只新增 `weekly_task_audit_week`，確認週通知已寫 log；少了它，清單產生
 後當機可能丟通知，或每輪重複通知。沒有其他新持久欄位／稽核檔案。
 
@@ -158,10 +206,10 @@ suite 保留搬移、工作 metadata、每週 audit、報告重用與通知重�
 
 - `allowlist.psd1`: 新增版權標頭；保留固定 tick 檔名，由既有參數解析資料夾。
 - `nvt-sched-runner.ps1`: 新增版權標頭；由參數或環境取得必填 CommanderDir，再傳給 CLI。
-- `nvt-sched.ps1`: 新增版權標頭；保留 CommanderDir 參數化、資料夾必填檢查與 Windows 引數跳脫，不新增來源以外的排程行為。
+- `nvt-sched.ps1`: 新增版權標頭；保留 CommanderDir 參數化、資料夾必填檢查與 Windows 引數跳脫，新增 headless action 與過期定義的精確搬移。
 - `README.md`: 改用 repository 相對指令與路徑參數；移除本機部署細節，新增來源 hash 及外部 tick 驗證限制。
 - `README.zh-TW.md`: 改用 repository 相對指令與路徑參數；移除本機部署細節，新增來源 hash 及外部 tick 驗證限制。
-- `registered-task.fixture.xml`: 帳號、host、runner 與工作資料夾改用佔位符，保留合成 SID 與匯出省略形狀。
+- `registered-task.fixture.xml`: 改用 headless action，帳號、console、host、runner 與資料夾均用佔位符，保留合成 SID 與匯出省略形狀。
 - `test-nvt-sched.ps1`: 新增版權標頭；保留參數測試，從 fixture 推導路徑負例；使用帳號佔位符與合成外部 tick 呼叫端。
 
 零差異驗證先比對來源 hash，再逐項審核上述轉換，最後從 repository 根目錄執行全部匯入 suite。

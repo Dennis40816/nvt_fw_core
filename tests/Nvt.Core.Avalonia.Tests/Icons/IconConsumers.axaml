@@ -1,0 +1,7 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:icons="using:Nvt.Core.Avalonia.Icons">
+  <TextBlock x:Key="ConstantIcon" Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Close}" />
+  <TextBlock x:Key="ResourceIcon" Classes="nvtIcon" Text="{StaticResource Nvt.Icon.Close}" />
+</ResourceDictionary>

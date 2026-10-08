@@ -115,10 +115,11 @@ Command '{name}' writes files or changes data. Add --confirm to run it.
 ```
 
 The message uses the normalized command name. The handler does not run after either error.
-For every risk level, the enabled guard removes the ordinal key `confirm` before calling the handler.
+By default, the enabled guard removes the ordinal key `confirm` before calling handlers at every risk level.
 It copies other keys and values unchanged into a new ordinal dictionary.
 The handler receives null when no keys remain. Null arguments stay null.
-Handlers no longer receive the `confirm` key when the guard is on.
+Commands with `ReceivesConfirmation = true` keep their original runtime arguments, including `confirm`.
+The property defaults to false and leaves `WritesData` checks and startup handling unchanged.
 The existing command-line grammar already maps `--confirm` to `"confirm": "true"`.
 
 `RuntimeQueryConfirmationCases` holds the new inputs and literal expected outputs.
@@ -128,7 +129,8 @@ Run the RuntimeQuery test command below to verify both constructors and the enab
 
 For zero difference, NFH must keep the guard off and run the existing NFH switch-over checks below.
 Compare test results, stdout and stderr bytes, pipe frames, error codes and messages, and process exit codes.
-The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands and remove `confirm` from handler arguments.
+The separate guard change must expect `CONFIRMATION_REQUIRED` for unconfirmed `WritesData` commands.
+Handlers receive no `confirm` unless their command opts in through `ReceivesConfirmation`.
 
 ## Startup entry
 
@@ -138,7 +140,9 @@ It has no source tool baseline or extracted source paths.
 
 | Public API | Contract |
 | --- | --- |
-| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. |
+| `RuntimeQueryStartupPhase` | `None` adds no startup option. `BeforeFirstFrame` is startup-only. `AfterStartup` also permits RuntimeQuery requests. `BeforeFirstFrameAndRuntime` permits early startup and runtime requests. |
+| `RuntimeQueryInvocation` | Identifies `Startup` or `Runtime` invocation timing. |
+| `RuntimeQueryCommand.InvocationHandler` | Optional init property with type `Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>?`. Replaces `Handler` when set. |
 | `RuntimeQueryCommand.StartupPhase` | Optional metadata. The default is `None`, so existing registrations keep their behavior. |
 | `RuntimeQueryCommand.StartupValueKey` | Optional argument key for one startup value. The default is null, which defines a flag with null handler arguments. |
 | `RuntimeQueryCommand.StartupValidator` | Optional validator with type `Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>?`. Returns null for valid arguments or a failure. |
@@ -234,6 +238,99 @@ Compare parse results and exact error messages, including existing `page`, `help
 Registering startup phases adds behavior and requires separate tool tests before adoption.
 This task changes no tool repository.
 
+### Before the first frame and at runtime
+
+Use `BeforeFirstFrameAndRuntime` for a command that also runs before the first layout.
+The new enum member follows the existing members and preserves their numeric values.
+Both early phase values select the same before-first-frame pass.
+Mixed early commands keep command-line order.
+Run this pass before showing the window or starting any layout.
+
+Set `InvocationHandler` when the handler needs timing information.
+It receives `RuntimeQueryInvocation.Startup` from the startup runner and `RuntimeQueryInvocation.Runtime` from either runtime entry point.
+The constructor still requires `Handler`.
+When set, `InvocationHandler` replaces `Handler` after the existing routing and confirmation checks.
+Without it, Core calls `Handler` as before.
+`ReceivesConfirmation` also controls runtime arguments delivered to `InvocationHandler`.
+Startup validators still run during parsing without invoking either handler.
+
+The startup parser recognizes the new phase through the existing option, value-key, validator, and confirmation rules.
+Generic help includes these commands in registration order.
+A startup option listing selects commands whose `StartupPhase` differs from `None`.
+
+For a `--window-size` command, validate dimensions once and reuse that validator in the handler.
+This Avalonia example sets Width and Height before Show.
+It updates layout only when the invocation runs at runtime.
+
+```csharp
+RuntimeQueryResponseEnvelope? ValidateWindowSize(IReadOnlyDictionary<string, string>? values)
+{
+    if (RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out var error)
+        && dimensions.Count == 2)
+    {
+        return null;
+    }
+
+    return error ?? RuntimeQueryResponseEnvelope.Failure("INVALID_ARGUMENTS", "Use width,height with two positive dimensions.");
+}
+
+Task<RuntimeQueryResponseEnvelope> ApplyWindowSizeAsync(
+    RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? values)
+{
+    if (ValidateWindowSize(values) is { } failure)
+    {
+        return Task.FromResult(failure);
+    }
+
+    _ = RuntimeQueryArgumentParser.TryGetIntListArg(values, "size", 1, 8192, out var dimensions, out _);
+    mainWindow.Width = dimensions[0];
+    mainWindow.Height = dimensions[1];
+    if (invocation == RuntimeQueryInvocation.Runtime)
+    {
+        mainWindow.UpdateLayout();
+    }
+
+    return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
+}
+
+var windowSize = new RuntimeQueryCommand(
+    "window-size", RuntimeQueryCommandRisk.ChangesState,
+    values => ApplyWindowSizeAsync(RuntimeQueryInvocation.Runtime, values),
+    StartupPhase: RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime,
+    StartupValueKey: "size",
+    StartupValidator: ValidateWindowSize)
+{
+    InvocationHandler = ApplyWindowSizeAsync
+};
+var router = new RuntimeQueryCommandRouter([windowSize], requireConfirmation: false);
+var startup = router.ParseStartupArguments(args);
+if (startup.Issues.Count > 0)
+{
+    return;
+}
+
+var before = await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+if (before.Any(result => !result.Response.Ok))
+{
+    return;
+}
+
+mainWindow.Show();
+await router.ExecuteStartupPhaseAsync(startup.Calls, RuntimeQueryStartupPhase.AfterStartup);
+```
+
+Both forms use the `size` argument key:
+
+```text
+--window-size 1280,720
+query window-size --size 1280,720
+```
+
+The caller owns the window and dispatches runtime requests on the UI thread.
+`BeforeFirstFrame` remains startup-only and still returns `STARTUP_ONLY` at runtime.
+`AfterStartup` keeps its later startup pass and runtime routing.
+`None` keeps runtime routing without adding a startup option.
+
 ## Public API
 
 | API | Contract |
@@ -244,7 +341,7 @@ This task changes no tool repository.
 | `RuntimeQueryProtocol.CompactJsonOptions` | Camel-case property names, explicit nulls, default JSON escaping, case-sensitive deserialization, no indentation. Dictionary keys retain their casing. |
 | `RuntimeQueryProtocol.PrettyJsonOptions` | The same settings with two-space indentation and the serializer's default platform line endings. Used for caller output, not pipe messages. |
 | `RuntimeQueryIpcServer(...)` | An instance configured with pipe name, protocol version, positive read and shutdown timeouts in milliseconds, error callback, diagnostic callback, and request handler. |
-| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal closes the active pipe, cancels transport and handler waits, and bounds the wait for cancellation callbacks and the run loop. |
+| `Start()` / `DisposeAsync()` | Start once; repeated starts while running and repeated disposal are harmless. Starting after disposal throws. Disposal stops new connections and cancels a connection that has no request line. A request that was already read can finish and write its response within the shutdown bound. After the bound, disposal cancels the handler wait and closes the pipe. |
 | `RuntimeQueryIpcClient.SendRequest(pipeName, request, timeoutMs, error)` | Synchronously sends one request with a positive total connection/write/read budget. Connection elapsed time is deducted before the write/read timer, retaining the source's integer millisecond rounding and minimum remaining budget of one millisecond. |
 
 The server handler is `Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>`. It receives the deserialized request, configured protocol version and shutdown token. Empty lines and malformed JSON are rejected by the transport; a JSON null literal and version mismatches reach the handler, exactly as in the frozen transport. Core now provides null/version checks and command routing. The tool keeps its handler table, product parsers, command line, and UI dispatch. Transport tests also pin the original null and version error envelopes.
@@ -289,7 +386,7 @@ This includes a second server with the same name. `Start()` keeps its signature 
 The first server continues to answer requests. Disposal retains the configured shutdown bound.
 
 Callers of the same user see no change to request or response bytes. Another user's process can no longer connect.
-A name conflict now produces one diagnostic event. Pipe names, discovery, options and envelope formats do not change.
+A name conflict now produces one diagnostic event. See [Per-window pipes](#per-window-pipes) to run more than one copy.
 
 ## Command line
 
@@ -371,6 +468,63 @@ Compare stdout bytes and exit codes. Both must be equal.
 Keep the tool's `INSTANCE_NOT_RUNNING` text in its client error mapping.
 Core continues to use the existing client transport and JSON options.
 This task does not change the source tool.
+
+## Per-window pipes
+
+Per-window mode gives each running tool process its own pipe.
+The owner approved this behavior on 2026-10-06.
+Use `new behavior, no source baseline` in the host commit message.
+
+| Public member | Contract |
+| --- | --- |
+| `RuntimeQueryWindowPipes.BuildName(baseName, processId)` | Returns `{baseName}.{processId}` with invariant decimal digits. Rejects null or blank base names and nonpositive process IDs. |
+| `RuntimeQueryCommandLine.TryHandlePerWindowQueryCommand(args, baseName, protocolVersion, supportedCommands, error, output, out exitCode)` | Resolves a running window before calling the existing client. Other parameters match `TryHandleQueryCommand`. |
+| `RuntimeQueryFailure.ServerNotFound` | Maps a missing window through the tool's error callback with null detail. The command line returns exit code 1. |
+
+For example, two windows use `sample.runtime.v1.123` and `sample.runtime.v1.456`.
+If process 456 started later, `sample query help` selects its pipe.
+Use `sample query help --pid 123` to select the other pipe.
+
+Discovery runs only on Windows and enumerates `\\.\pipe\`.
+Each candidate name starts with `{baseName}.` and ends with a positive decimal process ID, with nothing after it.
+Discovery ignores names such as `{baseName}.12x`, `{baseName}.`, and `{baseName}x.1`.
+It skips processes that have exited or whose start time cannot be read.
+Other systems return no candidates.
+
+The selection rule uses only process IDs and start times:
+
+- Without `--pid`, select the latest process start time.
+- On equal start times, select the higher process ID.
+- With `--pid`, select that process ID. A missing ID returns `ServerNotFound` without selecting another window.
+- With no candidates, return `ServerNotFound`.
+
+The new entry accepts `--pid 123` and `--pid=123` as client-only options, like `--timeout-ms`.
+The value must be a positive integer.
+A missing or invalid value prints pretty `INVALID_ARGUMENTS` JSON and returns exit code 2.
+The exact message is `--pid must be a positive process ID.`.
+The request omits `--pid` and `--timeout-ms`.
+All other parsing, output formats, response handling, and exit codes retain the fixed-name behavior.
+
+Fixed-name mode does not change.
+`TryHandleQueryCommand` still sends to its supplied pipe and treats `--pid` as an ordinary command argument.
+A second server with the same fixed name still reports `PipeCreationFailed`, while the first server continues to answer.
+NFH first adopts Core in fixed-name mode with zero difference.
+It moves to per-window mode in a later pull request with these changes:
+
+1. Build each server name with `RuntimeQueryWindowPipes.BuildName(baseName, Environment.ProcessId)` and pass it to the existing server constructor.
+2. Replace the command-line call with `TryHandlePerWindowQueryCommand` and supply the same base name.
+3. Add the tool's `ServerNotFound` error mapping and test the new window selection behavior.
+
+For `focus`, both client entry methods use the connected pipe's server process ID on Windows.
+The client reads that ID with [GetNamedPipeServerProcessId](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getnamedpipeserverprocessid).
+Before writing the request, it calls [AllowSetForegroundWindow](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-allowsetforegroundwindow) for that process.
+A failed Windows call does not stop the request.
+Request bytes and response handling stay unchanged.
+
+Tests check the pure selection rule, exact command-line output, real Windows pipes, and permission calls through an internal seam.
+The old entry method still runs all 40 frozen command-line rows and the existing boundary rows.
+Pipe tests use unique names, bounded waits, and the existing collection with parallel execution disabled.
+The two-process discovery test uses the shared test probe in `silent-wait` mode and kills it in `finally`.
 
 ## Frozen provenance
 
@@ -458,8 +612,13 @@ NFH maps handler failures to `IPC_ERROR` with the unchanged exception message.
 These mappings belong to the tool. Core supplies no product error text for these failures.
 
 `StopAsync` clears host ownership before disposal. A later `Start` creates a new server, as in the frozen host.
+A second `StopAsync` during a stop returns the same task, so every caller waits for the same disposal.
 The host adds no scheduling, window events, lifetime events, static instance, or options.
 The tool decides when to start it and calls `StopAsync` on exit.
+
+`StopAsync` stops new connections immediately and cancels connections that have no request line.
+An already-read request can finish its handler and flush its response within the server's shutdown bound.
+After that bound, the server cancels the handler wait, closes the pipe, and reports `ShutdownTimedOut`.
 
 ### Tool startup and exit
 
@@ -545,5 +704,167 @@ Use the already-restored packages for Core verification:
 $env:AVALONIA_TELEMETRY_OPTOUT = '1'
 dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
+```
+
+## Generic commands
+
+Tools can register six generic commands beside their product commands.
+This is new behavior, no source baseline.
+Core returns command records and starts no server.
+All six records have startup phase `None` and define no startup option.
+The tool keeps `--page`, `--help`, and all other startup arguments.
+
+Generic exit sets `RuntimeQueryCommand.ReceivesConfirmation` to true so its handler receives `confirm` with either router setting.
+This init property belongs to `Nvt.Core.RuntimeQuery` and defaults to false for other commands.
+When confirmation is required, the router still validates `WritesData` before calling handlers.
+It still removes `confirm` from commands that do not opt in.
+When confirmation is disabled, the router passes all arguments unchanged for both settings of `ReceivesConfirmation`.
+The property does not change startup parsing or execution.
+
+The public types are in `Nvt.Core.Avalonia.RuntimeQuery`:
+
+| Public type | Contract |
+| --- | --- |
+| `RuntimeQueryGenericCommands` | `Create(options)` returns a read-only list in the order below. The tool selects which records to register. |
+| `RuntimeQueryGenericCommandOptions` | An immutable record with tool identity, command lookup, window lookup, navigation, exit decision, and close action. |
+| `IRuntimeQueryNavigation` | Supplies `Pages`, `CurrentPage`, and synchronous `SwitchPage(name)`. |
+| `RuntimeQueryPageResult` | Defines `Switched`, `NeedsConfirmation`, and `Rejected`. |
+| `RuntimeQueryExitResult` | Defines `Closing`, `NeedsConfirmation`, and `Rejected`. |
+| `RuntimeQueryExitRequest(Confirmed)` | Carries the parsed confirmation to the tool's exit decision. Missing or blank confirmation means false. |
+| `RuntimeQueryScreenshotResult` | `Success(pixelWidth, pixelHeight, fileSize)` or `Failure(code, message)` for replacement capture. File size uses bytes. |
+| `RuntimeQueryGenericFailureCodes` | Constants for the failure codes below, including the shared `INVALID_ARGUMENTS` code. `USER_CONFIRMATION_REQUIRED` reports the tool's decision. The router uses `CONFIRMATION_REQUIRED` for its `WritesData` guard. |
+
+| Name | Risk | Arguments | Success data | Failure codes |
+| --- | --- | --- | --- | --- |
+| `help` | `ReadOnly` | None | `{ commands: [{ name, risk }] }`, or the tool's unchanged text as data | None |
+| `ping` | `ReadOnly` | None | `{ toolName, version, processId }` | None |
+| `focus` | `ChangesState` | None | `{ focused: true }` | `NO_MAIN_WINDOW` |
+| `page` | `ChangesState` | None, or `--name <page>` | List: `{ pages, currentPage }`. Switch: `{ currentPage }` | `INVALID_ARGUMENTS`, `UNKNOWN_PAGE`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED` |
+| `screenshot` | `ChangesState` | `--path <file.png>` | `{ path, pixelWidth, pixelHeight, fileSize }` | `INVALID_ARGUMENTS`, `FILE_EXISTS`, `NO_MAIN_WINDOW`, `CAPTURE_UNAVAILABLE`, or the replacement's unchanged failure |
+| `exit` | `ChangesState` | Optional `--confirm` when `DecideExitRequest` is set | `{ closing: true }` | `INVALID_ARGUMENTS`, `USER_CONFIRMATION_REQUIRED`, `EXIT_REJECTED` |
+
+Help returns risk names as strings and keeps registration order.
+The tool supplies `GetCommands` because registration finishes after factory creation.
+Set `HelpText` to return that string unchanged, including whitespace or empty text.
+FreeformHelper can keep its own help text this way.
+Ping uses the supplied tool name and version, plus `Environment.ProcessId`.
+
+The tool supplies `GetMainWindow` for focus and default capture.
+Focus restores a minimized window to `Normal`, then calls `Activate()`.
+The client grants foreground permission before sending the request.
+A missing window returns `NO_MAIN_WINDOW` with `The main window is not available.`.
+
+The tool supplies page names in its own order and owns the current page.
+Core compares names with `StringComparer.Ordinal` and asks `SwitchPage` to perform navigation.
+Core assumes no page names or startup targets.
+For example, NVT FW Combiner can omit settings because settings opens as a dialog.
+The tool returns these decisions:
+
+- `Switched`: return the new current page. A request for the current page succeeds and changes nothing.
+- `NeedsConfirmation`: leave the page unchanged and return `USER_CONFIRMATION_REQUIRED`. The tool must not open a dialog.
+- `Rejected`: return `PAGE_REJECTED`, for example when a dialog prevents navigation.
+
+A blank or null supplied name returns `INVALID_ARGUMENTS` with `Argument '--name' requires a page name.`.
+An unknown name returns `UNKNOWN_PAGE` with `Unknown page '{name}'. Valid pages: {names}.`.
+The valid names use the tool's order, separated by a comma and a space.
+The existing query parser sends a valueless option as the string "true".
+The handler cannot distinguish a valueless --name from an explicit page name of true.
+`query page --name` returns `UNKNOWN_PAGE` unless the tool has a page named `true`.
+Confirmation uses `Page switching requires confirmation.`. Rejection uses `The page switch was rejected.`.
+
+Screenshot needs no `--confirm`, even when the router enables confirmation.
+The owner assigned `ChangesState` because capture accepts only an absolute path and never overwrites a file.
+This explicit exception keeps screenshot out of `WritesData`.
+Core requires a fully qualified path ending in `.png`, ignoring extension case.
+Core normalizes the absolute path and checks file existence before capture or window lookup.
+An invalid or missing path returns `INVALID_ARGUMENTS` with `Argument '--path' must be an absolute path ending in '.png'.`.
+An existing file or folder at the destination returns `FILE_EXISTS` with `The screenshot file already exists.` and remains unchanged.
+A missing parent folder returns `INVALID_ARGUMENTS` with `The folder for '--path' does not exist.`.
+
+Default capture updates window layout. A minimized window or a window with no size returns `CAPTURE_UNAVAILABLE` with `The main window has no visible size to capture.`. Otherwise it renders a `RenderTargetBitmap` at the current window size and scaling.
+It writes PNG data to a temporary file in the destination folder.
+It moves that file to the final name without replacement and removes the temporary file on failure.
+If the destination appears before the move, Core returns the same `FILE_EXISTS` failure.
+Other capture exceptions escape the handler.
+
+Set `CaptureScreenshot` to use the tool's own asynchronous capture.
+NVT FW Combiner can use its production capture this way.
+The delegate receives the normalized absolute path and `CancellationToken.None` because command handlers currently have no token.
+The delegate owns frame waits, layout, capture, and writing without replacement.
+Core does not update layout or obtain the main window before this delegate runs.
+Return `RuntimeQueryScreenshotResult.Success` with the saved image dimensions and file size.
+Return `Failure` to preserve the tool's exact code and message, such as `PROTECTED_PATH` or `FILE_EXISTS`.
+The delegate's no-replace move must handle a destination that appears after Core's existence check.
+Delegate exceptions escape unchanged.
+
+Set `DecideExitRequest` to let the synchronous exit decision inspect `RuntimeQueryExitRequest.Confirmed`.
+Core calls this delegate instead of `DecideExit` when it is set.
+Otherwise, Core calls the existing `DecideExit` and ignores all arguments, including invalid `confirm` values.
+Existing constructor signatures and legacy exit decisions remain unchanged.
+Both delegates must decide without opening a dialog.
+
+With `DecideExitRequest`, Core parses `confirm` through `RuntimeQueryArgumentParser.TryGetBoolArg` and ignores other arguments.
+Missing or blank confirmation means `Confirmed = false`.
+The command-line parser converts `--confirm` to `confirm=true`, which means `Confirmed = true`.
+Explicit `confirm=false` means `Confirmed = false`.
+The boolean parser also accepts 1, 0, on, off, yes, and no without case sensitivity.
+An invalid value returns the router's exact `INVALID_ARGUMENTS` envelope and calls neither delegate.
+These values and responses stay the same with `requireConfirmation` true or false.
+
+NVT FW Combiner can implement its exit decision with these rules:
+
+- No confirmation: return `NeedsConfirmation` and open no dialog.
+- Confirmation present: return `Closing` and skip the tool's own close confirmation.
+- Already closing or a modal dialog open: return `Rejected`.
+
+Core handles the three results:
+
+- `Closing`: produce `{ closing: true }` and post `Close` to the UI dispatcher at Background priority.
+- `NeedsConfirmation`: return `USER_CONFIRMATION_REQUIRED` with `Exit requires confirmation.`. Do not close or open a dialog.
+- `Rejected`: return `EXIT_REJECTED` with `Exit was rejected.`. Do not close.
+
+After the delegate returns `Closing`, Core returns the response before the posted `Close` action starts on the UI thread.
+The tool must await `RuntimeQueryHost.StopAsync` in its close path before the process ends.
+The server lets the response write and flush finish within its shutdown bound.
+This lets Core send the response before the process exits, so closing does not cut off the response.
+The tool must commit to closing after `Closing`.
+Its close action must skip its own confirmation and must not veto the approved decision.
+
+The constants are `NO_MAIN_WINDOW`, `USER_CONFIRMATION_REQUIRED`, `PAGE_REJECTED`, `UNKNOWN_PAGE`, `INVALID_ARGUMENTS`, `FILE_EXISTS`, `CAPTURE_UNAVAILABLE`, and `EXIT_REJECTED`.
+Tool capture failures can add their own codes without Core mappings.
+
+For example, register selected generic commands and product commands together:
+
+```csharp
+IReadOnlyList<RuntimeQueryCommand> registered = [];
+var options = new RuntimeQueryGenericCommandOptions(
+    "Example tool", "1.0", () => registered, () => mainWindow,
+    navigation, DecideExit, CloseNormally)
+{
+    DecideExitRequest = request => DecideExitWithConfirmation(request.Confirmed),
+    CaptureScreenshot = CaptureProductionAsync
+};
+var generic = RuntimeQueryGenericCommands.Create(options);
+registered = [.. generic.Where(command => command.Name != "help"), .. productCommands];
+var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
+var handler = RuntimeQueryUiThread.Wrap(
+    (request, version, _) => router.ExecuteAsync(request, version), MapTransportError);
+```
+
+This example selects five generic commands and leaves help with the tool.
+To register generic help, include its record and optionally set `HelpText`.
+The completed `registered` list includes every product command and its risk.
+Use the wrapped handler in the tool's existing server setup.
+
+Headless tests check exact response data, messages, navigation decisions, and deferred closing.
+Exit tests cover both router settings, callback precedence, parser failures, legacy decisions, and response return before `Close` runs.
+Fixed window content verifies PNG dimensions at two scaling values and temporary-file cleanup after success and failure.
+Tests also verify path checks before replacement capture, delegate-owned layout, and unchanged tool failures and exceptions.
+
+Use the already-restored packages with `AVALONIA_TELEMETRY_OPTOUT=1`:
+
+```text
+dotnet build Nvt.Core.sln --no-restore
 dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --no-build
 ```

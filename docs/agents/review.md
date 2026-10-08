@@ -28,6 +28,8 @@ The reviewer checks the following:
 - Required license notices and publication authority.
 - Test results and coverage of changed behavior.
 - Zero-difference evidence when the task extracts code.
+- New or changed state against the 11 rules in [State management](../core/conventions.md#state-management).
+- Each new field, checked with the six questions in [When to group state into one type](../core/conventions.md#when-to-group-state-into-one-type). A class over 30 state members needs a stated reason; three or more fields that match a grouping signal must be grouped.
 
 The review records the head SHA, verdict, findings, file references, and required corrections.
 
@@ -43,6 +45,8 @@ High-risk areas include the following:
 - Recovery and rollback.
 - Process execution and containment.
 - File input and output.
+
+Claude also checks new or changed state against [State management](../core/conventions.md#state-management).
 
 Claude records the head SHA, verdict, remaining risks, and required corrections.
 

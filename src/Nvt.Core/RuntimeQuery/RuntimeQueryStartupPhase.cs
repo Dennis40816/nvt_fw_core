@@ -10,5 +10,7 @@ public enum RuntimeQueryStartupPhase
     /// <summary>The command runs only at startup, before the main window shows.</summary>
     BeforeFirstFrame,
     /// <summary>The command runs after the tool's startup flow or through RuntimeQuery.</summary>
-    AfterStartup
+    AfterStartup,
+    /// <summary>The command runs before the main window shows at startup and also through RuntimeQuery at runtime.</summary>
+    BeforeFirstFrameAndRuntime
 }

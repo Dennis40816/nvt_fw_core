@@ -9,7 +9,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementPolicy.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/UpdateCatalogModels.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherBootstrapContracts.cs`
-- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedLauncherEntry.cs`
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedLauncherEntry.cs`：immutable Bootstrap handoff、receipt、wait-budget 與 exit-code contracts；產品 entry routing 留在 NFC。
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionActivationPolicy.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherMutationFence.cs`
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagerStateStore.cs` — 讀寫結果與介面，以及 writer result、精確存活 custody 合約與 state-store 介面。
@@ -17,19 +17,42 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedInstallationLayout.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs`
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemVersionManagerWriteLease.cs` — exclusive writer acquisition、lock identity 與存活 custody。
-- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs` — `ReadBoundedFileAsync` 的路徑 admission、開啟串流及長度檢查；完整內容讀取交由 Files。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs` — `ReadBoundedFileAsync` 的路徑 admission、開啟串流及長度檢查；完整內容讀取交由 Files；另抽取精確絕對 lifetime-path spelling 與 device／alternate-stream rejection。
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonVersionManagerStateStore.cs` — 明確 raw path、有界位元組讀寫與 writer 委派；產品預設值與嚴格 codec 留在 NFC。
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/JsonLauncherBootstrapStateStore.cs` — injective 路徑推導、有界 raw byte access 與 typed write failure；suffix 設定與嚴格 codec 留在 NFC。
 
 - `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/StableManagedExecutableLaunchLease.cs` (complete lease adapter, PE checks, held measurement and copying; complete-content hashing delegates to Files)
 - `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemManagedVersionRepositoryTests.cs` (`AcquiredApplicationLeaseDeniesExecutableSwapUntilReleased` generic custody assertions only)
 - `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/FileSystemInstalledLauncherRepositoryTests.cs` (generic held lease, ancestor replacement, content and late-child assertions; product schema and repository policy remain in NFC)
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedActivationCoordinator.cs`：application process／READY 介面、results 與 supervision；stable handoff declarations 由 Transport 提供。
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherBootstrapCoordinator.cs` — 完整 Launcher supervisor.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherBootstrapCoordinator.ActiveAttemptRecovery.cs` — 完整 active-attempt recovery.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedProcessLifetimeContracts.cs`：lifetime role、inherited capture outcome 與 capture port。
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedVersionSeedBootstrapper.cs` — canonical seed policy 與 bootstrapper.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedApplicationStartupCoordinator.cs` — READY dispatch；桌面 snapshot 經 initialization 介面投影.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementInitialization.cs` — 唯讀與 writer-qualified initialization dispatch.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementExperience.cs` — initialization、guarded delete 與 operation outcome；source／check／session／UI composition 留在 NFC.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementExperience.Install.cs` — prepared install transaction；catalog selection 為必要 caller 介面.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementExperience.Activation.cs` — activation preparation／cancellation 與 retention acknowledgement.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementExperience.Recovery.cs` — prepared mutation convergence 與 commit helper；retention advice 為必要 caller 介面.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/VersionManagementExperience.State.cs` — durable root／load／recovery 與 inventory projection；source／session snapshot 留在 NFC.
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/AnonymousPipeManagedApplicationProcess.cs` — parent application 啟動、termination helper 與一次性 application READY capture；產品預設值留在 NFC。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/AnonymousPipeManagedLauncherProcess.cs` — managed launcher process adapter；產品 launch-option parsing 留在 NFC。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/BoundedUtf8LineReader.cs` — 完整有界 line reader。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedStartDeadline.cs` — 完整實際 deadline 與 cleanup 時間計算。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedProcessLifetimeLease.cs`：parent lifetime acquisition、observation、Job termination／acceptance，以及包含實體 final-path 檢查的 inherited capture。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/BootstrapStartupProtocol.cs` — START capture／authorization 與 ADMITTED reporting。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/InheritedManagedBootstrapIdentityContext.cs` — 有界 identity serialization 與 capture。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/StableLauncherHandoff.cs`：legacy exact-identity restart、owned executable-lease handoff 與 Bootstrap launch receipt；installation-root admission 由呼叫端負責。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/LauncherBootstrapRuntime.cs`：mechanical startup composition、capture order、READY identity formatting／parsing 與 snapshot-qualified reporting；產品 codec 與 entry routing 留在 NFC。
+- `tests/NvtFwCombiner.ReadyProbe/Program.cs`：START、Bootstrap identity chain、lifetime capture／disposal 與 typed Bootstrap failure mode slices；產品 probe composition 改為合成名稱及 test-only linked execution。
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer。verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。這些 API 不啟動 process。
+`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer。verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。`Nvt.Core.Launcher.Coordination` 透過注入的 process 介面執行 READY supervision；process creation 與原生 custody 由對應機制負責。
 
-抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護、repository/state 介面、raw state access 與 writer custody。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值與介面；experience partial 與嚴格 JSON projection adapter 留在 NFC。原生 custody 結構屬於 Files。嚴格 wire DTO/codec 由產品 owner 保留；execution token、ZIP plan 與測試 hook 為 internal。
+抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護、repository/state 介面、raw state access 與 writer custody。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值、介面及 writer-scoped experience guard；嚴格 JSON projection adapter 留在 NFC。原生 custody 結構屬於 Files。嚴格 wire DTO/codec 由產品 owner 保留；execution token、ZIP plan 與測試 hook 為 internal。
 
 ## Contracts
 
@@ -83,7 +106,7 @@ Catalog admission identity 保留 `version|relative-package-path|invariant-packa
 
 NFC 保留嚴格 state/manifest/catalog DTO 與 codec、canonical wire schema、產品文字、精確 protocol 名稱、套件信任及 release authority、registry locator/replica、retention 與 notification policy、刪除同意、firmware 行為與 UI composition。
 
-NFC 使用 `vendor/nuget/` 中已驗證且版本化的 nupkg，使用精確 `[x]` pin、lock files 及 locked restore。source mapping 將 Core packages 限制於該資料夾；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
+NFC 使用建置時透過 `core-packages.json` 下載的已驗證版本化 Core 套件，並使用精確 `[x]` 版本、lock 檔、locked restore 與限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。Core 與 NFC 獨立 release。只有相應 NFC adapter 已使用 Core 並保持完整 values、event traces 與 output bytes，才刪除重複 executable bodies。影響 UI 的採用要求相同環境下 decoded pixels 零差異。八個 legacy font 值保持不變；Bootstrap package wiring 需要獨立的 Launcher 採用授權。
 
 ## 有界封存讀取
 
@@ -106,7 +129,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 新增的合成測試涵蓋 512 MiB 少一位元組、剛好 512 MiB 及多一位元組；精確及最多讀取模式的相鄰項目長度；零長度項目；部分讀取跨越 65,536 位元組緩衝區的相鄰值；零與負值預算參數；long 計數器；參數及例外順序；溢位寫入邊界；確定性取消；有界故障；借用串流的生命週期；以及自有檔案串流的釋放。執行期檔案測試使用各自唯一的暫存目錄。
 
-NFC 保留嚴格的 manifest 與 admission schema、產品 payload 允許清單、發行信任、韌體中繼資料及安裝政策。NFC 在獨立 pull request 採用移轉機制，使用 `vendor/nuget/` 中已驗證且版本化的 nupkg、精確 `[x]` 套件版本、locked restore 及來源對應；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。只有呼叫端已使用 Core，且原有套件、安裝與產品相容性斷言以不變的值及輸出位元組通過後，NFC 才刪除其通用讀取器。Core 讀取器測試不能證明 NFC 的產品或像素一致性。
+NFC 保留嚴格的 manifest 與 admission schema、產品 payload 允許清單、發行信任、韌體中繼資料及安裝政策。NFC 在獨立 pull request 採用移轉機制，使用建置時透過 `core-packages.json` 下載的已驗證版本化 Core 套件，並使用精確 `[x]` 版本、lock 檔、locked restore 與限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。只有呼叫端已使用 Core，且原有套件、安裝與產品相容性斷言以不變的值及輸出位元組通過後，NFC 才刪除其通用讀取器。Core 讀取器測試不能證明 NFC 的產品或像素一致性。
 
 ## 有界套件驗證
 
@@ -165,7 +188,7 @@ Checksum 使用嚴格 UTF-8、精確的 64 字元小寫 hash、兩個 ASCII 空�
 
 `PackageCeilingTests` 涵蓋凍結的成員、installed-file、目錄、文件、壓縮內容、已宣告的 launcher 與相對路徑上限及相鄰值，也檢查超過執行檔上限的應用程式仍可接受、不依賴中繼資料的實際展開、文件正值與 underreported documents。`PackageVerificationLimitsTests` 涵蓋零／負值、copied limits、原有參數順序、明確 NFC 值及既有 executable identity ceiling。`PackageIdentityAndChecksumTests` 涵蓋 forged normalized identity、launcher owner binding、嚴格 policy 拒絕與 checksum byte grammar。`PackageStreamAndPlanTests` 涵蓋公開介面、借用 custody、確定性取消、有界壓縮讀取故障、Files probe 順序、不可變 plan facts、Dispose、admission 後竄改與 destination write failure。前節 reader 案例直接涵蓋凍結的 512 MiB 實際預算與 overflow sentinel。
 
-NFC 保留嚴格 schema、產品 payload role 與 allowlist、wire grammar、release metadata、韌體資料、信任與發行權限。採用時使用 `vendor/nuget/` 中獨立版本且已驗證的 nupkg、精確 `[x]` 版本、locked restore 與 source mapping；`SOURCE.md` 記錄 reviewed source 與 package SHA-256。原有 NFC schema、套件、安裝、完整值、trace 與輸出位元組斷言通過後，才能刪除已移轉的通用 verifier 與 reader。影響 UI 的採用也必須在同一 recorded environment 維持 decoded pixels。Core 合成測試不能證明 NFC 產品或像素一致性；此 API 也不授權 Bootstrap 套件接線。
+NFC 保留嚴格 schema、產品 payload role 與 allowlist、wire grammar、release metadata、韌體資料、信任與發行權限。採用時使用建置時透過 `core-packages.json` 下載的已驗證版本化 Core 套件，並使用精確 `[x]` 版本、lock 檔、locked restore 與限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。原有 NFC schema、套件、安裝、完整值、trace 與輸出位元組斷言通過後，才能刪除已移轉的通用 verifier 與 reader。影響 UI 的採用也必須在同一 recorded environment 維持 decoded pixels。Core 合成測試不能證明 NFC 產品或像素一致性；此 API 也不授權 Bootstrap 套件接線。
 
 ### 與凍結原始碼的刻意差異
 
@@ -173,6 +196,7 @@ Core 與凍結的 NFC verifier 有三處不同。每一處都是拒絕原始碼�
 
 - `VerifyAsync` 在讀取前先檢查套件 stream 可讀取且可 seek，並檢查候選套件大小不超過 `MaximumPackageBytes`。任一項不符時回傳 `PackageUnavailable`。
 - 讀取途中套件內容改變時，結果是 `PackageUnavailable`。原始碼回傳 `PackageMismatch`。
+- internal plan 步驟有一個 `propagateReadFailures` 旗標。預設為 `false` 時，讀取套件期間的 `IOException`、`UnauthorizedAccessException` 與 `InvalidDataException` 回傳 `PackageUnavailable`，與 `VerifyAsync` 的說明一致。repository 安裝傳入 `true`，讓同樣的例外交給安裝自己的處理程序。該處理程序保留凍結的安裝分類：套件不存在或長度改變為 `PackageUnavailable`，資料格式錯誤為 `InvalidPayload`，其他 I/O 或存取失敗為 `PromotionFailed`。
 - manifest 的檔案項目若名為 `RELEASE-MANIFEST.json` 或 `SHA256SUMS.txt`，會以 `InvalidPayload` 拒絕。
 
 ## Raw state access 與精確 writer custody
@@ -222,7 +246,7 @@ NFC 保留嚴格 app-state／launcher-state codec、schema predicate、JSON dept
 
 ### Persistence 採用規則
 
-NFC 透過 `vendor/nuget/` 中獨立版本且已驗證的 nupkg，使用精確 `[x]` 版本、lock、locked restore 及 package source mapping。`SOURCE.md` 記錄 reviewed source 與 package SHA-256；採用時使用套件，不以 ProjectReference 指向 Core checkout。嚴格 codec 與 state path 保持 narrow adapter；所有 launcher recovery／setup consumer 都共用這個存活 writer capability，檢查精確 app-state path，不建立第二個 lock owner。Caller 使用 Core owner，且原有產品 schema、完整值、trace、輸出 bytes 與 recovery evidence 通過後，NFC 才刪除已移轉的 writer／raw-read／atomic-publication 本體。影響 UI 的採用仍須在相同環境維持 decoded pixels 與既有 legacy font 值；這些 API 不授予 Bootstrap package wiring 或 release authority。
+NFC 使用建置時透過 `core-packages.json` 下載的已驗證版本化 Core 套件，並使用精確 `[x]` 版本、lock 檔、locked restore 與限定至下載資料夾的來源對應。清單記錄每個套件的 Release 標籤與 SHA-256。採用時使用套件，不以 ProjectReference 指向 Core checkout。嚴格 codec 與 state path 保持 narrow adapter；所有 launcher recovery／setup consumer 都共用這個存活 writer capability，檢查精確 app-state path，不建立第二個 lock owner。Caller 使用 Core owner，且原有產品 schema、完整值、trace、輸出 bytes 與 recovery evidence 通過後，NFC 才刪除已移轉的 writer／raw-read／atomic-publication 本體。影響 UI 的採用仍須在相同環境維持 decoded pixels 與既有 legacy font 值；這些 API 不授予 Bootstrap package wiring 或 release authority。
 
 ## Held executable lease
 
@@ -250,3 +274,186 @@ PE 檢查保留最少 64 位元組 DOS header、精確 `MZ`、`0x3C` 的 signed 
 其他案例涵蓋 PE 大小／offset 精確及相鄰邊界、全部 signature 位元組、199,999,999／200,000,000／200,000,001 位元組 sparse executable、每個 acquisition 與 transferred-custody 入口的無效上限、digest／大小順序、取消及 no-replace copy。實際 Windows child 證據使用共用 test probe：複製整個 framework-dependent 輸出目錄，只把 apphost 改為 descriptor 路徑。案例在 custody 持續存活時啟動該執行檔；確定性的 late-child gate 在產生 child 或 marker 前拒絕 start。
 
 NFC 保留嚴格 manifest／admission schema、產品名稱與安全路徑政策、release-coupled identity 權限、firmware、信任、發行核准與產品 process orchestration。採用使用獨立版本 nupkg、精確 `[x]` 版本、locked restore、限制來源映射及記錄的 source／package SHA-256。只有原呼叫端透過此 port 在 start 前後保留相同 held identity、原 schema／產品／值／trace／output 斷言通過，且必要 UI 像素比較相同後，NFC 才刪除舊 lease adapter。Core 測試不授予 Bootstrap 套件 wiring 權限。
+
+## 啟用與 mutation 協調
+
+僅依賴 BCL 的 `Nvt.Core.Launcher.Coordination` API 包含：
+
+- [ManagedActivationCoordinator](../../../src/Nvt.Core/Launcher/Coordination/ManagedActivationCoordinator.cs)：`(managedRoot, stateStore, repository, process, readyDeadline = null)` 與 `RunAsync(token) -> ValueTask<ManagedLauncherResult>`。
+- [LauncherBootstrapCoordinator](../../../src/Nvt.Core/Launcher/Coordination/LauncherBootstrapCoordinator.cs)：`(managedRoot, statePath, appStateStore, launcherStateStore, repository, process, readyDeadline = null)` 與 `RunAsync(token) -> ValueTask<LauncherBootstrapResult>`。
+- [ManagedMutationCoordinator](../../../src/Nvt.Core/Launcher/Coordination/ManagedMutationCoordinator.cs)：明確 managed root 與精確 state path、state／repository／fence 介面，以及必要的 `IManagedPackageSelection`、`IManagedRetentionPolicy`。提供 initialization、READY-qualified initialization、prepared install／delete、activation preparation／cancellation 與 retention acknowledgement。`ManagedMutationSnapshot` 包含 durable state、完整 inventory，以及獨立 state／inventory issue。
+- [ManagedVersionSeedBootstrapper](../../../src/Nvt.Core/Launcher/Coordination/ManagedVersionSeedBootstrapper.cs) 與 `ManagedVersionSeedPolicy`：明確 destination／packaged-seed 介面、canonical single-admission seed policy，以及 `EnsureInitializedAsync(writerLeaseTimeout, token)`。
+- [ManagedApplicationStartupCoordinator](../../../src/Nvt.Core/Launcher/Coordination/ManagedApplicationStartupCoordinator.cs)：執行中版本、必要 READY writer 與 `IManagedApplicationInitialization`；`CompleteStartupAsync(token, isReadOnly = false)` 回傳 READY outcome 與 durable snapshot。
+- [InstalledApplicationCoordinator](../../../src/Nvt.Core/Launcher/Coordination/InstalledApplicationCoordinator.cs)：明確 `ProductDescriptor`、install root、state／repository／process 介面與必要 `IInstalledApplicationPresentation`。`StartAsync(token)` 使用相同 application supervisor。`ReadInstalledApplicationAsync(token)` 讀取 active installation；版本 overload 讀取精確 admitted installed version。
+
+`InstalledApplicationInfo` 提供 product identity、installed version、verified executable path、display name、stable launch entry point 與 icon path。執行檔來自 repository-held custody；presentation 與 shortcut 路徑由 caller 的必要 adapter 原樣提供。Metadata read 驗證完整 admission、healthy inventory 與 executable custody，不做 initialization write 或 recovery。上層建立或移除捷徑；Core 不提供 shortcut writer 或 application registry。同一 app 的所有介面須綁定相同 product identity。Caller 提供 install root 與 update source；source 經已驗證 durable state 與目前 package selection 傳入，Core 不從產品名稱推導。
+
+`IManagedApplicationProcess` 與 `IManagedLauncherProcess` 保留精確 executable lease、READY result／admission 與 authoritative lifetime 合約。Contained creation、inherited handle、Job、protocol decoding 與 cleanup 委派給 process implementation。協調層不宣告 native structure 或 execution token。Process 介面從 start entry 起執行 READY budget；凍結的 cleanup-confirmation extension 最多仍為十秒。
+
+### Writer scope 與 durable 順序
+
+Application supervision 在 load、root validation、完整 inventory、executable custody、launch-journal save、READY 與 commit／rollback 全程持有 state store 的精確 writer receipt。State-store adapter 必須為其精確 canonical app-state path 取得 production writer。預設 READY deadline 為 **20 秒**，application writer wait 為 **五秒**。正值 READY override 原樣傳遞；零與負值依凍結 constructor 順序拒絕。
+
+Launcher startup 使用同一 app-state writer，wait 為 **250 ms**。Process creation 前保存 requested 與 recorded launcher phase；nested READY 期間釋放 writer，之後重新取得同一 writer 並重載兩份 durable state。Commit 要求重載後的 admission、root、active app 與精確 recorded launcher identity 一致。Contention、authority 改變及 save failure 保留 typed outcome；launcher-state store 不提供第二個 writer。Recorded fallback 不以 directory scanning 或 app candidate 取代。
+
+一般 active-attempt guard 只有在 authoritative `Exited` 後才能清除。`Active` 與 `Unavailable` 保留 guard 並阻止第二次 launch。App／launcher journal 保留凍結 cross-journal exclusion predicate，包括 active launcher guard 與 app candidate／rollback recovery 的有限 overlap。Admission 後的一般 failure 與 candidate rollback 分開處理。
+
+`ManagedMutationCoordinator` 在載入或改變 mutation authority 前，另檢查 `VersionManagerWriteLeaseResult.HoldsStatePath(statePath)`。任意 disposable、foreign-path capability 與已 Dispose receipt 回傳 unavailable state。單一 instance 的 mutation semaphore 排序呼叫；production app-state writer 提供跨 process exclusivity。不以私有 lock-file owner、latest-snapshot save coordinator 或 undo service 取代 durable journal。
+
+Install 保留 prepare-save、repository promotion、完整 inventory、retention advice、commit-save 順序；commit 失敗或中斷保留 prepared journal。Recovery 只 admission 與 journal 精確相符且健康的 observed payload；不存在的 install target 可清除 journal，identity 不符仍為 unadmitted。Delete 保留 policy、明確 rollback-loss consent、launcher fallback-owner retirement、prepare-save、guarded filesystem delete、inventory、commit 順序。精確 target 已不存在仍可收斂為 committed；recovery failure 或 unavailable inventory 保留 journal。完整 durable source／registry authority 在兩種轉移後保持不變。
+
+`IManagedPackageSelection` 必須從 caller 目前已驗證 catalog 選出指定版本；source、active-version 或 catalog authority 改變時回傳 null。Core 重新檢查回傳版本，並保留 package factory 的機械 identity／limit 檢查。Source check、discovery supersession 與 source／session／UI snapshot 留在上層，進入 mutation 前由上層 supersede discovery。`IManagedRetentionPolicy` 提供 NFC 凍結 advice：成功 update 且超過 **三個 healthy version** 才提醒，降至 **三個或以下** 可清除提醒。Core 儲存 reminder，不提供 retention threshold、自動刪除或 consent policy。
+
+一般 initialization 以 zero wait 嘗試 writer；READY-qualified initialization 使用五秒 app budget，writer 可用後重載。唯讀 initialization 不取得 writer，也不恢復 prepared mutation。Startup 在每種模式都先回報 READY；只有 `Reported` 使用有界 writer wait，唯讀 startup 始終走唯讀路徑。Seed import 在 preflight 前檢查正值 writer override，不覆蓋 invalid 或不同 root 的 durable state，取得 lease 後重載，只接受一個 canonical admission 與一個 healthy inventory row，不以 directory scanning 尋找 seed。
+
+### 協調測試對應
+
+凍結來源位於 `tests/NvtFwCombiner.Application.Tests/VersionManagement/`；Core 位於 `tests/Nvt.Core.Tests/Launcher/Coordination/`。
+
+| 凍結來源 case | Core case |
+| --- | --- |
+| `ManagedActivationCoordinatorTests.cs:11 ReadyCommitsCandidate` | `ManagedActivationCoordinatorTests.ReadyCommitsCandidate` |
+| `ManagedActivationCoordinatorTests.cs:33 FailureRollsBackExactlyOnce` | `ManagedActivationCoordinatorTests.FailureRollsBackExactlyOnce` |
+| `ManagedActivationCoordinatorTests.cs:200 CandidateLaunchJournalFailureStartsNoProcess` | `ManagedActivationCoordinatorTests.CandidateLaunchJournalFailureStartsNoProcess` |
+| `ManagedActivationCoordinatorTests.cs:277 ReadyCommitFailureRestartsDirectlyIntoRecordedRollback` | `ManagedActivationCoordinatorTests.ReadyCommitFailureRestartsDirectlyIntoRecordedRollback` |
+| `ManagedActivationCoordinatorTests.cs:310 RollbackCommitFailureRestartsOnlyRecordedFallback` | `ManagedActivationCoordinatorTests.RollbackCommitFailureRestartsOnlyRecordedFallback` |
+| `ManagedActivationCoordinatorTests.Concurrency.cs:10 ConcurrentLaunchersStartRequestedCandidateOnlyOnce` | `ManagedActivationCoordinatorTests.ConcurrentLaunchersStartRequestedCandidateOnlyOnce` |
+| `ManagedActivationCoordinatorTests.ActiveLaunchAttemptRecovery.cs:9 ActiveTerminationUnconfirmedBlocksSecondRunThenRecoversAfterExit` | `ManagedActivationCoordinatorTests.ActiveTerminationUnconfirmedBlocksSecondRunThenRecoversAfterExit` |
+| `LauncherBootstrapCoordinatorTests.cs:16 FirstVerifiedLauncherBecomesActiveOnlyAfterReadyAndDurableReload` | `LauncherBootstrapCoordinatorTests.FirstVerifiedLauncherBecomesActiveOnlyAfterReadyAndDurableReload` |
+| `LauncherBootstrapCoordinatorTests.cs:364 EveryCandidateStateSaveFailureFailsClosed` | `LauncherBootstrapCoordinatorTests.EveryCandidateStateSaveFailureFailsClosed` |
+| `VersionManagementExperienceTests.Transaction.cs:9 InstallCommitSaveFailureConvergesFromDurableJournalAfterRestart` | `ManagedMutationCoordinatorTests.InstallCommitSaveFailureConvergesFromDurableJournalAfterRestart` |
+| `VersionManagementExperienceTests.DeleteRecoveryTransaction.cs:84 DeleteRecoveryCommitSaveFailureRemainsJournaledUntilNextRestart` | `ManagedMutationCoordinatorTests.DeleteRecoveryCommitSaveFailureRemainsJournaledUntilNextRestart` |
+| `ManagedActivationCoordinatorTests` 與 concurrency／fail-closed／launch-lease／active-recovery partial 的其餘通用 cases | `ManagedActivationCoordinatorTests` 與 `LauncherBootstrapCoordinatorTests` 的同名方法 |
+| `LauncherBootstrapCoordinatorTests` 與 `ActiveRecoveryMatrix` cases | `LauncherBootstrapCoordinatorTests` 同名方法；builder／store／process double 保留來源 assertions |
+| `VersionManagementExperienceTests.Transaction`、`DeleteRecoveryTransaction` 的通用 cases | `ManagedMutationCoordinatorTests` 同名方法；source／catalog policy 改用合成 selection 介面 |
+| `ManagedVersionSeedBootstrapperTests` | `ManagedVersionSeedBootstrapperTests` 同名方法 |
+| `ManagedApplicationStartupCoordinatorTests` READY／唯讀 dispatch | `ManagedApplicationStartupCoordinatorTests` 同名方法 |
+| `ManagedApplicationStartupCoordinatorTests.ManagedReadyInitializationWaitsThenReloadsDurableState` 與一般 zero-wait contention | `ManagedMutationCoordinatorTests.ManagedReadyInitializationWaitsThenReloadsDurableState`，使用 production writer |
+
+`CoordinationCrashMatrixTests` 交叉七種 app state、五種 launcher state 與三種 lifetime result，共 **105 個完整 state／trace cases**；另涵蓋 READY 後 commit 前 crash、兩種 rollback READY commit failure、guard-clear save failure，以及 inventory unavailable 時兩份 serialized journal 的保存。封閉合成 codec 將每個 durable 欄位序列化至實際 temporary state file；process trace 證明 app READY 全程持有 writer，而 launcher READY 釋放後重新取得。`ManagedMutationCoordinatorTests` 另涵蓋真實 writer capability rejection、唯讀 recovery exclusion、兩份 journal fencing、consent／retirement 順序、cancellation 與 callback identity 檢查。
+
+`CoordinationBoundaryTests` 涵蓋預設 20 秒 READY、五秒 app writer、250 ms launcher writer、各預設值前後一 tick、最小正值 override、零／負值、最大 `TimeSpan` 與 canonical seed 零／一／二的數量邊界；這些 cases 驗證協調層 forwarding 與 check order。Native elapsed-time／handle／Job 行為由 contained-process implementation 負責。`InstalledApplicationCoordinatorTests` 組合兩個合成 app，檢查完整 installed／presentation facts、source 保存、共用 READY path、唯讀行為、adapter failure 與 custody disposal。Runtime fixture 使用 system temp 下的唯一資料夾；合成協調測試不證明產品 wire schema、firmware 或 UI parity。
+
+### 協調採用規則
+
+NFC 保留嚴格 state／manifest／catalog codec、product identity／payload policy、source／registry policy、discovery／session／UI composition、retention advice、consent、firmware、信任與發行權限。Adapter 提供 validated state／selected package、精確 state-store writer、product-bound process／repository 介面及 presentation path。完整 engine behavior 必須將 native process、physical repository implementation 與這些 owner 組合。
+
+NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並以精確 `[x]` 套件版本、locked restore 與限定至下載資料夾的來源對應使用 Core。清單記錄每個套件的 Release 標籤與 SHA-256。只有 adapter 使用 Core，且原有完整值、process／writer trace、durable bytes 與 recovery assertion 不變時，NFC 才刪除已移轉的 supervisor 及 journal／mutation 本體。影響 UI 的採用另須相同環境下 decoded pixels 不變，並保持八個 legacy font 值；此抽取不授予套件發布或 Bootstrap package-wiring 權限。
+
+## 封閉安裝與已安裝清單
+
+`Nvt.Core.Launcher.Repository` 新增 `FileSystemManagedVersionRepository`、`FileSystemInstalledLauncherRepository`、`FileSystemLauncherInstallationSelfTest`、`IManagedVersionAdmissionCodec` 與 `InstalledApplicationMetadata`。Repository 必須接收 `ProductDescriptor`、必要的 `IProductPackagePolicy`、明確的 `PackageVerificationLimits` 及嚴格 admission codec。沒有產品預設建構式或寬鬆 codec。呼叫端為每次操作提供 managed root、update-source root 與精確 catalog／installed admission。
+
+本節在前述凍結 baseline 擷取的來源片段：
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.cs`：來源檔 admission、inventory、精確受保護刪除及 application lease 編排；產品 JSON 與 executable role 留在 adapter。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.Installation.cs`：staging、reservation、解壓後 proof、不覆蓋 promotion、冪等性及精確 cleanup；產品進度呈現留在呼叫端。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPackageVerifier.cs`：只有 installed proof 與預期 installed-file 清單。ZIP verification、checksum grammar 及實際位元組 accounting 使用既有 Verification collaborator。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemInstalledLauncherRepository.cs`：owner-bound identity、封閉 topology 及 launcher／application 個別內容 proof。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemLauncherInstallationSelfTest.cs`：依序執行的唯讀 observation 與最後 durable snapshot 比對；產品 state path 與嚴格 state reader 由呼叫端提供。
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/LauncherInstallationSelfTest.cs`：query port 與正規化唯讀 result。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPathSafety.cs`：repository source confinement、精確 version child 與 bounded-read result mapping；安全 payload grammar 使用 Contracts validated receipt 與必要的產品 callback。
+
+`InstallAsync`、`InventoryAsync`、`DeleteAsync`、`VerifyPackageAsync` 與 `AcquireApplicationLaunchLeaseAsync` 保留既有 `IManagedVersionRepository` 簽章。`FileSystemInstalledLauncherRepository` 實作既有 owner-bound verification 與 launch-lease port。ZIP plan、解壓 destination、native handle 與 fault gate 保持 internal。Files 擁有 relative write creation、ancestor／tree custody、held promotion 與精確 cleanup。Repository 不新增 native custody partial，也不使用一般 AtomicOutput 寫入 payload tree。
+
+安裝先取得已存在 managed root 的 held custody，才 admission 來源。已驗證 package plan 保留精確 payload-file 數量、implicit directory 與實際 expanded bytes，再加入 admission document。解壓使用 plan 的 bounded reader 及 admission 後內容 digest；Repository 透過同一 relative write tree 寫入嚴格 adapter 的有界 admission bytes，檢查實體 reservation 與 topology，在 held volume 上不覆蓋地 promotion，擷取精確 promoted immutable tree，並重新驗證完整 installed payload。只有通過此 proof 的相同 admission 才具冪等性；同版不同 identity 絕不取代既有 tree。精確 cleanup 成功時傳遞取消；foreign child 或被替換的 identity 阻止 cleanup 時，回傳 `CleanupIncomplete` 並保留 foreign content。
+
+NFC 明確提供凍結上限：**4,096 archive entries**、**4,097 installed files**、**4,096 installed directories**、**134,217,728 compressed package bytes**、**536,870,912 actual expanded bytes**、**1,048,576 manifest／checksum bytes**、**4,096 admission bytes** 及 **200,000,000 launcher／Bootstrap executable bytes**。Held installed tree 包含 admission 的總上限為 **536,875,008 bytes**。Contracts path receipt 保留 **512 個 relative-path 字元**。Repository 透過既有 verifier 重新檢查 copied positive limits，並使用 Files reservation limits；不為其他 application 放寬任何上限。
+
+Installed proof 先比較嚴格解碼的精確 admission，再檢查 manifest digest 與產品解碼，接著驗證 checksum、實際總內容及封閉檔案清單。Missing、modified、unexpected、unreadable 與 activation-failed observation 保留 typed damage category。完整 directory enumeration 失敗或 unadmitted observation 中的目錄消失時，回傳 `Unavailable`，不發布部分 inventory。健康 self-admission 在呼叫端提交 application state 前，仍只是 unadmitted observation。刪除先檢查取消與 active protection，再套用原有 safe-tree 及精確 admission guard，才移除該精確 version child。
+
+Application lease acquisition 驗證完整 package，並選擇 descriptor 的精確 application path，再把 Files custody 移交既有 executable lease。Launcher lease acquisition 驗證自己的 bytes，並持有完整 declared topology；完整 application activation 負責其他 payload bytes。Self-test 載入嚴格 application／launcher state，檢查精確 root、active、owner 與 transaction predicate，驗證 active launcher，觀察 descriptor 指定且有界的 Bootstrap，並重新讀取兩個 durable snapshot。最後 authority 有變動時，以 `StateChanged` 丟棄兩項 observation；query 不寫 state，也不啟動 process。
+
+`ReadInstalledApplicationAsync(managedRoot, admission, displayName, launchEntryPoint, iconRelativePath, token)` 回傳 installed version、product identity、display name、精確 executable path、呼叫端提供且 fully qualified 的穩定 launch entry point，以及已驗證的 installed icon path。觀察過程需要 application proof 與存活 custody。Display name、launch routing 與 icon selection 屬於呼叫端。回傳 metadata 不授予 launch authority，也不建立或移除桌面捷徑。第二個合成 application 透過同一 repository API 提供不同 descriptor 與 presentation path；process start 仍走既有 contained-process 與 READY 路徑。
+
+### Repository 測試對照
+
+凍結測試位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`，Core 對應測試位於 `tests/Nvt.Core.Tests/Launcher/Repository/`。
+
+| 凍結來源案例 | Core 案例 |
+| --- | --- |
+| `FileSystemManagedVersionRepositoryTests:21 InstallPromotesClosedPayloadAndInventoryDetectsTamper` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `WriteCustody:46 InstallRejectsNestedJunctionRaceWithoutOutsideWriteOrPromotion` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:88 InstallBlocksVerifiedFileRewriteAndRejectsLateChildBeforePromotion` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:119 InstallReportsCleanupIncompleteWhenForeignChildPreventsExactCleanup` | `RepositoryWriteCustodyTests` 同名方法 |
+| `WriteCustody:189 InstallPromotionNeverReplacesLateDestination` | `RepositoryWriteCustodyTests` 同名方法 |
+| `InventoryRead:13 InventoryEnumerationFailureReturnsUnavailableWithoutPartialFacts` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `Security:364 IdenticalInstallIsIdempotentButChangedIdentityConflicts` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| `Security:507 UnadmittedDirectoryIsDamagedAndForgedDeleteIsBlocked` | `FileSystemManagedVersionRepositoryTests` 同名方法 |
+| Inventory disappearing-directory、精確 damage 與 deletion 案例 | `RepositoryInventoryReadTests` 與 `FileSystemManagedVersionRepositoryTests` 對應方法 |
+| Application lease 與 installed-launcher content／custody 斷言 | `InstalledApplicationTests` 對應方法 |
+
+`RepositoryBoundaryTests` 涵蓋 archive、installed-file、directory、admission 與實體 expanded-byte 的精確上限和相鄰值，以及 copied parameter 的零／負值。`RepositoryVerificationBoundaryTests` 從來源檔 repository 入口檢查 compressed-package、manifest／checksum、relative-path 與 executable-parameter 上限及相鄰值。`RepositoryWriteCustodyTests` 新增實體 short write、post-plan tamper denial、underreported ZIP length、ZIP64 overflow、確定性的 staging／promotion 取消及 foreign staging replacement 保留。`RepositoryCrashTests` 在 verified staging 或 promotion 後停止真實 child，並於 restart 檢查實體 prefix 與 unadmitted observation。`LauncherInstallationSelfTestTests` 涵蓋 read 順序、最後 snapshot 變動、唯讀語意及 Bootstrap 上限。Windows custody 或必要 ancestor access 不可用時，native 案例明確 skip；link 與 crash 案例也會明確指出缺少的平台功能。所有 fixture content 均為合成資料，runtime fixture 使用唯一的系統 temporary folder。
+
+### Repository 採用規則
+
+NFC 保留嚴格 manifest／admission／state schema、wire codec、產品必要 member 與 role、source／release trust、firmware data、default path、retention、confirmation 及 notification policy。Adapter 必須提供全部 identity、path policy 與凍結上限；mutation caller 在 journal、repository 與 admission publication 期間，持有既有精確 application-state writer。Repository self-admission 不是 committed state authority。桌面捷徑仍由上層負責。
+
+NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並以精確 `[x]` 套件版本、locked restore 與限定至下載資料夾的來源對應使用 Core。清單記錄每個套件的 Release 標籤與 SHA-256，不新增指向 Core checkout 的 ProjectReference。原有產品 schema、精確 issue／message、完整值、trace、output bytes 與 crash／recovery 斷言透過 adapter 通過後，NFC 才刪除各已移轉的 repository／proof／query 本體。必要 UI 比較在相同 recorded environment 保留 decoded pixels 與八個 legacy font 值。Core 合成測試不能證明產品或 pixel 一致性，也不授權 Bootstrap package wiring。
+
+### 安裝失敗分類
+
+來源檔 verification 將損壞 ZIP 或讀取失敗回傳為 `PackageUnavailable`。安裝保留個別的終止分類順序：已 admission 的 package 消失時為 `PackageUnavailable`、無效 ZIP 或 payload data 為 `InvalidPayload`、其他 I/O 或 access failure 為 `PromotionFailed`；精確 cleanup 失敗時，`CleanupIncomplete` 優先。共用 plan creation 必須為安裝呼叫端保留原始失敗脈絡，同時維持 verification 的 result mapping。
+
+凍結 `FileSystemManagedVersionRepositoryTests.Security.cs` 中的 `MalformedZipFailsWithoutPartialInstallation` 對應 Core `FileSystemManagedVersionRepositoryTests` 的同名方法，檢查兩種不同 result，以及沒有部分 target 或 staging payload。
+
+## READY transport 與 process lifetime
+
+`Nvt.Core.Launcher.Transport` 提供 `AnonymousPipeManagedApplicationProcess` 與 `AnonymousPipeManagedLauncherProcess`，實作既有 `IManagedApplicationProcess` 與 `IManagedLauncherProcess` 介面，保留 `StartUntilReadyAsync` 與 lifetime observation。建構函式要求 descriptor、明確且為正數的 READY 字元上限及明確 named-Job prefix（固定點分隔符號與 path digest 之前的部分）。Application adapter 另要求精確 state path；launcher adapter 要求正數的序列化 Bootstrap identity 上限，且僅接受明確 admitted 的選用 Bootstrap identity。NFC 提供凍結值：application READY 128 字元、launcher READY 4,096 字元、序列化 Bootstrap identity 128 字元，以及原有 Job namespace。Core 不提供產品預設值。
+
+`InheritedPipeApplicationReadySignal(LauncherProtocolNames)` 實作 `IApplicationReadySignal.ReportReadyAsync(ManagedAppVersion, CancellationToken)` 與 `IDisposable`。Capture 移除 inherited application environment entries，並在驗證 expected version 前立即清除 handle inheritance。Reporting 只消耗 handle 一次，寫入精確 UTF-8 bytes `READY:{version}\n`。錯誤 identity、無效 inheritance、unmanaged execution 與重複 reporting 保留不同 outcome。Launcher adapter 捕捉 outer admission authority，並負責其 disposal。
+
+唯一 internal `BoundedUtf8LineReader` 使用嚴格 UTF-8 decoding，計算解碼後的 UTF-16 字元而非 bytes；保留 input stream 開啟、接受 EOF 前完整的 partial line，並在上限檢查後修剪尾端 carriage return。Malformed UTF-8 與 oversized line 被拒絕。Supplementary Unicode 字元計為兩個字元。BOM detection 保持停用。START reader 保留固定八字元上限與 32 字元 buffer；Bootstrap ADMITTED 保留固定 32 字元上限。
+
+Application READY 必須等於精確 version-bound 字串。Launcher READY 綁定 expected launcher executable digest、owner version、owner-admission digest、owner manifest digest 及 protocol，後接精確 admitted application version、Base64 admission identity 與 manifest digest。Admission identity 保留 2,048 字元上限；digest 保留精確 64 個小寫十六進位字元。Base64 payload decoder 保留凍結 replacement fallback，與嚴格 transport decoder 分開。Outer ADMITTED 在 contained creation 後、READY 前只寫一次精確 `ADMITTED\n` bytes；重複成功 reporting 不再發送。此步驟不 hash 完整 package。Bootstrap identity propagation 清除 ambient identity，僅序列化明確 admitted 的 identity。
+
+Parent adapter 與 stable handoff 都呼叫唯一三參數 `Processes.ProcessLaunchGate.StartContained` seam，宣告精確 inherited handles，並執行最終同步 executable-lease validation。Processes 負責原生 suspended creation、inheritance containment 與 resume；Launcher 負責 READY、deadline 計算、lifetime lease、named Job 與 admission。實際 deadline 涵蓋 lease acquisition、creation 與 READY；creation 前 expiry 無法授權建立 process。Cleanup 保留五秒 process termination wait 與原有最多十秒 extension。即使 root 隨後退出，tree termination 失敗仍為 unconfirmed。Coordination 負責 journal fencing 與一般 post-READY crash 政策。
+
+`InheritedManagedProcessLifetime(LauncherProtocolNames, lifetimeJobNamePrefix)` 觀察 advertised lifetime 與 application READY context，並捕捉可 dispose 的 `IInheritedManagedProcessLifetimeCapture`。Capture 依凍結順序消耗五個 lifetime environment entries、接管 file handle，並在檢查 context version、normalized state path、精確 role、精確 Job name 及實體 lease-file path 前清除 inheritance。Bootstrap Job name 要求精確 invocation prefix 及 32 個小寫十六進位字元。Native final-path buffer 固定為 32,768 字元；回傳零或至少 32,768 的長度一律拒絕。只有全部檢查通過後，current process 才加入 protocol-owned Job。Outcome 區分沒有 inheritance、已捕捉 authority 與無效 advertised context。Dispose 先關閉 captured lease，再關閉 Job。
+
+Parent lifetime authority 將精確 exclusive lease、不可繼承的保留 file handle、state path、role 與 named Job 群組保存。Job 使用 kill-on-close 與 descendant accounting；Bootstrap invocation 保留各自 Job name。只有 READY 或成功的 Bootstrap completion 才解除 kill-on-close。Native custody 使用 Files；parent lifetime path spelling 保留凍結 device／alternate-stream 與 normalization 檢查。START authorization 與 ADMITTED reporting 各以單一 atomic lifecycle phase 表示；一同設定的 configuration 與 authority 事實群組為 immutable record。
+
+### Stable handoff 與 Bootstrap composition
+
+`StableLauncherHandoff` 實作 `IStableLauncherHandoff.TryStartLauncherAsync` 與 `IImmutableBootstrapLeaseHandoff.StartAsync(managedRoot, expectedIdentity, ownedLease, token)`。建構函式要求 descriptor、不超過 200,000,000 bytes 的明確正 executable 上限、正 serialized identity 上限、Job prefix、absolute root 與 state paths，以及不超過凍結 500 ms 的正 cleanup observation cap。NFC 提供 200,000,000 bytes、128 字元與 500 ms。Legacy restart 要求精確 inherited Bootstrap identity，並量測 held executable 的 filename、length 與 SHA-256。Owned overload 檢查精確 configured root、working directory 及 descriptor-bound executable path，在所有路徑消耗 lease，並回傳可 dispose 的 launch receipt。Identity serialization argument failure 釋放 transferred authority，並傳遞原 exception。
+
+`IImmutableBootstrapLaunch` 保留一次 START authorization，接著觀察 ADMITTED 與 completion。`ImmutableBootstrapWaitBudget` 允許 operation budget 為零，total budget 必須非負且不小於 operation budget。Admission 與 completion 計算實際時間，僅在剩餘 total budget 與 configured cap 內觀察 cleanup。未完成 creation 仍由 background cleanup 擁有。Exit codes 零與一只有在 admission 後才代表 Ready 與 RolledBack；typed failure 與 unknown code 保持區分，premature EOF 保留 observed failure code。Receipt disposal 中止未接受 launch；已接受且成功的 descendants 繼續存活。Admission／completion waits 保留來源的 caller serialization。`IImmutableBootstrapHandoff` 保留三參數 contract，供 adapter 在重新取得 executable custody 前執行精確 installation-root admission；`StableLauncherHandoff` 提供 owned-lease overload。
+
+`LauncherBootstrapRuntime` 要求 descriptor、明確正 launcher READY 與 identity 上限、Job prefix，以及必要的 composition factory。`LauncherBootstrapRuntimeServices` 要求 application、seed、launcher state stores 與兩個 repository 介面；嚴格產品 codec 與 admission policy 由 factory 提供。`RunEntryAsync` 依序捕捉 lifetime、START、ADMITTED 與 Bootstrap identity，於 lifetime capture 後清除 identity。Partial managed inheritance 在 root validation 或 composition 前失敗。Fully inherited execution 在 state access 前等待精確 START；legacy execution 丟棄 ambient Bootstrap identity。Runtime 組合既有 seed bootstrapper 與 launcher coordinator，保留 numeric entry outcome，包含 unconfirmed termination。
+
+`CaptureNestedReadyContext` 清除 inherited READY entries 與 handle inheritance 後，回傳可 dispose、只能使用一次的 `LauncherReadyInheritance`。`ReportNestedReadyAsync(context, root, statePath, token)` 使用凍結 250 ms acquisition budget 取得精確 application-state writer，重新載入兩份 validated snapshot，檢查 root binding 與 application admission，拒絕 application activation／mutation journals，並選取與 captured identity prefix 精確相符的 pending candidate、previous LKG 或 active launcher。只有 durable qualification 通過後才接管 handle 並寫入精確 READY bytes。此流程不 hash 完整 package，也不以 runtime query 取代 admission。
+
+### Transport 測試對應
+
+凍結來源位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`；Core 對應位於 `tests/Nvt.Core.Tests/Launcher/Transport/`。
+
+| 凍結來源 case 或 slice | Core case |
+| --- | --- |
+| `AnonymousPipeManagedApplicationProcessTests.ExactReadySignalSucceeds`、`InvalidUtf8ReadySignalIsRejected`、`OversizedReadySignalIsRejected`、`InvalidatedTreeLeaseFailsBeforeApplicationProcessStart` | 相同 class 與 method names |
+| `AnonymousPipeManagedApplicationProcessTests.PartialTreeKillFailureIgnoresSubsequentRootExit` | `ManagedProcessTerminationTests.PartialTreeKillFailureIgnoresSubsequentRootExit` |
+| Application 一次性、version-bound 與 malformed inherited READY cases | `InheritedPipeApplicationReadySignalTests` |
+| `HandleContainment.ApplicationReadyHandleIsNonInheritableImmediatelyAfterCapture` 與 invalid-version closure | `InheritedPipeApplicationReadySignalTests.HandleContainment.cs` |
+| `AnonymousPipeManagedLauncherProcessTests.AcceptedOuterReadyKeepsChildAndGrandchildAlive` | 相同 class 與 method name |
+| Launcher 精確 custom state path、candidate timeout／LKG admission reuse 與 exit-17 outcome | `AnonymousPipeManagedLauncherProcessTests` |
+| 四個 `ManagedStartDeadlineTests` cases，包含 `CallerCancellationCannotWaitForeverForUnfinishedCreation` | 相同 class 與 method names |
+| Bootstrap descendant admission／completion cancellation、pre-admission exit、successful completion 與 later invocation failure | `ImmutableBootstrapProcessLaunchTests` 對應方法，保留原 assertion 與 budget |
+| `AnonymousPipeManagedLauncherProcessTests.Identity` legacy handoff authority、cancellation 與 observation failure | `StableLauncherHandoffTests` 對應方法 |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap` legacy ancestor custody、immediate exit 24 與 Win32 creation failure | `StableLauncherHandoffTests.StableLauncherHandoffRetainsAncestorCustodyThroughLegacyStart`、`StableLauncherHandoffReportsImmediateExitCode` 與 `StableLauncherHandoffReportsWin32ProcessCreationFailure`；保留原 result assertion、兩次 blocked rename 與注入的 Win32 error 5 |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap.BootstrapAdmissionThenExitNineteenRemainsTerminationUnconfirmed` | `ImmutableBootstrapProcessLaunchTests` 同名方法；精確 newline ADMITTED、原 budget，以及 admission 後 completion uncertainty 與 exit code 19 |
+| 有界 inherited identity roundtrip、malformed context 與 environment failure | `InheritedManagedBootstrapIdentityContextTests` |
+| Direct／partial START inheritance、精確 START 與 abort authorization | `BootstrapStartupProtocolTests` |
+| Inherited lifetime 與實體 final-path predicates | `InheritedManagedProcessLifetimeTests` 與 `ManagedLifetimeNativePathTests` |
+| Immutable Bootstrap receipt shapes、numeric exit meanings 與 budgets | `ImmutableBootstrapContractsTests` |
+| Bootstrap capture order、START-before-composition 與 snapshot-qualified one-use READY | `LauncherBootstrapRuntimeTests` |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap:883 BootstrapAdmissionSlowCleanupReturnsTypedUncertaintyWithinTotalDeadline` 與 `:929 BootstrapCompletionSlowCleanupReturnsTypedUncertaintyWithinCleanupBudget` | `ImmutableBootstrapProcessLaunchTests` 同名方法；保留原非零 budget、elapsed window、typed uncertainty 與最終 lifetime release |
+| `AnonymousPipeManagedLauncherProcessTests.Identity` ambient denial、malformed identity 與 explicit identity propagation | `AnonymousPipeManagedLauncherProcessTests.ManagedLauncherDoesNotLaunderAmbientBootstrapIdentity`、`ManagedLauncherClearsMalformedIdentityAndStillReachesReady` 與 `ManagedLauncherPropagatesOnlyExplicitBootstrapIdentity`；Core-linked child 的六行 observation |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap.Descendants.BootstrapIdentityIsInheritedCapturedClearedAndRequiresManagedLifetime` | `LinkedBootstrapTests` 同名方法；owned handoff、nested contained child、精確六行內容及 manual-child denial |
+| `AnonymousPipeManagedApplicationProcessTests.Bootstrap` real exit 22 與 EOF-before-delayed-exit 18 | `LinkedBootstrapTests.BootstrapRealExitTwentyTwoPreservesInvalidInheritedContext` 與 `BootstrapPipeEofBeforeDelayedExitPreservesStateUnavailable` |
+| `ManagedProcessLifetimeLeaseTests` required inheritance、wrong-path／swapped-role rejection，以及 probe capture／disposal slice | `LinkedLifetimeCaptureTests` 在 Application、Bootstrap、Launcher 各 role 的實際成功／拒絕；captured-handle inheritance clearing、五個 consumed variables 與 child 退出前的 explicit disposal |
+| START probe slice 與 Bootstrap runtime entry composition | `LinkedBootstrapTests.BootstrapReadyRequiresExactStartBeforeLifetimeCapture`、`CompleteManagedRuntimeWaitsForStartBeforeComposition` 與 `UnauthorizedRuntimeStartReturnsExactExitBeforeComposition`；`LauncherBootstrapRuntimeTests.IdentityIsClearedAfterLifetimeCaptureAndBeforeAuthorizedComposition` 也執行 linked runtime |
+
+`BoundedUtf8LineReaderTests` 覆蓋 8、32、128 與 4,096 字元的低於上限一字元／等於／高於一字元邊界、multibyte UTF-8、supplementary 字元、EOF、CR trimming、malformed encoding、default buffer sentinel，以及 cancellation 不關閉 stream。Protocol tests 覆蓋 admission 長度 0／1／2,047／2,048／2,049、digest 長度 63／64／65、serialized identity 長度 127／128／129，以及明確正上限的零／負輸入。Native-path tests 檢查精確 buffer 與 32,767／32,768／32,769 returned-length 邊界。Handoff tests 涵蓋 executable 與 cleanup cap、serialization refusal 後的 lease disposal 與 reacquisition。Termination 與 deadline tests 將最小正 duration 的 acceptance 與 scheduling 分開，並涵蓋 native integer wait bounds、timer bounds、creation 前後 cancellation 與凍結 cleanup threshold。成功 native termination assertion 保留五秒 budget。
+
+合成 BCL probe modes 驗證 parent-side exact／wrong／partial READY、malformed UTF-8、oversized line、argument propagation、creation／READY cancellation、post-create failure、Bootstrap admission／completion receipt outcome 與實際 descendants。`ManagedProcessLifetimeLeaseTests` 涵蓋 exclusive non-inheritable custody、獨立 role、實際 Windows Job termination 與 kill-on-close、ambient denial、cross-handle denial 與 exact allowed handles。Processes 負責 suspended post-create failure：`ProcessLaunchGateTests.PostCreateFailureTerminatesSuspendedChildAndReleasesPhysicalPipe`。Native skip 必須指出 scenario 前發現缺少的 capability；受測 observation 保留 assertion，包含十秒內 Exited。BCL probe 提供 parent mechanism evidence。Test-only `Nvt.Core.LinkedProbe` 在實際 child 執行 Core capture、inheritance clearing、process 存活時的 explicit capture disposal、START／runtime composition、identity clearing 與 handoff chain。其精確六位元組 START probe read 保留凍結 probe 文法，production gate 的 bounded-line、CR 與 partial-EOF 語意不變。Parent receipt tree fixture 保留 BCL Job 與 descendant assertions；Core-linked fixture 提供 child capture evidence。Local capture-order hooks 繼續隔離 sequencing，而 runtime ordering test 另在 linked child 透過 public runtime 執行實際 native capture。Mode-table self-check 驗證 dispatch names 唯一。
+
+NFC 保留 entry composition、精確 installation-root admission、嚴格 manifest／state schemas、必要 product admission、protocol names、product ceilings、default paths、trust、release authority 與 Bootstrap package wiring。只有 retained adapter 保留精確值、event traces、wire bytes，且 Core-linked child evidence 覆蓋 child-side library mechanism 後，adoption 才移除重複 bodies。NFC 透過 `core-packages.json` 在 build time 下載已驗證的 versioned package，採用精確 `[x]` versions、Release tags 與 SHA-256、locked restore 及受限 source mapping。

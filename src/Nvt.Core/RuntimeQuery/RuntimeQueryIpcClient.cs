@@ -2,8 +2,10 @@
 
 using System.Diagnostics;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Win32.SafeHandles;
 
 namespace Nvt.Core.RuntimeQuery;
 
@@ -22,6 +24,17 @@ public static class RuntimeQueryIpcClient
         int timeoutMs,
         Func<RuntimeQueryFailure, string?, RuntimeQueryError> error)
     {
+        return SendRequest(pipeName, request, timeoutMs, error, AllowForeground);
+    }
+
+    // The per-call seam lets tests observe permission without changing the foreground or shared state.
+    internal static RuntimeQueryResponseEnvelope SendRequest(
+        string pipeName,
+        RuntimeQueryRequest request,
+        int timeoutMs,
+        Func<RuntimeQueryFailure, string?, RuntimeQueryError> error,
+        Func<uint, bool> allowForeground)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMs);
@@ -33,6 +46,12 @@ public static class RuntimeQueryIpcClient
                 ".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
             var startedAt = Stopwatch.GetTimestamp();
             client.Connect(timeoutMs);
+            if (OperatingSystem.IsWindows() && string.Equals(request.Command?.Trim(), "focus", StringComparison.OrdinalIgnoreCase) &&
+                GetNamedPipeServerProcessId(client.SafePipeHandle, out var serverProcessId))
+            {
+                _ = allowForeground(serverProcessId);
+            }
+
             using var timeoutCts = new CancellationTokenSource(GetRemainingTimeout(timeoutMs, startedAt));
             var cancellationToken = timeoutCts.Token;
             using var reader = new StreamReader(
@@ -72,6 +91,19 @@ public static class RuntimeQueryIpcClient
             _ => Failure(error, RuntimeQueryFailure.ClientError, exception.Message)
         };
     }
+
+    private static bool AllowForeground(uint processId)
+    {
+        return OperatingSystem.IsWindows() && AllowSetForegroundWindow(processId);
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint serverProcessId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllowSetForegroundWindow(uint processId);
 
     private static int GetRemainingTimeout(int timeoutMs, long startedAt)
     {
