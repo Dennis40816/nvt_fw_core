@@ -628,11 +628,11 @@ Use one toggle role per control.
 
 ### Toggle states and danger
 
-These nine states apply to each role.
+These nine states apply to the solid toggle roles.
 Pointer focus shows no ring. Tab focus shows one 2 px ring with a 2 px exterior gap.
 Space toggles the checked state.
 Brush and knob transitions last 150 ms.
-Pressed ToggleButton roles use a 0.98 render scale. The native ToggleSwitch retains its full scale.
+Pressed solid ToggleButton roles use a 0.98 render scale. The native ToggleSwitch retains its full scale.
 Layout dimensions and hit targets stay unchanged.
 
 | State | Segment, tab, and icon fill | Content | Switch track |
@@ -647,7 +647,7 @@ Layout dimensions and hit targets stay unchanged.
 | Disabled checked | `NfcSelectionSurfaceBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
 | Keyboard focus | Retains the current fill. | Retains the current content color. | Retains the current track color. |
 
-Add `danger` to any toggle role or native `ToggleSwitch` for a red checked fill and white content.
+Add `danger` to a solid toggle role or native `ToggleSwitch` for a red checked fill and white content.
 Checked pointer over and pressed share the same darker red.
 Danger toggles use `Nvt.Focus.RingBrush`, including checked keyboard focus.
 Disabled checked controls retain the approved neutral appearance, including danger controls.
@@ -747,3 +747,69 @@ The existing Button roles continue using their current radius resources.
 `ToggleStylesRenderer` checks the layout headlessly and writes images only when `NVT_TOGGLE_IMAGES_DIR` is set.
 It exports `toggle-src-light.png` and `toggle-src-dark.png` at 1320 × 2920 with both shapes and all states.
 Tests cover contrast, runtime resource replacement, exact switch geometry, keyboard input, and literal-free style rules.
+
+### toggleSoft
+
+Use `toggleSoft` for compact filters and optional toolbar choices with a light accent tint when checked.
+It supports text, icons with text, and plain sibling rows without a group border.
+The role uses `NfcControlHeight` at 32 DIP and horizontal padding of 12 DIP.
+
+| State | Fill | Text and icon |
+| --- | --- | --- |
+| Off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftForegroundBrush` |
+| Off pointer over | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftPointerOverForegroundBrush` |
+| Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
+| On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| On pointer over or pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| Disabled, on or off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Keyboard focus | Retains the current fill. | Retains the current foreground. |
+
+The following aliases reuse existing Core resources in both themes.
+They introduce no new color literals.
+Replace one dictionary containing these `Nvt.Toggle.Soft*` keys to update attached controls together.
+
+| Token | Core resource | Light | Dark |
+| --- | --- | --- | --- |
+| `Nvt.Toggle.SoftCheckedBrush` | `NfcAccentSurfaceBrush` | `#EFF3FD` | `#1A2940` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SoftPointerOverBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `Nvt.Toggle.SoftPressedBrush` | `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `Nvt.Toggle.SoftPointerOverForegroundBrush` | `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `Nvt.Toggle.SoftPressedForegroundBrush` | `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `Nvt.Toggle.SoftDisabledForegroundBrush` | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+
+`Nvt.Shape.ControlCornerRadius` supplies the body corners: Pill 999 and Square 6.
+`Nvt.Shape.FocusCornerRadius` supplies the ring corners: Pill 999 and Square 10.
+The existing `ThemeShapes.SetShape` method changes both at runtime.
+
+Keyboard focus uses `focus-visible`, `Nvt.Focus.RingBrush`, and `Nvt.Focus.RingThickness` with a 2 px exterior gap.
+Pointer focus shows no ring.
+Background and foreground transitions last 150 ms.
+Pressed controls use a 0.98 render scale without changing layout or hit targets.
+Space toggles the value, Tab focuses the control, and disabled controls ignore input.
+
+Text and icons share the inherited foreground and meet 4.5:1 contrast in both themes.
+On contrast measures 7.018:1 in Light and 7.674:1 in Dark.
+On pointer over and pressed measure 6.673:1 and 7.672:1 respectively.
+
+Adopt the role in three steps:
+
+1. Merge `ThemeTokens.axaml` and load `ToggleStyles.axaml` after Fluent.
+2. Add `Classes="toggleSoft"`, bind `IsChecked`, and provide content with an inherited foreground.
+3. Remove competing local colors and corners, then verify both themes, both shapes, and keyboard input.
+
+```xml
+<StackPanel Orientation="Horizontal" Spacing="8">
+  <ToggleButton Classes="toggleSoft" Content="Matches only" IsChecked="{Binding MatchesOnly}" />
+  <ToggleButton Classes="toggleSoft" Content="Dedupe" IsChecked="{Binding Dedupe}" />
+</StackPanel>
+```
+
+Load the existing font and icon resources when supplying icon content.
+Bind a vector icon's fill or stroke to the toggle foreground.
+`toggleSoft` uses its tonal palette and has no `danger` variant.
+
+`ToggleSoftRenderer` checks both shapes, text, icons, and every state through headless rendering.
+It writes `toggle-soft-light.png` and `toggle-soft-dark.png` only when `NVT_TOGGLE_IMAGES_DIR` is set.
+Tests disable transitions locally for stable snapshots, as they do for the existing roles.

@@ -2,6 +2,14 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Toggle.SoftCheckedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftCheckedForegroundBrush" ResourceKey="NfcAccentStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPressedBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftForegroundBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedBrush" ResourceKey="NfcAccentBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedPointerOverBrush" ResourceKey="NfcAccentStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SelectedPressedBrush" ResourceKey="NfcAccentStrongBrush" />
@@ -10,6 +18,14 @@
       <StaticResource x:Key="Nvt.Toggle.DangerFillPressedBrush" ResourceKey="NfcDangerTextStrongBrush" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Toggle.SoftCheckedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftCheckedForegroundBrush" ResourceKey="NfcAccentStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPressedBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftForegroundBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
       <!-- Deep fills preserve white content contrast in the dark theme. -->
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" Color="#1148BE" />
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" Color="#0E3C9E" />

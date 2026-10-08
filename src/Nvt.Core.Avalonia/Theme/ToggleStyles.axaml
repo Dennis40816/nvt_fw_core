@@ -182,4 +182,69 @@
   <Style Selector="ToggleButton.toggleSegment:pressed:not(:disabled), ToggleButton.toggleTab:pressed:not(:disabled), ToggleButton.toggleIcon:pressed:not(:disabled), ToggleButton.toggleSwitch:pressed:not(:disabled)">
     <Setter Property="RenderTransform" Value="scale(0.98)"/>
   </Style>
+  <!-- Soft tonal filters work as plain siblings without a group track. -->
+  <Style Selector="ToggleButton.toggleSoft">
+    <Setter Property="Theme" Value="{x:Null}"/>
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftForegroundBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+    <Setter Property="UseLayoutRounding" Value="False"/>
+    <Setter Property="ClipToBounds" Value="False"/>
+    <Setter Property="Opacity" Value="1"/>
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{DynamicResource Nvt.Toggle.TransparentBrush}">
+          <Border x:Name="ToggleBody" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                              RecognizesAccessKey="True" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
+          </Border>
+          <Border x:Name="ToggleFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftPointerOverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftPointerOverForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftPressedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftPressedForegroundBrush}"/>
+    <Setter Property="RenderTransform" Value="scale(0.98)"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:checked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftCheckedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:checked:pointerover:not(:disabled), ToggleButton.toggleSoft:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftPointerOverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftDisabledForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
 </Styles>
