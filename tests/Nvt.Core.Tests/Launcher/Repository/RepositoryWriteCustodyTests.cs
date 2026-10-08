@@ -196,7 +196,7 @@ public sealed class RepositoryWriteCustodyTests
         {
             BeforeExtraction = () => blocked = WriteWasBlocked(packagePath!),
         });
-        packagePath = Path.Combine(fixture.SourceRoot, fixture.Package.Candidate.PackagePath.Value);
+        packagePath = Path.Combine(fixture.SourceRoot, Assert.IsType<string>(fixture.Package.Candidate.PackagePath.Value));
         var installed = await fixture.InstallAsync();
         Assert.True(blocked);
         Assert.True(installed.IsSuccess, installed.Issue.ToString());

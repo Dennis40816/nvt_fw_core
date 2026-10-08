@@ -8,6 +8,23 @@ namespace Nvt.Core.Tests.Lifecycle;
 /// <summary>Tests the stack behavior behind the frozen command and undo tests using synthetic state.</summary>
 public sealed class UndoServiceTests
 {
+    /// <summary>A successful pop proves a nonnull action through the conditional nullable annotation.</summary>
+    [Fact]
+    public void SuccessfulPopAllowsActionWithoutNullSuppression()
+    {
+        var service = new UndoService();
+        bool executed = false;
+        service.Push(() => executed = true, "Restore");
+        if (service.TryPop(out UndoAction? action))
+        {
+            Assert.Equal("Restore", action.Description);
+            action.Undo();
+        }
+        Assert.True(executed);
+        Assert.False(service.TryPop(out UndoAction? empty));
+        Assert.Null(empty);
+    }
+
     /// <summary>A caller can restore a changed value by invoking the popped action.</summary>
     [Fact]
     public void TryPopLetsTheCallerUndoAStateChange()

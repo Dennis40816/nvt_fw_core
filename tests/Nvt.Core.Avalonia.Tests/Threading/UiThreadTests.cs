@@ -38,23 +38,27 @@ public sealed class UiThreadTests
         }
     }
 
-    /// <summary>All four inputs require both thread access and run-loop support.</summary>
-    [AvaloniaTheory]
-    [InlineData(false, false, false)]
-    [InlineData(false, true, false)]
-    [InlineData(true, false, false)]
-    [InlineData(true, true, true)]
-    public void IsUiThreadThatRunsALoopRequiresBothConditions(
-        bool hasThreadAccess, bool dispatcherRunsLoops, bool expected)
+    /// <summary>The running dispatcher accepts background work and executes it on the UI thread.</summary>
+    [AvaloniaFact]
+    public async Task RunningDispatcherSchedulesWorkFromBackgroundThread()
     {
-        try
+        var dispatcher = Dispatcher.UIThread;
+        UiThread.RegisterRunningDispatcher(dispatcher);
+        Assert.True(dispatcher.SupportsRunLoops);
+        Assert.Null(typeof(UiThread).GetMethod("IsUiThreadThatRunsALoop"));
+        await Task.Run(async () =>
         {
-            Assert.Equal(expected, UiThread.IsUiThreadThatRunsALoop(hasThreadAccess, dispatcherRunsLoops));
-        }
-        finally
-        {
-            UiThread.RegisterRunningDispatcher(Dispatcher.UIThread);
-        }
+            Assert.False(dispatcher.CheckAccess());
+            Assert.True(UiThread.TryGetRunningDispatcher(out var registered));
+            Assert.NotNull(registered);
+            await registered.InvokeAsync(() =>
+            {
+                Assert.True(dispatcher.CheckAccess());
+                Assert.True(UiThread.IsCurrent(out var actual, out var application));
+                Assert.Same(dispatcher, actual);
+                Assert.Same(global::Avalonia.Application.Current, application);
+            });
+        });
     }
 
     /// <summary>Null registration identifies the parameter and preserves the registered UI dispatcher.</summary>

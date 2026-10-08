@@ -8,8 +8,8 @@ namespace Nvt.Core.Fonts;
 /// <summary>Provides the embedded Chinese fallback for the font roles.</summary>
 public static class NvtCoreFonts
 {
-    /// <summary>Gets the embedded Noto Sans TC fallback.</summary>
-    public static FontFallback CjkFallback { get; } = new()
+    /// <summary>Gets a fresh embedded Noto Sans TC fallback for the caller to configure.</summary>
+    public static FontFallback CjkFallback => new()
     {
         FontFamily = new FontFamily("avares://Nvt.Core.Fonts/Assets/NotoSansTC#Noto Sans TC"),
     };

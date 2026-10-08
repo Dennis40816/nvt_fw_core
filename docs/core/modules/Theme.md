@@ -463,7 +463,6 @@ NFC must also preserve:
 - Static and dynamic resource lookup modes.
 - Font assets, Inter package version, and fallback order.
 
-
 ## Verification and provenance
 
 This replaces the NFC-derived palette and button roles, reusing PR #71 templates and focus approach in the single `ButtonStyles.axaml` while fixing disabled and active priority. `ThemeTokens.xml` and `ButtonStyles.xml` were deliberately regenerated from the newly approved files; they no longer claim to preserve the old NFC appearance. `ExtractedXamlMatchesFrozenBaseline` still freezes the complete XML, expanding the eight existing font aliases for token comparison. Scroll geometry and its baseline are not changed by this palette update.
@@ -930,3 +929,151 @@ Bind a vector icon's fill or stroke to the toggle foreground.
 `ToggleSoftRenderer` checks both shapes, text, icons, and every state through headless rendering.
 It writes `toggle-soft-light.png` and `toggle-soft-dark.png` only when `NVT_TOGGLE_IMAGES_DIR` is set.
 Tests disable transitions locally for stable snapshots, as they do for the existing roles.
+
+## CheckBox
+
+`ChoiceStyles.axaml` gives native checkboxes a shared Core appearance without an appearance class.
+Merge `ThemeTokens.axaml` into application resources and load `ChoiceStyles.axaml` after Fluent.
+
+The indicator measures 20 × 20 DIP. The label uses `NfcTextBrush`, `NfcUiFontFamily`, and the 13 DIP `NfcFontSize13` body size.
+An 8 DIP gap separates the indicator and label. The whole row accepts input and measures at least 32 DIP high.
+Long string labels wrap and grow the row. The indicator stays aligned with the first line.
+Custom content retains its content template and controls its own text wrapping.
+
+Add `compact` for dense filter lists. It fixes the row height at 24 DIP and retains the 20 DIP indicator.
+Use `compact` only for single-line labels. The row height is fixed, so a wrapped label is clipped.
+The current inventory requires this variant for filter checkboxes.
+
+Space preserves Avalonia's normal two-state cycle. `IsThreeState="True"` cycles unchecked, checked, indeterminate, then unchecked.
+An indeterminate value shows a white dash. A checked value shows a white check mark.
+Disabled choices retain their selection glyph and opacity 1.
+
+### Choice states
+
+These states apply to unchecked, checked, and indeterminate checkboxes and to unchecked and checked radio buttons.
+Focus changes only the exterior ring. Pointer focus shows no ring.
+Keyboard focus shows one 2 DIP `Nvt.Focus.RingBrush` ring with a 2 DIP exterior gap around the row.
+The default focus adorner is disabled.
+Brush transitions last 150 ms. Add `reducedMotion` to the control or an ancestor to disable them.
+
+| State | Indicator fill | Indicator outline | Label |
+| --- | --- | --- | --- |
+| Unchecked rest | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| Unchecked pointer over | `NfcSurfaceSubtleBrush` | `NfcTextSecondaryBrush` | `NfcTextBrush` |
+| Unchecked pressed | `NfcSelectionSurfaceBrush` | `NfcTextStrongBrush` | `NfcTextBrush` |
+| Checked or indeterminate | `Nvt.Toggle.SelectedBrush` | `NfcAccentBorderBrush` | `NfcTextBrush` |
+| Selected pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
+| Selected pressed | `Nvt.Toggle.SelectedPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
+| Disabled unchecked | `NfcSurfaceSubtleBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| Disabled selected | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
+| Keyboard focus | Retains current fill | Retains current outline | Retains current label |
+
+Disabled controls ignore pointer, pressed, and keyboard focus styles.
+White selection content uses `Nvt.Toggle.SelectedLabelBrush` in both themes.
+Dark selected outlines use the brighter Core accent to separate the indicator from adjacent surfaces.
+
+### Choice tokens
+
+`ThemeTokens.axaml` includes `ChoiceTokens.axaml`. Its six geometry tokens have identical Light and Dark values.
+Every color and the radio corner come from an existing Core token. The one new value is the checkbox corner, defined as `Nvt.Choice.CheckBoxCornerRadius`. This family adds no color literals.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Choice.IndicatorSize` | 20 | 20 |
+| `Nvt.Choice.DotSize` | 10 | 10 |
+| `Nvt.Choice.CompactHeight` | 24 | 24 |
+| `Nvt.Choice.CheckBoxCornerRadius` | 6 | 6 |
+| `Nvt.Choice.RowPadding` | `0,6` | `0,6` |
+| `Nvt.Choice.CompactPadding` | `0,2` | `0,2` |
+| `NfcControlHeight` | 32 | 32 |
+| `NfcFontSize13` | 13 | 13 |
+| `NfcSurfaceBrush` | `#FFFFFF` | `#111827` |
+| `NfcSurfaceSubtleBrush` | `#F8FAFC` | `#182337` |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `NfcAccentBorderBrush` | `#1557E9` | `#5FA5FA` |
+| `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` | `#1148BE` |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` | `#0E3C9E` |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.RingThickness` | 2 | 2 |
+
+The check mark reuses `NfcDoneIconGeometry`.
+Checkbox corners use `Nvt.Choice.CheckBoxCornerRadius` (6) in both shapes, so a checkbox never looks like a radio ring. Radio indicators stay circular.
+The row focus ring uses `Nvt.Shape.FocusCornerRadius`: Pill 999, Square 10.
+Call `ThemeShapes.SetShape` at the resource root to update attached choices without replacing their templates.
+Override existing brush resources together in one palette dictionary to update colors at runtime.
+
+The following minimum ratios cover both shapes and five adjacent surfaces, including the pressed surface.
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| Enabled label | 11.866:1 | 10.501:1 |
+| Disabled label | 3.698:1 | 3.783:1 |
+| Indicator outline across all states | 3.257:1 | 3.256:1 |
+| White glyph across all selected states, including disabled | 4.559:1 | 3.422:1 |
+| White glyph on enabled checked fill | 5.879:1 | 7.794:1 |
+| Keyboard focus ring | 4.006:1 | 4.930:1 |
+
+### CheckBox adoption
+
+1. Merge the theme tokens and include the choice styles after Fluent.
+2. Bind `IsChecked` and set `IsThreeState` where an indeterminate value is meaningful.
+3. Apply `compact` to dense filter rows and supply meaningful labels or automation names.
+4. Remove local checkbox templates, foreground overrides, fixed heights, padding overrides, and opacity changes.
+5. Verify both themes, both shapes, pointer input, keyboard input, and disabled selections.
+
+Use `compact` to replace existing 24 DIP filter heights.
+Use the shared body text instead of local 14 DIP medium text.
+
+```xml
+<CheckBox Content="Include archived items" IsChecked="True" />
+<CheckBox Content="Include annotations" IsThreeState="True" IsChecked="{x:Null}" />
+<CheckBox Classes="compact" Content="Include archive" />
+```
+
+## RadioButton
+
+`ChoiceStyles.axaml` also styles native radio buttons without an appearance class.
+Load the same theme tokens and styles described under CheckBox.
+The radio ring measures 20 × 20 DIP and contains a 10 DIP white dot when checked.
+`Nvt.Shape.RoundCornerRadius` keeps the ring round in Pill and Square.
+The label gap, row height, wrapping, focus ring, motion, disabled selection, and `compact` class follow the checkbox rules.
+Radio buttons use the checked and unchecked states in the choice table.
+
+Avalonia retains ownership of selection. No custom control, behavior, or keyboard handler is added.
+Unnamed groups stay scoped to their parent. A shared `GroupName` groups choices across panels within the same root.
+Avalonia 12.1.1 requires host `XYFocus.NavigationModes="Keyboard"` to move focus with arrow keys in a plain `StackPanel`.
+Arrows move focus without changing selection. Space selects the focused radio without clearing it.
+This follows [Avalonia directional focus](https://docs.avaloniaui.net/docs/input-interaction/focus) and the native behavior characterized by the choice tests.
+Automation names and native automation control types remain intact.
+
+### RadioButton adoption
+
+1. Include `ChoiceStyles.axaml` after Fluent and merge the theme tokens.
+2. Keep related radios in a `StackPanel`, or retain existing `GroupName` values for named groups.
+3. Bind `IsChecked` and retain existing labels, commands, and automation names.
+4. Remove local choice templates, ring sizes, dot sizes, colors, corners, and fixed card heights.
+5. Verify selection boundaries and arrow navigation after adoption.
+
+Adopting this family replaces button-like radio navigation, filter templates, and tall choice cards with the shared choice row.
+The common 20/10 DIP indicators replace local 18/8 DIP ring and dot sizes.
+
+```xml
+<StackPanel>
+  <RadioButton Content="Standard review" GroupName="Review" IsChecked="True" />
+  <RadioButton Content="Extended review" GroupName="Review" />
+</StackPanel>
+```
+
+`ChoiceStylesRenderer` checks layout headlessly and writes images only when `NVT_CHOICE_IMAGES_DIR` is set.
+It exports `choice-light.png`, `choice-dark.png`, `choice-square-light.png`, and `choice-before-light.png`, each 1200 pixels wide at 100% scale.
+The comparison shows Fluent and Core controls beside each other.
+Tests cover every state, contrast, row geometry, wrapping, native input, runtime dictionaries, runtime shapes, accessibility, and reduced motion.

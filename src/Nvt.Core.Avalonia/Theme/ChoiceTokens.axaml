@@ -1,0 +1,11 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Choice geometry is identical in Light and Dark. Colors reuse the shared Core palette. -->
+  <x:Double x:Key="Nvt.Choice.IndicatorSize">20</x:Double>
+  <x:Double x:Key="Nvt.Choice.DotSize">10</x:Double>
+  <x:Double x:Key="Nvt.Choice.CompactHeight">24</x:Double>
+  <!-- A checkbox stays a rounded square in Pill and Square, so it never reads as a radio ring. -->
+  <CornerRadius x:Key="Nvt.Choice.CheckBoxCornerRadius">6</CornerRadius>
+  <Thickness x:Key="Nvt.Choice.RowPadding">0,6</Thickness>
+  <Thickness x:Key="Nvt.Choice.CompactPadding">0,2</Thickness>
+</ResourceDictionary>

@@ -2,6 +2,23 @@
 
 # Lifecycle
 
+## 0.9.0 前的不相容變更
+
+`UndoService.TryPop` 現宣告 `[NotNullWhen(true)] out UndoAction? action`。
+空堆疊仍回傳 false 與 null。
+成功彈出仍提供最新動作，不會執行它。
+在成功分支內使用動作，無須 null 抑制：
+
+```csharp
+if (undoService.TryPop(out UndoAction? action))
+{
+    action.Undo();
+}
+```
+
+請依條件式註記重新建置呼叫端。
+保留空堆疊處理與呼叫端負責執行的行為。
+
 `src/Nvt.Core/Lifecycle/`（命名空間 `Nvt.Core.Lifecycle`）提供不依賴 UI 的更新合併與復原堆疊。
 兩個輔助類別都使用呼叫端提供的委派，僅依賴 .NET，不包含 Avalonia、
 dispatcher 或 NFH 型別。
@@ -20,8 +37,8 @@ dispatcher 或 NFH 型別。
   不會自動重試。
 - `UndoService.CanUndo` 表示堆疊是否含有項目。
   `Push(Action undo, string description)` 儲存項目，但不執行動作。
-  `TryPop(out UndoAction action)` 依後進先出順序移除最新項目，但不執行動作。
-  空堆疊會傳回 `false`，並將 `action` 設為 null，保留來源的簽章。
+  `TryPop([NotNullWhen(true)] out UndoAction? action)` 依後進先出順序移除最新項目，但不執行動作。
+  空堆疊會傳回 `false`，並將 `action` 設為 null。true 結果保證動作非 null。
   堆疊未提供同步保護。
 - `UndoAction(string Description, Action Undo)` 是 sealed record。
   堆疊原樣保留描述與委派，由呼叫端執行 `Undo`。
@@ -44,7 +61,7 @@ dispatcher 或 NFH 型別。
     （`RotateSelectedCadPadsCommand_RotatesSelectedPadAndCanUndo`、
     `OffsetSelectedCadOutputFwDiffIndicesCommand_ShiftsSelectedVisibleCadDiffsAndCanUndo`）
 
-實作變更僅限命名空間、將 `CoalescedRefresh` 設為 public、著作權標頭及 API
+原始抽取變更僅限命名空間、將 `CoalescedRefresh` 設為 public、著作權標頭及 API
 文件。方法主體與復原 record 宣告保留凍結來源的實作。四個更新測試均已移植；
 reset 測試重新命名，以描述重新排程而不暗示取消。
 復原測試使用合成值改寫狀態還原與 `CanUndo` 的斷言，並明確由呼叫端執行

@@ -2,6 +2,18 @@
 
 # Processes
 
+## Breaking changes before 0.9.0
+
+`ProcessInheritedHandle.EnvironmentVariable` is now `string?`.
+The uninitialized default contains a null environment name and a zero handle.
+`ProcessLaunchGate.StartContained` rejects that default before callbacks or process creation.
+Validated constructor and `Parse` results retain their exact names and handle values.
+
+Create bindings through the constructor or `Parse` before contained launch.
+Guard the environment name when inspecting a potentially uninitialized binding.
+Keep the parent-owned original handle alive through launch.
+Tests cover default rejection before native work and unchanged valid binding behavior.
+
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.Infrastructure/ExternalTools/BoundedProcessOutputReader.cs` (complete reader and output record).
@@ -32,7 +44,7 @@ The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts
 public readonly record struct ProcessInheritedHandle
 {
     public ProcessInheritedHandle(string environmentVariable, IntPtr handle);
-    public string EnvironmentVariable { get; }
+    public string? EnvironmentVariable { get; }
     public IntPtr Handle { get; }
     public static ProcessInheritedHandle Parse(string environmentVariable, string handle);
 }
@@ -175,7 +187,7 @@ The before-kernel-read test uses a real Windows anonymous pipe and deterministic
 
 ## Contained creation behavior
 
-`Start` and both `StartContained` overloads serialize through the same private static `object` lock. Only starts routed through this API participate in that gate. Ordinary start checks `startInfo` before locking. Contained start checks `startInfo`, `inheritedHandles`, and `validateImmediatelyBeforeStart`, in that order, before locking. The two-argument overload supplies a callback returning true.
+`Start` and both `StartContained` overloads serialize through the same private static `object` lock. Only starts routed through this API participate in that gate. Ordinary start checks `startInfo` before locking. Contained start checks `startInfo`, `inheritedHandles`, and `validateImmediatelyBeforeStart` for null, in that order, then rejects any uninitialized inherited handle with `ArgumentException` (`ParamName == "inheritedHandles"`). All of this happens before locking. The two-argument overload supplies a callback returning true.
 
 `ProcessInheritedHandle` rejects blank names, then names containing `=`, then handles whose signed `ToInt64()` value is nonpositive. Names and values are otherwise unchanged. `Parse` uses `NumberStyles.None` and invariant culture; a parse failure uses `ParamName == "handle"` and `Inherited handle must be a positive decimal value.`. Parsed zero reaches the constructor's nonpositive predicate. Record equality includes the exact name and handle. The default record retains null/zero fields.
 
@@ -200,6 +212,15 @@ Post-create failures retain `Contained process creation failed and the suspended
 
 Outside Windows, contained start runs final validation under the same gate and then calls `Process.Start`, or returns null. Windows-specific restrictions and inheritance allowlists do not apply there. `TryClearInheritance` returns true on other platforms; on Windows it rejects 0 and -1 before `SetHandleInformation`. Native members retain their Windows platform attributes and mutable-layout warning suppression. Core replaces the net9 lock with `object` and stores the same quoting characters in a static readonly array for analyzer compatibility.
 
+### Intentional differences from the frozen source
+
+Core differs from the frozen NFC contained start in one place. It rejects input that the source accepted or failed late.
+
+- An uninitialized inherited handle (null name or zero handle) now throws `ArgumentException` on every platform. The check runs before the callback and before any native work.
+- On Windows the source tried to duplicate the zero handle and failed with `Win32Exception`. Outside Windows the source ignored the handle and started the process. Both cases now throw.
+- The check also runs before the native configuration checks, so `UseShellExecute = true` with a default handle now throws `ArgumentException` instead of `InvalidOperationException`.
+- Valid bindings, callback order and every other rejection keep the frozen behavior.
+
 ## Contained launch test mapping
 
 Contained launch coverage adds 47 documented public test methods and 107 statically enumerated cases: eight ported scenario methods and the input, gate, and preparation boundary methods below.
@@ -221,7 +242,7 @@ Every frozen launch-gate scenario retains its name in `ProcessLaunchGateTests`. 
 
 `ProcessInheritedHandleTests` adds constructor check-order, blank/equals names, exact unnormalized names, zero/negative/positive-one handles, signed pointer extremes, invariant decimal syntax, parser values immediately below/at/above `long.MaxValue`, and record equality. There is no adjustable positive launch-gate limit parameter.
 
-`ProcessLaunchGateBoundaryTests` adds public/internal null order, ordinary `exit` starts, final refusal without a marker, callback failure and gate reuse, ordinary start serialization, native validation order, default-record duplication failure, exact zero/one/two allowlists, duplicate-original bindings, unchanged parent environment, native-create cleanup, and invalid/real-pipe/non-Windows inheritance clearing. A complete probe-folder copy renames only the apphost and exercises raw arguments.
+`ProcessLaunchGateBoundaryTests` adds public/internal null order, ordinary `exit` starts, final refusal without a marker, callback failure and gate reuse, ordinary start serialization, native validation order, default-record rejection before the callback runs, exact zero/one/two allowlists, duplicate-original bindings, unchanged parent environment, native-create cleanup, and invalid/real-pipe/non-Windows inheritance clearing. A complete probe-folder copy renames only the apphost and exercises raw arguments.
 
 `WindowsContainedProcessStarterContractTests` pins empty and nonempty command lines, raw arguments, zero/one/two backslashes, space/tab/quote/newline edges, Unicode, ordinal case-insensitive environment sorting, null omission, empty values, zero/one/two environment entries, and exact terminators. It pins the fixed 5,000-ms confirmation constant; that deadline has no caller-supplied below/above input. The native post-create scenario proves a suspended child cannot run and its physical pipe closes within the original two-second threshold.
 

@@ -2,7 +2,28 @@
 
 # Persistence: LocalJsonDocument and LatestSnapshotPersistenceCoordinator
 
-[`LocalJsonDocument`](../../../src/Nvt.Core/Persistence/LocalJsonDocument.cs) supplies the existing local-state JSON options, host-supplied directory/file-name composition, and streamed deserialization of UTF-8 and BOM-marked UTF-16/UTF-32. It requires a seekable stream and leaves it open. File writing, atomic promotion, size limits, schemas, and fallback policy remain with the host. The extraction changes only the namespace, public visibility, copyright header, and API documentation.
+## Breaking changes before 0.9.0
+
+`LocalJsonDocument.CreateOptions()` replaces the public `Options` field.
+Each call returns an independent mutable copy.
+The codec uses private frozen defaults.
+
+- Replace `LocalJsonDocument.Options` reads with `LocalJsonDocument.CreateOptions()`.
+- Customize the returned copy before its first serializer use.
+- Keep that copy within the caller that owns its configuration.
+
+```csharp
+JsonSerializerOptions options = LocalJsonDocument.CreateOptions();
+options.WriteIndented = false;
+byte[] bytes = JsonSerializer.SerializeToUtf8Bytes(snapshot, options);
+```
+
+Copy customization leaves codec deserialization and later copies unchanged.
+Default encoding, property casing, indentation, escaping, and null omission retain their existing behavior.
+Tests pin exact output bytes and independent option copies.
+
+[`LocalJsonDocument`](../../../src/Nvt.Core/Persistence/LocalJsonDocument.cs) supplies the existing local-state JSON options, host-supplied directory/file-name composition, and streamed deserialization of UTF-8 and BOM-marked UTF-16/UTF-32. It requires a seekable stream and leaves it open. File writing, atomic promotion, size limits, schemas, and fallback policy remain with the host. The original extraction changed the namespace, visibility, copyright header, and API documentation.
+The copy factory now isolates mutable serializer configuration.
 
 [`LatestSnapshotPersistenceCoordinator<TSnapshot>`](../../../src/Nvt.Core/Persistence/LatestSnapshotPersistenceCoordinator.cs) captures host-supplied snapshots synchronously, serializes saves, cancels superseded work, and reports terminal outcomes with request generations. Retry reuses the latest captured value. `CompleteAsync` seals admission and waits for the current save and its observer without cancelling them; `Reopen` preserves the serial tail after a failed close. Save failures are recorded without faulting the tail, and later success does not clear `LastFailure`. The coordinator has no dispose API; hosts await completion before disposing their persistence resources. Besides the namespace, public visibility, copyright header, and API documentation, the sole implementation change is replacing `private readonly Lock _gate` with `private readonly object _gate`. All existing `lock` statements and mutual-exclusion boundaries are unchanged for net8.0 compatibility.
 
