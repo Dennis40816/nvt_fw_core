@@ -67,7 +67,8 @@ options.PropertyNameCaseInsensitive = true;
 
 更新每一個 RuntimeQuery 使用端的 `DesktopRuntimeQuery` 工廠及路由包裝器。
 將你的進入點收到的 token 傳給 `Router.ExecuteAsync(request, version, token)`，或直接使用路由器的方法群組。token 來自 IPC 伺服器的處理委派；沒有伺服器時，來自你自己的進入點。
-傳入啟動 token 給 `ExecuteStartupPhaseAsync` 是選用的。啟動命令之間取消會擲回 `OperationCanceledException`，已執行命令的結果會遺失。工具若要保留視窗在啟動時關閉的舊結果，就不要傳啟動 token。
+傳入啟動 token 給 `ExecuteStartupPhaseAsync` 是選用的。啟動期間取消會擲回 `OperationCanceledException`，已執行命令的結果會遺失。工具若要保留視窗在啟動時關閉的舊結果，就不要傳啟動 token。
+關閉期間，IPC 伺服器把處理委派擲出的任何 `OperationCanceledException`（含無關 token 的）都當成關閉取消，不回報 `HandlerFailed`，也不寫出回應。
 更新 `AppearanceLaunchCommands`、啟動派送與處理委派測試的簽章。
 命令結果、確認資訊傳遞與傳輸位元組保持不變。
 另外兩個已檢視的工具不需原始碼遷移。

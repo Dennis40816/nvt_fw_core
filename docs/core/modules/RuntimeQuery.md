@@ -68,7 +68,8 @@ Customization does not affect transport serialization or other copies.
 
 Update every RuntimeQuery consumer: the `DesktopRuntimeQuery` factories and the router wrappers.
 Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`, or use the router method group. The token comes from the IPC server handler, or from your own entry point when you have no server.
-Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel between startup commands throws `OperationCanceledException`, and the results of commands that already ran are lost. If a tool needs the old result when its window closes during startup, it passes no startup token.
+Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel during startup throws `OperationCanceledException`, and the results of commands that already ran are lost. If a tool needs the old result when its window closes during startup, it passes no startup token.
+During shutdown, the IPC server treats any `OperationCanceledException` that a handler throws as a shutdown cancel, even one from an unrelated token. It reports no `HandlerFailed` and writes no response.
 Update `AppearanceLaunchCommands`, startup dispatch, and handler tests with the new signatures.
 Keep command results, confirmation delivery, and wire bytes unchanged.
 The other two inspected consumers need no source migration.

@@ -116,6 +116,91 @@ public sealed class RuntimeQueryIpcCancellationTests
         }
     }
 
+    /// <summary>A slow cancel callback finishes before DisposeAsync returns, so late handlers see the signal.</summary>
+    [Fact]
+    public async Task DisposeAsyncFinishesSlowCancelCallbacksBeforeReturning()
+    {
+        var finished = false;
+        var events = await RunBlockedHandlerAsync(token => token.Register(() =>
+        {
+            Thread.Sleep(200);
+            Volatile.Write(ref finished, true);
+        }));
+        Assert.True(Volatile.Read(ref finished));
+        Assert.Contains(RuntimeQueryDiagnostic.ShutdownTimedOut, events.Select(e => e.Kind));
+    }
+
+    /// <summary>A throwing cancel callback is reported as a failure and does not hide the timeout.</summary>
+    [Fact]
+    public async Task DisposeAsyncReportsThrowingCancelCallbackAndTimeout()
+    {
+        var events = await RunBlockedHandlerAsync(token => token.Register(() => throw new InvalidOperationException("callback")));
+        var kinds = events.Select(e => e.Kind).ToArray();
+        Assert.Contains(RuntimeQueryDiagnostic.ShutdownFailed, kinds);
+        Assert.Contains(RuntimeQueryDiagnostic.ShutdownTimedOut, kinds);
+    }
+
+    /// <summary>A handler that throws the shutdown token's cancellation is a shutdown cancel, not a handler failure.</summary>
+    [Fact]
+    public async Task HandlerThrowingShutdownCancellationIsNotReportedAsFailure()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var events = new ConcurrentQueue<RuntimeQueryDiagnostic>();
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        await using var server = new RuntimeQueryIpcServer(pipeName, "1", 5000, 1500, RuntimeQueryTestValues.NfhError,
+            (kind, _) => events.Enqueue(kind), async (_, _, token) =>
+            {
+                entered.SetResult();
+                await Task.Delay(Timeout.Infinite, token);
+                return RuntimeQueryResponseEnvelope.Success(null);
+            });
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        server.Start();
+        await SendAsync(client, timeout.Token);
+        await entered.Task.WaitAsync(timeout.Token);
+        await server.DisposeAsync();
+        using var responseBytes = new MemoryStream();
+        var readError = await Record.ExceptionAsync(() => client.CopyToAsync(responseBytes, timeout.Token));
+        Assert.True(readError is null or IOException);
+        Assert.Empty(responseBytes.ToArray());
+        Assert.DoesNotContain(RuntimeQueryDiagnostic.HandlerFailed, events);
+        Assert.Contains(RuntimeQueryDiagnostic.Stopped, events);
+    }
+
+    /// <summary>Runs a handler that never returns, registers a callback on its token, and disposes with a short bound.</summary>
+    private static async Task<List<(RuntimeQueryDiagnostic Kind, Exception? Error)>> RunBlockedHandlerAsync(
+        Func<CancellationToken, CancellationTokenRegistration> register)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        var entered = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var events = new ConcurrentQueue<(RuntimeQueryDiagnostic, Exception?)>();
+        var pipeName = RuntimeQueryTestValues.NewPipeName();
+        await using var server = new RuntimeQueryIpcServer(pipeName, "1", 5000, 100, RuntimeQueryTestValues.NfhError,
+            (kind, error) => events.Enqueue((kind, error)), (_, _, token) =>
+            {
+                register(token);
+                entered.SetResult(token);
+                return release.Task;
+            });
+        await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        server.Start();
+        try
+        {
+            await SendAsync(client, timeout.Token);
+            await entered.Task.WaitAsync(timeout.Token);
+            await server.DisposeAsync();
+            return [.. events];
+        }
+        finally
+        {
+            release.TrySetResult(RuntimeQueryResponseEnvelope.Success(null));
+        }
+    }
+
     private static async Task SendAsync(NamedPipeClientStream client, CancellationToken cancellationToken)
     {
         await client.ConnectAsync(1500, cancellationToken);

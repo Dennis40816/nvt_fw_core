@@ -51,7 +51,7 @@ Tool migration steps:
 
 - Update every RuntimeQuery consumer: the `DesktopRuntimeQuery` factories and the router wrappers, with the new signatures.
 - Supply one invocation-aware handler, or use `RuntimeQueryCommand.FromArgs` for commands that ignore invocation timing.
-- Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`. It comes from the IPC server handler, or from your own entry point when you have no server. Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel between startup commands throws `OperationCanceledException` and the results of commands that already ran are lost. A tool that wants the old result (a failed response when the window closes at startup) passes no startup token.
+- Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`. It comes from the IPC server handler, or from your own entry point when you have no server. Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel during startup throws `OperationCanceledException` and the results of commands that already ran are lost. A tool that wants the old result when the window closes during startup passes no startup token.
 - Update `AppearanceLaunchCommands` and handler tests while preserving command results, confirmation delivery, and transport bytes.
 - Customize JSON through the copy factories. Keep the shared options for transport and default output.
 - The other two inspected consumers need no source migration.
