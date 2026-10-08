@@ -55,6 +55,7 @@ Reversed bounds remain accepted by property storage.
 Clamping checks the lower bound first, then the upper bound.
 Reversed bounds can repeatedly reclamp between competing endpoints. Callers must never supply them.
 The control provides no atomic range update.
+Rejecting a reversed range in a validation callback was withdrawn: the callback has no instance, and a rejected binding update left the source and the target apart. A coerce callback has the instance, as `RangeBase` uses to keep `Maximum` at or above `Minimum`. That option was not evaluated. It would change behavior without changing the API, so a 1.x release could still add it.
 
 Move a range upward by widening `Maximum` before raising `Minimum`:
 

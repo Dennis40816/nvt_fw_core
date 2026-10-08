@@ -415,7 +415,7 @@ Owner 已固定的十三項決定、Core palette、Focus B 與 Fonts 不在未�
 | `images/states-light.png` | 1200 × 1656 | 同上，Light |
 | `images/compare.png` | 2464 × 1024 | 新舊左右並列，Dark 在上、Light 在下，標籤使用 Title 24 |
 
-兩套畫面使用同一份 [synthetic-logs.json](synthetic-logs.json)，共 21 筆事件、18 個去重 group。
+兩套畫面使用同一份合成記錄資料，共 21 筆事件、18 個去重 group。
 NFH 保留原有 14 px Consolas 設定，臨時 headless host 載入本機 Consolas 與 Microsoft JhengHei，避免測試平台缺字。
 這些 Windows 字型沒有加入 Core 或交付資產。
 提案全部使用 `Nvt.Core.Fonts` 嵌入字型。

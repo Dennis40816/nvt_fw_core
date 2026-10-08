@@ -1,0 +1,120 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="CheckBox, RadioButton">
+    <Setter Property="Theme" Value="{x:Null}"/>
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Choice.RowPadding}"/>
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
+    <Setter Property="BorderThickness" Value="2"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}"/>
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="VerticalContentAlignment" Value="Top"/>
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+    <Setter Property="ClipToBounds" Value="False"/>
+    <Setter Property="UseLayoutRounding" Value="False"/>
+    <Setter Property="Opacity" Value="1"/>
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15"/>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+        <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <!-- The transparent row makes the label, gap, and padding part of the native hit target. -->
+        <Grid Background="{DynamicResource Nvt.Toggle.TransparentBrush}">
+          <Border x:Name="ChoiceRow" Padding="{TemplateBinding Padding}">
+            <Grid ColumnDefinitions="Auto,*">
+              <Border x:Name="ChoiceIndicator" Width="{DynamicResource Nvt.Choice.IndicatorSize}"
+                      Height="{DynamicResource Nvt.Choice.IndicatorSize}" VerticalAlignment="Top"
+                      Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                      IsHitTestVisible="False">
+                <Grid>
+                  <Path x:Name="ChoiceCheck" IsVisible="False" Width="12" Height="10" Stretch="Uniform"
+                        Data="{DynamicResource NfcDoneIconGeometry}" Stroke="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"
+                        StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Rectangle x:Name="ChoiceDash" IsVisible="False" Width="10" Height="2"
+                             Fill="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <Ellipse x:Name="ChoiceDot" IsVisible="False" Width="{DynamicResource Nvt.Choice.DotSize}"
+                           Height="{DynamicResource Nvt.Choice.DotSize}" Fill="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+              </Border>
+              <ContentPresenter x:Name="PART_ContentPresenter" Grid.Column="1" Margin="8,0,0,0" MinHeight="20"
+                                Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                RecognizesAccessKey="True" TextWrapping="Wrap" TextTrimming="None"/>
+            </Grid>
+          </Border>
+          <Border x:Name="ChoiceFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Choice.CheckBoxCornerRadius}"/>
+  </Style>
+  <Style Selector="RadioButton">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.RoundCornerRadius}"/>
+  </Style>
+  <Style Selector="CheckBox.compact, RadioButton.compact">
+    <Setter Property="Height" Value="{DynamicResource Nvt.Choice.CompactHeight}"/>
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Choice.CompactHeight}"/>
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Choice.CompactPadding}"/>
+  </Style>
+  <Style Selector="CheckBox:pointerover:not(:disabled), RadioButton:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcTextSecondaryBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:pressed:not(:disabled), RadioButton:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:not(:disabled), CheckBox:indeterminate:not(:disabled), RadioButton:checked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SelectedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:pointerover:not(:disabled), CheckBox:indeterminate:pointerover:not(:disabled), RadioButton:checked:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SelectedPointerOverBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:pressed:not(:disabled), CheckBox:indeterminate:pressed:not(:disabled), RadioButton:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SelectedPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked /template/ Path#ChoiceCheck">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="CheckBox:indeterminate /template/ Rectangle#ChoiceDash">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="RadioButton:checked /template/ Ellipse#ChoiceDot">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="CheckBox:disabled, RadioButton:disabled">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcTextDisabledBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:disabled:checked, CheckBox:disabled:indeterminate, RadioButton:disabled:checked">
+    <Setter Property="Background" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:focus-visible:not(:disabled) /template/ Border#ChoiceFocusRing, RadioButton:focus-visible:not(:disabled) /template/ Border#ChoiceFocusRing">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="CheckBox.reducedMotion, RadioButton.reducedMotion, .reducedMotion CheckBox, .reducedMotion RadioButton">
+    <Setter Property="Transitions" Value="{x:Null}"/>
+  </Style>
+</Styles>
