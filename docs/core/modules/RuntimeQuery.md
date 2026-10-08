@@ -66,8 +66,9 @@ options.PropertyNameCaseInsensitive = true;
 `CreateCompactJsonOptions` and `CreatePrettyJsonOptions` return independent mutable copies of the exact shared defaults.
 Customization does not affect transport serialization or other copies.
 
-Update `DesktopRuntimeQuery` factories and router wrappers on both RuntimeQuery branches.
-Forward the token to `Router.ExecuteAsync(request, version, token)` or use the router method group.
+Update every RuntimeQuery consumer: the `DesktopRuntimeQuery` factories and the router wrappers.
+Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`, or use the router method group. The token comes from the IPC server handler, or from your own entry point when you have no server.
+Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel between startup commands throws `OperationCanceledException`, and the results of commands that already ran are lost. If a tool needs the old result when its window closes during startup, it passes no startup token.
 Update `AppearanceLaunchCommands`, startup dispatch, and handler tests with the new signatures.
 Keep command results, confirmation delivery, and wire bytes unchanged.
 The other two inspected consumers need no source migration.
@@ -416,7 +417,7 @@ The read limit, shutdown bound, client budget and protocol identity have no prod
 
 Pipe writers use compact JSON, UTF-8 without a BOM, and `StreamWriter.WriteLineAsync` with the platform newline (CRLF on Windows). Readers retain the source's `Encoding.UTF8` and disabled encoding detection. The UTF-8 encoding's own preamble is still consumed by `StreamReader`; other encodings are not detected. An open connection with an unterminated response times out. Closing a pipe without a complete frame can produce an IO error, including during reader/writer disposal, as in the source. Pretty output uses the serializer's default platform line endings (CRLF on the Windows baseline); the caller owns its final output newline.
 
-The server keeps waiting for a started handler, so the handler finishes its own cleanup. Shutdown signals the token and, after the bound, closes the pipe and reports `ShutdownTimedOut`. A handler that ignores its token keeps running until it returns, because Core cannot terminate its work. Callers remain responsible for cooperative handler cleanup. These bounded lifecycle changes do not alter request or response bytes.
+The server keeps waiting for a started handler, so the handler finishes its own cleanup. Shutdown signals the token and, after the bound, closes the pipe and reports `ShutdownTimedOut`. A handler that ignores its token keeps running until it returns, because Core cannot terminate its work. `Stopped` is not reported until that handler returns, and a diagnostic event can arrive after `DisposeAsync` returns. Callers remain responsible for cooperative handler cleanup. These bounded lifecycle changes do not alter request or response bytes.
 
 ## Pipe security
 

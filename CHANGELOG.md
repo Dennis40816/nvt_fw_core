@@ -19,7 +19,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - `ProcessInheritedHandle.EnvironmentVariable` changes to `string?`. Guard uninitialized bindings. Both `ProcessLaunchGate.StartContained` overloads reject defaults before callbacks or native work.
 - `UpdateCatalogPackagePath.Value` changes to `string?`. Its positional constructor parameter and `Deconstruct` output become nullable. Guard raw paths. `UpdateCatalogVersionSnapshot.Create` still rejects default paths and preserves validated identities.
 
-**RuntimeQuery cancellation (API review item P1).** RuntimeQuery carries cancellation through one execution handler.
+**RuntimeQuery cancellation.** RuntimeQuery carries cancellation through one execution handler.
 Shared protocol defaults are read-only before first use.
 Confirmation delivery, startup eligibility, command order, response defaults, and wire bytes remain unchanged.
 
@@ -45,13 +45,13 @@ The table lists changed members and new migration factories.
 | `RuntimeQueryUiThread.Wrap` | Dispatches already cancelled requests | Checks cancellation before dispatch and before queued work begins |
 | `RuntimeQueryGenericCommandOptions.CaptureScreenshot` | Receives `CancellationToken.None` | Receives the invocation token. The delegate signature stays unchanged. |
 | `RuntimeQueryGenericCommands.Create` | Handlers omit cancellation | Handlers check cancellation before effects and forward it to screenshot capture |
-| `RuntimeQueryIpcServer.DisposeAsync` | Bounded shutdown can detach its handler wait | Bounded shutdown signals cancellation. Started handlers retain their cooperative execution and cleanup. |
+| `RuntimeQueryIpcServer.DisposeAsync` | Bounded shutdown can detach its handler wait | Bounded shutdown signals cancellation. Started handlers retain their cooperative execution and cleanup. A diagnostic event can arrive after `DisposeAsync` returns, and `Stopped` is not reported while a handler that ignores its token is still running. |
 
 Tool migration steps:
 
-- Update `DesktopRuntimeQuery` factories and router wrappers on both RuntimeQuery branches with the new signatures.
+- Update every RuntimeQuery consumer: the `DesktopRuntimeQuery` factories and the router wrappers, with the new signatures.
 - Supply one invocation-aware handler, or use `RuntimeQueryCommand.FromArgs` for commands that ignore invocation timing.
-- Forward the server token to `Router.ExecuteAsync(request, version, token)` and pass it through startup dispatch.
+- Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`. It comes from the IPC server handler, or from your own entry point when you have no server. Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel between startup commands throws `OperationCanceledException` and the results of commands that already ran are lost. A tool that wants the old result (a failed response when the window closes at startup) passes no startup token.
 - Update `AppearanceLaunchCommands` and handler tests while preserving command results, confirmation delivery, and transport bytes.
 - Customize JSON through the copy factories. Keep the shared options for transport and default output.
 - The other two inspected consumers need no source migration.

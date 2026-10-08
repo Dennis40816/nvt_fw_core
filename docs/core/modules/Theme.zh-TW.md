@@ -554,6 +554,119 @@ NFH 採用時會改變的地方：
 
 目前尚無採用工具。
 
+## ListBox 與下拉選單項目
+
+`ListStyles.axaml` 讓 `ListBoxItem` 與 `ComboBoxItem` 共用外觀。
+ListBox 容器沒有背景、框線與 padding，由應用程式提供周圍表面。
+項目最小高度為 32 DIP，padding 為 10,5。
+在 ListBox 或個別項目加上 `compact`，即可使用高度 24 DIP、padding 10,0 的密集項目。
+ComboBox 本體保留原有主題與範本。
+
+### 清單狀態與 token
+
+靜止時透明，滑鼠移入使用 `NfcSelectionSurfaceBrush`，按下使用 `NfcSecondaryActionPressedBrush`。
+選取項目使用柔和主色表面、主色文字與 2 × 12 DIP 主色標記。標記距左緣 4 DIP，與文字之間留 4 DIP。
+多重選取使用相同外觀。
+停用項目維持 opacity 1，並使用 `NfcTextDisabledBrush`。
+停用且選取時使用 `NfcSelectionSurfaceBrush`。
+鍵盤焦點顯示一個 2 DIP 框，向內縮 2 DIP，避免捲動時裁切。
+滑鼠焦點不顯示框，焦點也不改變清單項目顏色。
+
+基準版本沒有 `toggleSoft` 資源，因此清單別名直接對應 Core 色票。
+同時覆寫 `Nvt.List.Selected*` 資源，即可在執行時替換選取色票。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.List.SelectedBrush` | `#F7F9FE`，`NfcAccentSurfaceSubtleBrush` | `#162034`，`NfcAccentSurfaceSubtleBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#1148BE`，`NfcAccentStrongBrush` | `#8FBFFB`，`NfcAccentStrongBrush` |
+| `Nvt.List.TransparentBrush` | `#00FFFFFF`，`Nvt.Toggle.TransparentBrush` | 相同 |
+| `Nvt.List.CompactHeight` | 24 | 24 |
+
+項目使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
+標記使用 `Nvt.Shape.RoundCornerRadius`。
+焦點沿用 `Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`。
+顏色轉場持續 150 ms，項目或上層的 `reducedMotion` 類別可停用轉場。
+
+## Menu、MenuItem、ContextMenu 與選單分隔線
+
+`MenuStyles.axaml` 提供選單列、彈出命令、右鍵選單與選單分隔線。
+選單項目點擊範圍高 32 DIP，padding 為 10,0。
+項目表面四周預留 4 DIP，容納外側焦點框。
+如此可在捲動範圍內保留一個 2 DIP 框與 2 DIP 間隔。
+
+選單表面使用 `NfcSurfaceBrush`、1 DIP 的 `NfcBorderBrush` 框線與 padding 4。
+表面圓角跟隨共用形狀，並以現有表面圓角 token 為上限。
+Pill 表面圓角為 8 DIP，Square 為 6 DIP。
+表面四周預留透明陰影空間，彈出位置的 offset 會補償這段空間。
+
+### 選單狀態與 token
+
+滑鼠移入、原生選單選取與鍵盤焦點使用 `NfcSelectionSurfaceBrush`。
+按下使用 `NfcSecondaryActionPressedBrush`。
+停用內容使用 `NfcTextDisabledBrush`，opacity 維持 1。
+勾選項目顯示勾號。有圖示時使用 20 DIP 圖示欄。
+快捷鍵文字使用 `NfcTextMutedBrush`，子選單保留箭頭。
+選單列採用相同項目狀態與高度。
+
+焦點框跟隨 Avalonia 的 `:focus-visible` 狀態。
+原生方向鍵導覽保留 Avalonia 的選單選取行為。
+樣式保留方向鍵、Enter、Escape、存取鍵、命令與自動化功能。
+選單分隔線高 1 DIP，使用 `NfcBorderBrush`。
+舊式 `MenuItem Header="-"` 分隔線也採用相同外觀。
+顏色轉場持續 150 ms，`reducedMotion` 也會停用選單轉場。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Menu.PopupShadow` | `0 4 12 0 #26000000` | `0 4 12 0 #66000000` |
+| `Nvt.Menu.PopupShadowMargin` | 16 | 16 |
+| `Nvt.Menu.PopupMaximumCornerRadius` | 8，`NfcSurfaceCornerRadius` | 8，`NfcSurfaceCornerRadius` |
+| `Nvt.Menu.ChevronGeometry` | `M1 1 L5 5 L1 9` | 相同 |
+
+陰影透明度色碼是唯一新增的顏色常值，定義於 `ListTokens.axaml`。
+樣式中的所有顏色與圓角均來自 token 或所屬控制項。
+彈出圓角轉換器為 internal，此控制項家族沒有新增 public C# API。
+
+### 清單與選單採用步驟
+
+1. 將 `ThemeTokens.axaml` 合併到應用程式資源。
+2. 在 Fluent 之後、建立控制項之前載入 `ListStyles.axaml` 與 `MenuStyles.axaml`。
+3. 移除衝突的本地項目主題、顏色、padding、圓角與焦點裝飾。
+4. 保留容器表面、項目內容範本、選取繫結、命令、圖示與無障礙名稱。
+5. 檢查項目內的次要文字。項目樣式會把所有子孫 `TextBlock` 的前景綁到項目前景，所以用樣式類別設定的淡色會失效。請改用區域 `Foreground` 值設定淡色文字。
+6. 在資源根節點設定共用形狀，並驗證兩種主題。
+7. 在真實桌面視窗開啟一次右鍵選單與兩層子選單。彈出陰影需要視窗支援逐像素透明，無頭測試看不出來。
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/MenuStyles.axaml" />
+```
+
+| 採用工具 | 差異與應移除規則 |
+| --- | --- |
+| NFC | 替換 Fluent 清單選取與主色文字下拉項目覆寫。移除本地 ListBox 與 ComboBoxItem 外觀規則。 |
+| NFH | 在原先隱藏選取的工作區項目恢復可見選取。移除這些項目規則、下拉項目覆寫與選單字型覆寫。 |
+| NFU | 將主色填滿選取與 34 DIP 下拉項目改為柔和的 32 DIP 項目。移除共用、inspector 與下拉項目外觀規則。 |
+| 三個工具 | 替換 Fluent 彈出表面與選單狀態。保留項目產生、導覽、命令與容器表面。 |
+
+### 清單與選單驗證
+
+Headless 測試涵蓋兩種主題與形狀、狀態優先順序、精確尺寸、資源替換、對比與原生鍵盤輸入。
+也會驗證捲動、視窗大小與 render scale 改變後，焦點框仍位於項目內。
+以下最低對比在兩種形狀下相同。
+
+| 對比 | Light | Dark |
+| --- | --- | --- |
+| 選取清單文字與標記 | 7.018:1 | 7.674:1 |
+| 停用文字 | 3.903:1 | 4.275:1 |
+| 焦點框對項目填色 | 4.006:1 | 4.930:1 |
+
+`ListMenuStylesRenderer` 僅在設定 `NVT_LIST_IMAGES_DIR` 時匯出。
+輸出 `list-light.png`、`list-dark.png`、`list-square-light.png` 與 `list-before-light.png`。
+所有圖片寬 1200 像素、scale 為 1，每張均小於 1 MB。
+比較圖使用真正的 Fluent 範本，並排顯示 Core 範本。
+
 ## 資源解析
 
 `UiResourceResolver` 為在程式碼中繪製的控制項讀取一個主題資源。每個方法都接收擁有者控制項、資源鍵與後備值。

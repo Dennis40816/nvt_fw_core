@@ -63,7 +63,8 @@ public sealed class RuntimeQueryUiCancellationTests
             // This test body runs on the UI thread. It blocks the queue until the worker has enqueued dispatch, and it cancels before its first await.
             Assert.True(queued.Wait(RuntimeQueryTestValues.WaitBound, TestContext.Current.CancellationToken));
             cancellation.Cancel();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
+            OperationCanceledException canceled = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => execution);
+            Assert.Equal(cancellation.Token, canceled.CancellationToken);
             Assert.Equal(0, calls);
         }
         finally

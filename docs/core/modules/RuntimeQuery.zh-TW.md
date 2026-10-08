@@ -65,8 +65,9 @@ options.PropertyNameCaseInsensitive = true;
 `CreateCompactJsonOptions` 與 `CreatePrettyJsonOptions` 回傳共用預設選項的獨立可修改複本。
 自訂選項不影響傳輸序列化或其他複本。
 
-在兩個 RuntimeQuery 分支更新 `DesktopRuntimeQuery` 工廠及路由包裝器。
-將 token 傳給 `Router.ExecuteAsync(request, version, token)`，或直接使用路由器的方法群組。
+更新每一個 RuntimeQuery 使用端的 `DesktopRuntimeQuery` 工廠及路由包裝器。
+將你的進入點收到的 token 傳給 `Router.ExecuteAsync(request, version, token)`，或直接使用路由器的方法群組。token 來自 IPC 伺服器的處理委派；沒有伺服器時，來自你自己的進入點。
+傳入啟動 token 給 `ExecuteStartupPhaseAsync` 是選用的。啟動命令之間取消會擲回 `OperationCanceledException`，已執行命令的結果會遺失。工具若要保留視窗在啟動時關閉的舊結果，就不要傳啟動 token。
 更新 `AppearanceLaunchCommands`、啟動派送與處理委派測試的簽章。
 命令結果、確認資訊傳遞與傳輸位元組保持不變。
 另外兩個已檢視的工具不需原始碼遷移。
@@ -415,7 +416,7 @@ Core 不提供產品預設的讀取限制、關閉上限、用戶端預算或協
 
 管道寫入端使用精簡 JSON、不含 BOM 的 UTF-8，以及採用平台換行字元的 `StreamWriter.WriteLineAsync`（Windows 為 CRLF）。讀取端保留來源的 `Encoding.UTF8` 並停用編碼偵測。`StreamReader` 仍會消耗 UTF-8 編碼本身的前導碼；不偵測其他編碼。連線保持開啟但回應未以換行結尾時會逾時。未完成框架即關閉管道可能產生 IO 錯誤，包含讀取器／寫入器釋放期間，與來源一致。格式化輸出使用序列化器預設的平台換行字元（Windows 基準為 CRLF）；最後的輸出換行由呼叫端負責。
 
-伺服器會持續等待已開始的處理委派，讓它自行完成清理。關閉時會發出 token 取消通知，超過時間上限後關閉管道並回報 `ShutdownTimedOut`。忽略 token 的處理委派會執行到自行返回，因為 Core 無法終止它的工作。呼叫端仍須負責處理委派的合作式清理。這些有時間上限的生命週期調整不改變請求或回應位元組。
+伺服器會持續等待已開始的處理委派，讓它自行完成清理。關閉時會發出 token 取消通知，超過時間上限後關閉管道並回報 `ShutdownTimedOut`。忽略 token 的處理委派會執行到自行返回，因為 Core 無法終止它的工作。該處理委派返回前不會回報 `Stopped`，診斷事件也可能在 `DisposeAsync` 返回之後才出現。呼叫端仍須負責處理委派的合作式清理。這些有時間上限的生命週期調整不改變請求或回應位元組。
 
 ## Pipe security
 
