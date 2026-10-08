@@ -28,14 +28,19 @@ NFU has no inspected source migration.
 Rebuild its CSV, AtomicOutput, and SourceFileNavigation consumers against the accepted package.
 Integrators must pin the accepted release, update package-download hashes, regenerate locks, and restore in locked mode.
 
+## 0.5.0 - 2026-10-08
+
+No breaking changes since 0.4.0.
+
 ### New modules and features
 
-- Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus.
-- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
+- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners (#120).
+- Theme: add `toggleSoft` for tonal filters with shared color tokens, runtime shapes, and keyboard focus (#124).
 
 ### Internal
 
-- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#86).
+- Launcher: add the four frozen handoff tests that the READY transport was missing (#121).
+- Inputs and Progress: hold each drag in one ScrubSession and derive cancellation requests from job status (#122).
 
 ## 0.4.0 - 2026-10-08
 
