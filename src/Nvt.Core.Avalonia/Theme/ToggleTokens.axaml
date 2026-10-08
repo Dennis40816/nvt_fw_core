@@ -1,0 +1,28 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Toggle.SelectedBrush" ResourceKey="NfcAccentBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SelectedPointerOverBrush" ResourceKey="NfcAccentStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SelectedPressedBrush" ResourceKey="NfcAccentStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.DangerFillBrush" ResourceKey="NfcDangerTextBrush" />
+      <StaticResource x:Key="Nvt.Toggle.DangerFillPointerOverBrush" ResourceKey="NfcDangerTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Toggle.DangerFillPressedBrush" ResourceKey="NfcDangerTextStrongBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <!-- Deep fills preserve white content contrast in the dark theme. -->
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" Color="#1148BE" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" Color="#0E3C9E" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" Color="#0E3C9E" />
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillBrush" Color="#A82035" />
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPointerOverBrush" Color="#861B2C" />
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPressedBrush" Color="#861B2C" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <SolidColorBrush x:Key="Nvt.Toggle.SelectedLabelBrush" Color="#FFFFFF" />
+  <StaticResource x:Key="Nvt.Toggle.KnobBrush" ResourceKey="Nvt.Toggle.SelectedLabelBrush" />
+  <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2563EB" />
+  <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#1D4ED8" />
+  <StaticResource x:Key="Nvt.Toggle.SwitchPressedBrush" ResourceKey="Nvt.Toggle.SwitchPointerOverBrush" />
+  <SolidColorBrush x:Key="Nvt.Toggle.TransparentBrush" Color="#00FFFFFF" />
+</ResourceDictionary>

@@ -6,6 +6,10 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+### New modules and features
+
+- Theme: add FluentPill toggle roles, danger states, and shared runtime Pill/Square shapes with token-based colors and corners.
+
 ## 0.4.0 - 2026-10-08
 
 No breaking changes since 0.3.0.
