@@ -36,7 +36,7 @@ public sealed class ToggleContractTests
         }
         foreach (XElement style in source.Descendants(ThemeContractTests.Presentation + "Style"))
         foreach (string selector in style.Attribute("Selector")!.Value.Split(','))
-            Assert.Matches(@"^\s*(?:ToggleButton\.(?:toggleSegment|toggleTab|toggleIcon|toggleSwitch)|ToggleSwitch|Border\.toggleSegmentGroup)(?:[\s:.>]|$)", selector);
+            Assert.Matches(@"^\s*(?:ToggleButton\.(?:toggleSegment|toggleTab|toggleIcon|toggleSwitch|toggleSoft)|ToggleSwitch|Border\.toggleSegmentGroup)(?:[\s:.>]|$)", selector);
 
         static void AssertResource(string value) => Assert.True(
             value.StartsWith("{DynamicResource ", StringComparison.Ordinal) ||
@@ -49,7 +49,7 @@ public sealed class ToggleContractTests
     [InlineData(true)]
     public void ResourcesResolveAndMotionUsesTransitions(bool dark)
     {
-        foreach (string role in Roles)
+        foreach (string role in Roles.Append("toggleSoft"))
         {
             ToggleButton button = Sample(role, new ToggleState("Rest"));
             Window host = Create(button, dark, snapshot: false);

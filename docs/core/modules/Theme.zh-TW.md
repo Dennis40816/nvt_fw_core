@@ -628,11 +628,11 @@ NFH 零差異採用：
 
 ### 切換狀態與 danger
 
-每個角色皆支援以下九種狀態。
+以下九種狀態適用實心填色的切換角色。
 滑鼠取得焦點時不顯示焦點框。Tab 焦點顯示單一 2 px 焦點框，外側間隙為 2 px。
 Space 切換勾選狀態。
 筆刷與旋鈕轉場皆為 150 ms。
-按下 ToggleButton 角色時，繪製縮放為 0.98；原生 ToggleSwitch 維持原尺寸。
+按下實心填色的 ToggleButton 角色時，繪製縮放為 0.98；原生 ToggleSwitch 維持原尺寸。
 配置尺寸與點擊範圍不變。
 
 | 狀態 | Segment、tab 與 icon 填色 | 內容 | 開關軌道 |
@@ -647,7 +647,7 @@ Space 切換勾選狀態。
 | Disabled checked | `NfcSelectionSurfaceBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
 | Keyboard focus | 保留目前填色。 | 保留目前內容顏色。 | 保留目前軌道顏色。 |
 
-對任一切換角色或原生 `ToggleSwitch` 加上 `danger`，啟用且勾選時即顯示紅底白色內容。
+對實心填色的切換角色或原生 `ToggleSwitch` 加上 `danger`，啟用且勾選時即顯示紅底白色內容。
 勾選後的 pointer over 與 pressed 使用同一個較深紅色。
 Danger 控制項使用 `Nvt.Focus.RingBrush`，勾選後的鍵盤焦點也相同。
 停用且勾選的控制項維持核准圖片的中性外觀，danger 亦同。
@@ -747,3 +747,72 @@ Light 與 Dark 使用相同數值。
 `ToggleStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_TOGGLE_IMAGES_DIR` 時寫入圖片。
 輸出 `toggle-src-light.png` 與 `toggle-src-dark.png`，尺寸為 1320 × 2920，包含兩種形狀與所有狀態。
 測試涵蓋對比、執行期資源替換、精確開關幾何、鍵盤操作，以及禁止樣式內寫死顏色或圓角。
+
+### toggleSoft
+
+`toggleSoft` 適合精簡篩選器與工具列的選用項目，勾選時顯示淡主色底。
+支援純文字、圖示加文字，以及不需群組邊框的並列控制項。
+高度使用 `NfcControlHeight`，預設為 32 DIP；水平內距為 12 DIP。
+
+| 狀態 | 填色 | 文字與圖示 |
+| --- | --- | --- |
+| Off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftForegroundBrush` |
+| Off pointer over | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftPointerOverForegroundBrush` |
+| Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
+| On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| On pointer over 或 pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| Disabled，off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Disabled，on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
+| Keyboard focus | 保留目前填色。 | 保留目前前景色。 |
+
+以下別名在兩種主題皆重用既有 Core 資源，不新增寫死的顏色。
+替換包含這些 `Nvt.Toggle.Soft*` 鍵的單一字典，即可一起更新已掛載的控制項。
+
+| Token | Core 資源 | Light | Dark |
+| --- | --- | --- | --- |
+| `Nvt.Toggle.SoftCheckedBrush` | `NfcAccentSurfaceBrush` | `#EFF3FD` | `#1A2940` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SoftPointerOverBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `Nvt.Toggle.SoftPressedBrush` | `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
+| `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
+| `Nvt.Toggle.SoftPointerOverForegroundBrush` | `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `Nvt.Toggle.SoftPressedForegroundBrush` | `NfcTextStrongBrush` | `#0F172A` | `#F8FAFC` |
+| `Nvt.Toggle.SoftDisabledForegroundBrush` | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
+| `Nvt.Toggle.SoftDisabledCheckedBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+
+本體圓角使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
+焦點圓角使用 `Nvt.Shape.FocusCornerRadius`：Pill 為 999，Square 為 10。
+既有 `ThemeShapes.SetShape` 方法可於執行期一起切換。
+
+鍵盤焦點使用 `focus-visible`、`Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`，外側間隙為 2 px。
+指標焦點不顯示焦點框。
+背景與前景轉場皆為 150 ms。
+按下時使用 0.98 繪製縮放，配置尺寸與點擊範圍不變。
+Space 切換數值，Tab 聚焦控制項，停用控制項忽略輸入。
+
+文字與圖示繼承相同前景色，在兩種主題皆達到 4.5:1 對比。
+On 的對比在 Light 為 7.018:1，Dark 為 7.674:1。
+On pointer over 與 pressed 分別為 6.673:1 與 7.672:1。
+焦點環對頁面底與勾選淡色底的對比，亮色為 4.446:1 至 4.938:1，暗色為 5.573:1 至 7.131:1。測試要求至少 3:1。
+Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1。
+
+採用分成三步：
+
+1. 合併 `ThemeTokens.axaml`，並在 Fluent 後載入 `ToggleStyles.axaml`。
+2. 指定 `Classes="toggleSoft"`、繫結 `IsChecked`，並提供繼承前景色的內容。
+3. 移除衝突的本機顏色與圓角，再驗證兩種主題、兩種形狀與鍵盤操作。
+
+```xml
+<StackPanel Orientation="Horizontal" Spacing="8">
+  <ToggleButton Classes="toggleSoft" Content="Matches only" IsChecked="{Binding MatchesOnly}" />
+  <ToggleButton Classes="toggleSoft" Content="Dedupe" IsChecked="{Binding Dedupe}" />
+</StackPanel>
+```
+
+提供圖示內容時，請載入既有字型與圖示資源。
+向量圖示的填色或筆畫須繫結至切換控制項的前景色。
+`toggleSoft` 使用淡色調色票，沒有 `danger` 變體。
+
+`ToggleSoftRenderer` 以 headless 方式檢查兩種形狀、純文字、圖示與所有狀態。
+只有設定 `NVT_TOGGLE_IMAGES_DIR` 時，才寫入 `toggle-soft-light.png` 與 `toggle-soft-dark.png`。
+測試與既有角色一樣，在本機停用轉場以取得穩定快照。
