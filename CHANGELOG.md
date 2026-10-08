@@ -6,16 +6,25 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-08
+
+No breaking changes since 0.3.0.
+
 ### New modules and features
 
-- RuntimeQuery: `BeforeFirstFrameAndRuntime` runs one command before the first layout and at runtime, with timing supplied through `InvocationHandler`.
-- RuntimeQuery: generic exit gains `DecideExitRequest` and `RuntimeQueryExitRequest`, while `ReceivesConfirmation` lets handlers receive `--confirm` without changing legacy behavior.
+- Icons: `NvtIcons` names 68 Material Symbols glyphs, with one `Nvt.Icon.<Name>` resource each and one shared icon style (#111).
+- RuntimeQuery: generic exit gains `DecideExitRequest` and `RuntimeQueryExitRequest`. `ReceivesConfirmation` lets handlers receive `--confirm` without changing legacy behavior (#115).
+- RuntimeQuery: `BeforeFirstFrameAndRuntime` runs one command before the first layout and at runtime. `InvocationHandler` tells the handler which timing called it (#117).
 
 ### Tools
 
 - `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
-- `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry, except for the App token request, which runs before gh starts. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain.
+- `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry, except for the App token request, which runs before gh starts. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain (#116).
 - `tools/nvt-sched`: tasks run under `conhost.exe --headless`, so no terminal window opens. `list`, `status` and the audit read run results from the runner state, because the headless console hides exit codes (#114).
+
+### Docs
+
+- `ROADMAP.md` records 0.3.0, the version rules and the NFC 1.0.0 condition (#110).
 
 ## 0.3.0 - 2026-10-07
 
