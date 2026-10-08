@@ -29,7 +29,7 @@ public sealed class ListMenuStylesRenderer(ITestOutputHelper output)
         foreach ((bool dark, bool square, string name) in new[]
         {
             (false, false, "list-light.png"), (true, false, "list-dark.png"),
-            (false, true, "list-square-light.png"),
+            (false, true, "list-square-light.png"), (true, true, "list-square-dark.png"),
         })
         {
             Control sheet = Sheet(dark, square);
