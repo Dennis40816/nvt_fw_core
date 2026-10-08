@@ -24,4 +24,6 @@
       <SolidColorBrush x:Key="Nvt.Controls.ExpanderDisabledForegroundBrush" Color="#91A1B9" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
+  <Thickness x:Key="Nvt.Controls.FocusRingMargin">-4</Thickness>
+  <Thickness x:Key="Nvt.Controls.InsetFocusRingMargin">2</Thickness>
 </ResourceDictionary>

@@ -69,14 +69,14 @@
         <Grid Background="{DynamicResource Nvt.Divider.TransparentBrush}">
           <Border x:Name="ExpanderHeaderBody" Background="{TemplateBinding Background}"
                   CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Nvt.Expander.HeaderSpacing}">
               <ContentPresenter x:Name="ExpanderHeaderPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                 Background="{DynamicResource Nvt.Divider.TransparentBrush}" Foreground="{TemplateBinding Foreground}"
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" RecognizesAccessKey="True"
                                 TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1" />
-              <Border Grid.Column="1" Width="20" Height="20" VerticalAlignment="Center">
-                <Path x:Name="ExpanderChevron" Data="M0 0 L6 6 L12 0" Width="12" Height="6"
-                      Stretch="Uniform" StrokeThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+              <Border Grid.Column="1" Width="{DynamicResource Nvt.Expander.ChevronSlotSize}" Height="{DynamicResource Nvt.Expander.ChevronSlotSize}" VerticalAlignment="Center">
+                <Path x:Name="ExpanderChevron" Data="{DynamicResource Nvt.Expander.ChevronGeometry}" Width="{DynamicResource Nvt.Expander.ChevronWidth}" Height="{DynamicResource Nvt.Expander.ChevronHeight}"
+                      Stretch="Uniform" StrokeThickness="{DynamicResource Nvt.Expander.ChevronStrokeThickness}" HorizontalAlignment="Center" VerticalAlignment="Center"
                       Stroke="{TemplateBinding Foreground}" RenderTransform="rotate(0deg)">
                   <Path.Transitions>
                     <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" /></Transitions>
@@ -85,7 +85,7 @@
               </Border>
             </Grid>
           </Border>
-          <Border x:Name="ExpanderFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
+          <Border x:Name="ExpanderFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
         </Grid>

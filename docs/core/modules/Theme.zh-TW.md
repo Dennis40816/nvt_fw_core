@@ -1362,3 +1362,63 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 進度圖展示靜止的不確定進度占位狀態。ProgressBar 與 Separator 不適用互動狀態。
 每個指定控制項、所有 Toggle 角色與 ComboBoxItem 均有獨立執行期測試，且不替換模板。
 仍需業主檢視真實 popup 定位、150 毫秒動作、繁中長標籤與應用組合畫面。
+
+### 導入後幾何 token
+
+以下預設值在兩種形狀與主題中相同。形狀相關圓角仍列於上方形狀 token 表。
+
+| Token | Pill 預設值 | Square 預設值 |
+| --- | --- | --- |
+| `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
+| `Nvt.CheckBox.CheckWidth` | `12` | `12` |
+| `Nvt.CheckBox.CheckHeight` | `10` | `10` |
+| `Nvt.CheckBox.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.CheckBox.DashWidth` | `10` | `10` |
+| `Nvt.CheckBox.DashHeight` | `2` | `2` |
+| `Nvt.Choice.LabelMargin` | `8,0,0,0` | `8,0,0,0` |
+| `Nvt.Choice.LabelMinHeight` | `20` | `20` |
+| `Nvt.Controls.FocusRingMargin` | `-4` | `-4` |
+| `Nvt.Expander.HeaderSpacing` | `10` | `10` |
+| `Nvt.Expander.ChevronSlotSize` | `20` | `20` |
+| `Nvt.Expander.ChevronGeometry` | `M0 0 L6 6 L12 0` | `M0 0 L6 6 L12 0` |
+| `Nvt.Expander.ChevronWidth` | `12` | `12` |
+| `Nvt.Expander.ChevronHeight` | `6` | `6` |
+| `Nvt.Expander.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.List.RowPadding` | `10,5` | `10,5` |
+| `Nvt.List.SelectionIndicatorWidth` | `2` | `2` |
+| `Nvt.List.SelectionIndicatorHeight` | `12` | `12` |
+| `Nvt.List.SelectionIndicatorMargin` | `4,0,0,0` | `4,0,0,0` |
+| `Nvt.Controls.InsetFocusRingMargin` | `2` | `2` |
+| `Nvt.List.CompactPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.PopupOffset` | `-16` | `-16` |
+| `Nvt.Menu.PopupBorderThickness` | `1` | `1` |
+| `Nvt.Menu.PopupPadding` | `4` | `4` |
+| `Nvt.Menu.ItemPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.Menu.GestureMargin` | `24,0,0,0` | `24,0,0,0` |
+| `Nvt.Menu.ChevronWidth` | `6` | `6` |
+| `Nvt.Menu.ChevronHeight` | `10` | `10` |
+| `Nvt.Menu.ChevronMargin` | `16,0,0,0` | `16,0,0,0` |
+| `Nvt.Menu.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.Menu.SubMenuHorizontalOffset` | `-20` | `-20` |
+| `Nvt.Menu.SeparatorThickness` | `1` | `1` |
+| `Nvt.Menu.SeparatorMargin` | `10,4` | `10,4` |
+| `Nvt.Toggle.SegmentGroupPadding` | `4` | `4` |
+| `Nvt.Toggle.SegmentSpacing` | `2` | `2` |
+| `Nvt.Toggle.Height` | `40` | `40` |
+| `Nvt.Toggle.Padding` | `20,0` | `20,0` |
+| `Nvt.Toggle.IconSize` | `40` | `40` |
+| `Nvt.Toggle.SwitchWidth` | `58` | `58` |
+| `Nvt.Toggle.SwitchTrackWidth` | `52` | `52` |
+| `Nvt.Toggle.SwitchTrackHeight` | `28` | `28` |
+| `Nvt.Toggle.SwitchTrackBorderThickness` | `2` | `2` |
+| `Nvt.Toggle.SwitchKnobTravel` | `24` | `24` |
+| `Nvt.Toggle.SwitchKnobMargin` | `6,0,0,0` | `6,0,0,0` |
+| `Nvt.Toggle.SwitchKnobSize` | `22` | `22` |
+| `Nvt.Toggle.SwitchKnobTopOffset` | `3` | `3` |
+| `Nvt.Toggle.SwitchFocusWidth` | `60` | `60` |
+| `Nvt.Toggle.SwitchFocusHeight` | `36` | `36` |
+| `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
+| `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
+
+請參閱 [導入後微調指南（英文）](../post-adoption-tuning.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。

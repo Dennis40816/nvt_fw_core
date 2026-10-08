@@ -59,7 +59,7 @@
                   CornerRadius="{DynamicResource Nvt.GridSplitter.GripCornerRadius}" IsHitTestVisible="False">
             <Border.Transitions><Transitions><BrushTransition Property="Background" Duration="0:0:0.15" /></Transitions></Border.Transitions>
           </Border>
-          <Border x:Name="SplitterFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
+          <Border x:Name="SplitterFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.GridSplitter.FocusCornerRadius}" />
         </Grid>

@@ -1363,3 +1363,63 @@ Each sheet is 1200 pixels wide, uses English labels and scale one, and stays bel
 Progress sheets show the static indeterminate placeholder. Interactive states do not apply to ProgressBar or Separator.
 Dedicated runtime tests cover each requested control, all Toggle roles, and ComboBoxItem without replacing templates.
 Owner review still needs real popup placement, 150 ms motion, long Traditional Chinese labels, and application compositions.
+
+### Post-adoption geometry tokens
+
+These defaults are identical in both shapes and themes. Shape-dependent corners remain in the shape token table above.
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
+| `Nvt.CheckBox.CheckWidth` | `12` | `12` |
+| `Nvt.CheckBox.CheckHeight` | `10` | `10` |
+| `Nvt.CheckBox.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.CheckBox.DashWidth` | `10` | `10` |
+| `Nvt.CheckBox.DashHeight` | `2` | `2` |
+| `Nvt.Choice.LabelMargin` | `8,0,0,0` | `8,0,0,0` |
+| `Nvt.Choice.LabelMinHeight` | `20` | `20` |
+| `Nvt.Controls.FocusRingMargin` | `-4` | `-4` |
+| `Nvt.Expander.HeaderSpacing` | `10` | `10` |
+| `Nvt.Expander.ChevronSlotSize` | `20` | `20` |
+| `Nvt.Expander.ChevronGeometry` | `M0 0 L6 6 L12 0` | `M0 0 L6 6 L12 0` |
+| `Nvt.Expander.ChevronWidth` | `12` | `12` |
+| `Nvt.Expander.ChevronHeight` | `6` | `6` |
+| `Nvt.Expander.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.List.RowPadding` | `10,5` | `10,5` |
+| `Nvt.List.SelectionIndicatorWidth` | `2` | `2` |
+| `Nvt.List.SelectionIndicatorHeight` | `12` | `12` |
+| `Nvt.List.SelectionIndicatorMargin` | `4,0,0,0` | `4,0,0,0` |
+| `Nvt.Controls.InsetFocusRingMargin` | `2` | `2` |
+| `Nvt.List.CompactPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.PopupOffset` | `-16` | `-16` |
+| `Nvt.Menu.PopupBorderThickness` | `1` | `1` |
+| `Nvt.Menu.PopupPadding` | `4` | `4` |
+| `Nvt.Menu.ItemPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.Menu.GestureMargin` | `24,0,0,0` | `24,0,0,0` |
+| `Nvt.Menu.ChevronWidth` | `6` | `6` |
+| `Nvt.Menu.ChevronHeight` | `10` | `10` |
+| `Nvt.Menu.ChevronMargin` | `16,0,0,0` | `16,0,0,0` |
+| `Nvt.Menu.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.Menu.SubMenuHorizontalOffset` | `-20` | `-20` |
+| `Nvt.Menu.SeparatorThickness` | `1` | `1` |
+| `Nvt.Menu.SeparatorMargin` | `10,4` | `10,4` |
+| `Nvt.Toggle.SegmentGroupPadding` | `4` | `4` |
+| `Nvt.Toggle.SegmentSpacing` | `2` | `2` |
+| `Nvt.Toggle.Height` | `40` | `40` |
+| `Nvt.Toggle.Padding` | `20,0` | `20,0` |
+| `Nvt.Toggle.IconSize` | `40` | `40` |
+| `Nvt.Toggle.SwitchWidth` | `58` | `58` |
+| `Nvt.Toggle.SwitchTrackWidth` | `52` | `52` |
+| `Nvt.Toggle.SwitchTrackHeight` | `28` | `28` |
+| `Nvt.Toggle.SwitchTrackBorderThickness` | `2` | `2` |
+| `Nvt.Toggle.SwitchKnobTravel` | `24` | `24` |
+| `Nvt.Toggle.SwitchKnobMargin` | `6,0,0,0` | `6,0,0,0` |
+| `Nvt.Toggle.SwitchKnobSize` | `22` | `22` |
+| `Nvt.Toggle.SwitchKnobTopOffset` | `3` | `3` |
+| `Nvt.Toggle.SwitchFocusWidth` | `60` | `60` |
+| `Nvt.Toggle.SwitchFocusHeight` | `36` | `36` |
+| `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
+| `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
+
+See [Post-adoption tuning](../post-adoption-tuning.md) for token ownership, shared changes, contrast checks and sheet rendering.

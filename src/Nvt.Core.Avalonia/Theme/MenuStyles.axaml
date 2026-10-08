@@ -13,14 +13,14 @@
     <Setter Property="ItemContainerTheme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
   </Style>
   <Style Selector="ContextMenu">
-    <Setter Property="HorizontalOffset" Value="-16" />
-    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="HorizontalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
+    <Setter Property="VerticalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Menu.PopupBorderThickness}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
-    <Setter Property="Padding" Value="4" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.PopupPadding}" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="WindowManagerAddShadowHint" Value="False" />
     <Setter Property="Template">
@@ -47,7 +47,7 @@
     <Setter Property="Theme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
     <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
-    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.ItemPadding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
@@ -82,28 +82,28 @@
               </Grid.ColumnDefinitions>
               <Border Name="MenuCheckSlot" Width="{DynamicResource Nvt.Menu.IconSlotSize}" Margin="{DynamicResource Nvt.Menu.LabelGap}">
               <Path Name="MenuCheck" IsVisible="False" Width="{DynamicResource Nvt.Menu.CheckSize}" Height="{DynamicResource Nvt.Menu.CheckSize}" Margin="0" VerticalAlignment="Center" Stretch="Uniform"
-                    Data="{DynamicResource NfcDoneIconGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="2" />
+                    Data="{DynamicResource NfcDoneIconGeometry}" Stroke="{TemplateBinding Foreground}" StrokeThickness="{DynamicResource Nvt.Menu.CheckStrokeThickness}" />
               </Border>
               <ContentPresenter Name="PART_IconPresenter" Grid.Column="1" Width="{DynamicResource Nvt.Menu.IconSlotSize}" Height="{DynamicResource Nvt.Menu.IconSlotSize}" Margin="{DynamicResource Nvt.Menu.LabelGap}"
                                 IsVisible="False" Content="{TemplateBinding Icon}" VerticalAlignment="Center" />
               <ContentPresenter Name="PART_HeaderPresenter" Grid.Column="2" Content="{TemplateBinding Header}"
                                 ContentTemplate="{TemplateBinding HeaderTemplate}" RecognizesAccessKey="True"
                                 Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
-              <TextBlock Name="PART_InputGestureText" Grid.Column="3" Margin="24,0,0,0" VerticalAlignment="Center"
+              <TextBlock Name="PART_InputGestureText" Grid.Column="3" Margin="{DynamicResource Nvt.Menu.GestureMargin}" VerticalAlignment="Center"
                          Text="{TemplateBinding InputGesture, Converter={StaticResource Nvt.Menu.KeyGestureConverter}}"
                          Foreground="{DynamicResource NfcTextMutedBrush}" />
-              <Path Name="PART_ChevronPath" Grid.Column="4" Width="6" Height="10" Margin="16,0,0,0"
+              <Path Name="PART_ChevronPath" Grid.Column="4" Width="{DynamicResource Nvt.Menu.ChevronWidth}" Height="{DynamicResource Nvt.Menu.ChevronHeight}" Margin="{DynamicResource Nvt.Menu.ChevronMargin}"
                     Data="{DynamicResource Nvt.Menu.ChevronGeometry}" Stroke="{TemplateBinding Foreground}"
-                    StrokeThickness="1.5" VerticalAlignment="Center" />
+                    StrokeThickness="{DynamicResource Nvt.Menu.ChevronStrokeThickness}" VerticalAlignment="Center" />
             </Grid>
           </Border>
-          <Border Name="MenuFocusRing" Margin="2" IsVisible="False" IsHitTestVisible="False"
+          <Border Name="MenuFocusRing" Margin="{DynamicResource Nvt.Controls.InsetFocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.List.FocusCornerRadius}" />
           <Popup Name="PART_Popup" WindowManagerAddShadowHint="False"
                  IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
             <Border Name="SubMenuSurface" Margin="{DynamicResource Nvt.Menu.PopupShadowMargin}" Background="{DynamicResource NfcSurfaceBrush}" BorderBrush="{DynamicResource NfcBorderBrush}"
-                    BorderThickness="1" Padding="4" BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}"
+                    BorderThickness="{DynamicResource Nvt.Menu.PopupBorderThickness}" Padding="{DynamicResource Nvt.Menu.PopupPadding}" BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}"
                     Tag="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}">
               <Border.CornerRadius>
                 <MultiBinding Converter="{StaticResource Nvt.Menu.CornerConverter}">
@@ -134,14 +134,14 @@
   </Style>
   <Style Selector="MenuItem /template/ Popup#PART_Popup">
     <Setter Property="Placement" Value="RightEdgeAlignedTop" />
-    <Setter Property="HorizontalOffset" Value="-20" />
-    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="HorizontalOffset" Value="{DynamicResource Nvt.Menu.SubMenuHorizontalOffset}" />
+    <Setter Property="VerticalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
     <Setter Property="IsLightDismissEnabled" Value="False" />
   </Style>
   <Style Selector="Menu > MenuItem /template/ Popup#PART_Popup">
     <Setter Property="Placement" Value="BottomEdgeAlignedLeft" />
-    <Setter Property="HorizontalOffset" Value="-16" />
-    <Setter Property="VerticalOffset" Value="-16" />
+    <Setter Property="HorizontalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
+    <Setter Property="VerticalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
     <Setter Property="IsLightDismissEnabled" Value="True" />
     <Setter Property="OverlayInputPassThroughElement" Value="{Binding $parent[Menu]}" />
   </Style>
@@ -163,9 +163,9 @@
   </Style>
   <Style Selector="Menu Separator, ContextMenu Separator, MenuItem Separator, MenuItem:separator">
     <Setter Property="Theme" Value="{StaticResource Nvt.Menu.SeparatorTheme}" />
-    <Setter Property="Height" Value="1" />
-    <Setter Property="MinHeight" Value="1" />
-    <Setter Property="Margin" Value="10,4" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.Menu.SeparatorThickness}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Menu.SeparatorThickness}" />
+    <Setter Property="Margin" Value="{DynamicResource Nvt.Menu.SeparatorMargin}" />
     <Setter Property="Background" Value="{DynamicResource NfcDividerBrush}" />
     <Setter Property="Template">
       <ControlTemplate><Border Name="MenuSeparator" Background="{TemplateBinding Background}" /></ControlTemplate>
@@ -178,7 +178,7 @@
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
   <Style Selector="Menu > MenuItem /template/ Border#PART_LayoutRoot">
-    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.ItemPadding}" />
   </Style>
   <Style Selector="MenuItem:checked:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedBrush}" />

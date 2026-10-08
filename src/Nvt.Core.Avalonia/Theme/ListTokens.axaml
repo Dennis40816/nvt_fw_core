@@ -24,4 +24,22 @@
   <StaticResource x:Key="Nvt.Menu.PopupMaximumCornerRadius" ResourceKey="NfcSurfaceCornerRadius" />
   <Thickness x:Key="Nvt.Menu.PopupShadowMargin">16</Thickness>
   <StreamGeometry x:Key="Nvt.Menu.ChevronGeometry">M1 1 L5 5 L1 9</StreamGeometry>
+  <Thickness x:Key="Nvt.List.RowPadding">10,5</Thickness>
+  <x:Double x:Key="Nvt.List.SelectionIndicatorWidth">2</x:Double>
+  <x:Double x:Key="Nvt.List.SelectionIndicatorHeight">12</x:Double>
+  <Thickness x:Key="Nvt.List.SelectionIndicatorMargin">4,0,0,0</Thickness>
+  <Thickness x:Key="Nvt.List.CompactPadding">10,0</Thickness>
+  <x:Double x:Key="Nvt.Menu.PopupOffset">-16</x:Double>
+  <Thickness x:Key="Nvt.Menu.PopupBorderThickness">1</Thickness>
+  <Thickness x:Key="Nvt.Menu.PopupPadding">4</Thickness>
+  <Thickness x:Key="Nvt.Menu.ItemPadding">10,0</Thickness>
+  <x:Double x:Key="Nvt.Menu.CheckStrokeThickness">2</x:Double>
+  <Thickness x:Key="Nvt.Menu.GestureMargin">24,0,0,0</Thickness>
+  <x:Double x:Key="Nvt.Menu.ChevronWidth">6</x:Double>
+  <x:Double x:Key="Nvt.Menu.ChevronHeight">10</x:Double>
+  <Thickness x:Key="Nvt.Menu.ChevronMargin">16,0,0,0</Thickness>
+  <x:Double x:Key="Nvt.Menu.ChevronStrokeThickness">1.5</x:Double>
+  <x:Double x:Key="Nvt.Menu.SubMenuHorizontalOffset">-20</x:Double>
+  <x:Double x:Key="Nvt.Menu.SeparatorThickness">1</x:Double>
+  <Thickness x:Key="Nvt.Menu.SeparatorMargin">10,4</Thickness>
 </ResourceDictionary>

@@ -7,7 +7,7 @@
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
-    <Setter Property="BorderThickness" Value="2"/>
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Choice.IndicatorBorderThickness}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.ChoiceForegroundBrush}"/>
     <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}"/>
     <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}"/>
@@ -39,11 +39,11 @@
                       BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
                       IsHitTestVisible="False">
                 <Grid>
-                  <Path x:Name="ChoiceCheck" IsVisible="False" Width="12" Height="10" Stretch="Uniform"
+                  <Path x:Name="ChoiceCheck" IsVisible="False" Width="{DynamicResource Nvt.CheckBox.CheckWidth}" Height="{DynamicResource Nvt.CheckBox.CheckHeight}" Stretch="Uniform"
                         Data="{DynamicResource NfcDoneIconGeometry}" Stroke="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"
-                        StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                        StrokeThickness="{DynamicResource Nvt.CheckBox.CheckStrokeThickness}" StrokeLineCap="Round" StrokeJoin="Round"
                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                  <Rectangle x:Name="ChoiceDash" IsVisible="False" Width="10" Height="2"
+                  <Rectangle x:Name="ChoiceDash" IsVisible="False" Width="{DynamicResource Nvt.CheckBox.DashWidth}" Height="{DynamicResource Nvt.CheckBox.DashHeight}"
                              Fill="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"
                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
                   <Ellipse x:Name="ChoiceDot" IsVisible="False" Width="{DynamicResource Nvt.Choice.DotSize}"
@@ -51,14 +51,14 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
               </Border>
-              <ContentPresenter x:Name="PART_ContentPresenter" Grid.Column="1" Margin="8,0,0,0" MinHeight="20"
+              <ContentPresenter x:Name="PART_ContentPresenter" Grid.Column="1" Margin="{DynamicResource Nvt.Choice.LabelMargin}" MinHeight="{DynamicResource Nvt.Choice.LabelMinHeight}"
                                 Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                 RecognizesAccessKey="True" TextWrapping="Wrap" TextTrimming="None"/>
             </Grid>
           </Border>
-          <Border x:Name="ChoiceFocusRing" Margin="-4" IsVisible="False" IsHitTestVisible="False"
+          <Border x:Name="ChoiceFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
         </Grid>
