@@ -36,7 +36,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-The BCL-only, net8.0 `Nvt.Core.Processes` module owns external-process contracts and command execution, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
+The BCL-only, net10.0 `Nvt.Core.Processes` module owns external-process contracts and command execution, bounded UTF-16 diagnostics, Windows synchronous-read cancellation, and the single process-local launch gate. Launcher consumes contained creation and owns its readiness protocols and long-lived Jobs. Launcher.Transport retains its separate strict UTF-8 line reader.
 
 ## API
 

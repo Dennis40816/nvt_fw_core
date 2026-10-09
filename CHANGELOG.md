@@ -8,6 +8,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ### Breaking changes
 
+- `Nvt.Core` targets `net10.0` only. It no longer ships a `net8.0` assembly. NFC, NFH and NFU already target `net10.0`. The SDK pin in `global.json` moves to `10.0.303`. No source change is needed in a `net10.0` consumer.
 - `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
 - `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
 - `UndoService.TryPop` changes to `[NotNullWhen(true)] out UndoAction? action`. Use the success branch. Empty stacks still return false and null.
