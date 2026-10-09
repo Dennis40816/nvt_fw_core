@@ -1,0 +1,17 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lc="using:Nvt.Core.Avalonia.LogConsole" xmlns:log="using:Nvt.Core.LogConsole"
+             xmlns:icons="using:Nvt.Core.Avalonia.Icons" xmlns:focus="using:Nvt.Core.Avalonia.Focus" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState" x:Name="Root" MinWidth="640"
+             IsVisible="{Binding Controller.Projection.IsEmpty, ElementName=Root}">
+  <UserControl.Resources><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/></UserControl.Resources>
+  <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/LogConsoleStyles.axaml"/></UserControl.Styles>
+  <Border Background="{DynamicResource NfcSurfaceBrush}" DataContext="{Binding Controller, ElementName=Root}">
+    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><Binding Source="{StaticResource NfcSpace16}"/><Binding Source="{StaticResource NfcSpace8}"/></MultiBinding></Border.Padding>
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <Border Grid.Column="1" Width="{DynamicResource NfcSpace16}"/>
+      <TextBlock Text="{Binding FilterSummary, StringFormat='No matching events · {0}'}" ToolTip.Tip="{Binding FilterSummary}"
+                 Foreground="{DynamicResource NfcTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+      <Button Grid.Column="2" Classes="consoleAction actionGhost" Content="Reset filters" Command="{Binding ResetFiltersCommand}" AutomationProperties.Name="Reset filters"/>
+    </Grid>
+  </Border>
+</UserControl>

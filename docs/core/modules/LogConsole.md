@@ -7,7 +7,7 @@
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
 It targets `net8.0`.
 It adds no package.
-The Avalonia control and its commands come in K2.
+The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`.
 
 ## Design and provenance
 
@@ -16,7 +16,7 @@ It does not port a product console.
 The behavior reference is the earlier NFH console and the approved console redesign proposal.
 An NFH measurement included product projection and UI work; the Core performance test measures only projection.
 These workloads do not establish a comparable UI speedup.
-No UI or product logic is included here.
+The non-UI layer includes no UI or product logic.
 
 ## State structure
 
@@ -369,6 +369,85 @@ Repeated rows retain `×N`.
 No display truncation or stale formatted-text cache is used.
 For export and copy, including while collapsed, the host awaits `CaptureLatestAsync(cancellationToken)` and projects that frozen snapshot.
 Formatting methods accept an existing projection and do not acquire or refresh store state.
+
+## Avalonia controller and toolbar
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` is the single writer of the immutable
+filter and view-state inputs. Construct it on Core's registered `UiThread`, passing
+an app-owned `LogStore`, an immutable `ConsoleSource` catalog, and optional
+`ConsoleProjectionOptions`. The catalog becomes `Options.SourceRegistry`; time mode
+remains in `Filter.TimeMode`. Template, culture, and absolute time zone are explicit
+inputs. Keep the supplied culture unchanged during use.
+
+The controller subscribes before startup capture and enables store notifications.
+Producer callbacks request one coalesced UI operation. Each refresh captures a leased
+snapshot and calls `ConsoleProjector.Project` once. The controller remaps canonical
+selection and expanded identities, including paused order across dedupe changes,
+then publishes `Projection` through `INotifyPropertyChanged`. Counts are read from
+that projection. A later background-priority dispatcher turn retires the previous
+projection after bindings and layout have consumed its replacement. Owned content
+is bounded to the current projection and one retiring projection. Before publication,
+the refresh validates the snapshot generation with `LogStore.IsCurrent`, so Clear's
+admission fence also rejects UI work queued before its writer reset. Disposal stops
+the active notification sequence and defers lease release until its callbacks return.
+A nested dispatcher pump cannot retire projections borrowed by those callbacks.
+
+The list borrows `Projection` and reports immutable intents through
+`RequestViewState(state)`. It does not dispose that projection or mutate controller
+inputs. `Pause(rowId, textOffset, pixelOffset)` captures the reading anchor and samples
+the injected store clock through a fresh nonblocking snapshot for the pause instant;
+`Resume()` is the jump-to-latest intent. Collapse is a view-state change and preserves
+follow state. The host calls `Dispose()` on page exit; it unsubscribes, aborts queued
+work, and releases both projections. Repeated disposal is safe. The app retains store
+ownership and notification-readiness policy for its other subscribers.
+
+Toolbar actions use `ToggleLevelCommand` (a `LogLevel` parameter),
+`ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand` (a
+`ConsoleTimeMode` parameter), `ClearCommand`, and `ResetFiltersCommand`.
+`SetSelectedSources(ids)` selects ordinal IDs; an empty set selects all sources.
+In the source menu, All sources checks every source and includes future sources.
+Clicking a checked source excludes it from the current catalog; subsequent clicks
+toggle explicit membership. The last checked source is disabled, preserving the
+empty-set-means-all contract. All sources restores the unrestricted selection.
+Detach and controller replacement close and clear the source menu, release its
+bindings, and invalidate retained item commands.
+While the source menu is open, projection catalog changes rebuild its items in place
+through the same builder, preserving the open popup. Membership is compared directly
+with the projection; the view keeps no separate source catalog. Missing source IDs
+resolve as unchecked with a zero count, using the ID as the fallback label.
+`SetSearchText(text)` treats whitespace alone as an empty search. Reset restores the
+default filters and dedupe while preserving time presentation and reading state.
+All intents and disposal require the UI thread. Export flags belong to
+`ExportOptions`, with `ToggleExportTimeCommand` and `ToggleExportLevelCommand`.
+
+`ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
+styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
+entry points; the controls also include it locally. Hosts load Core theme tokens and
+Fonts roles and keep the console at least 640 DIP wide. The approved B layout places
+search beside the title at wide widths, with levels and sources in the filter row.
+At 960 DIP and below, search and Only matches move to the second filter row; Display
+contains time and dedupe, and More contains export and clear. Header height is 48 DIP;
+the filter row is 48 DIP wide and 88 DIP narrow. Resting actions have no fill or border;
+level buttons show semantic icons with complete raw counts in Core tooltips. Shared
+icon corrections follow rendering scale and unsubscribe on detach. The empty view
+shows a muted filter summary and Reset filters only when `Projection.IsEmpty`.
+Console action buttons and menu items bind their family, size, and weight directly
+to the Core Body role through local dynamic-resource styles, including Chinese source
+labels. Other controls retain their existing font roles.
+
+The header's `Title` defaults to Console. The app binds `CopySelectedCommand`,
+`CopyVisibleCommand`, and `SaveLogCommand`; the menu supplies the independent Include
+time and Include level options. Header menu bindings follow the header's current
+controller directly, so popup dismissal does not disconnect an executing command.
+Clipboard and file adapters, row navigation, and
+list rendering belong to the host's interaction and list layers.
+
+| Avalonia type | Public members |
+| --- | --- |
+| `ConsoleController` | Constructor `(store, sources, options = null)`, `PropertyChanged`, `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `FilterSummary`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`, `SetSelectedSources`, `SetSearchText`, `RequestViewState`, `Pause`, `Resume`, `Dispose`. |
+| `ConsoleHeader` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`, `Title` / `TitleProperty`, `CopySelectedCommand` / `CopySelectedCommandProperty`, `CopyVisibleCommand` / `CopyVisibleCommandProperty`, `SaveLogCommand` / `SaveLogCommandProperty`. |
+| `ConsoleToolbar` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
+| `ConsoleEmptyState` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
 
 ## Public API
 

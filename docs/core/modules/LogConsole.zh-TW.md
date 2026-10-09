@@ -6,7 +6,7 @@
 
 `Nvt.Core.LogConsole` 提供 NFC、NFH、NFU 共用的非 UI console 模型。
 目標框架是 `net8.0`，沒有新增套件。
-Avalonia 控制項與共用 commands 會在 K2 實作。
+控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。
 
 ## 設計與來源
 
@@ -14,7 +14,7 @@ Avalonia 控制項與共用 commands 會在 K2 實作。
 行為參考是先前的 NFH console 與已核准的 console redesign proposal。
 NFH 量測包含產品投影與 UI 工作；不同 workload 不能作為直接的 UI 效能比較。
 此模組的效能測試只量測純投影，不能直接證明 UI 改善。
-本次沒有 UI 或產品邏輯。
+非 UI 資料層沒有 UI 或產品邏輯。
 
 ## 狀態結構
 
@@ -313,6 +313,68 @@ IncludeTime 與 IncludeLevel 預設開啟，彼此獨立。
 重複列保留 `×N`，不讀取截斷畫面或舊格式化字串。
 匯出與複製前，即使 console 已收合，宿主仍須 await `CaptureLatestAsync(cancellationToken)`，再投影該固定版本。
 Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
+
+## Avalonia 控制器與工具列
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` 是不可變篩選條件與檢視狀態的唯一寫入者。
+在 Core 已註冊的 `UiThread` 建立，傳入 app 擁有的 `LogStore`、不可變的
+`ConsoleSource` 目錄及選用的 `ConsoleProjectionOptions`。目錄放在
+`Options.SourceRegistry`；時間模式仍由 `Filter.TimeMode` 保存。時間模板、文化設定與
+絕對時間的時區都明確注入，使用期間不可修改傳入的文化設定。
+
+控制器先訂閱再擷取啟動快照，並啟用 store 通知。任意執行緒的通知合併成一個待執行的
+UI 工作；每次更新擷取有 lease 的快照，只呼叫一次 `ConsoleProjector.Project`。
+重映射原始事件選取、展開身分及去重切換時的暫停順序，再透過 `INotifyPropertyChanged`
+發布 `Projection`。所有統計直接取自投影。下一個 Background 優先序的 dispatcher 回合，
+在 binding 與排版採用新投影後釋放舊投影；持有內容以目前投影與一個待釋放投影為上限。
+發布前以 `LogStore.IsCurrent` 驗證快照 generation，因此 Clear 的 admission fence 也會拒絕
+writer reset 尚未發布時已排隊的 UI 更新。Dispose 立即停止目前的通知序列，等執行中的
+callback 返回後才釋放 lease；callback 內重入 dispatcher 也不會提早釋放借用的投影。
+
+列表借用 `Projection`，透過 `RequestViewState(state)` 回報不可變的意圖，不直接修改
+控制器輸入，也不 Dispose 借用的投影。`Pause(rowId, textOffset, pixelOffset)` 保存閱讀
+錨點，並透過新的非阻塞快照讀取 store 注入的時鐘，明確保存 Pause 當下的時間；
+`Resume()` 就是跳至最新的意圖。收合只改檢視狀態，保留跟隨模式。宿主離開頁面時
+呼叫 `Dispose()`，解除訂閱、取消排隊工作並釋放兩份投影；重複呼叫安全。Store 仍由 app
+擁有，其他訂閱者的通知就緒政策也由 app 決定。
+
+工具列使用 `ToggleLevelCommand`（`LogLevel` 參數）、`ToggleOnlyMatchesCommand`、
+`ToggleDedupeCommand`、`SetTimeModeCommand`（`ConsoleTimeMode` 參數）、`ClearCommand`
+及 `ResetFiltersCommand`。`SetSelectedSources(ids)` 以 ordinal ID 選取，空集合代表所有
+來源。來源選單的 All sources 會勾選每個來源，也包含未來新增的來源。點擊已勾選來源，
+會從目前目錄排除該來源；後續點擊切換明確選取集合的成員。最後一個勾選來源不可取消，
+以保留空集合代表所有來源的既有契約；All sources 恢復不限來源的狀態。Detach 或替換
+Controller 時關閉並清空來源選單，釋放 binding，讓保留的舊項目 command 失效。
+來源選單開啟期間，投影目錄變更會透過同一個 builder 原地重建項目，保持 popup 開啟。
+View 直接以項目和投影比較來源成員，不另存來源目錄。不存在的來源 ID 顯示未勾選與零筆，
+名稱以 ID 作為 fallback。
+`SetSearchText(text)` 將純空白視為沒有搜尋條件。重設恢復預設篩選與去重，保留時間
+呈現及閱讀狀態。所有意圖與 Dispose 都必須在 UI 執行緒執行。匯出旗標由 `ExportOptions`
+保存，使用 `ToggleExportTimeCommand` 與 `ToggleExportLevelCommand` 切換。
+
+`ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
+取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
+也會區域載入。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。核准的 B
+配置在寬版把搜尋放在標題旁，等級與來源放在篩選列。960 DIP 以下含邊界時，搜尋與
+Only matches 移到篩選區第二行；Display 收納時間與去重，More 收納匯出與清除。標題高
+48 DIP；篩選區寬版高 48 DIP、窄版高 88 DIP。休止動作沒有底色或外框，等級按鈕使用
+語意圖示，Core tooltip 顯示完整原始筆數。共用圖示校正依渲染尺度更新，detach 時解除
+訂閱。只有 `Projection.IsEmpty` 時，空狀態顯示淡文字篩選摘要與 Reset filters。
+Console 動作按鈕與選單項目以區域 DynamicResource 樣式，直接將字型 family、size、weight
+綁定 Core Body role，包含中文來源名稱；其他控制項保留既有字型角色。
+
+標題的 `Title` 預設為 Console。App 綁定 `CopySelectedCommand`、`CopyVisibleCommand`、
+`SaveLogCommand`；選單提供獨立的 Include time 與 Include level。標題選單的 binding
+直接跟隨標題的目前 Controller，避免 popup 關閉時中斷正在執行的 command。
+Clipboard、檔案 adapter、
+列導覽與列表渲染由宿主的互動與列表層負責。
+
+| Avalonia 型別 | 公開成員 |
+| --- | --- |
+| `ConsoleController` | 建構子 `(store, sources, options = null)`、`PropertyChanged`、`Filter`、`ViewState`、`Options`、`Projection`、`ExportOptions`、`FilterSummary`、`ToggleLevelCommand`、`ToggleOnlyMatchesCommand`、`ToggleDedupeCommand`、`SetTimeModeCommand`、`ClearCommand`、`ResetFiltersCommand`、`ToggleExportTimeCommand`、`ToggleExportLevelCommand`、`SetSelectedSources`、`SetSearchText`、`RequestViewState`、`Pause`、`Resume`、`Dispose`。 |
+| `ConsoleHeader` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`、`Title` / `TitleProperty`、`CopySelectedCommand` / `CopySelectedCommandProperty`、`CopyVisibleCommand` / `CopyVisibleCommandProperty`、`SaveLogCommand` / `SaveLogCommandProperty`。 |
+| `ConsoleToolbar` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
+| `ConsoleEmptyState` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
 
 ## 公開 API
 

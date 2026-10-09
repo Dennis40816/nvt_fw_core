@@ -1,0 +1,80 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lc="using:Nvt.Core.Avalonia.LogConsole" xmlns:log="using:Nvt.Core.LogConsole"
+             xmlns:icons="using:Nvt.Core.Avalonia.Icons" xmlns:focus="using:Nvt.Core.Avalonia.Focus" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleHeader" x:Name="Root" MinWidth="640">
+  <UserControl.Resources><lc:ConsoleValueConverter x:Key="ConsoleValue"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/></UserControl.Resources>
+  <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/LogConsoleStyles.axaml"/></UserControl.Styles>
+  <UserControl.Height><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="HeaderHeight"><Binding Source="{StaticResource NfcControlHeight}"/><Binding Source="{StaticResource NfcSpace8}"/></MultiBinding></UserControl.Height>
+  <Border Background="{DynamicResource NfcSurfaceBrush}" DataContext="{Binding Controller, ElementName=Root}">
+    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><Binding Source="{StaticResource NfcSpace16}"/><Binding Source="{StaticResource NfcSpace8}"/></MultiBinding></Border.Padding>
+    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="{DynamicResource NfcControlHeight}">
+      <Border Grid.Column="1" Width="{DynamicResource NfcSpace24}"/>
+      <Border Grid.Column="3" Width="{DynamicResource NfcSpace8}"/>
+      <StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}" VerticalAlignment="Center">
+        <TextBlock Classes="nvtIcon" Text="{x:Static icons:ConsoleGlyphs.Terminal}" Foreground="{DynamicResource NfcTextSecondaryBrush}"/>
+        <TextBlock Classes="consoleHeading" Text="{Binding Title, ElementName=Root}" VerticalAlignment="Center"/>
+      </StackPanel>
+      <Grid Grid.Column="2"><Grid x:Name="WideSearch" ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+      <Border Grid.Column="1" Width="{DynamicResource NfcSpace8}"/>
+      <Grid><TextBox x:Name="SearchBox" Classes="consoleSearch" PlaceholderText="Search messages, sources or paths"
+                    Text="{Binding Filter.SearchText, Mode=OneWay}" TextChanged="SearchChanged" AutomationProperties.Name="Search console"/>
+        <Button x:Name="ClearSearch" Classes="consoleAction actionGhost actionIconButton" HorizontalAlignment="Right"
+                AutomationProperties.Name="Clear search" ToolTip.Tip="Clear search"><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Close}"/></Button>
+      </Grid>
+      <ToggleButton x:Name="OnlyMatches" Grid.Column="2" Classes="toggleSoft consoleToggle"
+                    IsChecked="{Binding Filter.OnlyMatches, Mode=OneWay}" Command="{Binding ToggleOnlyMatchesCommand}" AutomationProperties.Name="Only matches"><TextBlock Classes="consoleToggleLabel" Text="Only matches"/></ToggleButton>
+    </Grid></Grid>
+      <StackPanel x:Name="WideActions" Grid.Column="4" Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}" VerticalAlignment="Center">
+        <Button x:Name="Time" Classes="consoleAction actionGhost" AutomationProperties.Name="Time display"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock Text="{Binding Filter.TimeMode}" VerticalAlignment="Center"/><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
+          <Button.Flyout><MenuFlyout><MenuItem Classes="consoleMenuItem" Header="Absolute time" ToggleType="Radio" AutomationProperties.Name="Absolute time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Absolute, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Absolute}"/>
+<MenuItem Classes="consoleMenuItem" Header="Relative time" ToggleType="Radio" AutomationProperties.Name="Relative time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Relative, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Relative}"/>
+<MenuItem Classes="consoleMenuItem" Header="Hidden time" ToggleType="Radio" AutomationProperties.Name="Hidden time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Hidden, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Hidden}"/></MenuFlyout></Button.Flyout>
+        </Button>
+        <Button x:Name="Export" Classes="consoleAction actionGhost" AutomationProperties.Name="Export console"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock Text="Export" VerticalAlignment="Center"/><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
+          <Button.Flyout><MenuFlyout><MenuItem Classes="consoleMenuItem" Header="Copy selected" AutomationProperties.Name="Copy selected" Command="{Binding CopySelectedCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Copy visible rows" AutomationProperties.Name="Copy visible rows" Command="{Binding CopyVisibleCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Save as .log" AutomationProperties.Name="Save as .log" Command="{Binding SaveLogCommand, ElementName=Root}"/>
+      <Separator/>
+      <MenuItem Classes="consoleMenuItem" Header="Include time" AutomationProperties.Name="Include time" ToggleType="CheckBox" IsChecked="{Binding Controller.ExportOptions.IncludeTime, ElementName=Root, Mode=OneWay}" Command="{Binding Controller.ToggleExportTimeCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Include level" AutomationProperties.Name="Include level" ToggleType="CheckBox" IsChecked="{Binding Controller.ExportOptions.IncludeLevel, ElementName=Root, Mode=OneWay}" Command="{Binding Controller.ToggleExportLevelCommand, ElementName=Root}"/></MenuFlyout></Button.Flyout>
+        </Button>
+        <Button x:Name="Clear" Classes="consoleAction actionGhost actionIconButton" Command="{Binding Controller.ClearCommand, ElementName=Root}" AutomationProperties.Name="Clear console" ToolTip.Tip="Clear console">
+          <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Delete}"/>
+        </Button>
+      </StackPanel>
+      <StackPanel x:Name="NarrowActions" Grid.Column="4" Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}" VerticalAlignment="Center" IsVisible="False">
+        <Button x:Name="Display" Classes="consoleAction actionGhost" AutomationProperties.Name="Display console"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock Text="Display" VerticalAlignment="Center"/><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
+          <Button.Flyout><MenuFlyout><MenuItem Classes="consoleMenuItem" Header="Absolute time" ToggleType="Radio" AutomationProperties.Name="Absolute time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Absolute, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Absolute}"/>
+<MenuItem Classes="consoleMenuItem" Header="Relative time" ToggleType="Radio" AutomationProperties.Name="Relative time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Relative, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Relative}"/>
+<MenuItem Classes="consoleMenuItem" Header="Hidden time" ToggleType="Radio" AutomationProperties.Name="Hidden time"
+                 IsChecked="{Binding Controller.Filter.TimeMode, ElementName=Root, Converter={StaticResource ConsoleValue}, ConverterParameter=Time:Hidden, Mode=OneWay}"
+                 Command="{Binding Controller.SetTimeModeCommand, ElementName=Root}" CommandParameter="{x:Static log:ConsoleTimeMode.Hidden}"/>
+            <Separator/>
+            <MenuItem Classes="consoleMenuItem" Header="{Binding Controller.Projection.DuplicatesMerged, ElementName=Root, StringFormat='Dedupe ×{0}'}" AutomationProperties.Name="Dedupe" ToggleType="CheckBox"
+                      IsChecked="{Binding Controller.Filter.Deduplicate, ElementName=Root, Mode=OneWay}" Command="{Binding Controller.ToggleDedupeCommand, ElementName=Root}"/>
+          </MenuFlyout></Button.Flyout>
+        </Button>
+        <Button x:Name="More" Classes="consoleAction actionGhost" AutomationProperties.Name="More console actions"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock Text="More" VerticalAlignment="Center"/><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
+          <Button.Flyout><MenuFlyout><MenuItem Classes="consoleMenuItem" Header="Copy selected" AutomationProperties.Name="Copy selected" Command="{Binding CopySelectedCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Copy visible rows" AutomationProperties.Name="Copy visible rows" Command="{Binding CopyVisibleCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Save as .log" AutomationProperties.Name="Save as .log" Command="{Binding SaveLogCommand, ElementName=Root}"/>
+      <Separator/>
+      <MenuItem Classes="consoleMenuItem" Header="Include time" AutomationProperties.Name="Include time" ToggleType="CheckBox" IsChecked="{Binding Controller.ExportOptions.IncludeTime, ElementName=Root, Mode=OneWay}" Command="{Binding Controller.ToggleExportTimeCommand, ElementName=Root}"/>
+      <MenuItem Classes="consoleMenuItem" Header="Include level" AutomationProperties.Name="Include level" ToggleType="CheckBox" IsChecked="{Binding Controller.ExportOptions.IncludeLevel, ElementName=Root, Mode=OneWay}" Command="{Binding Controller.ToggleExportLevelCommand, ElementName=Root}"/><Separator/>
+            <MenuItem Classes="consoleMenuItem" Header="Clear console" AutomationProperties.Name="Clear console" Command="{Binding Controller.ClearCommand, ElementName=Root}"/>
+          </MenuFlyout></Button.Flyout>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>
