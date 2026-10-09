@@ -7,6 +7,7 @@ using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.Tests.LinkedProbe;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -25,17 +26,17 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         RequireWindows();
         using var workspace = TestWorkspace.Create();
         string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Launcher");
-        string statePath = workspace.PathFor("state/custom state.json");
-        string arguments = workspace.PathFor("arguments.txt");
+        string statePath = workspace.GetPath("state/custom state.json");
+        string arguments = workspace.GetPath("arguments.txt");
         using var environment = ProbeEnvironment("ready", arguments);
         using BootstrapAdmissionSignal admission = BootstrapAdmissionSignal.Capture(TransportFixture.Names);
         using var process = Create(admission);
         using var lease = Lease(executable);
-        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.Root, statePath,
+        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.RootPath, statePath,
             TransportFixture.Launcher(), lease, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         await Task.Delay(500, TestContext.Current.CancellationToken);
         Assert.Equal(LauncherProcessStartOutcome.Ready, result.Outcome);
-        Assert.Equal(new[] { "--managed-root", Path.GetFullPath(workspace.Root), "--state-path", Path.GetFullPath(statePath) },
+        Assert.Equal(new[] { "--managed-root", Path.GetFullPath(workspace.RootPath), "--state-path", Path.GetFullPath(statePath) },
             await File.ReadAllLinesAsync(arguments, TestContext.Current.CancellationToken));
         Assert.Equal(new ManagedVersionAdmission(TransportFixture.Version, "fixture-admission", new string('a', 64)),
             result.ReadyAdmission);
@@ -48,7 +49,7 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         RequireWindows();
         using var workspace = TestWorkspace.Create();
         string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Launcher");
-        string marker = workspace.PathFor("accepted-tree");
+        string marker = workspace.GetPath("accepted-tree");
         int rootId = 0;
         int childId = 0;
         try
@@ -58,8 +59,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
             using (var process = Create(admission))
             using (var lease = Lease(executable))
             {
-                LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.Root,
-                    workspace.PathFor("state/custom state.json"), TransportFixture.Launcher(), lease,
+                LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.RootPath,
+                    workspace.GetPath("state/custom state.json"), TransportFixture.Launcher(), lease,
                     TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
                 rootId = await ReadProcessMarkerAsync(marker + ".root");
                 childId = await ReadProcessMarkerAsync(marker + ".child");
@@ -99,8 +100,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         using BootstrapAdmissionSignal admission = BootstrapAdmissionSignal.Capture(TransportFixture.Names);
         using var process = Create(admission);
         using var lease = Lease(executable);
-        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.Root,
-            workspace.PathFor("state.json"), TransportFixture.Launcher(), lease,
+        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.RootPath,
+            workspace.GetPath("state.json"), TransportFixture.Launcher(), lease,
             TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(expected, result.Outcome);
     }
@@ -121,8 +122,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         using BootstrapAdmissionSignal admission = BootstrapAdmissionSignal.Capture(TransportFixture.Names);
         using var process = Create(admission);
         using var lease = Lease(executable);
-        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.Root,
-            workspace.PathFor("state.json"), TransportFixture.Launcher(), lease,
+        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.RootPath,
+            workspace.GetPath("state.json"), TransportFixture.Launcher(), lease,
             TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(LauncherProcessStartOutcome.InvalidReadySignal, result.Outcome);
     }
@@ -205,8 +206,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         using var fallback = Create(admission);
         using var lease = Lease(executable);
         using var environment = ProbeEnvironment("silent-wait");
-        Task<LauncherProcessStartResult> candidateStart = candidate.StartUntilReadyAsync(workspace.Root,
-            workspace.PathFor("state.json"), TransportFixture.Launcher(), lease,
+        Task<LauncherProcessStartResult> candidateStart = candidate.StartUntilReadyAsync(workspace.RootPath,
+            workspace.GetPath("state.json"), TransportFixture.Launcher(), lease,
             TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken).AsTask();
         using var reader = new StreamReader(pipe);
         using var receiptDeadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -215,8 +216,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         expiry.Cancel();
         LauncherProcessStartResult failed = await candidateStart;
         using var ready = ProbeEnvironment("ready");
-        LauncherProcessStartResult result = await fallback.StartUntilReadyAsync(workspace.Root,
-            workspace.PathFor("state.json"), TransportFixture.Launcher(), lease,
+        LauncherProcessStartResult result = await fallback.StartUntilReadyAsync(workspace.RootPath,
+            workspace.GetPath("state.json"), TransportFixture.Launcher(), lease,
             TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(LauncherProcessStartOutcome.ReadyTimeout, failed.Outcome);
         Assert.Equal(LauncherProcessStartOutcome.Ready, result.Outcome);
@@ -236,8 +237,8 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         using BootstrapAdmissionSignal admission = BootstrapAdmissionSignal.Capture(TransportFixture.Names);
         using var process = Create(admission);
         using var lease = Lease(executable);
-        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.Root,
-            workspace.PathFor("state.json"), TransportFixture.Launcher(), lease,
+        LauncherProcessStartResult result = await process.StartUntilReadyAsync(workspace.RootPath,
+            workspace.GetPath("state.json"), TransportFixture.Launcher(), lease,
             TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(LauncherProcessStartOutcome.TerminationUnconfirmed, result.Outcome);
         Assert.Equal(17, result.ExitCode);

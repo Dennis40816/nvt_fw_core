@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -75,11 +76,11 @@ public sealed class SystemExternalProcessRunnerTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.pid");
+        string marker = workspace.GetPath("child.pid");
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
         var runner = CreateTreeRunner(parentReady);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, TimeSpan.FromSeconds(30));
+        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.RootPath, "tree-root-wait", marker, TimeSpan.FromSeconds(30));
 
         Task<ExternalProcessResult>? run = null;
         TestProcessIdentity? parentProcess = null;
@@ -129,11 +130,11 @@ public sealed class SystemExternalProcessRunnerTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.pid");
+        string marker = workspace.GetPath("child.pid");
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
         var runner = CreateTreeRunner(parentReady);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, TimeSpan.FromSeconds(10));
+        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.RootPath, "tree-root-wait", marker, TimeSpan.FromSeconds(10));
         Task<ExternalProcessResult>? run = null;
         TestProcessIdentity? parentProcess = null;
         TestProcessIdentity? childProcess = null;

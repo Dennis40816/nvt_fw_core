@@ -94,6 +94,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time and bounded temporary workspace cleanup. Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. Release publishing of this package is a follow-up.
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
 ## 0.5.0 - 2026-10-08
