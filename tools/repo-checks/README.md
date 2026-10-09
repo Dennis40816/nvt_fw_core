@@ -4,6 +4,8 @@ These two Python engines preserve the source checker behavior and accept reposit
 They use only the Python standard library.
 Python 3.10 or later supports their type syntax.
 
+See [C# syntax health ratchet](repo-health.md) for the SDK Roslyn checker and baseline modes.
+
 The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.
 The caller selects files, prints results, and sets the process exit code.
