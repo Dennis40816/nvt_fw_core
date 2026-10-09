@@ -18,7 +18,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 ## API
 
 [`CommonTextResources`](../../../src/Nvt.Core/Locale/CommonTextResources.cs) 位於 `Nvt.Core.Locale`。
-目標框架為 `net8.0`。
+目標框架為 `net10.0`。
 此模組只依賴 BCL。
 `CommonLanguage` 包含 `English` 與 `TraditionalChinese`。
 `For(language)` 為每種語言回傳一個延遲建立的快取物件。

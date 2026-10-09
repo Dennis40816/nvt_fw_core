@@ -8,6 +8,7 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 
 ### Breaking changes
 
+- `Nvt.Core` targets `net10.0` only. It no longer ships a `net8.0` assembly. NFC, NFH and NFU already target `net10.0`. The SDK pin in `global.json` moves to `10.0.303`. No source change is needed in a `net10.0` consumer.
 - `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
 - `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
 - `UndoService.TryPop` changes to `[NotNullWhen(true)] out UndoAction? action`. Use the success branch. Empty stacks still return false and null.
@@ -68,6 +69,22 @@ Future adoption must guard defaults and replace `Options` reads with `CreateOpti
 NFU has no inspected source migration.
 Rebuild its CSV, AtomicOutput, and SourceFileNavigation consumers against the accepted package.
 Integrators must pin the accepted release, update package-download hashes, regenerate locks, and restore in locked mode.
+
+Inputs removes the inert large-step API from `NumberScrubber` before the public contract freeze.
+
+| Member | Before | After |
+| --- | --- | --- |
+| `NumberScrubber.LargeChange` | Read/write `decimal`, default `10m`, with no input behavior. | Removed. |
+| `NumberScrubber.LargeChangeProperty` | Public static readonly `StyledProperty<decimal>` identifier. | Removed. |
+| `NumberScrubber.get_LargeChange()` | Public `decimal` getter. | Removed. |
+| `NumberScrubber.set_LargeChange(decimal)` | Public `void` setter. | Removed. |
+
+Remove `LargeChange` attributes, bindings, assignments, and reads.
+Remove styled identifier and accessor references. Keep `SmallChange` for text snapping, wheel steps, and scrub steps.
+NFC, NFH, and NFU have no inspected dependency on Core `NumberScrubber`.
+NFC keeps its local large-step behavior in `HexEditorPanel` on future adoption.
+Range rejection is withdrawn because binding coherence was not proved. The existing range contract remains unchanged.
+Both Inputs documents describe valid bound-update order and the retained reversed-range hazard.
 
 ## 0.5.0 - 2026-10-08
 
