@@ -31,14 +31,14 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe'">
     <HealthBaselineWarningIds>CA5392;EnableGenerateDocumentationFile;IDE1006;RS0030;VSTHRD103</HealthBaselineWarningIds>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.SourceConsumption.Tests'">
+    <HealthBaselineWarningIds>CA1031;EnableGenerateDocumentationFile;IDE1006;RS0030</HealthBaselineWarningIds>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe'">
     <HealthBaselineWarningIds>CA2000;CA5392;EnableGenerateDocumentationFile;IDE1006;RS0030;VSTHRD103</HealthBaselineWarningIds>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Tests'">
     <HealthBaselineWarningIds>CA1031;CA1307;CA2000;CA5392;EnableGenerateDocumentationFile;IDE0060;IDE0330;IDE1006;RS0030;VSTHRD002;VSTHRD003;VSTHRD101;VSTHRD103;VSTHRD200</HealthBaselineWarningIds>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.SourceConsumption.Tests'">
-    <HealthBaselineWarningIds>CA1031;EnableGenerateDocumentationFile;IDE1006;RS0030</HealthBaselineWarningIds>
   </PropertyGroup>
   <!-- END GENERATED HEALTH WARNING IDS -->
 </Project>

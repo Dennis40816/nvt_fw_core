@@ -294,6 +294,33 @@ function Test-BundleDrift {
         Test-EditorOverrides $common (Read-EditorText (Join-Path $Root $path)) $path
     }
 }
+function Get-SdkDefaultIds {
+    # Evaluated once: the NoWarn and WarningsNotAsErrors IDs that the SDK adds to every project.
+    $cached = Get-Variable -Name SdkDefaultIds -Scope Script -ValueOnly -ErrorAction Ignore
+    if ($cached) { return $cached }
+    $pristineDirectory = Join-Path ([IO.Path]::GetTempPath()) ('repo-health-sdk-' + [guid]::NewGuid().ToString('N'))
+    $sdkDefaults = @{ NoWarn = @(); WarningsNotAsErrors = @() }
+    try {
+        [void][IO.Directory]::CreateDirectory($pristineDirectory)
+        $pristineProject = Join-Path $pristineDirectory 'Pristine.csproj'
+        [IO.File]::WriteAllText($pristineProject, '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
+        # The pristine project must select the same SDK as the repository, so copy the nearest global.json.
+        $sdkPinRoot = $Root
+        while (-not (Test-Path -LiteralPath (Join-Path $sdkPinRoot 'global.json') -PathType Leaf)) {
+            $sdkPinParent = Split-Path $sdkPinRoot -Parent
+            if (-not $sdkPinParent -or $sdkPinParent -eq $sdkPinRoot) { throw 'global.json is required to evaluate the SDK defaults' }
+            $sdkPinRoot = $sdkPinParent
+        }
+        Copy-Item -LiteralPath (Join-Path $sdkPinRoot 'global.json') -Destination (Join-Path $pristineDirectory 'global.json')
+        $pristine = ConvertFrom-Json -AsHashtable -InputObject (Invoke-Checked 'dotnet' @('msbuild', $pristineProject, '-nologo', '-getProperty:NoWarn,WarningsNotAsErrors'))
+        foreach ($property in $sdkDefaults.Keys.Clone()) { $sdkDefaults[$property] = @($pristine.Properties[$property] -split '[;,\s]+' | Where-Object { $_ }) }
+    }
+    finally {
+        if ([IO.Path]::GetFullPath((Split-Path $pristineDirectory -Parent)).TrimEnd([IO.Path]::DirectorySeparatorChar) -eq [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) -and (Test-Path -LiteralPath $pristineDirectory)) { [IO.Directory]::Delete($pristineDirectory, $true) }
+    }
+    $script:SdkDefaultIds = $sdkDefaults
+    return $sdkDefaults
+}
 function Health-Ids([string]$Value) { return (@($Value -split '[;,\s]+' | Where-Object { $_ } | Sort-Object -Unique) -join ';') }
 function Get-LedgerWarningIds($Baseline, [string]$Project) {
     if ($null -eq $Baseline) { return '' }
@@ -314,7 +341,9 @@ function Test-ProjectProperties($Evaluation, [string]$Path, $Baseline) {
     if ($Baseline -and $ids -cne (Get-LedgerWarningIds $Baseline $p.MSBuildProjectName)) { throw "HC_CONFIGURATION ${Path}:1 HealthBaselineWarningIds differs from ledger" }
     if ($Baseline) {
         $allowedNoWarn = @($Baseline.findings | Where-Object { $_.project -ceq $p.MSBuildProjectName -and $_.rule -eq 'suppressions' -and $_.symbol.StartsWith('NoWarn:') } | ForEach-Object { $_.symbol.Substring(7) }) -join ';'
-        if ((Health-Ids $p.NoWarn) -cne (Health-Ids $allowedNoWarn)) { throw "HC_CONFIGURATION ${Path}:1 evaluated NoWarn differs from suppression ledger" }
+        $sdkNoWarn = (Get-SdkDefaultIds).NoWarn
+        $projectNoWarn = (@($p.NoWarn -split '[;,\s]+' | Where-Object { $_ -and $_ -notin $sdkNoWarn }) -join ';')
+        if ((Health-Ids $projectNoWarn) -cne (Health-Ids $allowedNoWarn)) { throw "HC_CONFIGURATION ${Path}:1 evaluated NoWarn differs from suppression ledger" }
     }
     $packages = @{ 'Microsoft.CodeAnalysis.BannedApiAnalyzers' = '3.3.4'; 'Microsoft.VisualStudio.Threading.Analyzers' = '17.14.15' }
     if ($p.HealthPublicApi -eq 'true') { $packages['Microsoft.CodeAnalysis.PublicApiAnalyzers'] = '3.3.4' }
@@ -1038,27 +1067,7 @@ function Measure-Syntax {
     # Always evaluate tracked projects: a NoWarn that lives only in a .csproj must be seen too.
     if ($projects.Count -or $props.Count) {
         $evaluate = if ($projects.Count) { $projects } else { $props }
-        # The SDK adds its own default NoWarn IDs. Evaluate a pristine project once and ignore those IDs.
-        $pristineDirectory = Join-Path ([IO.Path]::GetTempPath()) ('repo-health-sdk-' + [guid]::NewGuid().ToString('N'))
-        $sdkDefaults = @{ NoWarn = @(); WarningsNotAsErrors = @() }
-        try {
-            [void][IO.Directory]::CreateDirectory($pristineDirectory)
-            $pristineProject = Join-Path $pristineDirectory 'Pristine.csproj'
-            [IO.File]::WriteAllText($pristineProject, '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
-            # The pristine project must select the same SDK as the repository, so copy the nearest global.json.
-            $sdkPinRoot = $Root
-            while (-not (Test-Path -LiteralPath (Join-Path $sdkPinRoot 'global.json') -PathType Leaf)) {
-                $sdkPinParent = Split-Path $sdkPinRoot -Parent
-                if (-not $sdkPinParent -or $sdkPinParent -eq $sdkPinRoot) { throw 'global.json is required to evaluate the SDK defaults' }
-                $sdkPinRoot = $sdkPinParent
-            }
-            Copy-Item -LiteralPath (Join-Path $sdkPinRoot 'global.json') -Destination (Join-Path $pristineDirectory 'global.json')
-            $pristine = ConvertFrom-Json -AsHashtable -InputObject (Invoke-Checked 'dotnet' @('msbuild', $pristineProject, '-nologo', '-getProperty:NoWarn,WarningsNotAsErrors'))
-            foreach ($property in $sdkDefaults.Keys.Clone()) { $sdkDefaults[$property] = @($pristine.Properties[$property] -split '[;,\s]+' | Where-Object { $_ }) }
-        }
-        finally {
-            if ([IO.Path]::GetFullPath((Split-Path $pristineDirectory -Parent)).TrimEnd([IO.Path]::DirectorySeparatorChar) -eq [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) -and (Test-Path -LiteralPath $pristineDirectory)) { [IO.Directory]::Delete($pristineDirectory, $true) }
-        }
+        $sdkDefaults = Get-SdkDefaultIds
         foreach ($project in $evaluate) {
             $values = ConvertFrom-Json -AsHashtable -InputObject (Invoke-Checked 'dotnet' @('msbuild', (Join-Path $Root $project), '-nologo', '-getProperty:NoWarn,WarningsNotAsErrors'))
             foreach ($property in @('NoWarn', 'WarningsNotAsErrors')) {
