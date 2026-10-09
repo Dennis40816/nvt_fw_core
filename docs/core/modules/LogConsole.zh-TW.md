@@ -354,7 +354,7 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
+標頭／工具列組合、連結與選取的 pointer 互動、console keyboard commands，以及宿主的 accessibility 與視覺驗證，仍由其他控制項與後續 UI 工作完成。
 宿主採用是另外的變更，路徑政策、開啟、clipboard 與 spill-store 整合仍屬於 app。
 
 ## 列表檢視
@@ -370,7 +370,7 @@ UI virtualization、pointer coordinates、keyboard commands、accessibility 與�
 |---|---|
 | `Projection` / `ProjectionProperty` | 借用 `ConsoleProjection`；呼叫端在替換前維持 leases 有效並負責 Dispose。 |
 | `ViewState` / `ViewStateProperty` | 呼叫端持有的 immutable `ConsoleViewState`；列表不自行寫入展開或跟隨狀態。 |
-| `TimeOptions` / `TimeOptionsProperty` | 明確的 `ConsoleProjectionOptions` culture、相對時間樣板與絕對時間時區。 |
+| `TimeOptions` / `TimeOptionsProperty` | 明確的 `ConsoleProjectionOptions` culture、相對時間樣板與絕對時間時區。列表忽略 `SourceRegistry`；來源欄顯示 source ID。 |
 | `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`，預設 Absolute；Hidden 移除整個時間欄。 |
 | `ViewStateRequested` | 以 `EventHandler<ConsoleViewState>` 傳回要求替換的新狀態。 |
 | `JumpToLatest()` | 要求 Resume；宿主的 Ctrl+End command 可呼叫此方法。 |
@@ -391,6 +391,26 @@ UI virtualization、pointer coordinates、keyboard commands、accessibility 與�
 每個角色都使用 Family、Size、Weight。時間由 `ConsoleTimeFormatter` 依
 `Projection.TimeBase` 格式化，不使用 timer 或隱含的本機時鐘。
 
+使用者可見文字透過宿主資源解析，英文預設值放在 `ConsoleListGeometry.axaml`。
+可在列表或資源祖先覆寫下列鍵以在地化。跳至最新與保留範圍通知使用 `TimeOptions.Culture`
+格式化；`{0}` 是投影的新訊息數或淘汰數。新訊息恰為一則時使用單數鍵，零或其他數量
+使用複數鍵。資源變更會更新顯示文字。
+
+| 資源鍵 | 英文預設值 | 繁體中文覆寫範例 |
+|---|---|---|
+| `Nvt.Console.List.JumpToLatestOne` | `Jump to latest ({0} new message)` | `跳至最新（{0} 則新訊息）` |
+| `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` | `跳至最新（{0} 則新訊息）` |
+| `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
+| `Nvt.Console.List.Level.Trace` | `Trace` | `追蹤` |
+| `Nvt.Console.List.Level.Debug` | `Debug` | `偵錯` |
+| `Nvt.Console.List.Level.Info` | `Info` | `資訊` |
+| `Nvt.Console.List.Level.Warn` | `Warn` | `警告` |
+| `Nvt.Console.List.Level.Error` | `Error` | `錯誤` |
+| `Nvt.Console.List.Level.Fatal` | `Fatal` | `嚴重` |
+
+來源欄與 tooltip 顯示 `ConsoleRow.SourceId`。列表忽略 `TimeOptions.SourceRegistry`；
+registry 的顯示名稱仍由投影或宿主處理。
+
 固定的 item source 借用目前投影。以像素捲動的可回收 host 依 `ConsoleRowId`
 保留已實現容器；套用投影時更新身分，不重設 source。
 只實現 viewport 與少量 overscan。展開高度先估計，再由 measure 更新。
@@ -402,6 +422,7 @@ UI virtualization、pointer coordinates、keyboard commands、accessibility 與�
 Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既有 warning surface
 與 strong warning text。繪製順序是搜尋底色、文字、命中前景；
 後續底線層保留給連結互動。Theme 或 resource 改變會使顯示快取失效。
+暫停閱讀時，重建量測高度會保留首個可見列及其 DIP 內位移。
 
 使用者離開末尾時，以首個可見列、sequence、文字 offset 與 DIP offset 要求 Pause。
 展開以同一個新狀態合併展開與暫停；pointer 移動超過 4 DIP 即取消啟用。
@@ -409,7 +430,9 @@ Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既
 按下時擷取 pointer，因此移出列後再回到起點仍會取消啟用。
 失去擷取時清除手勢；放開、取消與 detach 都釋放手勢的擷取。
 暫停期間每次使用者捲動都要求更新閱讀座標，不改變暫停時間、generation、
-序號邊界與凍結的列順序。展開、套用狀態與重新 attach 使用最新接受的錨點。
+序號邊界與凍結的列順序。無關狀態變更若沿用同一個 Follow instance，會保留即時閱讀位置，
+即使呼叫端仍持有舊錨點也一樣。接受與列表最新要求相同的錨點時，也保留即時座標；
+以不同錨點替換 Follow 時，則恢復呼叫端明確指定的位置。重新 attach 使用已接受的錨點。
 暫停時先保存目前錨點，套用投影後於 layout 恢復；合併的投影替換與寬度改變
 沿用待恢復錨點，直到恢復完成或使用者捲動替換它。
 程式捲動使用可巢狀的事件抑制；有排程工作時，仍接受使用者離開末尾的 Pause 要求。

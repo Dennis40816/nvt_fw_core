@@ -64,6 +64,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     private static TextBlock Label(string role, string brush)
     {
         var label = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, ClipToBounds = true };
+        if (role == "Icon") label.Classes.Add("nvtIcon");
         label.Bind(TextBlock.LineHeightProperty, new DynamicResourceExtension("Nvt.Console.List.RowHeight"));
         label.Bind(TextBlock.FontFamilyProperty, new DynamicResourceExtension($"Nvt.Font.{role}.Family"));
         label.Bind(TextBlock.FontSizeProperty, new DynamicResourceExtension($"Nvt.Font.{role}.Size"));
@@ -79,7 +80,9 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         _input = new(row, view, toggle);
         _time.Text = ConsoleTimeFormatter.Format(row.Timestamp, view.Projection!.TimeBase, view.TimeMode,
             view.TimeOptions.RelativeTimeTemplate, view.TimeOptions.Culture, view.TimeOptions.AbsoluteTimeZone);
-        _level.Text = row.Level.ToString();
+        var levelKey = $"Nvt.Console.List.Level.{row.Level}";
+        _level.Text = UiResourceResolver.GetString(view, levelKey)
+            ?? throw new InvalidOperationException($"Console list requires resource '{levelKey}'.");
         var (glyph, brush) = row.Level switch
         {
             LogLevel.Trace => (NvtIcons.MoreHoriz, "NfcTextMutedBrush"),

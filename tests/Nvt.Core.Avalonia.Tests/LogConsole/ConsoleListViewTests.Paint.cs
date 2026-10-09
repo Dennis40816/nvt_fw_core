@@ -54,7 +54,7 @@ public sealed partial class ConsoleListViewTests
             view.Resources["Nvt.Font.Icon.Size"] = 18d;
             view.Resources["NfcSpace4"] = 6d;
             view.Resources["Nvt.Console.List.RowPadding"] = new Thickness(18, 0);
-            view.TimeMode = ConsoleTimeMode.Relative; Flush(window);
+            Flush(window);
             var row = Container(view, 1);
             Assert.Equal(24, row.Bounds.Height);
             Assert.Equal(24, Scroll(view).ScrollSize.Height);

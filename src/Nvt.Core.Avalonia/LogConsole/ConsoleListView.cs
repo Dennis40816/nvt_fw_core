@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using System.Diagnostics.CodeAnalysis;
+using Nvt.Core.Avalonia.Theme;
 using Nvt.Core.Avalonia.Threading;
 using Nvt.Core.LogConsole;
 
@@ -60,6 +61,7 @@ public sealed class ConsoleListView : TemplatedControl
     {
         _session?.Dispose();
         _session = null;
+        _parts?.Host.Release();
         base.OnApplyTemplate(e);
         _parts = new(e.NameScope.Find<ConsoleItemsHost>("PART_ItemsHost")!,
             e.NameScope.Find<ScrollViewer>("PART_ScrollViewer")!,
@@ -87,9 +89,15 @@ public sealed class ConsoleListView : TemplatedControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ProjectionProperty || change.Property == ViewStateProperty
-            || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty)
-            _session?.Apply(change.Property != ViewStateProperty);
+        if (change.Property == ViewStateProperty)
+        {
+            var previous = change.GetOldValue<ConsoleViewState>();
+            var current = change.GetNewValue<ConsoleViewState>();
+            _session?.Apply(ReferenceEquals(previous.Follow, current.Follow)
+                || _session.IsRequestedAnchor(current.Follow));
+        }
+        else if (change.Property == ProjectionProperty || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty)
+            _session?.Apply(true);
     }
 
     private void AttachSession()
@@ -100,7 +108,11 @@ public sealed class ConsoleListView : TemplatedControl
         _session.Apply();
     }
 
-    private void Request(ConsoleViewState state) => ViewStateRequested?.Invoke(this, state);
+    private void Request(ConsoleViewState state)
+    {
+        _session?.RecordRequest(state);
+        ViewStateRequested?.Invoke(this, state);
+    }
 
     private void Toggle(ConsoleRowId id)
     {
@@ -120,24 +132,42 @@ public sealed class ConsoleListView : TemplatedControl
         private ConsoleReadingAnchor? _restore;
         private DispatcherOperation? _pending;
         private int _suppress;
+        private Vector _lastProgrammaticOffset;
+        private ConsoleReadingAnchor? _requestedAnchor;
         internal ConsoleReadingAnchor? ReadingAnchor => _restore;
 
         internal void ScrollProgrammatically(Action scroll)
         {
             _suppress++;
             try { scroll(); }
-            finally { _suppress--; }
+            finally
+            {
+                _lastProgrammaticOffset = _parts.Host.Offset;
+                _suppress--;
+            }
         }
 
         internal Session(ConsoleListView view, Parts parts)
         {
             _view = view;
             _parts = parts;
+            _lastProgrammaticOffset = parts.Host.Offset;
             parts.Scroll.ScrollChanged += Scrolled;
+            parts.Host.ScrollInvalidated += Scrolled;
             parts.Jump.Click += Jump;
             parts.Host.ToggleRequested += Toggle;
             parts.Host.LayoutUpdated += LaidOut;
+            view.ResourcesChanged += ResourcesUpdated;
+            view.ActualThemeVariantChanged += ResourcesUpdated;
         }
+
+        internal void RecordRequest(ConsoleViewState state) =>
+            _requestedAnchor = (state.Follow as ConsoleFollow.Paused)?.Anchor;
+
+        internal bool IsRequestedAnchor(ConsoleFollow follow) => follow is ConsoleFollow.Paused paused
+            && _requestedAnchor is { } requested
+            && requested with { RowOrder = paused.Anchor.RowOrder } == paused.Anchor
+            && requested.RowOrder.SequenceEqual(paused.Anchor.RowOrder);
 
         internal ConsoleViewState CaptureReadingState()
         {
@@ -172,14 +202,27 @@ public sealed class ConsoleListView : TemplatedControl
                     ? preservePosition ? ((ConsoleFollow.Paused)CaptureReadingState().Follow).Anchor : paused.Anchor : null;
                 _parts.Host.Synchronize(_view);
                 _parts.Jump.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused;
-                _parts.Jump.Content = $"Jump to latest ({_view.Projection?.NewSincePauseCount ?? 0} new messages)";
                 _parts.Retention.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused
                     && _view.Projection is { EvictedCount: > 0 };
-                _parts.Retention.Text = $"Retention changed · {_view.Projection?.EvictedCount ?? 0} messages evicted";
+                UpdateText();
                 Schedule();
             }
             finally { _suppress--; }
         }
+
+        private void UpdateText()
+        {
+            var count = _view.Projection?.NewSincePauseCount ?? 0;
+            var key = count == 1 ? "Nvt.Console.List.JumpToLatestOne" : "Nvt.Console.List.JumpToLatestMany";
+            // Inheritance notifications can precede visual detach, after resources are unavailable.
+            if (UiResourceResolver.GetString(_view, key) is not { } jump
+                || UiResourceResolver.GetString(_view, "Nvt.Console.List.RetentionFormat") is not { } retention) return;
+            _parts.Jump.Content = string.Format(_view.TimeOptions.Culture, jump, count);
+            _parts.Retention.Text = string.Format(_view.TimeOptions.Culture, retention, _view.Projection?.EvictedCount ?? 0);
+        }
+
+        private void ResourcesUpdated(object? sender, EventArgs e) => UpdateText();
+        private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) => UpdateText();
 
         private void Schedule()
         {
@@ -219,12 +262,11 @@ public sealed class ConsoleListView : TemplatedControl
             finally { _suppress--; }
         }
 
-        private void Scrolled(object? sender, ScrollChangedEventArgs e)
+        private void Scrolled(object? sender, EventArgs e)
         {
-            // _suppress nests around our own synchronous scrolls and is cleared in finally.
-            // Queued projection work is not a reason to discard a user's scroll-away intent.
-            if (_suppress != 0 || e.OffsetDelta.Y == 0
-                || e.ExtentDelta.Y != 0 || e.ViewportDelta.Y != 0 || _view.Projection is null) return;
+            // The host reports offsets before layout can correct heights; ScrollChanged may combine
+            // offset and geometry deltas later. Only offsets written by the list belong to it.
+            if (_suppress != 0 || _parts.Host.Offset == _lastProgrammaticOffset || _view.Projection is null) return;
             if (_parts.Host.AtEnd && _view.ViewState.Follow is ConsoleFollow.Paused)
                 _view.JumpToLatest();
             else if (!_parts.Host.AtEnd)
@@ -244,9 +286,12 @@ public sealed class ConsoleListView : TemplatedControl
             _pending?.Abort();
             _pending = null;
             _parts.Scroll.ScrollChanged -= Scrolled;
+            _parts.Host.ScrollInvalidated -= Scrolled;
             _parts.Jump.Click -= Jump;
             _parts.Host.ToggleRequested -= Toggle;
             _parts.Host.LayoutUpdated -= LaidOut;
+            _view.ResourcesChanged -= ResourcesUpdated;
+            _view.ActualThemeVariantChanged -= ResourcesUpdated;
             _lifetime.Dispose();
         }
     }

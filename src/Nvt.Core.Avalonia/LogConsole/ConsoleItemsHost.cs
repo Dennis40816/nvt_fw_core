@@ -111,6 +111,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var height = double.IsFinite(availableSize.Height) ? availableSize.Height : Bounds.Height;
         var viewport = new Size(Math.Max(0, width), Math.Max(0, height));
         var wasAtEnd = AtEnd;
+        var readingPosition = CaptureReadingPosition();
         var widthChanged = _viewport.Width != viewport.Width;
         var reading = widthChanged && _view?.ViewState.Follow is ConsoleFollow.Paused
             ? _view.PendingReadingAnchor ?? CaptureAnchor() : null;
@@ -120,7 +121,11 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         {
             _heights.Clear();
             RebuildHeights();
-            if (reading is not null) RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
+            if (reading is not null)
+            {
+                RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
+                readingPosition = CaptureReadingPosition();
+            }
         }
         if (viewportChanged) RaiseScrollInvalidated(EventArgs.Empty);
         if (_view is null || ItemsSource.Count == 0 || height <= 0) { ClearRealized(); return viewport; }
@@ -153,12 +158,43 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
             while (_pool.Count > Math.Max(2, _realized.Count)) _pool.Pop();
             if (!changed) break;
             RebuildHeights();
-            if (wasAtEnd && _view.ViewState.Follow is ConsoleFollow.Following) ScrollToEnd();
+            if (_view.ViewState.Follow is not ConsoleFollow.Following)
+                RestoreReadingPosition(readingPosition);
+            else if (wasAtEnd) ScrollToEnd();
             RaiseScrollInvalidated(EventArgs.Empty);
         }
         if (reading is not null) RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
         else if (wasAtEnd && _view.ViewState.Follow is ConsoleFollow.Following) ScrollToEnd();
         return viewport;
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ResourcesChanged += ResourcesUpdated;
+        ActualThemeVariantChanged += ResourcesUpdated;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        ResourcesChanged -= ResourcesUpdated;
+        ActualThemeVariantChanged -= ResourcesUpdated;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void ResourcesUpdated(object? sender, EventArgs e) => InvalidateHeights();
+    private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) => InvalidateHeights();
+
+    private void InvalidateHeights()
+    {
+        // Resource ancestry can disappear before the visual detach notification.
+        if (_view is null || !this.TryFindResource("Nvt.Console.List.RowHeight", ActualThemeVariant, out _)) return;
+        var readingPosition = CaptureReadingPosition();
+        _heights.Clear();
+        RebuildHeights();
+        if (_view.ViewState.Follow is not ConsoleFollow.Following) RestoreReadingPosition(readingPosition);
+        InvalidateMeasure();
+        RaiseScrollInvalidated(EventArgs.Empty);
     }
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -180,6 +216,15 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         if (index < 0) index = ~index - 1;
         return Math.Clamp(index, 0, Math.Max(0, ItemsSource.Count - 1));
     }
+
+    private (int Index, double Inset) CaptureReadingPosition()
+    {
+        var index = FindRow(Offset.Y);
+        return (index, Offset.Y - _tops[index]);
+    }
+
+    private void RestoreReadingPosition((int Index, double Inset) position) =>
+        SetScrollOffset(new(0, _tops[position.Index] + position.Inset));
 
     internal ConsoleReadingAnchor? CaptureAnchor()
     {

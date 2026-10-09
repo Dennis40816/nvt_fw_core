@@ -269,7 +269,8 @@ public sealed partial class ConsoleListViewTests(IconSessionFixture fixture)
             Assert.Equal(0, Container(view, 41).Bounds.Y);
             var notice = view.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Name == "PART_Retention");
             Assert.True(notice.IsVisible);
-            Assert.Contains("40", notice.Text);
+            Assert.Equal(string.Format(view.TimeOptions.Culture,
+                Resource<string>(view, "Nvt.Console.List.RetentionFormat"), 40), notice.Text);
         }
         finally { window.Close(); }
     });

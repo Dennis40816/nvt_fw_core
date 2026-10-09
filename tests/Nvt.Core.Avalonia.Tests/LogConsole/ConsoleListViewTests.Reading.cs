@@ -387,9 +387,11 @@ public sealed partial class ConsoleListViewTests
             var jump = view.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_Jump");
             view.Projection = next; Flush(window);
             Assert.True(jump.IsVisible);
-            Assert.Equal("Jump to latest (17 new messages)", jump.Content);
+            Assert.Equal(string.Format(view.TimeOptions.Culture,
+                Resource<string>(view, "Nvt.Console.List.JumpToLatestMany"), 17), jump.Content);
             view.Projection = latest;
-            Assert.Equal("Jump to latest (23 new messages)", jump.Content);
+            Assert.Equal(string.Format(view.TimeOptions.Culture,
+                Resource<string>(view, "Nvt.Console.List.JumpToLatestMany"), 23), jump.Content);
             Flush(window);
             Click(window, jump); Flush(window);
             Assert.IsType<ConsoleFollow.Following>(view.ViewState.Follow);
