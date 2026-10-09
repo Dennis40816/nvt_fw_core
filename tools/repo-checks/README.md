@@ -3,6 +3,7 @@
 These two Python engines preserve the source checker behavior and accept repository-owned policy values.
 They use only the Python standard library.
 Python 3.10 or later supports their type syntax.
+[Shared C# health policy bundle](csharp/README.md) provides the canonical props, EditorConfig, banned symbols, schema, and manifest.
 
 The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.
