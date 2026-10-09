@@ -1,5 +1,10 @@
 # Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+param(
+    [ValidateSet('Core', 'Fonts')]
+    [string]$Package = 'Core'
+)
+
 $ErrorActionPreference = 'Stop'
 
 function Invoke-DotNet {
@@ -13,12 +18,15 @@ function Invoke-DotNet {
 
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
-    [xml]$properties = Get-Content -LiteralPath 'Directory.Build.props' -Raw
+    $versionFile = if ($Package -eq 'Fonts') { 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj' } else { 'Directory.Build.props' }
+    $tagPrefix = if ($Package -eq 'Fonts') { 'core-fonts-v' } else { 'core-v' }
+    $packageIds = if ($Package -eq 'Fonts') { @('Nvt.Core.Fonts') } else { @('Nvt.Core', 'Nvt.Core.Avalonia') }
+    [xml]$properties = Get-Content -LiteralPath $versionFile -Raw
     $version = [string]$properties.Project.PropertyGroup.Version
     if ([string]::IsNullOrWhiteSpace($version)) {
-        throw 'Directory.Build.props must define the Core version.'
+        throw "$versionFile must define the $Package version."
     }
-    $tag = "core-v$version"
+    $tag = "$tagPrefix$version"
     $commit = git rev-parse HEAD
     if ($LASTEXITCODE -ne 0) {
         throw 'Cannot read the source commit.'
@@ -29,9 +37,13 @@ try {
     }
 
     # Only the first release of the checked-out GitHub tag may use an existing tag.
-    $isTagRelease = $env:GITHUB_ACTIONS -eq 'true' -and
+    $isTagPush = $env:GITHUB_ACTIONS -eq 'true' -and
         $env:GITHUB_EVENT_NAME -eq 'push' -and
-        $env:GITHUB_REF -like 'refs/tags/core-v*'
+        $env:GITHUB_REF -like 'refs/tags/*'
+    $isTagRelease = $isTagPush -and $env:GITHUB_REF -like "refs/tags/$tagPrefix*"
+    if ($isTagPush -and -not $isTagRelease) {
+        throw "The release tag must be $tag."
+    }
     if ($isTagRelease) {
         if ($env:GITHUB_REF -cne "refs/tags/$tag" -or $existingTag -cne $tag) {
             throw "The release tag must be $tag."
@@ -73,7 +85,6 @@ try {
     Invoke-DotNet -Arguments @('test', 'Nvt.Core.sln', '--configuration', 'Release', '--no-build', '--no-restore')
 
     New-Item -ItemType Directory -Path $output -Force | Out-Null
-    $packageIds = @('Nvt.Core', 'Nvt.Core.Avalonia')
     foreach ($packageId in $packageIds) {
         Invoke-DotNet -Arguments (@('pack', "src/$packageId/$packageId.csproj",
             '--configuration', 'Release', '--no-build', '--no-restore', '--output', $output) + $sourceProperties)
@@ -86,9 +97,13 @@ try {
     }
     [IO.File]::WriteAllText((Join-Path $output 'SHA256SUMS'), ($checksums -join "`n") + "`n")
     $source = "Version: $version`nCommit: $commit`nRepository: https://github.com/Dennis40816/nvt_fw_core`n"
+    if ($Package -eq 'Fonts') {
+        $source += "Package: Nvt.Core.Fonts`n"
+    }
     [IO.File]::WriteAllText((Join-Path $output 'SOURCE.md'), $source)
-    Write-Host "Packed Core $version from $commit into artifacts/packages/."
-    Write-Host 'Output: two .nupkg files, SHA256SUMS, and SOURCE.md.'
+    $releaseName = if ($Package -eq 'Fonts') { 'Core Fonts' } else { 'Core' }
+    Write-Host "Packed $releaseName $version from $commit into artifacts/packages/."
+    Write-Host "Output: $(@($packageIds).Count) .nupkg files, SHA256SUMS, and SOURCE.md."
 }
 finally {
     Pop-Location
