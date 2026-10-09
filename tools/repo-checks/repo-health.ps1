@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Dennis Liu. All rights reserved.
 #Requires -Version 7.0
 <#
-H02 syntax ratchet, measurement contract roslyn-physical-v1. No package restore.
+C# health enforcement; syntax measurement contract roslyn-physical-v1. No package restore.
 The embedded host uses the global.json-selected SDK's Roslyn, in an isolated ALC.
 Narrow discovery choices (also in repo-health.md): unresolved async lambdas remain
 candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget;
@@ -15,8 +15,8 @@ No approved-owner exemption until H03 supplies the reviewed seam manifest.
 Build outputs (bin, obj, artifacts, .git) are excluded; generated filename suffixes
 are NOT excluded. State includes init and positional-record properties; observable
 backing fields are counted once, partial properties by symbol once.
-H03 replaces the hand baseline validation with csharp/schema.json, supplies full
-project/configuration coverage and the build/SARIF/format/provenance stages.
+H03 validates schema, evaluated project coverage, build/SARIF/format and provenance.
+Measure is syntax-only. Verify, LowerBaseline and Enroll require a solution.
 #>
 [CmdletBinding()]
 param(
@@ -24,6 +24,9 @@ param(
     [string]$Repo = 'core',
     [string]$Root = '.',
     [string]$BaseRef = '',
+    [string]$Solution = '',
+    [string]$CoreRoot = '',
+    [switch]$FunctionsOnly,
     [string]$BaselinePath = 'eng/code-health/baseline.json',
     [Alias('OutFile')][string]$OutputPath = '',
     # A diagnostic hook: cannot substitute another parser for the pinned one.
@@ -36,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 [Globalization.CultureInfo]::CurrentUICulture = [Globalization.CultureInfo]::InvariantCulture
 $script:Version = 'roslyn-physical-v1'
 $script:Limits = @{ fileLines = 800; methodLines = 80; partialFiles = 8; stateMembers = 30; axamlCodeBehindLines = 150; viewTypeLines = 800 }
-$script:SyntaxRules = @('asyncVoid', 'blockingWait', 'suppressions', 'generationFields', 'nativeImportDuplicates', 'fakeClockDuplicates', 'workspaceDuplicates')
+$script:SyntaxRules = @('asyncVoid', 'blockingWait', 'suppressions', 'generationFields', 'nativeImportDuplicates', 'fakeClockDuplicates', 'workspaceDuplicates', 'suppressionScopes')
 
 function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
     $lines = @(& $Exe @Arguments 2>&1)
@@ -45,7 +48,7 @@ function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
 }
 
 function Read-Baseline([string]$Text, [string]$Label) {
-    # H03: replace with the pinned schema, retaining these semantic checks.
+    # Schema plus semantic ratchet checks; no package/module dependency.
     try { $b = ConvertFrom-Json -InputObject $Text -AsHashtable -Depth 100 }
     catch { throw "Bad baseline $Label`: invalid JSON: $($_.Exception.Message)" }
     if ($b -isnot [System.Collections.IDictionary]) { throw "Bad baseline $Label`: expected object" }
@@ -89,6 +92,7 @@ function Read-Baseline([string]$Text, [string]$Label) {
         # Diagnostic fingerprints, including bannedApi/RS0030, use exactly this
         # reader/key. H03 must populate them before enabling complete Verify.
     }
+    [void](Read-HealthDocument $Text 'baseline')
     return $b
 }
 function Test-Count($Value) { return (($Value -is [int] -or $Value -is [long]) -and $Value -ge 0) }
@@ -115,6 +119,7 @@ function Match-Entities($Old, $New) {
                 if ($pass -eq 'hash' -and $Old[$j].Contains('contentHash') -and $n.Contains('contentHash') -and $Old[$j].contentHash -ceq $n.contentHash) { $j }
                 if ($pass -eq 'symbol' -and $sameSymbol) { $j }
             })
+            if ($candidates.Count -eq 0) { continue }
             if ($pass -eq 'symbol') {
                 $remaining = @(for ($k=0; $k -lt $New.Count; $k++) { if (-not $matches.ContainsKey($k) -and (Entity-Key $New[$k]) -ceq (Entity-Key $n)) { $k } })
                 if ($remaining.Count -ne 1) { continue }
@@ -138,7 +143,7 @@ function Write-Failure([string]$Code, $Entity, [string]$Metric, $Old, $New, [str
         $changedProps = @($script:ChangedPaths | Where-Object { $_.EndsWith('.props', [StringComparison]::OrdinalIgnoreCase) })
         if ($changedProps.Count) { $contributor = $changedProps[0]; $contributingLine = 1 }
     }
-    Write-Output "$Code ${path}:${line} $Metric`: $Old -> $New; entity $($Entity.project):$($Entity.symbol); $Reason"
+    Write-Output "$Code ${path}:${line} $Metric`: $Old -> $New; entity $($Entity.project):$($Entity.symbol); member $(if ($Entity.Contains('member')) { $Entity.member } else { $Entity.symbol }); $Reason"
     Write-Output "Contributing change: ${contributor}:${contributingLine}."
     $script:Failures++
 }
@@ -165,9 +170,9 @@ function Compare-Debt($Allowed, $Current, [string]$ValueField, [bool]$RequireLow
             }
         }
     }
-    $currentFindings = @{}
+    $currentFindings = [Collections.Generic.Dictionary[string,hashtable]]::new([StringComparer]::Ordinal)
     foreach ($f in $Current.findings) { $currentFindings[(Finding-Key $f)] = $f }
-    $oldFindings = @{}
+    $oldFindings = [Collections.Generic.Dictionary[string,hashtable]]::new([StringComparer]::Ordinal)
     foreach ($f in $Allowed.findings) { $oldFindings[(Finding-Key $f)] = $f }
     foreach ($f in $Current.findings) {
         $key = Finding-Key $f
@@ -190,6 +195,333 @@ function Compare-Debt($Allowed, $Current, [string]$ValueField, [bool]$RequireLow
     }
 }
 
+function Read-HealthDocument([string]$Text, [string]$Definition) {
+    $schemaPath = Join-Path $PSScriptRoot 'csharp/schema.json'
+    if (-not (Test-Path -LiteralPath $schemaPath)) { $schemaPath = Join-Path $PSScriptRoot 'schema.json' }
+    $schema = ConvertFrom-Json -AsHashtable ([IO.File]::ReadAllText($schemaPath))
+    $validation = @{ '$schema' = $schema.'$schema'; '$defs' = $schema.'$defs'; '$ref' = "#/`$defs/$Definition" }
+    if (-not (Test-Json -Json $Text -Schema ($validation | ConvertTo-Json -Depth 100) -ErrorAction SilentlyContinue)) { throw "Invalid $Definition document (schema)" }
+    return (ConvertFrom-Json -AsHashtable -Depth 100 $Text)
+}
+function Health-Path([string]$Path) {
+    if ($Path.StartsWith('file:', [StringComparison]::OrdinalIgnoreCase)) { $Path = ([uri]$Path).LocalPath }
+    else { $Path = [uri]::UnescapeDataString($Path) }
+    $rootFull = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Root))
+    $full = [IO.Path]::GetFullPath($(if ([IO.Path]::IsPathRooted($Path)) { $Path } else { [IO.Path]::Combine($rootFull, $Path) }))
+    if (-not $full.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "Diagnostic path escapes repository: $Path" }
+    return [IO.Path]::GetRelativePath($rootFull, $full).Replace('\', '/')
+}
+function Get-HealthFiles {
+    # Coverage includes untracked projects/configuration: adding a project must not evade the gate.
+    $pending = [Collections.Generic.Stack[string]]::new()
+    $pending.Push($Root)
+    while ($pending.Count) {
+        foreach ($item in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+            if ($item.PSIsContainer) {
+                if ($item.Name -notin @('.git', 'bin', 'obj', 'artifacts')) { $pending.Push($item.FullName) }
+            }
+            else { [IO.Path]::GetRelativePath($Root, $item.FullName).Replace('\', '/') }
+        }
+    }
+}
+function Read-EditorText([string]$Path) {
+    return [Text.UTF8Encoding]::new($false, $true).GetString([IO.File]::ReadAllBytes($Path))
+}
+function Test-ManagedBlock([string]$Common, [string]$Editor) {
+    $begin = '# BEGIN CORE HEALTH MANAGED BLOCK' + "`n"
+    $end = '# END CORE HEALTH MANAGED BLOCK'
+    if ([regex]::Matches($Editor, [regex]::Escape($begin)).Count -ne 1 -or [regex]::Matches($Editor, [regex]::Escape($end)).Count -ne 1) { throw 'HC_DRIFT .editorconfig:1 missing/duplicate managed-block markers' }
+    $start = $Editor.IndexOf($begin, [StringComparison]::Ordinal) + $begin.Length
+    $stop = $Editor.IndexOf($end, [StringComparison]::Ordinal)
+    if ($stop -lt $start -or $Editor.Substring($start, $stop - $start) -cne $Common) { throw 'HC_DRIFT .editorconfig:1 changed managed block (byte-for-byte UTF-8 LF required)' }
+    Test-EditorOverrides $Common ($Editor.Remove($start - $begin.Length, $stop + $end.Length - $start + $begin.Length)) '.editorconfig'
+}
+function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
+    # Preserve section-specific keys; conservatively protect common C# settings in every descendant section.
+    $protected = @{}
+    $section = ''
+    foreach ($line in $Common -split "`n") {
+        if ($line -match '^\[(.+)\]$') { $section = $Matches[1] }
+        elseif ($line -match '^\s*([^#;=\s]+)\s*=\s*(.*?)\s*$' -and $section -eq '*.cs') { $protected[$Matches[1]] = $Matches[2] }
+    }
+    $ranks = @{ none = 0; silent = 1; suggestion = 2; warning = 3; error = 4 }
+    $lineNumber = 0
+    $inPreamble = $true
+    foreach ($line in $Editor -split '\r?\n') {
+        $lineNumber++
+        if ($line -match '^\s*\[.+\]\s*$') { $inPreamble = $false }
+        if ($line -notmatch '^\s*([^#;=\s]+)\s*=\s*(.*?)\s*$') { continue }
+        $key = $Matches[1]; $value = $Matches[2].ToLowerInvariant()
+        if ($Path -ne '.editorconfig' -and $inPreamble -and $key -eq 'root' -and $value -eq 'true') { throw "HC_DRIFT ${Path}:$lineNumber descendant root=true discards protected policy" }
+        if (-not $protected.ContainsKey($key)) { continue }
+        $expected = $protected[$key]
+        $stronger = $ranks.ContainsKey($value) -and $ranks.ContainsKey($expected) -and $ranks[$value] -ge $ranks[$expected]
+        if ($value -cne $expected -and -not $stronger) { throw "HC_DRIFT ${Path}:$lineNumber weaker protected override $key=$value (required $expected)" }
+    }
+}
+function Test-BundleDrift {
+    $lockPath = Join-Path $Root 'eng/core-health.lock.json'
+    $lock = Read-HealthDocument ([IO.File]::ReadAllText($lockPath)) 'core-health.lock'
+    # A PR cannot replace the trusted pin. Pin updates require a separate synchronization change.
+    if ($BaseRef) {
+        $base = Invoke-Checked 'git' @('merge-base', 'HEAD', $BaseRef)
+        $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', "${base}:eng/core-health.lock.json")) 'core-health.lock'
+        if ($lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately' }
+    }
+    elseif ($Mode -ne 'Enroll') {
+        $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', 'HEAD:eng/core-health.lock.json')) 'core-health.lock'
+        if ($lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
+    }
+    $canonicalRoot = if ($CoreRoot) { [IO.Path]::GetFullPath($CoreRoot) } else { $Root }
+    foreach ($name in $lock.files.Keys) {
+        $path = Join-Path $Root "eng/core-health/$name"
+        $bytes = [IO.File]::ReadAllBytes($path)
+        if ($bytes -contains 13 -or ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) { throw "HC_DRIFT $path`:1 LF/UTF-8 required" }
+        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+        if ($hash -cne $lock.files[$name]) { throw "HC_DRIFT $path`:1 SHA-256 differs from lock" }
+        # Git blob identity is computed over raw bytes, without autocrlf filters.
+        $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
+        $local = (Invoke-Checked 'git' @('hash-object', '--no-filters', $path)).Trim()
+        if ($canonical -cne $local) { throw "HC_DRIFT $path`:1 differs from approved Core revision" }
+        if ($Repo -eq 'core') {
+            $working = (Invoke-Checked 'git' @('hash-object', '--no-filters', (Join-Path $Root "tools/repo-checks/csharp/$name"))).Trim()
+            if ($working -cne $canonical) { throw "HC_DRIFT tools/repo-checks/csharp/$name`:1 canonical tree differs from pin" }
+        }
+    }
+    $common = [IO.File]::ReadAllText((Join-Path $Root 'eng/core-health/.editorconfig'))
+    Test-ManagedBlock $common (Read-EditorText (Join-Path $Root '.editorconfig'))
+    foreach ($path in @(Get-HealthFiles | Where-Object { $_.EndsWith('/.editorconfig') -and $_ -notin @('eng/core-health/.editorconfig', 'tools/repo-checks/csharp/.editorconfig') })) {
+        Test-EditorOverrides $common (Read-EditorText (Join-Path $Root $path)) $path
+    }
+}
+function Health-Ids([string]$Value) { return (@($Value -split '[;,\s]+' | Where-Object { $_ } | Sort-Object -Unique) -join ';') }
+function Get-LedgerWarningIds($Baseline, [string]$Project) {
+    if ($null -eq $Baseline) { return '' }
+    return (@($Baseline.findings | Where-Object { $_.project -ceq $Project -and $_.rule -notin $script:SyntaxRules -and -not $_.rule.StartsWith('FORMAT:') } | ForEach-Object { $_.rule } | Sort-Object -Unique) -join ';')
+}
+function Test-ProjectProperties($Evaluation, [string]$Path, $Baseline) {
+    $p = $Evaluation.Properties
+    if ($p.HealthLayer -notin @('domain', 'application', 'presentation', 'infrastructure', 'composition', 'tests', 'tooling')) { throw "HC_COVERAGE ${Path}:1 missing/invalid HealthLayer '$($p.HealthLayer)'" }
+    foreach ($pair in @{ TreatWarningsAsErrors = 'true'; Nullable = 'enable'; AnalysisLevel = 'latest-recommended'; LangVersion = '14.0'; EnableNETAnalyzers = 'true'; EnforceCodeStyleInBuild = 'true'; Deterministic = 'true'; RestorePackagesWithLockFile = 'true'; ImplicitUsings = 'enable' }.GetEnumerator()) {
+        if ($p[$pair.Key] -cne $pair.Value) { throw "HC_CONFIGURATION ${Path}:1 evaluated $($pair.Key)=$($p[$pair.Key]); required $($pair.Value)" }
+    }
+    foreach ($key in @('RunAnalyzers', 'RunAnalyzersDuringBuild')) { if ($p[$key] -notin @('', 'true')) { throw "HC_CONFIGURATION ${Path}:1 evaluated $key disables analyzers" } }
+    # SDK-added mandatory error IDs; any replacement/removal is detected.
+    if ((Health-Ids $p.WarningsAsErrors) -cne 'NU1605;SYSLIB0011') { throw "HC_CONFIGURATION ${Path}:1 evaluated WarningsAsErrors override" }
+    $ids = Health-Ids $p.HealthBaselineWarningIds
+    if ($ids -match '(^|;)(VSTHRD100|CS4014|RS0016|RS0017|RS0024|RS0025|RS0036|RS0037)(;|$)') { throw "HC_CONFIGURATION ${Path}:1 error rule cannot use a warning debt exemption" }
+    if ((Health-Ids $p.WarningsNotAsErrors) -cne $ids) { throw "HC_CONFIGURATION ${Path}:1 WarningsNotAsErrors exceeds ledger warning IDs" }
+    if ($Baseline -and $ids -cne (Get-LedgerWarningIds $Baseline $p.MSBuildProjectName)) { throw "HC_CONFIGURATION ${Path}:1 HealthBaselineWarningIds differs from ledger" }
+    if ($Baseline) {
+        $allowedNoWarn = @($Baseline.findings | Where-Object { $_.project -ceq $p.MSBuildProjectName -and $_.rule -eq 'suppressions' -and $_.symbol.StartsWith('NoWarn:') } | ForEach-Object { $_.symbol.Substring(7) }) -join ';'
+        if ((Health-Ids $p.NoWarn) -cne (Health-Ids $allowedNoWarn)) { throw "HC_CONFIGURATION ${Path}:1 evaluated NoWarn differs from suppression ledger" }
+    }
+    $packages = @{ 'Microsoft.CodeAnalysis.BannedApiAnalyzers' = '3.3.4'; 'Microsoft.VisualStudio.Threading.Analyzers' = '17.14.15' }
+    if ($p.HealthPublicApi -eq 'true') { $packages['Microsoft.CodeAnalysis.PublicApiAnalyzers'] = '3.3.4' }
+    foreach ($name in $packages.Keys) {
+        $refs = @($Evaluation.Items.PackageReference | Where-Object { $_.Identity -ceq $name })
+        $versions = @($Evaluation.Items.PackageVersion | Where-Object { $_.Identity -ceq $name })
+        if ($refs.Count -ne 1 -or $versions.Count -ne 1 -or $versions[0].Version -cne $packages[$name]) { throw "HC_CONFIGURATION ${Path}:1 analyzer package missing/changed: $name" }
+        $r = $refs[0]
+        if ($r.PrivateAssets -cne 'all' -or $r.IncludeAssets -cne 'runtime;build;native;contentfiles;analyzers;buildtransitive' -or ($r.Contains('ExcludeAssets') -and $r.ExcludeAssets) -or ($r.Contains('VersionOverride') -and $r.VersionOverride) -or ($r.Contains('Version') -and $r.Version -cne $packages[$name])) { throw "HC_CONFIGURATION ${Path}:1 analyzer package override: $name" }
+    }
+    foreach ($name in @('BannedSymbols.Common.txt', 'BannedSymbols.Files.txt') + $(if ($p.HealthLayer -eq 'tests') { @('BannedSymbols.Tests.txt') } else { @() })) {
+        $required = [IO.Path]::GetFullPath((Join-Path $Root "eng/core-health/$name"))
+        if (-not @($Evaluation.Items.AdditionalFiles | Where-Object { [IO.Path]::GetFullPath($_.FullPath) -eq $required }).Count) { throw "HC_CONFIGURATION ${Path}:1 missing protected AdditionalFiles $name" }
+    }
+    if ($p.HealthLayer -in @('domain', 'application')) {
+        $pure = Join-Path $Root "eng/code-health/$($p.HealthLayer)/BannedSymbols.txt"
+        if (-not (Test-Path -LiteralPath $pure) -or 'T:System.IO.File' -cnotin [IO.File]::ReadAllLines($pure)) { throw "HC_CONFIGURATION ${Path}:1 pure layer must ban System.IO.File" }
+    }
+    $expected = [IO.Path]::GetFullPath((Join-Path $Root "artifacts/code-health/$($p.MSBuildProjectName).sarif"))
+    if ($p.ErrorLog -notmatch '^(.+),version=2\.1$' -or [IO.Path]::GetFullPath($Matches[1]) -cne $expected) { throw "HC_CONFIGURATION ${Path}:1 ErrorLog override/collision" }
+}
+function Get-ProjectCoverage($Baseline) {
+    $properties = 'MSBuildProjectName,HealthLayer,HealthPublicApi,HealthBaselineWarningIds,TreatWarningsAsErrors,Nullable,AnalysisLevel,LangVersion,EnableNETAnalyzers,EnforceCodeStyleInBuild,RunAnalyzers,RunAnalyzersDuringBuild,Deterministic,RestorePackagesWithLockFile,ImplicitUsings,WarningsAsErrors,WarningsNotAsErrors,NoWarn,ErrorLog,Configurations,TargetFramework,TargetFrameworks,DefineConstants,TargetPath,ProjectAssetsFile'
+    $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $result = @()
+    foreach ($path in @(Get-HealthFiles | Where-Object { $_.EndsWith('.csproj', [StringComparison]::OrdinalIgnoreCase) } | Sort-Object)) {
+        $first = ConvertFrom-Json -AsHashtable (Invoke-Checked 'dotnet' @('msbuild', $path, '-nologo', '-p:Configuration=Release', '-p:HealthCollectDiagnostics=true', "-getProperty:$properties", '-getItem:PackageReference,PackageVersion,Compile,ProjectReference,AdditionalFiles'))
+        $p = $first.Properties
+        if (-not $names.Add($p.MSBuildProjectName)) { throw "HC_COVERAGE ${path}:1 duplicate project name/SARIF filename" }
+        $frameworks = @($(if ($p.TargetFrameworks) { $p.TargetFrameworks } else { $p.TargetFramework }) -split ';' | Where-Object { $_ })
+        if ($frameworks.Count -ne 1) { throw "HC_COVERAGE ${path}:1 multi-target projects require separate per-TFM SARIF paths before adoption" }
+        $configs = @(@('Debug', 'Release') + @($p.Configurations -split ';') | Where-Object { $_ } | Sort-Object -Unique)
+        foreach ($config in $configs) {
+            $e = if ($config -eq 'Release') { $first } else { ConvertFrom-Json -AsHashtable (Invoke-Checked 'dotnet' @('msbuild', $path, '-nologo', "-p:Configuration=$config", '-p:HealthCollectDiagnostics=true', "-getProperty:$properties", '-getItem:PackageReference,PackageVersion,Compile,ProjectReference,AdditionalFiles')) }
+            Test-ProjectProperties $e $path $Baseline
+        }
+        $result += @{ path = $path; name = $p.MSBuildProjectName; layer = $p.HealthLayer; evaluation = $first }
+    }
+    if (-not $result.Count) { throw 'HC_COVERAGE repository:1 no C# projects' }
+    return ,$result
+}
+function Add-DiagnosticRequest([string]$Rule, [string]$Project, [string]$Path, [int]$Line, [int]$Column, [string]$Symbol, [string]$Stage) {
+    $script:DiagnosticRequests.Add(@{ rule = $Rule; project = $Project; path = $Path; line = $Line; column = $Column; symbol = $Symbol; stage = $Stage })
+}
+function Read-ProjectSarif([string]$Path, [string]$Project, [string]$ProjectPath, [switch]$RequireAnalyzerMetadata) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "HC_SARIF ${ProjectPath}:1 missing SARIF $Path" }
+    try { $s = ConvertFrom-Json -AsHashtable -Depth 100 ([IO.File]::ReadAllText($Path)) } catch { throw "HC_SARIF ${ProjectPath}:1 unreadable SARIF: $_" }
+    if ($s.version -cne '2.1.0' -or $s.runs -isnot [array] -or $s.runs.Count -ne 1 -or $s.runs[0].results -isnot [array]) { throw "HC_SARIF ${ProjectPath}:1 invalid/failed project output" }
+    if ($RequireAnalyzerMetadata) {
+        $ids = @($s.runs[0].tool.driver.rules | ForEach-Object { $_.id })
+        foreach ($id in @('RS0030', 'VSTHRD100')) { if ($id -cnotin $ids) { throw "HC_SARIF ${ProjectPath}:1 protected analyzer did not load ($id)" } }
+    }
+    foreach ($run in $s.runs) {
+        if ($run.Contains('invocations')) {
+            foreach ($inv in $run.invocations) {
+                if (($inv.Contains('executionSuccessful') -and $inv.executionSuccessful -ne $true) -or ($inv.Contains('toolExecutionNotifications') -and @($inv.toolExecutionNotifications | Where-Object { $_.level -eq 'error' }).Count)) { throw "HC_SARIF ${ProjectPath}:1 failed project load/tool invocation" }
+            }
+        }
+        foreach ($r in $run.results) {
+            if ($r.ruleId -in @('AD0001', 'AD0002', 'VSTHRD100', 'CS4014', 'RS0016', 'RS0017', 'RS0024', 'RS0025', 'RS0036', 'RS0037')) { throw "HC_SARIF ${ProjectPath}:1 analyzer/protected error failure $($r.ruleId)" }
+            # Suppressed warnings may be encoded as error after warnings-as-errors.
+            # The native build must still succeed. Tracked suppression scopes are
+            # independently ratcheted; generated obj source remains out of scope.
+            if ($r.Contains('suppressions') -and $r.suppressions.Count) { continue }
+            if ($r.level -eq 'error') { throw "HC_SARIF ${ProjectPath}:1 analyzer/compiler failure $($r.ruleId)" }
+            if ($r.level -notin @('warning', 'note', 'none')) { throw "HC_SARIF ${ProjectPath}:1 unknown diagnostic level" }
+            if ($r.level -ne 'warning') { continue }
+            $symbol = $r.ruleId
+            if ($r.ruleId -eq 'RS0030') {
+                $quoted = [regex]::Matches($r.message.text, "'([^']+)'")
+                if ($quoted.Count -ne 1) { throw "HC_SARIF ${ProjectPath}:1 cannot parse RS0030 banned symbol" }
+                $symbol = $quoted[0].Groups[1].Value
+            }
+            if (-not $r.Contains('locations') -or -not $r.locations.Count) { Add-DiagnosticRequest $r.ruleId $Project $ProjectPath 1 1 $r.message.text 'build'; continue }
+            $location = $r.locations[0].physicalLocation
+            if ($location.artifactLocation.Contains('uriBaseId')) { throw 'HC_SARIF unresolved URI base' }
+            $source = Health-Path $location.artifactLocation.uri
+            Add-DiagnosticRequest $r.ruleId $Project $source $location.region.startLine $location.region.startColumn $symbol 'build'
+        }
+    }
+}
+function Read-FormatReport([string]$Path, [int]$ExitCode, [string]$Stage, [string]$Project = '') {
+    if ($ExitCode -notin @(0, 2)) { throw "HC_FORMAT $Path`:1 tool crashed/failed with exit $ExitCode" }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "HC_FORMAT $Path`:1 missing format report" }
+    try { $report = ConvertFrom-Json -NoEnumerate -AsHashtable -Depth 100 ([IO.File]::ReadAllText($Path)) } catch { throw "HC_FORMAT $Path`:1 unreadable format report" }
+    if ($report -isnot [array]) { throw "HC_FORMAT $Path`:1 expected structured array" }
+    $before = $script:DiagnosticRequests.Count
+    foreach ($file in $report) {
+        if (-not $file.Contains('FilePath') -or $file.FileChanges -isnot [array]) { throw "HC_FORMAT $Path`:1 invalid file report" }
+        $source = Health-Path $file.FilePath
+        $owners = @($script:HealthProjects | Where-Object { @($_.evaluation.Items.Compile | Where-Object { [IO.Path]::GetFullPath($_.FullPath) -eq [IO.Path]::GetFullPath((Join-Path $Root $source)) }).Count })
+        if ($Project) { $owners = @($owners | Where-Object { $_.name -ceq $Project }) }
+        if (-not $owners.Count) { throw "HC_FORMAT ${source}:1 no evaluated project owns this report" }
+        $used = [Collections.Generic.HashSet[string]]::new()
+        foreach ($change in $file.FileChanges) {
+            if (-not $change.DiagnosticId -or $change.LineNumber -lt 1 -or $change.CharNumber -lt 1 -or -not $change.FormatDescription) { throw "HC_FORMAT ${source}:1 malformed change" }
+            foreach ($owner in $owners) {
+                # dotnet format reports unfixable analyzer warnings after its prospective
+                # edits, so these coordinates can have moved. Reuse fresh compiler
+                # occurrences in source order; build debt still independently gates them.
+                $candidates = @($script:DiagnosticRequests | Where-Object { $_.stage -ceq 'build' -and $_.project -ceq $owner.name -and $_.path -ceq $source -and $_.rule -ceq $change.DiagnosticId -and -not $used.Contains("$($_.project)|$($_.rule)|$($_.line)|$($_.column)") } | Sort-Object { [Math]::Abs($_.line - $change.LineNumber) }, line, column)
+                if ($change.FormatDescription -match '^(warning|error) [A-Za-z0-9]+:' -and $candidates.Count) {
+                    $f = $candidates[0].Clone()
+                    [void]$used.Add("$($f.project)|$($f.rule)|$($f.line)|$($f.column)")
+                    $f.stage = $Stage; $f['reuse'] = $true
+                    $script:DiagnosticRequests.Add($f)
+                }
+                else { Add-DiagnosticRequest ("FORMAT:" + $change.DiagnosticId) $owner.name $source $change.LineNumber $change.CharNumber $change.DiagnosticId $Stage }
+            }
+        }
+    }
+    if ($ExitCode -ne 0 -and $script:DiagnosticRequests.Count -eq $before) { throw "HC_FORMAT $Path`:1 nonzero exit without findings (project-load/tool failure)" }
+}
+function Test-SeamOwner($Finding, $Entries) {
+    return @($Entries | Where-Object { $_.path -ceq $Finding.path -and ($_.member -ceq '*' -or $_.member -ceq $Finding.member) -and $_.symbol -ceq $Finding.symbol }).Count -gt 0
+}
+function Test-FormatExit([int]$ExitCode, $Findings, $Baseline) {
+    if ($ExitCode -eq 0) { return }
+    if ($ExitCode -ne 2 -or -not $Findings.Count) { throw "HC_FORMAT tool failure exit=$ExitCode" }
+    if ($Mode -eq 'Enroll') { return } # Explicit, one-time owner enrollment after every tool succeeded.
+    $allowed = @{}
+    foreach ($f in $Baseline.findings) { $allowed[(Finding-Key $f)] = $f.count }
+    foreach ($f in $Findings) {
+        if ($f.rule -eq 'RS0030' -and (Test-SeamOwner $f $script:Seams.entries)) { continue }
+        $key = Finding-Key $f
+        if (-not $allowed.ContainsKey($key) -or $f.count -gt $allowed[$key]) { Write-Failure 'HC_DIAGNOSTIC' $f $f.rule $(if ($allowed.ContainsKey($key)) { $allowed[$key] } else { 0 }) $f.count 'New format fingerprint from nonzero format exit.' | ForEach-Object { Write-Host $_ } }
+    }
+}
+function Initialize-Enforcement($Baseline) {
+    if (-not $Solution -or -not (Test-Path -LiteralPath (Join-Path $Root $Solution) -PathType Leaf)) { throw 'Solution is required for Enroll/Verify/LowerBaseline' }
+    Test-BundleDrift
+    $script:Seams = Read-HealthDocument ([IO.File]::ReadAllText((Join-Path $Root 'eng/code-health/seam-owners.json'))) 'seam-owners'
+    $script:HealthProjects = Get-ProjectCoverage $Baseline
+    # Fresh output only: delete named outputs, never recursively remove computed paths.
+    [void][IO.Directory]::CreateDirectory((Join-Path $Root 'artifacts/code-health'))
+    foreach ($project in $script:HealthProjects) {
+        $sarif = Join-Path $Root "artifacts/code-health/$($project.name).sarif"
+        if (Test-Path -LiteralPath $sarif) { Remove-Item -LiteralPath $sarif }
+    }
+    $env:DOTNET_CLI_UI_LANGUAGE = 'en-US'
+    [void](Invoke-Checked 'dotnet' @('build', $Solution, '-c', 'Release', '--no-restore', '--no-incremental', '-p:HealthCollectDiagnostics=true'))
+    foreach ($project in $script:HealthProjects) { Read-ProjectSarif (Join-Path $Root "artifacts/code-health/$($project.name).sarif") $project.name $project.path -RequireAnalyzerMetadata }
+    $script:FormatRuns = @()
+    $runs = @(@{ target = $Solution; directory = 'format'; project = ''; style = $false })
+    foreach ($project in @($script:HealthProjects | Where-Object { $_.layer -eq 'tests' })) { $runs += @{ target = $project.path; directory = "format-style-$($project.name)"; project = $project.name; style = $true } }
+    foreach ($run in $runs) {
+        $dir = "artifacts/code-health/$($run.directory)"
+        $report = Join-Path $Root "$dir/format-report.json"
+        if (Test-Path -LiteralPath $report) { Remove-Item -LiteralPath $report }
+        $args = @('format')
+        if ($run.style) { $args += 'style' }
+        $args += @($run.target, '--verify-no-changes', '--no-restore', '--severity', 'warn', '--report', $dir)
+        if ($run.style) { $args += @('--diagnostics', 'IDE0005') }
+        $output = @(& dotnet @args 2>&1)
+        $code = $LASTEXITCODE
+        [IO.File]::WriteAllLines((Join-Path $Root "artifacts/code-health/$($run.directory).log"), [string[]]$output)
+        if (($output -join "`n") -match '(?i)(failed to load|error loading|unhandled exception|exception was thrown|could not load|warnings were encountered while loading the workspace|workspace warnings|unable to load)') { throw "HC_FORMAT $dir`:1 failed project load/tool execution; see log" }
+        Read-FormatReport $report $code $run.directory $run.project
+        $script:FormatRuns += @{ stage = $run.directory; exitCode = $code }
+    }
+}
+function Measure-Health {
+    $m = Measure-Syntax
+    $diagnostics = @($script:ResolvedDiagnostics)
+    $allowedSeams = @($diagnostics | Where-Object { $_.rule -eq 'RS0030' -and (Test-SeamOwner $_ $script:Seams.entries) })
+    $diagnostics = @($diagnostics | Where-Object { $_ -notin $allowedSeams })
+    $m.findings += @($diagnostics | Where-Object { -not $_.reuse } | Group-Object -CaseSensitive { Finding-Key $_ } | ForEach-Object { $f = $_.Group[0]; $f.count = [int]($_.Group | Measure-Object count -Sum).Sum; $f })
+    foreach ($run in $script:FormatRuns) { Test-FormatExit $run.exitCode @($script:ResolvedDiagnostics | Where-Object { $_.stage -ceq $run.stage } | Group-Object -CaseSensitive { Finding-Key $_ } | ForEach-Object { $f = $_.Group[0].Clone(); $f.count = if ($f.reuse) { @($_.Group | Group-Object -CaseSensitive { "$($_.path)|$($_.line)|$($_.column)" }).Count } else { $_.Count }; $f }) $baseline }
+    $m['authorizedSeams'] = $allowedSeams
+    if ($allowedSeams.Count) { Write-Host "HC_DIAGNOSTIC seam-owners:1 authorized RS0030 occurrences=$($allowedSeams.Count); separate from debt" }
+    $m.extensions = @{ build = 'Release; no restore; no incremental'; sarif = 'per project; fresh output'; format = 'structured fingerprints; IDE0005 test style pass'; projectCoverage = @($script:HealthProjects | ForEach-Object { @{ project = $_.name; path = $_.path; layer = $_.layer } }) }
+    return $m
+}
+function Write-LedgerWarningIds($Baseline) {
+    $path = Join-Path $Root 'eng/code-health/projects.props'
+    $text = [IO.File]::ReadAllText($path)
+    $marker = '  <!-- BEGIN GENERATED HEALTH WARNING IDS -->'
+    $end = '  <!-- END GENERATED HEALTH WARNING IDS -->'
+    $lines = @($marker)
+    foreach ($project in @($script:HealthProjects | Sort-Object name)) {
+        $ids = Get-LedgerWarningIds $Baseline $project.name
+        if ($ids) { $lines += "  <PropertyGroup Condition=`"'`$(MSBuildProjectName)' == '$($project.name)'`">", "    <HealthBaselineWarningIds>$ids</HealthBaselineWarningIds>", '  </PropertyGroup>' }
+    }
+    $lines += $end
+    if (-not $text.Contains($marker) -or -not $text.Contains($end)) { throw 'Missing generated warning-ID block in projects.props' }
+    $pattern = '(?s)' + [regex]::Escape($marker) + '.*?' + [regex]::Escape($end)
+    [IO.File]::WriteAllText($path, [regex]::Replace($text, $pattern, ($lines -join "`n")))
+}
+function Enroll-Baseline($Measurement, [string]$Path) {
+    if (Test-Path -LiteralPath $Path) { throw 'Enroll refuses: baseline already exists' }
+    $b = [ordered]@{ schemaVersion = 1; measurementVersion = $script:Version; snapshotCommit = $script:Snapshot; limits = $script:Limits.Clone(); entities = @(); findings = @() }
+    foreach ($e in $Measurement.entities) {
+        $ceilings = @{}
+        foreach ($metric in $e.values.Keys) { if ($e.values[$metric] -gt $script:Limits[$metric]) { $ceilings[$metric] = $e.values[$metric] } }
+        if ($ceilings.Count) { $b.entities += @{ project = $e.project; kind = $e.kind; symbol = $e.symbol; locations = $e.locations; contentHash = $e.contentHash; ceilings = $ceilings; owner = 'NVT CORE'; issue = 'health-refactor/2026-10-31' } }
+    }
+    foreach ($f in $Measurement.findings) { $entry = @{ owner = 'NVT CORE'; removeBy = '2026-10-31' }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
+    $json = ConvertTo-Json -Depth 100 $b
+    [void](Read-HealthDocument $json 'baseline')
+    [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent))
+    # CreateNew prevents a concurrent enrollment from overwriting an existing ledger.
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::CreateNew)
+    try { $bytes = [Text.Encoding]::UTF8.GetBytes($json + "`n"); $stream.Write($bytes) } finally { $stream.Dispose() }
+    Write-LedgerWarningIds $b
+    Write-Output "HC_STATE $BaselinePath`:1 Enroll passed; $($b.entities.Count) structural entities, $($b.findings.Count) finding fingerprints."
+}
+
 $hostSource = @'
 using System;
 using System.IO;
@@ -197,6 +529,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Security.Cryptography;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -280,6 +613,169 @@ public static class HealthSyntaxHost
         if (!v.HasValue || !(v.Value is string)) throw new Exception(u.Path + ":" + Line(u.Tree,e) + " unresolved attribute constant");
         return (string)v.Value;
     }
+    sealed class DiagnosticRequest
+    {
+        public string rule { get; set; }
+        public string project { get; set; }
+        public string path { get; set; }
+        public int line { get; set; }
+        public int column { get; set; }
+        public string symbol { get; set; }
+        public string stage { get; set; }
+        public bool reuse { get; set; }
+    }
+    sealed class ProjectContext
+    {
+        public string name { get; set; }
+        public string[] files { get; set; }
+        public string[] references { get; set; }
+        public string[] defines { get; set; }
+        public string[] bans { get; set; }
+    }
+    public static string Diagnostics(string root, string requestsJson, string contextsJson, string[] frameworkReferences)
+    {
+        var requests = JsonSerializer.Deserialize<DiagnosticRequest[]>(requestsJson);
+        var contexts = JsonSerializer.Deserialize<ProjectContext[]>(contextsJson);
+        var output = new List<object>();
+        foreach (var context in contexts)
+        {
+            var banned = new HashSet<string>(Directory.GetFiles(Path.Combine(root,"eng/core-health"),"BannedSymbols.*.txt").SelectMany(File.ReadAllLines).Concat(context.bans ?? Array.Empty<string>()), StringComparer.Ordinal);
+            var trees = new Dictionary<string,SyntaxTree>(StringComparer.OrdinalIgnoreCase);
+            var options = new CSharpParseOptions(LanguageVersion.Latest, DocumentationMode.Parse, preprocessorSymbols:context.defines.Where(d => d.Length>0));
+            foreach (var file in context.files.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!File.Exists(Path.Combine(root,file))) throw new Exception("Missing evaluated Compile source " + file);
+                trees[file] = CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(root,file)), options, file);
+            }
+            // The SDK adds this generated file during CoreCompile, after evaluation-only coverage.
+            string globals = Path.Combine(root, Path.GetDirectoryName(context.files.FirstOrDefault() ?? "source.cs"), "obj/Release/net10.0/" + context.name + ".GlobalUsings.g.cs");
+            var sourceTrees = trees.Values.ToList();
+            if (File.Exists(globals)) sourceTrees.Add(CSharpSyntaxTree.ParseText(File.ReadAllText(globals), options));
+            else sourceTrees.Add(CSharpSyntaxTree.ParseText("global using System; global using System.Collections.Generic; global using System.IO; global using System.Linq; global using System.Net.Http; global using System.Threading; global using System.Threading.Tasks;", options));
+            var refs = frameworkReferences.Concat(context.references).Distinct(StringComparer.OrdinalIgnoreCase).Select(p => MetadataReference.CreateFromFile(p));
+            var compilation = CSharpCompilation.Create("HealthDiagnostics_" + context.name, sourceTrees, refs, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe:true));
+            foreach (var r in requests.Where(r => r.project == context.name))
+            {
+                string member, hash, symbol = r.symbol;
+                if (!r.path.EndsWith(".cs",StringComparison.OrdinalIgnoreCase)) { member = "MSBuild"; hash = Hash(r.symbol.Trim()); }
+                else
+                {
+                    if (!trees.TryGetValue(r.path, out var tree)) {
+                        tree = CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(root,r.path)), options, r.path);
+                        compilation = compilation.AddSyntaxTrees(tree); trees[r.path] = tree;
+                    }
+                    var syntax = tree.GetRoot(); var text = tree.GetText();
+                    if (r.line<1 || r.line>text.Lines.Count || r.column<1) throw new Exception(r.path+":"+r.line+" invalid diagnostic coordinates");
+                    var sourceLine = text.Lines[r.line-1];
+                    int position = sourceLine.Start+r.column-1;
+                    if (position>sourceLine.End) throw new Exception(r.path+":"+r.line+" invalid diagnostic column");
+                    var node = syntax.FindToken(Math.Min(position,Math.Max(0,text.Length-1))).Parent;
+                    var owner = node.AncestorsAndSelf().FirstOrDefault(Callable);
+                    member = owner == null ? Qualified(node) : Member(owner);
+                    if (owner == null && node.AncestorsAndSelf().OfType<PropertyDeclarationSyntax>().FirstOrDefault() is PropertyDeclarationSyntax property) member += "." + property.Identifier.ValueText;
+                    if (owner == null && node.AncestorsAndSelf().OfType<FieldDeclarationSyntax>().FirstOrDefault() is FieldDeclarationSyntax field) member += ".fields:" + string.Join(",",field.Declaration.Variables.Select(v => v.Identifier.ValueText));
+                    if (member.Length == 0) member = "<global>";
+                    var normalized = node.AncestorsAndSelf().FirstOrDefault(n => n is StatementSyntax && n is not BlockSyntax)
+                        ?? node.AncestorsAndSelf().FirstOrDefault(n => n is MemberDeclarationSyntax) ?? syntax;
+                    hash = Hash(Normal(normalized));
+                    if (r.rule == "RS0030")
+                    {
+                        var model = compilation.GetSemanticModel(tree, ignoreAccessibility:true);
+                        ISymbol resolved = null;
+                        foreach (var candidate in node.AncestorsAndSelf().TakeWhile(n => n is not StatementSyntax && n is not MemberDeclarationSyntax))
+                        {
+                            var info = model.GetSymbolInfo(candidate);
+                            var symbols = info.Symbol == null ? info.CandidateSymbols : new[]{info.Symbol}.ToImmutableArray();
+                            var display = new SymbolDisplayFormat(typeQualificationStyle:SymbolDisplayTypeQualificationStyle.NameOnly,
+                                genericsOptions:SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                                memberOptions:SymbolDisplayMemberOptions.IncludeContainingType | SymbolDisplayMemberOptions.IncludeParameters,
+                                parameterOptions:SymbolDisplayParameterOptions.IncludeType,
+                                miscellaneousOptions:SymbolDisplayMiscellaneousOptions.UseSpecialTypes | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+                            foreach (var found in symbols)
+                            {
+                                var method = found as IMethodSymbol;
+                                var doc = (method?.ReducedFrom ?? found).OriginalDefinition.GetDocumentationCommentId();
+                                bool messageMatch = found.ToDisplayString(display).Replace("?","") == r.symbol.Replace("?","");
+                                if (doc != null && banned.Contains(doc) && (info.Symbol != null || symbols.Length == 1 || messageMatch)) { resolved=found; symbol=doc; break; }
+                                var type = found as INamedTypeSymbol ?? found.ContainingType;
+                                if (type?.GetDocumentationCommentId() is string typeDoc && banned.Contains(typeDoc) && (info.Symbol != null || messageMatch)) { resolved=found; symbol=typeDoc; break; }
+                            }
+                            if (resolved != null) break;
+                        }
+                        if (resolved == null && !banned.Contains(symbol))
+                        {
+                            // Compiler SARIF supplies the resolved overload display. A
+                            // dependent expression can be incomplete in this syntax host;
+                            // match that exact display against the finite banned manifest.
+                            var display = new SymbolDisplayFormat(typeQualificationStyle:SymbolDisplayTypeQualificationStyle.NameOnly,
+                                genericsOptions:SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                                memberOptions:SymbolDisplayMemberOptions.IncludeContainingType | SymbolDisplayMemberOptions.IncludeParameters,
+                                parameterOptions:SymbolDisplayParameterOptions.IncludeType,
+                                miscellaneousOptions:SymbolDisplayMiscellaneousOptions.UseSpecialTypes | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+                            var matches = banned.Select(id => new { id, value=DocumentationCommentId.GetFirstSymbolForDeclarationId(id,compilation) })
+                                .Where(x => x.value != null && x.value.ToDisplayString(display).Replace("?","") == r.symbol.Replace("?","")).ToArray();
+                            if (matches.Length == 1) { resolved=matches[0].value; symbol=matches[0].id; }
+                        }
+                        if (resolved == null && !banned.Contains(symbol)) throw new Exception(r.path+":"+r.line+" cannot resolve banned symbol from '"+r.symbol+"'");
+                    }
+                }
+                output.Add(new { r.rule, r.project, r.path, r.line, r.column, member, symbol, syntaxHash=hash, count=1, r.stage, r.reuse });
+            }
+        }
+        if (output.Count != requests.Length) throw new Exception("Diagnostic project coverage mismatch");
+        // A pragma's text can remain unchanged while its suppressed span grows.
+        // Record covered statements and expressions, so narrowing/removal lowers debt and
+        // adding or substituting covered code cannot offset another removal.
+        foreach (var context in contexts)
+        foreach (var file in context.files.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var tree = CSharpSyntaxTree.ParseText(File.ReadAllText(Path.Combine(root,file)), new CSharpParseOptions(LanguageVersion.Latest, preprocessorSymbols:context.defines.Where(d => d.Length>0)), file);
+            var syntax = tree.GetRoot();
+            var directives = syntax.DescendantTrivia(descendIntoTrivia:true).Select(t => t.GetStructure()).OfType<PragmaWarningDirectiveTriviaSyntax>().Where(p => p.IsActive).OrderBy(p => p.SpanStart).ToArray();
+            void Scope(SyntaxNode region, int start, int stop, string id)
+            {
+                var statements = region.DescendantNodesAndSelf().OfType<StatementSyntax>().Where(s => s is not BlockSyntax && s.SpanStart >= start && s.Span.End <= stop).ToHashSet();
+                var expressions = region.DescendantNodesAndSelf().Where(n =>
+                    n is ArrowExpressionClauseSyntax ||
+                    n is EqualsValueClauseSyntax && (n.Parent is PropertyDeclarationSyntax || n.Parent is VariableDeclaratorSyntax && n.Parent.Parent?.Parent is FieldDeclarationSyntax) ||
+                    n is ExpressionSyntax && n.Parent is LambdaExpressionSyntax lambda && lambda.Body == n)
+                    .Where(n => n.SpanStart >= start && n.Span.End <= stop && !n.Ancestors().OfType<StatementSyntax>().Any(statements.Contains));
+                foreach (var covered in statements.Cast<SyntaxNode>().Concat(expressions))
+                {
+                    var owner = covered.AncestorsAndSelf().FirstOrDefault(Callable);
+                    var member = owner == null ? Qualified(covered) : Member(owner);
+                    output.Add(new { rule="suppressionScopes", project=context.name, path=file, line=Line(tree,covered), member=member.Length == 0 ? "<global>" : member, symbol=id, syntaxHash=Hash(Normal(covered)), count=1, stage="suppression", reuse=false });
+                }
+            }
+            foreach (var pragma in directives.Where(p => p.DisableOrRestoreKeyword.IsKind(SyntaxKind.DisableKeyword)))
+            {
+                var ids = pragma.ErrorCodes.Select(c => c.ToString()).ToArray();
+                if (ids.Length == 0) ids = new[]{"ALL"};
+                foreach (var id in ids)
+                {
+                    if (new[]{"VSTHRD100","CS4014","RS0016","RS0017","RS0024","RS0025","RS0036","RS0037","ALL"}.Contains(id)) throw new Exception(file+":"+Line(tree,pragma)+" protected error/all-warning suppression is forbidden");
+                    var restore = directives.FirstOrDefault(p => p.SpanStart > pragma.SpanStart && p.DisableOrRestoreKeyword.IsKind(SyntaxKind.RestoreKeyword) && (p.ErrorCodes.Count == 0 || p.ErrorCodes.Any(c => c.ToString()==id)));
+                    if (id=="RS0030" && restore==null) throw new Exception(file+":"+Line(tree,pragma)+" whole-file RS0030 disabling is forbidden");
+                    Scope(syntax,pragma.Span.End,restore?.SpanStart ?? syntax.FullSpan.End,"pragma:"+id);
+                }
+            }
+            foreach (var attribute in syntax.DescendantNodes().OfType<AttributeSyntax>())
+            {
+                var name = attribute.Name.ToString().Split('.').Last();
+                var alias = syntax.DescendantNodes().OfType<UsingDirectiveSyntax>().FirstOrDefault(u => u.Alias?.Name.Identifier.ValueText == name);
+                if (alias != null) name = alias.Name.ToString().Split('.').Last();
+                if (name is not ("SuppressMessage" or "SuppressMessageAttribute" or "UnconditionalSuppressMessage" or "UnconditionalSuppressMessageAttribute")) continue;
+                var args = attribute.ArgumentList?.Arguments;
+                if (args == null || args.Value.Count<2 || args.Value[1].Expression is not LiteralExpressionSyntax code) throw new Exception(file+":"+Line(tree,attribute)+" suppression check ID must be resolved before enrollment");
+                var id = code.Token.ValueText.Split(':')[0];
+                if (new[]{"VSTHRD100","CS4014","RS0016","RS0017","RS0024","RS0025","RS0036","RS0037"}.Contains(id)) throw new Exception(file+":"+Line(tree,attribute)+" protected error suppression is forbidden");
+                var region = attribute.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() ?? syntax;
+                Scope(region,region.SpanStart,region.Span.End,"attribute:"+id);
+            }
+        }
+        return JsonSerializer.Serialize(output);
+    }
+
     public static string Measure(string root, string[] paths, string[] projects, string[] referencePaths)
     {
         var units = new List<Unit>();
@@ -486,6 +982,19 @@ function Measure-Syntax {
         }
         $projectNames.Add($name)
     }
+    if ($script:HealthProjects.Count) {
+        $evaluatedFiles = [Collections.Generic.List[string]]::new()
+        $evaluatedNames = [Collections.Generic.List[string]]::new()
+        foreach ($project in $script:HealthProjects) {
+            foreach ($item in $project.evaluation.Items.Compile) {
+                $path = Health-Path $item.FullPath
+                if ($path -cin $csFiles) { $evaluatedFiles.Add($path); $evaluatedNames.Add($project.name) }
+            }
+        }
+        foreach ($path in $csFiles) { if ($path -cnotin $evaluatedFiles) { throw "HC_COVERAGE $path`:1 tracked source has no evaluated Compile owner" } }
+        for ($i=0; $i -lt $inputFiles.Count; $i++) { if ($inputFiles[$i].EndsWith('.axaml')) { $evaluatedFiles.Add($inputFiles[$i]); $evaluatedNames.Add($projectNames[$i]) } }
+        $inputFiles = $evaluatedFiles.ToArray(); $projectNames = $evaluatedNames
+    }
     $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
     $temporary = Join-Path $temporaryRoot ('repo-health-' + [guid]::NewGuid().ToString('N'))
     [void][IO.Directory]::CreateDirectory($temporary)
@@ -507,6 +1016,16 @@ function Measure-Syntax {
         try { $hostAssembly = $context.LoadFromStream($stream) } finally { $stream.Dispose() }
         $json = $hostAssembly.GetType('HealthSyntaxHost').GetMethod('Measure').Invoke($null, [object[]]@($Root, [string[]]$inputFiles, $projectNames.ToArray(), [string[]]$refs))
         $m = ConvertFrom-Json -InputObject $json -AsHashtable -Depth 100
+        if ($script:DiagnosticRequests.Count -or $script:HealthProjects.Count) {
+            $contexts = @()
+            foreach ($project in $script:HealthProjects) {
+                $refsOutput = ConvertFrom-Json -AsHashtable (Invoke-Checked 'dotnet' @('msbuild', $project.path, '-nologo', '-verbosity:quiet', '-p:Configuration=Release', '-target:ResolveReferences', '-getItem:ReferencePath'))
+                $contexts += @{ name = $project.name; files = @($project.evaluation.Items.Compile | ForEach-Object { Health-Path $_.FullPath }); references = @($refsOutput.Items.ReferencePath | ForEach-Object { $_.FullPath }); defines = @($project.evaluation.Properties.DefineConstants -split ';'); bans = @($(Join-Path $Root "eng/code-health/$($project.layer)/BannedSymbols.txt") | Where-Object { Test-Path -LiteralPath $_ } | ForEach-Object { [IO.File]::ReadAllLines($_) }) }
+            }
+            $diagnosticJson = $hostAssembly.GetType('HealthSyntaxHost').GetMethod('Diagnostics').Invoke($null, [object[]]@($Root, ([string](ConvertTo-Json -Depth 100 -InputObject $script:DiagnosticRequests.ToArray())), ([string](ConvertTo-Json -Depth 100 -InputObject $contexts)), [string[]]$refs))
+            $script:ResolvedDiagnostics = @(ConvertFrom-Json -AsHashtable -Depth 100 $diagnosticJson)
+        }
+
     }
     finally {
         if ($null -ne $context) { $context.Unload() }
@@ -526,7 +1045,14 @@ function Measure-Syntax {
             [void][IO.Directory]::CreateDirectory($pristineDirectory)
             $pristineProject = Join-Path $pristineDirectory 'Pristine.csproj'
             [IO.File]::WriteAllText($pristineProject, '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
-            Copy-Item -LiteralPath (Join-Path $global 'global.json') -Destination (Join-Path $pristineDirectory 'global.json')
+            # The pristine project must select the same SDK as the repository, so copy the nearest global.json.
+            $sdkPinRoot = $Root
+            while (-not (Test-Path -LiteralPath (Join-Path $sdkPinRoot 'global.json') -PathType Leaf)) {
+                $sdkPinParent = Split-Path $sdkPinRoot -Parent
+                if (-not $sdkPinParent -or $sdkPinParent -eq $sdkPinRoot) { throw 'global.json is required to evaluate the SDK defaults' }
+                $sdkPinRoot = $sdkPinParent
+            }
+            Copy-Item -LiteralPath (Join-Path $sdkPinRoot 'global.json') -Destination (Join-Path $pristineDirectory 'global.json')
             $pristine = ConvertFrom-Json -AsHashtable -InputObject (Invoke-Checked 'dotnet' @('msbuild', $pristineProject, '-nologo', '-getProperty:NoWarn,WarningsNotAsErrors'))
             foreach ($property in $sdkDefaults.Keys.Clone()) { $sdkDefaults[$property] = @($pristine.Properties[$property] -split '[;,\s]+' | Where-Object { $_ }) }
         }
@@ -559,15 +1085,19 @@ function Measure-Syntax {
     $m['snapshotCommit'] = $script:Snapshot
     $m['limits'] = $script:Limits.Clone()
     $m['repo'] = $Repo
-    $m['extensions'] = @{ build = 'not implemented here (H03)'; sarif = 'not implemented here (H03)'; format = 'not implemented here (H03)'; bannedApi = $null; diagnosticFingerprints = $null; projectCoverage = 'nearest declaring project; H03 supplies evaluated coverage/configurations' }
+    $m['extensions'] = @{ scope = 'syntax only; use Verify with Solution for enforcement'; diagnosticFingerprints = 'SDK Roslyn diagnostic-syntax-v1'; projectCoverage = 'evaluated Compile ownership during enforcement' }
     return $m
 }
 function Get-Hash([string]$Text) { return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))).ToLowerInvariant() }
 
+if ($FunctionsOnly) { return }
+$script:DiagnosticRequests = [Collections.Generic.List[hashtable]]::new()
+$script:ResolvedDiagnostics = @()
+$script:HealthProjects = @()
+$script:FormatRuns = @()
 $exitCode = 2
 try {
-    if ($Mode -in @('Build', 'Sarif', 'Format')) { throw "HC_NOT_IMPLEMENTED: $Mode is not implemented here; H03 extension stage (exit 2)" }
-    if ($Mode -notin @('Measure', 'Verify', 'LowerBaseline') -or $Repo -notin @('core', 'nfc', 'nfh', 'nfu')) { throw 'Invalid Mode or Repo' }
+    if ($Mode -notin @('Measure', 'Verify', 'LowerBaseline', 'Enroll') -or $Repo -notin @('core', 'nfc', 'nfh', 'nfu')) { throw 'Invalid Mode or Repo' }
     $Root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Root))
     if (-not (Test-Path -LiteralPath $Root -PathType Container)) { throw "Missing root $Root" }
     Push-Location -LiteralPath $Root
@@ -592,7 +1122,8 @@ try {
         $script:ChangedPaths = @()
         $script:Failures = 0
         $baseline = $null
-        if ($Mode -ne 'Measure') {
+        if ($Mode -eq 'Enroll' -and (Test-Path -LiteralPath (Join-Path $Root $BaselinePath))) { throw 'Enroll refuses: baseline already exists' }
+        if ($Mode -notin @('Measure', 'Enroll')) {
             if (-not $script:GitRoot) { throw 'Verify/LowerBaseline require a Git repository with a committed baseline' }
             $baselineFull = [IO.Path]::GetFullPath((Join-Path $Root $BaselinePath))
             if (-not $baselineFull.StartsWith($script:GitRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'BaselinePath must be within the Git repository' }
@@ -602,12 +1133,20 @@ try {
             $baseline = Read-Baseline ([IO.File]::ReadAllText($baselineFull)) $BaselinePath
             $script:ChangedPaths = @((Invoke-Checked 'git' @('-C', $Root, 'diff', '--name-only', '--relative', $allowedCommit, '--')) -split '\r?\n')
             Compare-Debt $allowed $baseline 'ceilings' $false
-            if (@(@($allowed.findings) + @($baseline.findings) | Where-Object { $_.rule -notin $script:SyntaxRules }).Count -gt 0) { throw 'HC_NOT_IMPLEMENTED: diagnostic fingerprints/bannedApi require the H03 measurement provider; refusing to discard unmeasured findings' }
+
         }
-        $measurement = Measure-Syntax
+        # H03 provider initialization (fixture tests substitute providers here).
+        if ($Mode -ne 'Measure') { Initialize-Enforcement $baseline }
+        $measurement = if ($Mode -eq 'Measure') { Measure-Syntax } else { Measure-Health }
         if ($Mode -eq 'Measure') {
             $json = ConvertTo-Json -InputObject $measurement -Depth 100
             if ($OutputPath) { [IO.File]::WriteAllText([IO.Path]::GetFullPath($OutputPath), $json + [Environment]::NewLine) } else { Write-Output $json }
+            $exitCode = 0
+        }
+        elseif ($Mode -eq 'Enroll') {
+            if (-not $script:GitRoot) { throw 'Enroll requires a Git repository' }
+            if ($script:Failures) { throw 'Enrollment provider failures' }
+            Enroll-Baseline $measurement ([IO.Path]::GetFullPath((Join-Path $Root $BaselinePath)))
             $exitCode = 0
         }
         else {
@@ -630,10 +1169,11 @@ try {
                 foreach ($f in $measurement.findings) { $remaining[(Finding-Key $f)] = $f.count }
                 $baseline.findings = @($baseline.findings | Where-Object { $remaining.ContainsKey((Finding-Key $_)) } | ForEach-Object { $_.count = $remaining[(Finding-Key $_)]; $_ })
                 [IO.File]::WriteAllText($baselineFull, (ConvertTo-Json -InputObject $baseline -Depth 100) + [Environment]::NewLine)
+                Write-LedgerWarningIds $baseline
                 Write-Output 'HC_STATE baseline:1 LowerBaseline passed; only existing debt was deleted or lowered.'
                 $exitCode = 0
             }
-            else { Write-Output 'HC_STATE syntax:1 Verify passed (H02 syntax scope; H03 build/SARIF/format/provenance stages are pending).'; $exitCode = 0 }
+            else { Write-Output 'HC_STATE syntax:1 Verify passed (syntax, build, SARIF, format, provenance and evaluated project coverage).'; $exitCode = 0 }
         }
     }
     finally { Pop-Location }

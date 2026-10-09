@@ -1,21 +1,27 @@
-# C# syntax health ratchet (H02)
+# C# health enforcement (H02/H03)
 
 PowerShell 7, Git and the installed SDK selected by `global.json` are required.
-No modules, packages, restore or network access are needed. The embedded host is
+The syntax parser needs no modules, packages, restore or network access. Complete
+enforcement uses the existing locked restore and host NuGet cache; it never restores. The embedded host is
 compiled by that SDK and loads its `Roslyn/bincore` assemblies in an isolated
 context. Measurement version: `roslyn-physical-v1`.
 
 ```powershell
 ./tools/repo-checks/repo-health.ps1 -Mode Measure -Repo core -Root . -OutputPath measurement.json
-./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -BaseRef origin/main
-./tools/repo-checks/repo-health.ps1 -Mode LowerBaseline -Repo core -Root . -BaseRef origin/main
+./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
+./tools/repo-checks/repo-health.ps1 -Mode LowerBaseline -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
 ```
 
 `Repo` accepts `core`, `nfc`, `nfh`, `nfu`. Measure defaults to JSON on stdout;
 `OutFile` aliases `OutputPath`. The default baseline is
 `eng/code-health/baseline.json`; override it with `BaselinePath`.
-Verify and LowerBaseline require a committed baseline. There is no enrollment
-or automatic refresh mode. Exit codes: **0** pass, **1** debt findings, **2**
+Verify and LowerBaseline require a committed baseline and Solution. Enroll is the
+only production enrollment mode: it requires all providers to succeed, refuses any
+existing baseline, and writes debt owned by NVT CORE, due 2026-10-31. It also
+generates the marked HealthBaselineWarningIds block in projects.props. No mode
+automatically refreshes or raises debt. An absent baseline at the merge base fails
+closed: first enrollment must be integrated before checking subsequent PRs against
+that base. Measure remains syntax-only; it cannot satisfy the CI gate. Exit codes: **0** pass, **1** debt findings, **2**
 tool/input error (including parse errors and unavailable stages).
 
 Baseline fields are exactly `schemaVersion`, `measurementVersion`,
@@ -57,21 +63,106 @@ and contributing path. They never offset each other through repository totals.
 | `sourceTextAssertions` | Discovery: ReadText, ReadAllText/Lines/Bytes (including Async), OpenText; Contains/DoesNotContain/Matches/DoesNotMatch calls in the same file. All locations retained, with a separate Architecture.Tests or Tests+Architecture/Boundary/Layout/Snapshot filter flag. These counts do not prove source dependence. |
 
 Tracked C# source is measured in Git trees; standalone fixture trees use all files.
-Only bin/obj/artifacts/.git directories are excluded, including during discovery;
-generated suffixes and tracked generated directories remain in scope. Project
-ownership is the nearest single csproj. Parser configuration is SDK Latest syntax
-with default preprocessor symbols; H03 supplies evaluated configurations, linked
-files, project references and complete coverage. No semantic correctness claim is
-made for candidates.
+Only bin/obj/artifacts/.git directories are excluded. Enforcement measures each
+tracked source in every evaluated Compile owner, including linked files. It rejects
+unowned tracked C# and discovers untracked projects too. Syntax candidate metrics
+retain H02's SDK Latest/default preprocessor convention; diagnostic fingerprints
+use evaluated Release DefineConstants and ResolveReferences. H02's semantic
+candidate metrics still use SDK framework references and same-project source;
+they do not prove complete semantic R1–R12 compliance.
 
-H03 must add the schema, evaluated coverage, build/SARIF/format providers, pinned
-bundle drift/provenance checks, seam classifications, workflow and first baseline.
-`Build`, `Sarif`, `Format` return `HC_NOT_IMPLEMENTED`/2. Diagnostic findings,
-including `bannedApi`/RS0030, have reader/fingerprint slots; Verify/LowerBaseline
-refuse to discard them until H03 supplies their measurement provider. A successful
-Verify explicitly reports H02 syntax scope. `ParserDirectory` is a troubleshooting
-hook that rejects substitution of another SDK's parser.
+Verify/LowerBaseline/Enroll validate the local schema, bundle provenance, managed
+EditorConfig and evaluated project settings, create artifacts/code-health, remove
+stale named outputs, then run:
 
 ```text
-python -B -m unittest discover -s tests/repo-checks -p test_repo_health.py -v
+dotnet build <solution> -c Release --no-restore --no-incremental -p:HealthCollectDiagnostics=true
+dotnet format <solution> --verify-no-changes --no-restore --severity warn --report artifacts/code-health/format
+dotnet format style <test.csproj> --verify-no-changes --no-restore --severity warn --diagnostics IDE0005 --report artifacts/code-health/format-style-<project>
 ```
+
+Every project must produce fresh, readable SARIF 2.1.0. A failed build, analyzer
+crash, invalid location, failed project load or missing report fails. SARIF warning
+results enter the ledger; notes do not. RS0030's quoted symbol is parsed regardless
+of UI language, then resolved with SDK Roslyn to a banned documentation ID. Reports
+print HC_DIAGNOSTIC file:line, symbol, member and old/new counts. Build error rules
+(including VSTHRD100 and CS4014) cannot be grandfathered or suppressed by generated
+warning IDs. Apps must migrate their async void handlers before build/enrollment;
+a syntax baseline cannot exempt an analyzer error. HealthPublicApi stays unset
+in Core until H07d; H03 does not generate API inventory files.
+
+Analyzer warnings repeated by format after prospective edits reuse fresh SARIF
+occurrences in source order, independently gated by the build ledger. They are not
+counted twice. Actual format changes use rule FORMAT:<DiagnosticId>; their symbol is the diagnostic ID.
+Exit 2 is accepted only with a valid nonempty report whose complete findings are
+within the ledger (or the explicit first Enroll). Exit 0 still requires a valid
+report. Other exits, project-load failures, missing/malformed/empty nonzero reports
+fail. Diagnostic and format fingerprints group equal identities and preserve their
+occurrence count; unrelated removals never offset additions.
+
+Diagnostic syntaxHash v1 uses the token at the 1-based diagnostic line and UTF-16
+column. Select its nearest StatementSyntax excluding BlockSyntax, else its nearest
+MemberDeclarationSyntax, else the compilation unit. Join DescendantTokens().Text
+in source order with one ASCII space, excluding trivia. Hash UTF-8 without BOM
+with SHA-256, encoded as lowercase 64-digit hex. Member identity uses H02's Roslyn
+qualified type, callable signature, nested/local member, property or field group.
+Locationless project warnings use member MSBuild and the trimmed invariant message
+as hash input. Syntax metrics retain roslyn-physical-v1's recognized-node tokens.
+Pragma/attribute covered statements additionally use rule suppressionScopes with
+the same statement-token hash. A wider span, added or substituted covered code
+fails per fingerprint; narrowing/removal lowers debt. Protected error suppressions,
+all-warning disables and whole-file RS0030 disables fail.
+Path and line are display-only; rule/project/member/symbol/syntaxHash plus count
+form the debt identity, so a file rename retains its allowance.
+
+The versioned seam wrapper is `{ "schemaVersion": 1, "entries": [] }`. Entries use
+the plan's path/member/symbol/owner/reason/kind/review fields. Match exact path and
+symbol plus exact member; member `*` grants that symbol to a reviewed file owner.
+Directories and symbol globs never match. kind is permanent-seam. Authorized
+RS0030 counts remain separate from debt; Core starts with zero entries. Adding
+existing debt as a permanent seam requires owner review, not mechanical migration.
+
+The lock is `{ "schemaVersion": 1, "coreCommit": "<40 lowercase hex>", "files":
+{ "<each of the six filenames>": "<SHA-256 lowercase hex>" } }`. No policy.json is
+needed: versions, valid layers, limits and package pins are fixed in the checker
+and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
+blob identity additionally checks all six files against coreCommit's canonical
+files. Core also checks its working canonical tree. With BaseRef, the committed
+merge-base pin must agree; without it, the committed HEAD pin must agree. An app
+supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
+No network operation occurs. A pin change is a separately reviewed synchronization;
+first integrate the approved pin before using it as the base for adoption changes.
+
+The managed root block uses `# BEGIN CORE HEALTH MANAGED BLOCK` and
+`# END CORE HEALTH MANAGED BLOCK`. Its interior must exactly equal the canonical
+EditorConfig bytes, including LF. We conservatively reject changed protected
+non-severity settings in descendant/root-tail configuration and accept only equal
+or stronger protected severities. Per-project Debug, Release and other declared
+configurations must retain the shared settings, SDK WarningsAsErrors IDs, exact
+ledger warning exemptions and approved analyzer package references/assets/versions.
+NoWarn must equal the suppression ledger in every evaluated configuration.
+Multiple target frameworks currently fail closed because the bundle ErrorLog
+contract has only one path per project; apps must add distinct per-TFM outputs
+before multi-target adoption.
+
+Enroll once after the owner has approved the current-tree evidence:
+
+```powershell
+./tools/repo-checks/repo-health.ps1 -Mode Enroll -Repo core -Root . -Solution Nvt.Core.sln
+```
+
+The ledger stores H02 structural excess and syntax findings plus analyzer and
+format debt. Entities use issue health-refactor/2026-10-31; findings use removeBy
+2026-10-31, all with owner NVT CORE. Verify checks evaluated HealthBaselineWarningIds
+against build findings in the ledger, per project. LowerBaseline lowers both the
+ledger and generated warning-ID block; it never enrolls. Tooling/function-only
+loading supports provider tests, and never executes enrollment or verification.
+
+```text
+HEALTH_SKIP_HOST_TESTS=1 python -B -m unittest discover -s tests/repo-checks -p test*.py -v
+python -B -m unittest discover -s tests/repo-checks -p test_health_enforcement.py -k HostMutationTests -v
+```
+
+The fast suite has a 600-second process limit in host checks. The host mutation
+test requires restored assets: whole Verify must exit 0, then a banned call in a
+copy must exit 1. It never restores, changes branches or writes the shared index.
