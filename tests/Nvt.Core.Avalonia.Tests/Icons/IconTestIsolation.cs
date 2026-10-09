@@ -6,6 +6,6 @@ namespace Nvt.Core.Avalonia.Tests.Icons;
 
 /// <summary>Serializes isolated icon sessions against the assembly's shared Avalonia host.</summary>
 [CollectionDefinition(nameof(IconTestIsolation), DisableParallelization = true)]
-public sealed class IconTestIsolation
+public sealed class IconTestIsolation : ICollectionFixture<IconSessionFixture>
 {
 }

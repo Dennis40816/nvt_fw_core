@@ -1,7 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <Version>0.1.0</Version>
+    <PackageId>Nvt.Core.Fonts</PackageId>
+    <Authors>Dennis Liu</Authors>
+    <Description>Shared font roles, Chinese fallback, and Material Symbols for Avalonia tools.</Description>
+    <RepositoryUrl>https://github.com/Dennis40816/nvt_fw_core</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryCommit>$(SourceRevisionId)</RepositoryCommit>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="" />
+    <!-- Preserve the license glob's relative paths inside the package. -->
+    <None Update="licenses\**\*" Pack="true" PackagePath="" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
