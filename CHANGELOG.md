@@ -8,6 +8,12 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ### Breaking changes
 
+- ReportList: pager buttons now use the shared `actionNeutral` role.
+  Status captions apply `Nvt.Font.Caption.Family`, `Nvt.Font.Caption.Size`, and `Nvt.Font.Caption.Weight` directly.
+  They keep the muted text color `NfcTextMutedBrush`, so keep `Theme/ThemeTokens.axaml` loaded.
+  Load `Theme/ButtonStyles.axaml` and `Nvt.Core.Fonts/FontRoles.axaml` before using the pager templates.
+  Keep `Theme/ThemeTokens.axaml` loaded for the button resources.
+  Remove local `semanticAction`, `secondary`, and `captionText` styles that existed only for the pager.
 - `Nvt.Core` targets `net10.0` only. It no longer ships a `net8.0` assembly. NFC, NFH and NFU already target `net10.0`. The SDK pin in `global.json` moves to `10.0.303`. No source change is needed in a `net10.0` consumer.
 - `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
 - `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
