@@ -104,7 +104,10 @@ Diagnostic syntaxHash v1 uses the token at the 1-based diagnostic line and UTF-1
 column. Select its nearest StatementSyntax excluding BlockSyntax, else its nearest
 MemberDeclarationSyntax, else the compilation unit. Join DescendantTokens().Text
 in source order with one ASCII space, excluding trivia. Hash UTF-8 without BOM
-with SHA-256, encoded as lowercase 64-digit hex. Member identity uses H02's Roslyn
+with SHA-256, encoded as lowercase 64-digit hex. Before hashing, every identity
+hash (token text, file contentHash, entity and duplicate hashes) replaces CRLF and
+a lone CR with LF, so a CRLF and an LF checkout of the same source give the same
+fingerprints. Member identity uses H02's Roslyn
 qualified type, callable signature, nested/local member, property or field group.
 Locationless project warnings use member MSBuild and the trimmed invariant message
 as hash input. Syntax metrics retain roslyn-physical-v1's recognized-node tokens.
@@ -130,6 +133,13 @@ blob identity additionally checks all six files against coreCommit's canonical
 files. Core also checks its working canonical tree. With BaseRef, the committed
 merge-base pin must agree; without it, the committed HEAD pin must agree. An app
 supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
+Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
+lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
+in the lock. With BaseRef it also requires every lock hash to equal the merge-base
+lock, because the pin alone cannot detect a pull request that edits a bundle file and
+its lock hash together. Lock-only mode has no canonical Core objects, so a copy of the
+checker kept in the application repository is governed by code review, not by a
+self-check. Core itself always compares with its own canonical tree.
 No network operation occurs. A pin change is a separately reviewed synchronization;
 first integrate the approved pin before using it as the base for adoption changes.
 
@@ -137,7 +147,12 @@ The managed root block uses `# BEGIN CORE HEALTH MANAGED BLOCK` and
 `# END CORE HEALTH MANAGED BLOCK`. Its interior must exactly equal the canonical
 EditorConfig bytes, including LF. We conservatively reject changed protected
 non-severity settings in descendant/root-tail configuration and accept only equal
-or stronger protected severities. Per-project Debug, Release and other declared
+or stronger protected severities. The rule is conservative on purpose: a protected
+`[*.cs]` key such as indent_size with a different value is rejected in ANY section,
+even one that cannot match `.cs` (for example `[*.json]`); move or delete such lines.
+A descendant EditorConfig (not the root file or the bundle copies) must also not
+contain a generated_code key, a dotnet_analyzer_diagnostic.* key, or a
+dotnet_diagnostic.<ID>.severity of none, silent or suggestion; warning and error stay allowed. Per-project Debug, Release and other declared
 configurations must retain the shared settings, SDK WarningsAsErrors IDs, exact
 ledger warning exemptions and approved analyzer package references/assets/versions.
 NoWarn must equal the suppression ledger in every evaluated configuration.
@@ -151,12 +166,54 @@ Enroll once after the owner has approved the current-tree evidence:
 ./tools/repo-checks/repo-health.ps1 -Mode Enroll -Repo core -Root . -Solution Nvt.Core.sln
 ```
 
+### First enrollment (seeding)
+
+Enroll builds the solution. A build with TreatWarningsAsErrors=true fails on every
+analyzer that has no ledger entry yet, so the first Enroll of a repository needs a
+seed. Build once with `-p:TreatWarningsAsErrors=false`, collect the diagnostic IDs
+from the SARIF output, and write them into the generated `HealthBaselineWarningIds`
+block of `eng/code-health/projects.props`. Then run Enroll, which regenerates that
+block from the ledger. Core's own enrollment used the seed
+`CA1031;EnableGenerateDocumentationFile;IDE1006;RS0030`.
+
+`-Owner <name>` sets the owner written to entities and findings. Without it, Core
+uses `NVT CORE` and any other `-Repo` uses its upper-case name (nfc becomes NFC).
+Issue and removeBy stay shared (`health-refactor/2026-10-31`, `2026-10-31`).
+Verify checks owner and issue only as non-empty strings, so a hand edit is not
+rejected, but `-Owner` is the supported way.
+
+`asyncVoid` counts async void methods and local functions and also async lambdas or
+anonymous methods that are converted to void delegates. Only VSTHRD100 (async void
+methods) is an error in the bundle `.editorconfig`. Lambdas converted to void
+delegates are counted in the ledger but do not fail the build.
+
 The ledger stores H02 structural excess and syntax findings plus analyzer and
 format debt. Entities use issue health-refactor/2026-10-31; findings use removeBy
-2026-10-31, all with owner NVT CORE. Verify checks evaluated HealthBaselineWarningIds
+2026-10-31, all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
 against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only
 loading supports provider tests, and never executes enrollment or verification.
+
+## Known limitations
+
+An independent review of the first gate found five gaps. The gate does not close them yet. Each has an Issue.
+
+1. Dennis40816/nvt_fw_core#163: analyzer configuration outside files named `.editorconfig` (`EditorConfigFiles`, `GlobalAnalyzerConfigFiles`, removed `Analyzer` items) is not checked.
+2. Dennis40816/nvt_fw_core#164: sources and EditorConfig files under any `bin`, `obj` or `artifacts` folder escape coverage.
+3. Dennis40816/nvt_fw_core#165: a baseline entity can be re-pointed, so one structural allowance can offset another.
+4. Dennis40816/nvt_fw_core#166: `eng/code-health/seam-owners.json` and the project `HealthLayer` are not compared with the merge base.
+5. Dennis40816/nvt_fw_core#167: suppressed analyzer results leave no fingerprint.
+
+Policy-change rule until these are fixed: a pull request that changes any of the files below is a policy change. The reviewer reads the change as policy, not as routine code, and the pull request says so.
+
+- `eng/code-health/seam-owners.json`, `eng/code-health/projects.props` (including `HealthLayer`), `eng/code-health/baseline.json`
+- `eng/core-health/*`, `eng/core-health.lock.json`, and the managed block in `.editorconfig`
+- any project, `Directory.Build.*` or `.editorconfig` change that adds analyzer, EditorConfig or suppression inputs
+- a tracked file under a `bin`, `obj` or `artifacts` folder
+
+### Checkout line endings
+
+Identity hashes ignore line endings, but the `dotnet format whitespace` ledger does not. Core enrolled the baseline on a CRLF checkout, which is the Git for Windows default and what a Windows runner produces. A pure LF checkout of the same commit reports different WHITESPACE counts (187 format fingerprints differ in this repository). Run Verify on the same checkout style that enrolled the baseline. A repository that enrolls on Windows and verifies on Linux must pin the checkout style first.
 
 ```text
 HEALTH_SKIP_HOST_TESTS=1 python -B -m unittest discover -s tests/repo-checks -p test*.py -v

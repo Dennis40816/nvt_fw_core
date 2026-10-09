@@ -26,6 +26,7 @@ param(
     [string]$BaseRef = '',
     [string]$Solution = '',
     [string]$CoreRoot = '',
+    [string]$Owner = '',
     [switch]$FunctionsOnly,
     [string]$BaselinePath = 'eng/code-health/baseline.json',
     [Alias('OutFile')][string]$OutputPath = '',
@@ -211,8 +212,26 @@ function Health-Path([string]$Path) {
     if (-not $full.StartsWith($rootFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "Diagnostic path escapes repository: $Path" }
     return [IO.Path]::GetRelativePath($rootFull, $full).Replace('\', '/')
 }
+function Get-TrackedInventory([string]$GitRoot) {
+    # Mode 160000 entries are submodule commits, not files.
+    $all = @((Invoke-Checked 'git' @('-C', $GitRoot, 'ls-files', '-s', '-z', '--cached')) -split [char]0 | Where-Object { $_ -and $_ -notmatch '^160000 ' } | ForEach-Object { ($_ -split "`t", 2)[1] })
+    return @($all | Where-Object { $_ } | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $GitRoot $_)) } | Where-Object { $_.StartsWith($Root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { [IO.Path]::GetRelativePath($Root, $_).Replace('\', '/') })
+}
 function Get-HealthFiles {
     # Coverage includes untracked projects/configuration: adding a project must not evade the gate.
+    $gitRoot = Get-Variable -Name GitRoot -Scope Script -ValueOnly -ErrorAction Ignore
+    if ($gitRoot) {
+        # Tracked plus untracked-not-ignored files. Ignored folders, such as a repository-local NuGet cache, are not scanned.
+        foreach ($listed in ((Invoke-Checked 'git' @('-C', $gitRoot, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')) -split [char]0)) {
+            if (-not $listed) { continue }
+            $full = [IO.Path]::GetFullPath((Join-Path $gitRoot $listed))
+            if (-not $full.StartsWith($Root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { continue }
+            if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue } # gitlinks and files deleted from the work tree
+            $relative = [IO.Path]::GetRelativePath($Root, $full).Replace('\', '/')
+            if (-not @($relative -split '/' | Where-Object { $_ -in @('.git', 'bin', 'obj', 'artifacts') }).Count) { $relative }
+        }
+        return
+    }
     $pending = [Collections.Generic.Stack[string]]::new()
     $pending.Push($Root)
     while ($pending.Count) {
@@ -253,6 +272,11 @@ function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
         if ($line -notmatch '^\s*([^#;=\s]+)\s*=\s*(.*?)\s*$') { continue }
         $key = $Matches[1]; $value = $Matches[2].ToLowerInvariant()
         if ($Path -ne '.editorconfig' -and $inPreamble -and $key -eq 'root' -and $value -eq 'true') { throw "HC_DRIFT ${Path}:$lineNumber descendant root=true discards protected policy" }
+        if ($Path -ne '.editorconfig') {
+            if ($key -eq 'generated_code') { throw "HC_DRIFT ${Path}:$lineNumber generated_code is not allowed in a descendant EditorConfig" }
+            if ($key -like 'dotnet_analyzer_diagnostic.*') { throw "HC_DRIFT ${Path}:$lineNumber $key is not allowed in a descendant EditorConfig" }
+            if ($key -match '^dotnet_diagnostic\.[^.]+\.severity$' -and $value -in @('none', 'silent', 'suggestion')) { throw "HC_DRIFT ${Path}:$lineNumber weaker severity $key=$value" }
+        }
         if (-not $protected.ContainsKey($key)) { continue }
         $expected = $protected[$key]
         $stronger = $ranks.ContainsKey($value) -and $ranks.ContainsKey($expected) -and $ranks[$value] -ge $ranks[$expected]
@@ -267,6 +291,10 @@ function Test-BundleDrift {
         $base = Invoke-Checked 'git' @('merge-base', 'HEAD', $BaseRef)
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', "${base}:eng/core-health.lock.json")) 'core-health.lock'
         if ($lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately' }
+        if (-not ($CoreRoot -or $Repo -eq 'core')) {
+            # Lock-only mode has no canonical Core objects, so the trusted lock is the reference for the hashes.
+            foreach ($name in $lock.files.Keys) { if ($lock.files[$name] -cne $trusted.files[$name]) { throw "HC_DRIFT eng/core-health.lock.json:1 hash of $name differs from base; integrate the reviewed synchronization separately" } }
+        }
     }
     elseif ($Mode -ne 'Enroll') {
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', 'HEAD:eng/core-health.lock.json')) 'core-health.lock'
@@ -279,6 +307,8 @@ function Test-BundleDrift {
         if ($bytes -contains 13 -or ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) { throw "HC_DRIFT $path`:1 LF/UTF-8 required" }
         $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
         if ($hash -cne $lock.files[$name]) { throw "HC_DRIFT $path`:1 SHA-256 differs from lock" }
+        # Without -CoreRoot an application has no canonical Core objects. Only Core itself compares with its own tree.
+        if (-not ($CoreRoot -or $Repo -eq 'core')) { continue }
         # Git blob identity is computed over raw bytes, without autocrlf filters.
         $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
         $local = (Invoke-Checked 'git' @('hash-object', '--no-filters', $path)).Trim()
@@ -532,15 +562,22 @@ function Write-LedgerWarningIds($Baseline) {
     $pattern = '(?s)' + [regex]::Escape($marker) + '.*?' + [regex]::Escape($end)
     [IO.File]::WriteAllText($path, [regex]::Replace($text, $pattern, ($lines -join "`n")))
 }
+function Get-EnrollOwner {
+    # Core enrolls as NVT CORE. Other repositories default to their -Repo name in upper case; -Owner overrides both.
+    if ($Owner.Trim()) { return $Owner.Trim() }
+    if ($Repo -ceq 'core') { return 'NVT CORE' }
+    return $Repo.ToUpperInvariant()
+}
 function Enroll-Baseline($Measurement, [string]$Path) {
+    $enrollOwner = Get-EnrollOwner
     if (Test-Path -LiteralPath $Path) { throw 'Enroll refuses: baseline already exists' }
     $b = [ordered]@{ schemaVersion = 1; measurementVersion = $script:Version; snapshotCommit = $script:Snapshot; limits = $script:Limits.Clone(); entities = @(); findings = @() }
     foreach ($e in $Measurement.entities) {
         $ceilings = @{}
         foreach ($metric in $e.values.Keys) { if ($e.values[$metric] -gt $script:Limits[$metric]) { $ceilings[$metric] = $e.values[$metric] } }
-        if ($ceilings.Count) { $b.entities += @{ project = $e.project; kind = $e.kind; symbol = $e.symbol; locations = $e.locations; contentHash = $e.contentHash; ceilings = $ceilings; owner = 'NVT CORE'; issue = 'health-refactor/2026-10-31' } }
+        if ($ceilings.Count) { $b.entities += @{ project = $e.project; kind = $e.kind; symbol = $e.symbol; locations = $e.locations; contentHash = $e.contentHash; ceilings = $ceilings; owner = $enrollOwner; issue = 'health-refactor/2026-10-31' } }
     }
-    foreach ($f in $Measurement.findings) { $entry = @{ owner = 'NVT CORE'; removeBy = '2026-10-31' }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
+    foreach ($f in $Measurement.findings) { $entry = @{ owner = $enrollOwner; removeBy = '2026-10-31' }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
     $json = ConvertTo-Json -Depth 100 $b
     [void](Read-HealthDocument $json 'baseline')
     [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent))
@@ -566,7 +603,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 public static class HealthSyntaxHost
 {
-    static string Hash(string s) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(s))).ToLowerInvariant();
+    static string Hash(string s) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(s.Replace("\r\n", "\n").Replace('\r', '\n')))).ToLowerInvariant();
     static string Normal(SyntaxNode n) => string.Join(" ", n.DescendantTokens().Select(t => t.Text));
     static string Name(SimpleNameSyntax n) => n.Identifier.ValueText;
     static string Call(InvocationExpressionSyntax n) => n.Expression is MemberAccessExpressionSyntax m ? Name(m.Name) : n.Expression is SimpleNameSyntax s ? Name(s) : n.Expression is MemberBindingExpressionSyntax b ? Name(b.Name) : "";
@@ -1097,7 +1134,11 @@ function Measure-Syntax {
     $m['extensions'] = @{ scope = 'syntax only; use Verify with Solution for enforcement'; diagnosticFingerprints = 'SDK Roslyn diagnostic-syntax-v1'; projectCoverage = 'evaluated Compile ownership during enforcement' }
     return $m
 }
-function Get-Hash([string]$Text) { return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))).ToLowerInvariant() }
+function Get-Hash([string]$Text) {
+    # Identity hashes ignore line endings: a CRLF and an LF checkout of the same source must agree.
+    $normalized = $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+    return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($normalized))).ToLowerInvariant()
+}
 
 if ($FunctionsOnly) { return }
 $script:DiagnosticRequests = [Collections.Generic.List[hashtable]]::new()
@@ -1122,8 +1163,7 @@ try {
         if ($LASTEXITCODE -eq 0) { $script:GitRoot = [IO.Path]::GetFullPath(($gitProbe -join '').Trim()) }
         $script:Snapshot = if ($script:GitRoot) { Invoke-Checked 'git' @('-C', $Root, 'rev-parse', 'HEAD') } else { 'fixture' }
         if ($script:GitRoot) {
-            $all = (Invoke-Checked 'git' @('-C', $script:GitRoot, 'ls-files', '-z', '--cached')) -split [char]0
-            $script:Inventory = @($all | Where-Object { $_ } | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $script:GitRoot $_)) } | Where-Object { $_.StartsWith($Root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { [IO.Path]::GetRelativePath($Root, $_).Replace('\', '/') })
+            $script:Inventory = @(Get-TrackedInventory $script:GitRoot)
         }
         else { $script:Inventory = @(Get-ChildItem -LiteralPath $Root -File -Recurse -Force | ForEach-Object { [IO.Path]::GetRelativePath($Root, $_.FullName).Replace('\', '/') }) }
         $script:Inventory = @($script:Inventory | Where-Object { -not (@($_ -split '/' | Where-Object { $_ -in @('bin', 'obj', 'artifacts', '.git') }).Count) } | Sort-Object -Unique)

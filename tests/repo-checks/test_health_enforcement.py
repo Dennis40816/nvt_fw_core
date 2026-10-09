@@ -370,6 +370,171 @@ class Fixture {
         self.assertIn('baseline already exists',r.stderr)
         self.assertEqual('{}',(self.root/'eng/code-health/baseline.json').read_text())
 
+    # --- Line endings: identity hashes must not depend on the checkout's newline style ---
+
+    def multiline_source(self, newline):
+        text = ('using System.IO;\nclass Fixture {\n void Save() {\n'
+                '  File.WriteAllText(@"a\nb", """\nraw\n  text\n""" + $@"x\n{1}");\n }\n}\n')
+        (self.root / 'src/Fixture/One.cs').write_bytes(text.replace('\n', newline).encode('utf-8'))
+
+    def hashes(self):
+        self.sarif((4,))
+        r = self.run_ps("Read-ProjectSarif (Join-Path $Root 'fixture.sarif') 'Fixture' 'src/Fixture/Fixture.csproj'\n"
+                        "$m = Measure-Syntax\n"
+                        "ConvertTo-Json -Depth 100 -InputObject @{ findings = @($script:ResolvedDiagnostics | ForEach-Object { $_.syntaxHash }); "
+                        "entities = @($m.entities | ForEach-Object { $_.contentHash }) }")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        return json.loads(r.stdout)
+
+    def test_hashes_are_identical_for_lf_and_crlf_sources(self):
+        self.multiline_source('\n')
+        lf = self.hashes()
+        self.multiline_source('\r\n')
+        crlf = self.hashes()
+        self.multiline_source('\r')
+        cr = self.hashes()
+        self.assertTrue(lf['findings'] and lf['entities'])
+        self.assertEqual(lf, crlf)
+        self.assertEqual(lf, cr)
+
+    def test_powershell_hash_ignores_line_endings(self):
+        r = self.run_ps("(Get-Hash \"a`r`nb`rc`nd\") -ceq (Get-Hash \"a`nb`nc`nd\")")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual('True', r.stdout.strip())
+
+    # --- Descendant EditorConfig keys outside the protected list ---
+
+    def test_descendant_editorconfig_rejects_generated_code_and_analyzer_diagnostic_keys(self):
+        cases = (
+            ('[*.cs]\ngenerated_code = true\n', 'generated_code'),
+            ('[*]\nGENERATED_CODE = false\n', 'generated_code'),
+            ('[*.cs]\ndotnet_analyzer_diagnostic.severity = none\n', 'dotnet_analyzer_diagnostic.severity'),
+            ('[*.cs]\ndotnet_analyzer_diagnostic.category-Style.severity = error\n', 'dotnet_analyzer_diagnostic.category-Style.severity'),
+        )
+        for text, key in cases:
+            with self.subTest(key=key, text=text):
+                r = self.check_editor(text)
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('HC_DRIFT src/.editorconfig:2', r.stdout + r.stderr)
+                self.assertIn(key.lower(), (r.stdout + r.stderr).lower())
+
+    def test_descendant_editorconfig_rejects_weaker_severity_for_any_rule(self):
+        for value in ('none', 'silent', 'suggestion', 'NONE', 'Suggestion'):
+            with self.subTest(value=value):
+                r = self.check_editor(f'[*.cs]\ndotnet_diagnostic.CA1234.severity = {value}\n')
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('HC_DRIFT src/.editorconfig:2', r.stdout + r.stderr)
+
+    def test_descendant_editorconfig_allows_warning_or_error_severity(self):
+        for value in ('warning', 'error'):
+            with self.subTest(value=value):
+                r = self.check_editor(f'[*.cs]\ndotnet_diagnostic.CA1234.severity = {value}\n')
+                self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_new_editorconfig_key_rules_do_not_apply_to_the_repository_root_file(self):
+        r = self.check_editor('[*.cs]\ngenerated_code = true\n', '.editorconfig')
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    # --- Enroll owner ---
+
+    def test_enroll_owner_follows_repo_and_explicit_parameter(self):
+        for setup, expected in (("$Repo = 'core'", 'NVT CORE'), ("$Repo = 'nfc'", 'NFC'), ("$Repo = 'nfh'", 'NFH'),
+                                ("$Repo = 'nfc'; $Owner = ' Team X '", 'Team X'), ("$Repo = 'core'; $Owner = 'NFU'", 'NFU')):
+            with self.subTest(setup=setup):
+                r = self.run_ps(setup + "\nGet-EnrollOwner")
+                self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+                self.assertEqual(expected, r.stdout.strip())
+
+    def test_enroll_writes_the_owner_to_entities_and_findings(self):
+        self.write('eng/code-health/projects.props',
+                   '<Project>\n  <!-- BEGIN GENERATED HEALTH WARNING IDS -->\n  <!-- END GENERATED HEALTH WARNING IDS -->\n</Project>\n')
+        measurement = ("@{ entities = @(@{ project = 'Fixture'; kind = 'member'; symbol = 'S'; locations = @('One.cs'); contentHash = ('a' * 64); values = @{ methodLines = 999 } }); "
+                       "findings = @(@{ rule = 'suppressions'; project = 'Fixture'; path = 'One.cs'; member = 'm'; symbol = 's'; syntaxHash = ('b' * 64); count = 1 }) }")
+        r = self.run_ps("$Repo = 'nfc'\n"
+                        f"Enroll-Baseline {measurement} (Join-Path $Root 'eng/code-health/baseline.json')")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        baseline = json.loads((self.root / 'eng/code-health/baseline.json').read_text())
+        self.assertEqual(['NFC'], [e['owner'] for e in baseline['entities']])
+        self.assertEqual(['NFC'], [f['owner'] for f in baseline['findings']])
+
+    # --- Gitlinks and ignored folders ---
+
+    def git(self, *args):
+        env = os.environ | {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.test',
+                            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.test'}
+        return subprocess.check_output(['git', '-C', str(self.root), *args], env=env, text=True).strip()
+
+    def test_inventory_skips_gitlinks(self):
+        self.git('init', '-q')
+        self.git('add', 'src')
+        self.git('update-index', '--add', '--cacheinfo', '160000,' + 'a' * 40 + ',third-party/sub')
+        r = self.run_ps("$Root = [IO.Path]::GetFullPath($Root)\n(Get-TrackedInventory $Root) -join ','")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn('src/Fixture/One.cs', r.stdout)
+        self.assertNotIn('third-party', r.stdout)
+
+    def test_health_files_skip_ignored_folders_but_keep_untracked_ones(self):
+        self.git('init', '-q')
+        self.write('.gitignore', '.packages/\n')
+        weaker = '[*.cs]\ndotnet_diagnostic.RS0030.severity = none\n'
+        self.write('.packages/pkg/.editorconfig', weaker)
+        self.write('untracked/.editorconfig', weaker)
+        r = self.run_ps("$Root = [IO.Path]::GetFullPath($Root); $script:GitRoot = $Root\n(Get-HealthFiles | Where-Object { $_.EndsWith('/.editorconfig') } | Sort-Object) -join ','")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn('untracked/.editorconfig', r.stdout)
+        self.assertNotIn('.packages', r.stdout)
+
+    # --- Lock-only mode (application repositories without -CoreRoot) ---
+
+    def app_repo(self):
+        self.git('init', '-q', '-b', 'main')
+        self.write('.editorconfig', (ROOT / '.editorconfig').read_text())
+        self.lock_write()
+        self.git('add', '.')
+        self.git('commit', '-qm', 'base')
+
+    def lock_write(self, core_commit='a' * 40):
+        files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (self.root / 'eng/core-health').iterdir()}
+        self.write('eng/core-health.lock.json', json.dumps({'schemaVersion': 1, 'coreCommit': core_commit, 'files': files}))
+
+    def test_lock_only_mode_passes_without_a_core_checkout(self):
+        self.app_repo()
+        self.assertFalse((self.root / 'tools/repo-checks/csharp').exists())
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_lock_only_mode_rejects_a_bundle_file_that_differs_from_the_lock(self):
+        self.app_repo()
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('SHA-256 differs from lock', r.stderr)
+
+    def test_lock_only_mode_rejects_a_pull_request_that_edits_a_file_and_its_lock_hash(self):
+        self.app_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write()
+        self.git('add', '.')
+        self.git('commit', '-qm', 'self-consistent edit')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('hash of BannedSymbols.Common.txt differs from base', r.stderr)
+
+    def test_core_root_keeps_the_canonical_comparison_for_applications(self):
+        self.app_repo()
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', self.root / 'tools/repo-checks/csharp')
+        self.git('add', '.')
+        self.git('commit', '-qm', 'core copy')
+        commit = self.git('rev-parse', 'HEAD')
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(commit)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'drift with matching hash')
+        r = self.run_ps(f"$Repo = 'nfc'; $Mode = 'Enroll'; $CoreRoot = $Root; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('approved Core revision', r.stderr)
+
 
 @unittest.skipIf(os.environ.get('HEALTH_SKIP_HOST_TESTS') == '1', 'HEALTH_SKIP_HOST_TESTS=1: requires host cache/build')
 class HostMutationTests(unittest.TestCase):
