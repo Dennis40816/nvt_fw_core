@@ -1,0 +1,46 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:focus="clr-namespace:Nvt.Core.Avalonia.Focus">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <StaticResource x:Key="Nvt.ToolTip.BackgroundBrush" ResourceKey="NfcSurfaceBrush" />
+          <StaticResource x:Key="Nvt.ToolTip.BorderBrush" ResourceKey="NfcBorderSoftBrush" />
+          <StaticResource x:Key="Nvt.ToolTip.ForegroundBrush" ResourceKey="NfcTextBrush" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <StaticResource x:Key="Nvt.ToolTip.BackgroundBrush" ResourceKey="NfcSurfaceBrush" />
+          <StaticResource x:Key="Nvt.ToolTip.BorderBrush" ResourceKey="NfcBorderSoftBrush" />
+          <StaticResource x:Key="Nvt.ToolTip.ForegroundBrush" ResourceKey="NfcTextBrush" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+      <!-- The shared shape is capped by this token: Pill 8 DIP, Square 6 DIP. -->
+      <CornerRadius x:Key="Nvt.ToolTip.CornerRadius">8</CornerRadius>
+      <Thickness x:Key="Nvt.ToolTip.Padding">8,4</Thickness>
+      <Thickness x:Key="Nvt.ToolTip.BorderThickness">1</Thickness>
+      <x:Double x:Key="Nvt.ToolTip.MaxWidth">320</x:Double>
+      <focus:ToolTipCornerRadiusConverter x:Key="ToolTipCornerRadiusConverter" />
+    </ResourceDictionary>
+  </Styles.Resources>
+  <Style Selector="ToolTip">
+    <Setter Property="Background" Value="{DynamicResource Nvt.ToolTip.BackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.ToolTip.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.ToolTip.BorderThickness}" />
+    <Setter Property="CornerRadius">
+      <MultiBinding Converter="{StaticResource ToolTipCornerRadiusConverter}">
+        <DynamicResource ResourceKey="Nvt.Shape.ControlCornerRadius" />
+        <DynamicResource ResourceKey="Nvt.ToolTip.CornerRadius" />
+      </MultiBinding>
+    </Setter>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.ToolTip.ForegroundBrush}" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.ToolTip.Padding}" />
+    <Setter Property="MaxWidth" Value="{DynamicResource Nvt.ToolTip.MaxWidth}" />
+  </Style>
+  <Style Selector="ToolTip TextBlock, ToolTip SelectableTextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.ToolTip.ForegroundBrush}" />
+  </Style>
+  <Style Selector="ToolTip /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.ToolTip.ForegroundBrush}" />
+  </Style>
+</Styles>

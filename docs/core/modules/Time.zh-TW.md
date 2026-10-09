@@ -2,7 +2,7 @@
 
 # Time: DelegateTimeProvider
 
-[`DelegateTimeProvider`](../../../src/Nvt.Core/Time/DelegateTimeProvider.cs) 在 `Nvt.Core.Time` 中將 delegate 轉接為測試與舊有時間來源可用的介面，目標為 `net8.0`，只依賴 BCL。正式環境程式碼注入 BCL 的 `TimeProvider`。NFC 的 `ISystemClock` 不會移植，因為 `TimeProvider.GetUtcNow()` 可直接取代它。
+[`DelegateTimeProvider`](../../../src/Nvt.Core/Time/DelegateTimeProvider.cs) 在 `Nvt.Core.Time` 中將 delegate 轉接為測試與舊有時間來源可用的介面，目標為 `net10.0`，只依賴 BCL。正式環境程式碼注入 BCL 的 `TimeProvider`。NFC 的 `ISystemClock` 不會移植，因為 `TimeProvider.GetUtcNow()` 可直接取代它。
 
 ```csharp
 using Nvt.Core.Time;

@@ -27,10 +27,6 @@ public sealed partial class NumberScrubber
     public static readonly StyledProperty<decimal> SmallChangeProperty =
         AvaloniaProperty.Register<NumberScrubber, decimal>(nameof(SmallChange), 1m);
 
-    /// <summary>Identifies the <see cref="LargeChange"/> styled property.</summary>
-    public static readonly StyledProperty<decimal> LargeChangeProperty =
-        AvaloniaProperty.Register<NumberScrubber, decimal>(nameof(LargeChange), 10m);
-
     /// <summary>Identifies the <see cref="FormatString"/> styled property.</summary>
     public static readonly StyledProperty<string> FormatStringProperty =
         AvaloniaProperty.Register<NumberScrubber, string>(nameof(FormatString), "0.###");
@@ -63,6 +59,7 @@ public sealed partial class NumberScrubber
     }
 
     /// <summary>Gets or sets the inclusive lower bound.</summary>
+    /// <remarks>Callers must keep this bound less than or equal to <see cref="Maximum"/> after every assignment.</remarks>
     public decimal Minimum
     {
         get => GetValue(MinimumProperty);
@@ -70,6 +67,7 @@ public sealed partial class NumberScrubber
     }
 
     /// <summary>Gets or sets the inclusive upper bound.</summary>
+    /// <remarks>Callers must keep this bound greater than or equal to <see cref="Minimum"/> after every assignment.</remarks>
     public decimal Maximum
     {
         get => GetValue(MaximumProperty);
@@ -81,13 +79,6 @@ public sealed partial class NumberScrubber
     {
         get => GetValue(SmallChangeProperty);
         set => SetValue(SmallChangeProperty, value);
-    }
-
-    /// <summary>Gets or sets the retained large-step value, which has no stepping behavior.</summary>
-    public decimal LargeChange
-    {
-        get => GetValue(LargeChangeProperty);
-        set => SetValue(LargeChangeProperty, value);
     }
 
     /// <summary>Gets or sets the invariant-culture display format.</summary>
