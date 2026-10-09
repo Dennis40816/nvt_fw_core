@@ -5,7 +5,11 @@ using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
 
-/// <summary>Exercises admission boundaries while real exited processes retain unsettled reader custody.</summary>
+/// <summary>
+/// Exercises admission boundaries while real exited processes retain unsettled reader custody. The child exits are real
+/// events. Every cleanup wait uses a manual clock and the termination work item runs inline, so the result does not
+/// depend on how fast the machine or the thread pool is.
+/// </summary>
 public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
 {
     private static readonly string[] ExitArguments = ["--mode", "exit"];
@@ -37,6 +41,7 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
         }
 
         using var workspace = TestWorkspace.Create();
+        var time = new ManualTimeProvider();
         var capacity = new ExternalProcessCapacity(limit);
         var invocations = new List<RetainedReaders>();
         var request = new ExternalProcessStartInfo(
@@ -53,6 +58,9 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
                 {
                     Timing = Fast,
                     Capacity = capacity,
+                    Time = time,
+                    // Inline, so the termination result is settled when the cleanup deadline is read.
+                    ScheduleTermination = static termination => Task.FromResult(termination()),
                     // The real root exit is observed by the production seam; no live descendant needs termination.
                     TerminateTree = static _ => { },
                     Drain = (_, _) => readers.Task,
@@ -73,6 +81,11 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
                 Assert.Equal(count + 1, capacity.InUse);
             }
 
+            // Every run saw its child exit and now waits on a held-output timer of the manual clock. Move the clock past
+            // the whole cleanup deadline in one step; no real time decides the outcome.
+            await time.WhenPendingAsync(limit, Fast.Deadline, TestToken).WaitAsync(Watchdog, TestToken);
+            time.Advance(Fast.Deadline);
+
             foreach (RetainedReaders invocation in invocations)
             {
                 ExternalProcessResult result = await invocation.Run.WaitAsync(Watchdog, TestToken);
@@ -84,7 +97,8 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
             }
             Assert.Equal(limit, capacity.InUse);
 
-            var next = new SystemExternalProcessRunner(ExternalProcessRunnerSeams.Production with { Capacity = capacity });
+            var next = new SystemExternalProcessRunner(
+                ExternalProcessRunnerSeams.Production with { Capacity = capacity, Time = time });
             ExternalProcessCleanupCapacityException refused = await Assert.ThrowsAsync<ExternalProcessCleanupCapacityException>(
                 () => next.RunAsync(request, TestToken).AsTask().WaitAsync(Watchdog, TestToken));
             Assert.Equal(limit, refused.Limit);

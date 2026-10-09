@@ -34,6 +34,12 @@ public sealed class IconTests
     private static readonly Uri ResourcesUri = new("avares://Nvt.Core.Avalonia/Icons/IconResources.axaml");
     private static readonly Uri StylesUri = new("avares://Nvt.Core.Avalonia/Icons/IconStyles.axaml");
 
+    private readonly IconSessionFixture fixture;
+
+    /// <summary>Initializes the tests with the icon collection's shared session.</summary>
+    /// <param name="fixture">The shared headless session.</param>
+    public IconTests(IconSessionFixture fixture) => this.fixture = fixture;
+
     /// <summary>Checks every constant against the actual bundled font and its private-use character range.</summary>
     [Fact]
     public Task ConstantsAreSinglePrivateUseCharactersWithBundledGlyphs() => RunAsync(() =>
@@ -250,9 +256,6 @@ public sealed class IconTests
         typeof(IconTests).Assembly.GetManifestResourceStream("Nvt.Core.Avalonia.Tests.Icons." + name)
         ?? throw new InvalidOperationException("Missing icon test resource: " + name);
 
-    private static async Task RunAsync(Action action)
-    {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(IconsTestApplication));
-        await session.Dispatch(action, TestContext.Current.CancellationToken);
-    }
+    private Task RunAsync(Action action) =>
+        this.fixture.Session.Dispatch(action, TestContext.Current.CancellationToken);
 }
