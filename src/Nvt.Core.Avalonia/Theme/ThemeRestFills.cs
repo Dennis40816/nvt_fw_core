@@ -26,8 +26,10 @@ public static class ThemeRestFills
         var uri = new Uri($"{Prefix}{fill}.axaml");
         var next = new ResourceInclude(uri) { Source = uri };
         var dictionaries = resources.MergedDictionaries;
+        var softUri = new Uri(Prefix + "Soft.axaml");
+        var noneUri = new Uri(Prefix + "None.axaml");
         var previous = dictionaries.OfType<ResourceInclude>().FirstOrDefault(include =>
-            include.Source?.OriginalString is Prefix + "Soft.axaml" or Prefix + "None.axaml");
+            include.Source is { IsAbsoluteUri: true } source && (source == softUri || source == noneUri));
         if (previous is null) dictionaries.Add(next);
         else dictionaries[dictionaries.IndexOf(previous)] = next;
     }

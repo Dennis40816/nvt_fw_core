@@ -78,6 +78,52 @@ public sealed class RestFillTests(ITestOutputHelper output)
         Assert.Single(ThemeContractTests.ReadExtracted("RestFillNone").Root!.Elements());
     }
 
+    /// <summary>Recognizes equivalent absolute include URIs and removes None without adding a second rest-fill include.</summary>
+    /// <param name="source">An absolute URI for the None dictionary.</param>
+    [AvaloniaTheory]
+    [InlineData("avares://Nvt.Core.Avalonia/Theme/RestFillNone.axaml")]
+    [InlineData("avares://Nvt.Core.Avalonia/Theme/../Theme/RestFillNone.axaml")]
+    public void EquivalentAbsoluteIncludesReplaceOneRestFillDictionary(string source)
+    {
+        var resources = new ResourceDictionary();
+        var unrelated = new ResourceDictionary { ["Unrelated"] = 7 };
+        var uri = new Uri(source);
+        var none = new ResourceInclude(uri) { Source = uri };
+        resources.MergedDictionaries.Add(unrelated);
+        resources.MergedDictionaries.Add(none);
+        Assert.True(resources.TryGetResource("Nvt.Controls.RestFillMode", ThemeVariant.Light, out object? mode));
+        Assert.Equal("None", mode);
+        foreach (ThemeRestFill fill in Fills)
+        {
+            ThemeRestFills.SetRestFill(resources, fill);
+            Assert.Equal(2, resources.MergedDictionaries.Count);
+            Assert.Same(unrelated, resources.MergedDictionaries[0]);
+            Assert.Single(resources.MergedDictionaries.OfType<ResourceInclude>());
+            Assert.DoesNotContain(none, resources.MergedDictionaries);
+            Assert.Equal(fill == ThemeRestFill.None,
+                resources.TryGetResource("Nvt.Controls.RestFillMode", ThemeVariant.Light, out mode));
+            if (fill == ThemeRestFill.None) Assert.Equal("None", mode);
+        }
+    }
+
+    /// <summary>Blends partial alpha and brush opacity over the painted surface before measuring contrast.</summary>
+    /// <param name="alpha">The brush color alpha.</param>
+    /// <param name="opacity">The brush opacity.</param>
+    /// <param name="red">The expected blended red channel.</param>
+    /// <param name="blue">The expected blended blue channel.</param>
+    [AvaloniaTheory]
+    [InlineData(0, 1, 0, 255)]
+    [InlineData(255, 0, 0, 255)]
+    [InlineData(255, 1, 255, 0)]
+    [InlineData(128, 1, 128, 127)]
+    [InlineData(255, 0.5, 128, 128)]
+    [InlineData(128, 0.5, 64, 191)]
+    public void ContrastCompositeUsesAlphaAndBrushOpacity(byte alpha, double opacity, byte red, byte blue)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(alpha, 255, 0, 0)) { Opacity = opacity };
+        Assert.Equal(Color.FromRgb(red, 0, blue), Composite(brush, Colors.Blue));
+    }
+
     /// <summary>Updates attached controls at application, window, and subtree roots while preserving unrelated dictionaries and siblings.</summary>
     [AvaloniaFact]
     public void ResourceRootsReplaceOneIncludeAndIsolateSubtrees()
@@ -182,7 +228,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
         });
     }
 
-    /// <summary>Keeps Soft rows and headers following palette overrides that the attached window sets after first use.</summary>
+    /// <summary>Keeps Soft rows and headers following window and application palette overrides after first use.</summary>
     /// <param name="radio">Whether the native choice is a radio button.</param>
     [AvaloniaTheory]
     [InlineData(false)]
@@ -193,33 +239,71 @@ public sealed class RestFillTests(ITestOutputHelper output)
         VisitChoice(radio, (host, control) =>
         {
             ThemeRestFills.SetRestFill(host.Resources, ThemeRestFill.Soft);
-            foreach (bool? isChecked in Selections(radio))
-            foreach (bool disabled in Both)
+            var tokens = host.Resources.MergedDictionaries[0];
+            foreach (IResourceDictionary resources in new[] { host.Resources, Application.Current!.Resources })
             {
-                SetState(control, new("Rest", isChecked, Disabled: disabled));
-                Flush(host);
-                Color original = ColorOf(Part<Border>(control, "ChoiceRow").Background);
-                host.Resources["NfcSurfaceSubtleBrush"] = new SolidColorBrush(subtle);
-                host.Resources["Nvt.Controls.SelectedBrush"] = new SolidColorBrush(selected);
-                Flush(host);
-                Assert.Equal(!disabled && isChecked is not false ? selected : subtle, ColorOf(Part<Border>(control, "ChoiceRow").Background));
-                host.Resources.Remove("NfcSurfaceSubtleBrush");
-                host.Resources.Remove("Nvt.Controls.SelectedBrush");
-                Flush(host);
-                Assert.Equal(original, ColorOf(Part<Border>(control, "ChoiceRow").Background));
+                bool applicationScope = ReferenceEquals(resources, Application.Current!.Resources);
+                try
+                {
+                    // Application overrides need the inherited palette, without a window-local copy masking it.
+                    if (applicationScope) host.Resources.MergedDictionaries.Remove(tokens);
+                    foreach (bool? isChecked in Selections(radio))
+                    foreach (bool disabled in Both)
+                    {
+                        SetState(control, new("Rest", isChecked, Disabled: disabled));
+                        Flush(host);
+                        Color original = ColorOf(Part<Border>(control, "ChoiceRow").Background);
+                        bool hadSubtle = resources.TryGetValue("NfcSurfaceSubtleBrush", out object? savedSubtle);
+                        bool hadSelected = resources.TryGetValue("Nvt.Controls.SelectedBrush", out object? savedSelected);
+                        try
+                        {
+                            resources["NfcSurfaceSubtleBrush"] = new SolidColorBrush(subtle);
+                            resources["Nvt.Controls.SelectedBrush"] = new SolidColorBrush(selected);
+                            Flush(host);
+                            Assert.Equal(!disabled && isChecked is not false ? selected : subtle,
+                                ColorOf(Part<Border>(control, "ChoiceRow").Background));
+                        }
+                        finally
+                        {
+                            if (hadSubtle) resources["NfcSurfaceSubtleBrush"] = savedSubtle;
+                            else resources.Remove("NfcSurfaceSubtleBrush");
+                            if (hadSelected) resources["Nvt.Controls.SelectedBrush"] = savedSelected;
+                            else resources.Remove("Nvt.Controls.SelectedBrush");
+                            Flush(host);
+                        }
+                        Assert.Equal(original, ColorOf(Part<Border>(control, "ChoiceRow").Background));
+                    }
+                }
+                finally
+                {
+                    if (applicationScope) host.Resources.MergedDictionaries.Insert(0, tokens);
+                }
             }
         });
         VisitExpander((host, expander, header) =>
         {
             ThemeRestFills.SetRestFill(host.Resources, ThemeRestFill.Soft);
+            foreach (IResourceDictionary resources in new[] { host.Resources, Application.Current!.Resources })
             foreach (bool disabled in Both)
             {
                 expander.IsEnabled = !disabled;
                 DividerTestHost.SetState(header, new("Rest", Disabled: disabled));
-                host.Resources["NfcSurfaceSubtleBrush"] = new SolidColorBrush(subtle);
                 Flush(host);
-                Assert.Equal(subtle, ColorOf(header.Background));
-                host.Resources.Remove("NfcSurfaceSubtleBrush");
+                Color original = ColorOf(header.Background);
+                bool hadSubtle = resources.TryGetValue("NfcSurfaceSubtleBrush", out object? savedSubtle);
+                try
+                {
+                    resources["NfcSurfaceSubtleBrush"] = new SolidColorBrush(subtle);
+                    Flush(host);
+                    Assert.Equal(subtle, ColorOf(header.Background));
+                }
+                finally
+                {
+                    if (hadSubtle) resources["NfcSurfaceSubtleBrush"] = savedSubtle;
+                    else resources.Remove("NfcSurfaceSubtleBrush");
+                    Flush(host);
+                }
+                Assert.Equal(original, ColorOf(header.Background));
             }
         });
     }
@@ -419,7 +503,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
                     foreach (string surfaceKey in Surfaces)
                     {
                         Color surface = ResourceColor(control, surfaceKey);
-                        Color painted = Composite(ColorOf(row.Background), surface);
+                        Color painted = Composite(row.Background, surface);
                         Measure(control, fill, selection + " / " + state.Name, "Label / row", ColorOf(label.Foreground), painted, state.Disabled ? 3 : 4.5, surfaceKey);
                         Measure(control, fill, selection + " / " + state.Name, "Indicator border / row", ColorOf(indicator.BorderBrush), painted, 3, surfaceKey);
                         Measure(control, fill, selection + " / " + state.Name, "Indicator border / indicator", ColorOf(indicator.BorderBrush), ColorOf(indicator.Background),
@@ -446,7 +530,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
                 DividerTestHost.SetState(header, state);
                 Flush(host);
                 Color surface = ColorOf(expander.Background);
-                Color painted = Composite(ColorOf(header.Background), surface);
+                Color painted = Composite(header.Background, surface);
                 var presenter = Part<global::Avalonia.Controls.Presenters.ContentPresenter>(header, "ExpanderHeaderPresenter");
                 TextBlock label = Assert.IsAssignableFrom<TextBlock>(presenter.Child);
                 Assert.Equal(ColorOf(header.Foreground), ColorOf(label.Foreground));
@@ -468,6 +552,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
             Directory.CreateDirectory(destination);
             File.WriteAllText(System.IO.Path.Combine(destination, "contrast.json"), JsonSerializer.Serialize(pairs, JsonOptions));
         }
+        Assert.Equal(8232, pairs.Count);
         output.WriteLine($"Verified {pairs.Count} painted contrast pairs across both themes, shapes, and modes.");
 
         void Measure(Control owner, ThemeRestFill fill, string state, string pair, Color foreground, Color background, double minimum, string surface)
@@ -499,7 +584,15 @@ public sealed class RestFillTests(ITestOutputHelper output)
         control.TryFindResource("Nvt.Shape.ControlCornerRadius", control.ActualThemeVariant, out object? radius)
             && radius is CornerRadius corners && corners.TopLeft == 6 ? "Square" : "Pill";
 
-    private static Color Composite(Color brush, Color surface) => brush.A == 0 ? surface : brush;
+    private static Color Composite(IBrush? brush, Color surface)
+    {
+        Color color = ColorOf(brush);
+        double alpha = color.A / 255d * brush!.Opacity;
+        return Color.FromRgb(
+            (byte)Math.Round(color.R * alpha + surface.R * (1 - alpha)),
+            (byte)Math.Round(color.G * alpha + surface.G * (1 - alpha)),
+            (byte)Math.Round(color.B * alpha + surface.B * (1 - alpha)));
+    }
     private static bool?[] Selections(bool radio) => radio ? [false, true] : [false, true, null];
 
     private static void VisitChoice(bool radio, Action<Window, ToggleButton> verify)

@@ -40,6 +40,8 @@
   <Thickness x:Key="Nvt.Form.BorderThickness">1</Thickness>
   <Thickness x:Key="Nvt.Form.EmptyThickness">0</Thickness>
   <CornerRadius x:Key="Nvt.Form.InputCornerRadius">0</CornerRadius>
+  <StaticResource x:Key="Nvt.Form.MultilineCornerRadius" ResourceKey="NfcCompactCornerRadius" />
+  <CornerRadius x:Key="Nvt.Form.MultilineFocusCornerRadius">10</CornerRadius>
   <x:Double x:Key="Nvt.Form.SpinnerWidth">28</x:Double>
   <x:Double x:Key="Nvt.Form.SpinnerButtonHeight">15</x:Double>
   <x:Double x:Key="Nvt.Form.LeftSpinnerFocusOffset">-29</x:Double>

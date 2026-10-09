@@ -38,7 +38,6 @@
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Form.TextBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.BorderBrush}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Form.BorderThickness}" />
-    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
     <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="ClipToBounds" Value="False" />
@@ -51,6 +50,12 @@
       </Transitions>
     </Setter>
   </Style>
+  <Style Selector="NumericUpDown, ComboBox">
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+  </Style>
+  <Style Selector="TextBox.formEmbedded">
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}" />
+  </Style>
   <Style Selector="TextBox">
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
@@ -59,11 +64,15 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
   </Style>
+  <Style Selector="ComboBox[IsEditable=True]">
+    <!-- Let Tab reach the editor directly; native ComboBox focus forwarding uses Unspecified navigation. -->
+    <Setter Property="IsTabStop" Value="False" />
+  </Style>
   <Style Selector="ComboBox">
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
   </Style>
-  <Style Selector="TextBox">
+  <Style Selector="TextBox:not(.formEmbedded)">
     <Setter Property="CaretBrush" Value="{DynamicResource Nvt.Form.TextBrush}" />
     <Setter Property="SelectionBrush" Value="{DynamicResource Nvt.Form.SelectionBrush}" />
     <Setter Property="SelectionForegroundBrush" Value="{DynamicResource Nvt.Form.SelectionTextBrush}" />
@@ -110,10 +119,13 @@
                 <ContentPresenter Grid.Column="2" Content="{TemplateBinding InnerRightContent}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
               </Grid>
             </Border>
-            <!-- A zero-measure overlay lets the numeric input draw one ring around the entire spinner. -->
-            <Canvas IsHitTestVisible="False">
+            <Border Name="FormFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+                    BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                    CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+            <!-- Only the numeric input needs a zero-measure overlay around the entire spinner. -->
+            <Canvas Name="SpinnerFocusOverlay" IsHitTestVisible="False">
               <Grid Name="FormFocusHost">
-                <Border Name="FormFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+                <Border Name="SpinnerFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
                         BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                         CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
               </Grid>
@@ -122,6 +134,13 @@
         </DataValidationErrors>
       </ControlTemplate>
     </Setter>
+  </Style>
+  <Style Selector="TextBox[AcceptsReturn=True]">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Form.MultilineCornerRadius}" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+  </Style>
+  <Style Selector="TextBox[AcceptsReturn=True] /template/ Border#FormFocusRing">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Form.MultilineFocusCornerRadius}" />
   </Style>
   <Style Selector="NumericUpDown">
     <Setter Property="Template">
@@ -169,14 +188,17 @@
                   <ContentPresenter Name="SelectionPresenter" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                     HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
                                     IsVisible="{TemplateBinding IsEditable, Converter={x:Static BoolConverters.Not}}" />
-                  <TextBox Name="PART_EditableTextBox" IsVisible="{TemplateBinding IsEditable}" Text="{TemplateBinding Text, Mode=TwoWay}"
+                  <TextBox Name="PART_EditableTextBox" Classes="formEmbedded" IsVisible="{TemplateBinding IsEditable}" Text="{TemplateBinding Text, Mode=TwoWay}"
+                           MinHeight="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}"
                            Padding="{DynamicResource Nvt.Form.EmptyThickness}" Background="{DynamicResource Nvt.Form.TransparentBrush}"
                            BorderThickness="{DynamicResource Nvt.Form.EmptyThickness}" Foreground="{TemplateBinding Foreground}"
-                           PlaceholderText="{TemplateBinding PlaceholderText}" VerticalContentAlignment="Center" />
+                           PlaceholderText="{TemplateBinding PlaceholderText}" VerticalContentAlignment="Center">
+                    <TextBox.Tag><x:Boolean>False</x:Boolean></TextBox.Tag>
+                  </TextBox>
                 </Grid>
               </DockPanel>
             </Border>
-            <Border Name="FormFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+            <Border Name="FormFocusRing" IsVisible="{Binding #PART_EditableTextBox.Tag}" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
                     BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                     CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
             <Popup Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}" PlacementTarget="FormBody"
@@ -221,7 +243,7 @@
   <Style Selector="TextBox.error, TextBox:error, NumericUpDown.error, NumericUpDown:error, ComboBox.error, ComboBox:error">
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.ErrorBorderBrush}" />
   </Style>
-  <Style Selector="TextBox:focus-visible:not(:disabled) /template/ Border#FormFocusRing, ComboBox:focus-visible:not(:disabled) /template/ Border#FormFocusRing">
+  <Style Selector="TextBox:focus-visible:not(:disabled) /template/ Border#FormFocusRing">
     <Setter Property="IsVisible" Value="True" />
   </Style>
   <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox, NumericUpDown /template/ TextBox#PART_TextBox:pointerover, NumericUpDown /template/ TextBox#PART_TextBox:disabled, NumericUpDown /template/ TextBox#PART_TextBox[IsReadOnly=True]">
@@ -229,13 +251,28 @@
     <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Form.EmptyThickness}" />
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
-  <Style Selector="TextBox /template/ Grid#FormFocusHost">
-    <Setter Property="Width" Value="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" />
-    <Setter Property="Height" Value="{Binding Bounds.Height, RelativeSource={RelativeSource TemplatedParent}}" />
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox:focus-visible /template/ Border#FormFocusRing, ComboBox /template/ TextBox#PART_EditableTextBox /template/ Border#FormFocusRing">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TextBox /template/ Canvas#SpinnerFocusOverlay">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox /template/ Canvas#SpinnerFocusOverlay">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="NumericUpDown:not(:disabled) /template/ TextBox#PART_TextBox:focus-visible /template/ Border#SpinnerFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ComboBox:focus-visible:not(:disabled) /template/ TextBox#PART_EditableTextBox">
+    <Setter Property="Tag"><x:Boolean>True</x:Boolean></Setter>
+  </Style>
+  <Style Selector="ComboBox:focus-within:not(:disabled) /template/ TextBox#PART_EditableTextBox:focus-visible">
+    <!-- This private template part signals the outer ring without drawing an inner ring. -->
+    <Setter Property="Tag"><x:Boolean>True</x:Boolean></Setter>
   </Style>
   <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox /template/ Grid#FormFocusHost">
-    <Setter Property="Width" Value="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=NumericUpDown, Tree=Visual}}" />
-    <Setter Property="Height" Value="{Binding Bounds.Height, RelativeSource={RelativeSource AncestorType=NumericUpDown, Tree=Visual}}" />
+    <Setter Property="Width" Value="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=Border, Tree=Visual}}" />
+    <Setter Property="Height" Value="{Binding Bounds.Height, RelativeSource={RelativeSource AncestorType=Border, Tree=Visual}}" />
     <Setter Property="Canvas.Left" Value="{DynamicResource Nvt.Form.InnerFocusOffset}" />
     <Setter Property="Canvas.Top" Value="{DynamicResource Nvt.Form.InnerFocusOffset}" />
   </Style>

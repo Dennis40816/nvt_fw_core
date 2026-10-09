@@ -26,6 +26,12 @@ internal static class FormsTestHost
         new("Error + focus", Error: true, Focus: true), new("Error + disabled", Error: true, Disabled: true),
     ];
 
+    internal static readonly FormState[] ReadOnlyStates =
+    [
+        new("Read only + hover", ReadOnly: true, Hover: true),
+        new("Read only + error", ReadOnly: true, Error: true),
+    ];
+
     internal static Window Create(Control content, bool dark = false, bool core = true, double width = 600, double height = 400)
     {
         Window host = ChoiceTestHost.Create(content, dark, styles: false, width: width, height: height, snapshot: false);
@@ -94,7 +100,8 @@ internal static class FormsTestHost
     internal static Border Ring(Control control)
     {
         Control owner = control is NumericUpDown ? ChoiceTestHost.Part<TextBox>(control, "PART_TextBox") : control;
-        return control.GetVisualDescendants().OfType<Border>().Single(part => part.Name == "FormFocusRing" && part.TemplatedParent == owner);
+        string name = control is NumericUpDown ? "SpinnerFocusRing" : "FormFocusRing";
+        return control.GetVisualDescendants().OfType<Border>().Single(part => part.Name == name && part.TemplatedParent == owner);
     }
 
     internal static void Restore(Control root)
