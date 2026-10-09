@@ -2,7 +2,7 @@
 
 # Time: DelegateTimeProvider
 
-[`DelegateTimeProvider`](../../../src/Nvt.Core/Time/DelegateTimeProvider.cs) adapts delegates for tests and legacy time sources in `Nvt.Core.Time`, targeting `net8.0` with BCL dependencies only. Production code injects the BCL `TimeProvider`. NFC's `ISystemClock` is not ported because `TimeProvider.GetUtcNow()` replaces it directly.
+[`DelegateTimeProvider`](../../../src/Nvt.Core/Time/DelegateTimeProvider.cs) adapts delegates for tests and legacy time sources in `Nvt.Core.Time`, targeting `net10.0` with BCL dependencies only. Production code injects the BCL `TimeProvider`. NFC's `ISystemClock` is not ported because `TimeProvider.GetUtcNow()` replaces it directly.
 
 ```csharp
 using Nvt.Core.Time;
