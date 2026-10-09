@@ -5,6 +5,8 @@ They use only the Python standard library.
 Python 3.10 or later supports their type syntax.
 [Shared C# health policy bundle](csharp/README.md) provides the canonical props, EditorConfig, banned symbols, schema, and manifest.
 
+See [C# syntax health ratchet](repo-health.md) for the SDK Roslyn checker and baseline modes.
+
 The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.
 The caller selects files, prints results, and sets the process exit code.
