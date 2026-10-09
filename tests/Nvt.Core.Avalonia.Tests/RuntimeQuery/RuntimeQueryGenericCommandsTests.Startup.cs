@@ -22,15 +22,12 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         [
             generic[0],
             new("window-size", RuntimeQueryCommandRisk.ChangesState,
-                _ => throw new InvalidOperationException("Help must not run commands."),
-                RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "size")
-            {
-                InvocationHandler = (_, _) => throw new InvalidOperationException("Help must not run commands.")
-            },
+            (_, _, _) => throw new InvalidOperationException("Help must not run commands."),
+                RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "size"),
             generic[1]
         ];
         var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
-        AssertSuccess(await router.RouteAsync("help", null),
+        AssertSuccess(await router.RouteAsync("help", null, TestContext.Current.CancellationToken),
             """{"commands":[{"name":"help","risk":"ReadOnly"},{"name":"window-size","risk":"ChangesState"},{"name":"ping","risk":"ReadOnly"}]}""");
         Assert.Equal("window-size", Assert.Single(router.ParseStartupArguments(["--window-size=320,240"]).Calls).Command.Name);
     }
@@ -43,7 +40,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         var probe = new StartupLayoutProbe(() => new Size(window.Width, window.Height));
         window.Content = probe;
         var received = new List<RuntimeQueryInvocation>();
-        Task<RuntimeQueryResponseEnvelope> ApplySize(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? args)
+        Task<RuntimeQueryResponseEnvelope> ApplySize(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? args, CancellationToken cancellationToken)
         {
             Assert.True(RuntimeQueryArgumentParser.TryGetIntListArg(args, "size", 1, 8192, out var dimensions, out var error));
             Assert.Null(error);
@@ -59,18 +56,15 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
         }
         var command = new RuntimeQueryCommand("window-size", RuntimeQueryCommandRisk.ChangesState,
-            args => ApplySize(RuntimeQueryInvocation.Runtime, args),
-            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "size")
-        {
-            InvocationHandler = ApplySize
-        };
+            ApplySize,
+            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "size");
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: true);
         try
         {
             Assert.Null(probe.FirstWindowSize);
             var parsed = router.ParseStartupArguments(["--window-size=320,240"]);
             Assert.Empty(parsed.Issues);
-            Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame)).Response.Ok);
+            Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken)).Response.Ok);
             Assert.Null(probe.FirstWindowSize);
             Assert.False(window.IsVisible);
             window.Show();

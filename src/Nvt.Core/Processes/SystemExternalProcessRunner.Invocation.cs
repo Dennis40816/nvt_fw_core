@@ -54,7 +54,7 @@ public sealed partial class SystemExternalProcessRunner
             Notify(ExternalProcessRunnerPhase.Started);
 
             TerminalSignal signal = await WaitForTerminalSignalAsync(timeout, cancellationToken).ConfigureAwait(false);
-            CleanupSchedule schedule = seams.Timing.Schedule(Stopwatch.GetTimestamp());
+            CleanupSchedule schedule = seams.Timing.Schedule(seams.Time.GetTimestamp(), seams.Time.TimestampFrequency);
             Task streams = Settled(_stdout, _stderr);
 
             bool heldAfterExit = false;
@@ -203,7 +203,7 @@ public sealed partial class SystemExternalProcessRunner
             {
                 first = await Task.WhenAny(
                         _exit,
-                        Task.Delay(timeout, timeoutStop.Token),
+                        Task.Delay(timeout, seams.Time, timeoutStop.Token),
                         _cancellationSignal.Task)
                     .ConfigureAwait(false);
                 timeoutStop.Cancel();
@@ -233,7 +233,7 @@ public sealed partial class SystemExternalProcessRunner
             }
 
             Action<Process> terminateTree = seams.TerminateTree;
-            _termination = Track(Task.Run(() => TryTerminate(terminateTree, process)));
+            _termination = Track(seams.ScheduleTermination(() => TryTerminate(terminateTree, process)));
             Notify(ExternalProcessRunnerPhase.TerminationStarted);
         }
 
@@ -350,16 +350,16 @@ public sealed partial class SystemExternalProcessRunner
                 TaskScheduler.Default);
         }
 
-        private static async Task WaitUntilAsync(Task work, long untilTimestamp)
+        private async Task WaitUntilAsync(Task work, long untilTimestamp)
         {
-            TimeSpan remaining = Stopwatch.GetElapsedTime(Stopwatch.GetTimestamp(), untilTimestamp);
+            TimeSpan remaining = seams.Time.GetElapsedTime(seams.Time.GetTimestamp(), untilTimestamp);
             if (work.IsCompleted || remaining <= TimeSpan.Zero)
             {
                 return;
             }
 
             using var delayStop = new CancellationTokenSource();
-            _ = await Task.WhenAny(work, Task.Delay(remaining, delayStop.Token)).ConfigureAwait(false);
+            _ = await Task.WhenAny(work, Task.Delay(remaining, seams.Time, delayStop.Token)).ConfigureAwait(false);
             delayStop.Cancel();
         }
     }

@@ -19,6 +19,8 @@ public sealed record ConsoleProjectionOptions
     /// <summary>Gets the declared sources, including sources with no retained events. IDs must be unique.</summary>
     public ImmutableArray<ConsoleSource> SourceRegistry { get; init; } = [];
     /// <summary>Gets the Console.Timestamp.Ago composite template. Placeholder 0 receives formatted seconds.</summary>
+    /// <remarks>The template is formatted only in Relative mode. A malformed template throws FormatException
+    /// from the projection in that mode and is ignored in Absolute and Hidden modes.</remarks>
     public string RelativeTimeTemplate { get; init; } = "{0} s ago";
     /// <summary>Gets the explicit culture for relative seconds. Core never reads thread culture.</summary>
     public CultureInfo Culture { get; init; } = CultureInfo.InvariantCulture;

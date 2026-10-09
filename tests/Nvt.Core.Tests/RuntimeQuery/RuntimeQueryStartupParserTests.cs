@@ -20,7 +20,7 @@ public sealed class RuntimeQueryStartupParserTests
         var handlerCalls = 0;
         RuntimeQueryCommand Command(string name, RuntimeQueryCommandRisk risk, RuntimeQueryStartupPhase phase, string? key)
         {
-            return new(name, risk, _ =>
+            return new(name, risk, (_, _, _) =>
             {
                 handlerCalls++;
                 return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
@@ -95,9 +95,9 @@ public sealed class RuntimeQueryStartupParserTests
         string[] arguments = ["--page", "home", "--help", "--confirm", "--theme=dark", "bare", ""];
         RuntimeQueryCommandRouter[] routers =
         [
-            new(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+            new(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
             {
-                ["theme"] = _ => throw new InvalidOperationException("The handler must not run.")
+                ["theme"] = (_, cancellationToken) => throw new InvalidOperationException("The handler must not run.")
             }),
             new(Array.Empty<RuntimeQueryCommand>(), requireConfirmation: false),
             new(Array.Empty<RuntimeQueryCommand>(), requireConfirmation: true)

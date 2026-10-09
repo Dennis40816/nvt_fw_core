@@ -159,7 +159,7 @@ public sealed class ConsoleProjection : IDisposable
     /// <summary>Gets counts after source filtering only, including zero for each level.</summary>
     public required ImmutableDictionary<LogLevel, int> LevelCounts { get; init; }
     /// <summary>Gets declared sources followed by unknown sources in first retained appearance order.</summary>
-    public ImmutableArray<ConsoleSource> Sources { get; init; } = [];
+    public required ImmutableArray<ConsoleSource> Sources { get; init; }
     /// <summary>Gets counts after level filtering only, including zero for declared and retained sources.</summary>
     public required ImmutableDictionary<string, int> SourceCounts { get; init; }
     /// <summary>Gets all retained event and group memberships for selection remapping.</summary>

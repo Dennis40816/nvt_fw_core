@@ -231,7 +231,7 @@ Each value supplies a stable ordinal `SourceId`, a `DisplayName`, and ascending 
 IDs must be unique; null entries, IDs, or names and an uninitialized array are invalid.
 Equal display orders preserve input order. Empty IDs remain compatible with store IDs.
 `ConsoleProjection.Sources` is the authoritative display order: all declarations first,
-then unknown IDs in their first retained sequence order. Unknown names equal their IDs.
+then unknown IDs in their first retained sequence order. Unknown names equal their IDs, and unknown sources use `int.MaxValue` as their display order.
 The dictionary `SourceCounts` is seeded with zero for every declared source and still counts
 raw events after the level filter only. Filtering and search continue to use IDs.
 No count is stored in source metadata, and no display name is copied into every row.
@@ -260,6 +260,7 @@ The original overload uses invariant culture, the approved default `Console.Time
 template `"{0} s ago"`, and UTC. The app supplies its resolved resource template and explicit
 `CultureInfo`; it must not mutate that culture during a projection.
 Placeholder 0 receives seconds formatted as `"0.0"` in that culture, such as `2.3` or `2,3`.
+The template is formatted only in Relative mode: a malformed template throws `FormatException` from the projection in that mode and is ignored in Absolute and Hidden modes.
 Pause still uses `PausedAt`, independent of later captures or presentation changes.
 Hidden time stays empty. Absolute time keeps invariant `HH:mm:ss.fff`, converted through the
 explicit `TimeZoneInfo`; the app may pass its chosen local zone or UTC. Core never chooses local time.

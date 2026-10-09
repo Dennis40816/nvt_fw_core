@@ -2,12 +2,19 @@
 
 This file lists the changes in each Core release. The GitHub Release of each `core-v*` tag carries the same notes. Core follows SemVer; 1.x makes no breaking changes.
 
-Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` gets its own version and tag later.
+Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` starts at `0.1.0` with independent `core-fonts-v*` tags.
 
 ## Unreleased
 
 ### Breaking changes
 
+- ReportList: pager buttons now use the shared `actionNeutral` role.
+  Status captions apply `Nvt.Font.Caption.Family`, `Nvt.Font.Caption.Size`, and `Nvt.Font.Caption.Weight` directly.
+  They keep the muted text color `NfcTextMutedBrush`, so keep `Theme/ThemeTokens.axaml` loaded.
+  Load `Theme/ButtonStyles.axaml` and `Nvt.Core.Fonts/FontRoles.axaml` before using the pager templates.
+  Keep `Theme/ThemeTokens.axaml` loaded for the button resources.
+  Remove local `semanticAction`, `secondary`, and `captionText` styles that existed only for the pager.
+- `Nvt.Core` targets `net10.0` only. It no longer ships a `net8.0` assembly. NFC, NFH and NFU already target `net10.0`. The SDK pin in `global.json` moves to `10.0.303`. No source change is needed in a `net10.0` consumer.
 - `RegularFileGuard.ReadUnixIdentity` is internal. Use the public `RequirePath` and `RequireOpenHandle` guards.
 - `BoundedReadResult.Sha256` changes to `byte[]?`. Its positional constructor hash parameter and `Deconstruct` hash output become nullable. Guard uninitialized hashes. Successful reads retain complete hashes.
 - `UndoService.TryPop` changes to `[NotNullWhen(true)] out UndoAction? action`. Use the success branch. Empty stacks still return false and null.
@@ -19,6 +26,47 @@ Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nv
 - `ProcessInheritedHandle.EnvironmentVariable` changes to `string?`. Guard uninitialized bindings. Both `ProcessLaunchGate.StartContained` overloads reject defaults before callbacks or native work.
 - `UpdateCatalogPackagePath.Value` changes to `string?`. Its positional constructor parameter and `Deconstruct` output become nullable. Guard raw paths. `UpdateCatalogVersionSnapshot.Create` still rejects default paths and preserves validated identities.
 
+**RuntimeQuery cancellation.** RuntimeQuery carries cancellation through one execution handler.
+Shared protocol defaults are read-only before first use.
+Confirmation delivery, startup eligibility, command order, response defaults, and wire bytes remain unchanged.
+
+The table lists changed members and new migration factories.
+`Response` below means `Task<RuntimeQueryResponseEnvelope>`.
+`Args` means `IReadOnlyDictionary<string, string>?`.
+
+| Public member | Before | After |
+| --- | --- | --- |
+| `RuntimeQueryCommand` constructor | `Handler: Func<Args, Response>` | `Handler: Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.Handler`, including get/init accessors | `Func<Args, Response>` | `Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.Deconstruct` | Third output: `Func<Args, Response>` | Third output: `Func<RuntimeQueryInvocation, Args, CancellationToken, Response>` |
+| `RuntimeQueryCommand.InvocationHandler`, including get/init accessors | Optional invocation-aware delegate replacing `Handler` | Removed. Supply `Handler` directly. |
+| `RuntimeQueryCommand.FromArgs` | Absent | Factory accepting `Func<Args, CancellationToken, Response>` and existing startup metadata |
+| `RuntimeQueryCommandRouter(handlers)` | Dictionary values: `Func<Args, Response>` | Dictionary values: `Func<Args, CancellationToken, Response>` |
+| `RuntimeQueryCommandRouter.ExecuteAsync` | `(request, expectedVersion)` | `(request, expectedVersion, cancellationToken = default)` |
+| `RuntimeQueryCommandRouter.RouteAsync` | `(commandText, args)` | `(commandText, args, cancellationToken = default)` |
+| `RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync` | `(calls, phase)` | `(calls, phase, cancellationToken = default)` |
+| `RuntimeQueryProtocol.CompactJsonOptions` | Mutable before first serialization | Always read-only. Exact transport defaults remain unchanged. |
+| `RuntimeQueryProtocol.PrettyJsonOptions` | Mutable before first serialization | Always read-only. Exact pretty-output defaults remain unchanged. |
+| `RuntimeQueryProtocol.CreateCompactJsonOptions` | Absent | Independent mutable copy of compact defaults |
+| `RuntimeQueryProtocol.CreatePrettyJsonOptions` | Absent | Independent mutable copy of pretty defaults |
+| `RuntimeQueryUiThread.Wrap` | Dispatches already cancelled requests | Checks cancellation before dispatch and before queued work begins |
+| `RuntimeQueryGenericCommandOptions.CaptureScreenshot` | Receives `CancellationToken.None` | Receives the invocation token. The delegate signature stays unchanged. |
+| `RuntimeQueryGenericCommands.Create` | Handlers omit cancellation | Handlers check cancellation before effects and forward it to screenshot capture |
+| `RuntimeQueryIpcServer.DisposeAsync` | Bounded shutdown can detach its handler wait | Bounded shutdown signals cancellation. Started handlers retain their cooperative execution and cleanup. A diagnostic event can arrive after `DisposeAsync` returns, and `Stopped` is not reported while a handler that ignores its token is still running. |
+
+Tool migration steps:
+
+- Update every RuntimeQuery consumer: the `DesktopRuntimeQuery` factories and the router wrappers, with the new signatures.
+- Supply one invocation-aware handler, or use `RuntimeQueryCommand.FromArgs` for commands that ignore invocation timing.
+- Forward the token that your entry point receives to `Router.ExecuteAsync(request, version, token)`. It comes from the IPC server handler, or from your own entry point when you have no server. Passing a startup token to `ExecuteStartupPhaseAsync` is optional. A cancel during startup throws `OperationCanceledException` and the results of commands that already ran are lost. A tool that wants the old result when the window closes during startup passes no startup token.
+- Update `AppearanceLaunchCommands` and handler tests while preserving command results, confirmation delivery, and transport bytes.
+- Customize JSON through the copy factories. Keep the shared options for transport and default output.
+- The other two inspected consumers need no source migration.
+- The integrator pins the accepted release, updates package hashes, regenerates locks, and restores in locked mode.
+
+See the [RuntimeQuery migration examples](docs/core/modules/RuntimeQuery.md#cancellation-and-migration)
+and the [Traditional Chinese examples](docs/core/modules/RuntimeQuery.zh-TW.md#取消與遷移).
+
 Tool migration: NFH must update `CadLoadOverlayFrameYieldPolicyTests` before upgrading its Core package.
 Replace the removed conjunction helper with a local predicate or real dispatcher evidence.
 Rebuild its existing `UiThread` consumers.
@@ -27,6 +75,26 @@ Future adoption must guard defaults and replace `Options` reads with `CreateOpti
 NFU has no inspected source migration.
 Rebuild its CSV, AtomicOutput, and SourceFileNavigation consumers against the accepted package.
 Integrators must pin the accepted release, update package-download hashes, regenerate locks, and restore in locked mode.
+
+Inputs removes the inert large-step API from `NumberScrubber` before the public contract freeze.
+
+| Member | Before | After |
+| --- | --- | --- |
+| `NumberScrubber.LargeChange` | Read/write `decimal`, default `10m`, with no input behavior. | Removed. |
+| `NumberScrubber.LargeChangeProperty` | Public static readonly `StyledProperty<decimal>` identifier. | Removed. |
+| `NumberScrubber.get_LargeChange()` | Public `decimal` getter. | Removed. |
+| `NumberScrubber.set_LargeChange(decimal)` | Public `void` setter. | Removed. |
+
+Remove `LargeChange` attributes, bindings, assignments, and reads.
+Remove styled identifier and accessor references. Keep `SmallChange` for text snapping, wheel steps, and scrub steps.
+NFC, NFH, and NFU have no inspected dependency on Core `NumberScrubber`.
+NFC keeps its local large-step behavior in `HexEditorPanel` on future adoption.
+Range rejection is withdrawn because binding coherence was not proved. The existing range contract remains unchanged.
+Both Inputs documents describe valid bound-update order and the retained reversed-range hazard.
+
+### Added
+
+- `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
 ## 0.5.0 - 2026-10-08
 

@@ -7,18 +7,28 @@ namespace Nvt.Core.RuntimeQuery;
 /// <summary>JSON formatting shared by the runtime query transport and its callers.</summary>
 public static class RuntimeQueryProtocol
 {
-    /// <summary>Compact camel-case JSON, including null properties.</summary>
-    public static JsonSerializerOptions CompactJsonOptions { get; } = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-    };
+    /// <summary>Read-only compact camel-case JSON defaults, including null properties.</summary>
+    public static JsonSerializerOptions CompactJsonOptions { get; } = CreateDefaults(pretty: false);
 
-    /// <summary>Indented camel-case JSON, including null properties.</summary>
-    public static JsonSerializerOptions PrettyJsonOptions { get; } = new()
+    /// <summary>Read-only indented camel-case JSON defaults, including null properties.</summary>
+    public static JsonSerializerOptions PrettyJsonOptions { get; } = CreateDefaults(pretty: true);
+
+    /// <summary>Returns an independent mutable copy of the compact transport defaults.</summary>
+    public static JsonSerializerOptions CreateCompactJsonOptions() => new(CompactJsonOptions);
+
+    /// <summary>Returns an independent mutable copy of the pretty-output defaults.</summary>
+    public static JsonSerializerOptions CreatePrettyJsonOptions() => new(PrettyJsonOptions);
+
+    private static JsonSerializerOptions CreateDefaults(bool pretty)
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = true
-    };
+        var options = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = pretty
+        };
+        options.MakeReadOnly(populateMissingResolver: true);
+        return options;
+    }
 }
 
 /// <summary>A single runtime query request.</summary>

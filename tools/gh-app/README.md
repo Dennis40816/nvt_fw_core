@@ -72,6 +72,24 @@ Any owner review blocks a push even with that switch.
 Use a follow-up PR after the owner has reviewed the original PR.
 `-ExtraParent` adds a second parent for a merge commit.
 
+### Pushing a workflow file
+
+GitHub needs the `workflows` permission to create a tree that changes a file under `.github/workflows/`.
+The module does not request it by default. Every other push is unchanged.
+Add `-IncludeWorkflowsWrite` and `-WorkflowsLogPath <FILE>` to ask for it for one push.
+
+- The switch is off by default and is chosen for each push.
+- The function refuses it before any `gh` call unless the pushed tree changes a file under `.github/workflows/`.
+- Each use appends one line to the log file: UTC time, branch, file count and workflow file count. The line holds no token.
+- The helper receives one more argument, `-IncludeWorkflowsWrite`, for the token requests of that push only. The stored configuration does not change and nothing is cached.
+- If GitHub did not grant `workflows` to the installation, the helper says so and the function shows that fixed sentence: `Installation token lacks the requested workflows permission.` The owner accepts the new permission on the installation page.
+
+```powershell
+Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
+    -RemoteParent '<REMOTE_PARENT_SHA>' -Branch 'build/example' `
+    -MessageFile .\message.txt -IncludeWorkflowsWrite -WorkflowsLogPath .\workflows-write.log
+```
+
 ```powershell
 Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
     -RemoteParent '<REMOTE_PARENT_SHA>' -Branch 'feature/example' `

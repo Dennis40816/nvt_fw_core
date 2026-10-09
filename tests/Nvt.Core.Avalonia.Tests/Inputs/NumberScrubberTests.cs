@@ -16,10 +16,24 @@ using Xunit;
 
 namespace Nvt.Core.Avalonia.Tests.Inputs;
 
-/// <summary>Characterizes the frozen NumberScrubber using synthetic values and routed input.</summary>
+/// <summary>Characterizes NumberScrubber using synthetic values and routed input.</summary>
 public sealed partial class NumberScrubberTests
 {
-    /// <summary>The original styled properties retain their defaults and Value's binding mode.</summary>
+    /// <summary>The CLR property, styled identifier, accessors and registered large-step property are removed together.</summary>
+    [AvaloniaFact]
+    public void LargeStepMembersAreAbsent()
+    {
+        _ = new NumberScrubber();
+        Type type = typeof(NumberScrubber);
+        Assert.Null(type.GetProperty("LargeChange"));
+        Assert.Null(type.GetField("LargeChangeProperty"));
+        Assert.Null(type.GetMethod("get_LargeChange"));
+        Assert.Null(type.GetMethod("set_LargeChange"));
+        Assert.DoesNotContain(AvaloniaPropertyRegistry.Instance.GetRegistered(type),
+            property => property.Name == "LargeChange");
+    }
+
+    /// <summary>The supported styled properties retain their defaults and Value's binding mode.</summary>
     [AvaloniaFact]
     public void StyledPropertiesKeepFrozenDefaults()
     {
@@ -28,7 +42,6 @@ public sealed partial class NumberScrubberTests
         Assert.Equal(decimal.MinValue, control.Minimum);
         Assert.Equal(decimal.MaxValue, control.Maximum);
         Assert.Equal(1m, control.SmallChange);
-        Assert.Equal(10m, control.LargeChange);
         Assert.Equal("0.###", control.FormatString);
         Assert.True(control.RequireAltForWheel);
         Assert.True(control.SnapToStep);

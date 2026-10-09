@@ -10,8 +10,9 @@ namespace Nvt.Core.Avalonia.RuntimeQuery;
 public static partial class RuntimeQueryGenericCommands
 {
     private static async Task<RuntimeQueryResponseEnvelope> ScreenshotAsync(
-        RuntimeQueryGenericCommandOptions options, IReadOnlyDictionary<string, string>? args)
+        RuntimeQueryGenericCommandOptions options, IReadOnlyDictionary<string, string>? args, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (args is null || !args.TryGetValue("path", out var path) || string.IsNullOrWhiteSpace(path) ||
             !Path.IsPathFullyQualified(path) || !path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
         {
@@ -41,7 +42,8 @@ public static partial class RuntimeQueryGenericCommands
         RuntimeQueryScreenshotResult result;
         if (options.CaptureScreenshot is { } capture)
         {
-            result = await capture(path, CancellationToken.None);
+            cancellationToken.ThrowIfCancellationRequested();
+            result = await capture(path, cancellationToken);
         }
         else
         {
@@ -51,7 +53,7 @@ public static partial class RuntimeQueryGenericCommands
                 return NoMainWindow();
             }
 
-            result = CaptureWindow(window, path);
+            result = CaptureWindow(window, path, cancellationToken);
         }
 
         return result.Error is { } error
@@ -62,8 +64,9 @@ public static partial class RuntimeQueryGenericCommands
             });
     }
 
-    private static RuntimeQueryScreenshotResult CaptureWindow(Window window, string path)
+    private static RuntimeQueryScreenshotResult CaptureWindow(Window window, string path, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         window.UpdateLayout();
         if (window.WindowState == WindowState.Minimized || window.Bounds.Width <= 0 || window.Bounds.Height <= 0)
         {
@@ -73,7 +76,9 @@ public static partial class RuntimeQueryGenericCommands
 
         var dpi = new Vector(96 * window.RenderScaling, 96 * window.RenderScaling);
         using var bitmap = new RenderTargetBitmap(PixelSize.FromSizeWithDpi(window.Bounds.Size, dpi), dpi);
+        cancellationToken.ThrowIfCancellationRequested();
         bitmap.Render(window);
+        cancellationToken.ThrowIfCancellationRequested();
         var temporaryPath = Path.Combine(Path.GetDirectoryName(path)!, $".runtime-query-{Guid.NewGuid():N}.tmp");
         var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         try
@@ -83,6 +88,7 @@ public static partial class RuntimeQueryGenericCommands
                 bitmap.Save(stream, PngBitmapEncoderOptions.Default);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             var fileSize = new FileInfo(temporaryPath).Length;
             try
             {

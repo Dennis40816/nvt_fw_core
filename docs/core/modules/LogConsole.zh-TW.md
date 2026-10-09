@@ -191,7 +191,7 @@ App 以 `ConsoleProjectionOptions.SourceRegistry` 注入 immutable `ConsoleSourc
 每筆包含穩定 ordinal `SourceId`、`DisplayName` 與遞增 `DisplayOrder`。
 ID 必須唯一；null entry、ID、name 或未初始化陣列皆無效。空 ID 與既有 store 相容。
 相同 order 保留 registry 輸入順序。`ConsoleProjection.Sources` 是顯示順序的唯一輸出：
-先列所有宣告來源，再依保留事件首次出現的 Sequence 列未知來源，未知來源以 ID 為名稱。
+先列所有宣告來源，再依保留事件首次出現的 Sequence 列未知來源，未知來源以 ID 為名稱，display order 為 `int.MaxValue`。
 `SourceCounts` 為每個宣告來源先填零，仍只套 level filter 並計 raw events。
 篩選與搜尋繼續使用 ID，不將 count 存入來源 metadata，也不在每列重複存 name。
 即使 snapshot version 相同，替換 registry 也會改變下一次 projection。
@@ -201,7 +201,7 @@ ID 必須唯一；null entry、ID、name 或未初始化陣列皆無效。空 ID
 核准的 `Console.Timestamp.Ago` 預設 template `"{0} s ago"` 與 UTC。
 App 傳入已解析的 template 與明確 `CultureInfo`，projection 期間不得修改 culture。
 純函式 `ConsoleTimeFormatter.Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone)`
-是唯一時間格式計算路徑。Placeholder 0 接收依 culture 以 `"0.0"` 格式化的秒數，例如 `2.3` 或 `2,3`。
+是唯一時間格式計算路徑。Placeholder 0 接收依 culture 以 `"0.0"` 格式化的秒數，例如 `2.3` 或 `2,3`。範本只在 Relative 模式格式化：格式錯誤的範本在該模式下由投影拋出 `FormatException`，Absolute 與 Hidden 模式則忽略。
 暫停仍以 `PausedAt` 為基準，後續 capture 或 presentation 變更不會推進相對時間。
 Hidden 維持空字串；absolute 維持 invariant `HH:mm:ss.fff`，以明確 `TimeZoneInfo` 轉換。
 App 可傳自己選擇的本地時區或 UTC；Core 不自行取得本地時區。

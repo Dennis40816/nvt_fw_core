@@ -1,0 +1,6 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:inputs="using:Nvt.Core.Avalonia.Inputs">
+  <inputs:NumberScrubber x:Key="FiniteRange" Minimum="0" Maximum="10" Value="4" />
+</ResourceDictionary>

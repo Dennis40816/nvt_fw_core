@@ -21,9 +21,14 @@ public static class RuntimeQueryUiThread
 
         return async (request, version, cancellationToken) =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (UiThread.TryGetRunningDispatcher(out var dispatcher))
             {
-                return await dispatcher!.InvokeAsync(() => handler(request, version, cancellationToken));
+                return await dispatcher!.InvokeAsync(() =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return handler(request, version, cancellationToken);
+                });
             }
 
             return new RuntimeQueryResponseEnvelope(

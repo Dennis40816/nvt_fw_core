@@ -149,6 +149,28 @@ class FetchCorePackagesTests(unittest.TestCase):
         self.assertEqual(self.requests, [self.asset_path(other), self.asset_path(self.package)])
         self.assertEqual((self.destination / other["asset"]).read_bytes(), other_body)
 
+    def test_independent_fonts_release_download_and_offline_verification(self):
+        core_body = b"synthetic Core 0.5.0 package"
+        ui_body = b"synthetic Avalonia 0.5.0 package"
+        fonts_body = b"synthetic Fonts 0.1.0 package"
+        packages = [
+            self.make_package("Nvt.Core.0.5.0.nupkg", core_body, "core-v0.5.0"),
+            self.make_package("Nvt.Core.Avalonia.0.5.0.nupkg", ui_body, "core-v0.5.0"),
+            self.make_package("Nvt.Core.Fonts.0.1.0.nupkg", fonts_body, "core-fonts-v0.1.0"),
+        ]
+        self.write_manifest(packages)
+        for package, payload in zip(packages, (core_body, ui_body, fonts_body)):
+            self.serve(package, payload)
+        first = self.run_fetch()
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(self.requests, [self.asset_path(package) for package in packages])
+        for package, payload in zip(packages, (core_body, ui_body, fonts_body)):
+            self.assertEqual((self.destination / package["asset"]).read_bytes(), payload)
+        offline = self.run_fetch("--offline")
+        self.assertEqual(offline.returncode, 0, offline.stderr)
+        self.assertEqual(offline.stdout.count(": verified"), 3)
+        self.assertEqual(len(self.requests), 3)
+
     def test_sha256_mismatch_fails_without_retry_or_leftover(self):
         wrong = b"wrong package bytes"
         self.serve(self.package, wrong)

@@ -4,7 +4,7 @@
 
 `Nvt.Core.Startup.StartupTrace` 記錄啟動階段、經過時間與記憶體配置總量。
 主應用程式決定輸出環境變數、結構版本名稱、階段名稱與額外 JSON 區段。
-此模組只使用 .NET 8 基礎程式庫，不需要額外套件。
+此模組只使用 .NET 10 基礎程式庫，不需要額外套件。
 
 凍結的父版本基準：NFC（`nvt_fw_combiner`）、ref `origin/1.2.x`、完整 commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。抽取的來源路徑：
 

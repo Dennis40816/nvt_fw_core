@@ -70,6 +70,20 @@ Release tags and asset names allow letters, digits, `.`, `_`, and `-`, but rejec
 Assets must end with `.nupkg`.
 SHA-256 values must contain 64 lowercase hexadecimal characters.
 
+Each package pins its own Release. Packages may use different versions.
+`core-v<version>` contains `Nvt.Core` and `Nvt.Core.Avalonia`.
+`Nvt.Core.Fonts` starts at independent version `0.1.0` with tag `core-fonts-v0.1.0`.
+The [example manifest](core-packages.example.json) includes `Nvt.Core.Fonts.0.1.0.nupkg`.
+Its all-zero Fonts SHA-256 is a placeholder. Replace it with the published Release's `SHA256SUMS` value.
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Nvt.Core" Version="0.5.0" />
+  <PackageReference Include="Nvt.Core.Avalonia" Version="0.5.0" />
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+</ItemGroup>
+```
+
 ```text
 python fetch_core_packages.py [--manifest PATH] [--dest PATH] [--offline] [--base-url URL]
 ```
@@ -98,10 +112,12 @@ Exit codes are `0` for success, `1` for download or verification failure, and `2
 To upgrade, change the manifest to the new Release's asset names and SHA-256 values from its `SHA256SUMS`.
 Update the exact package references and lock files, then run the tool's adoption checks again.
 To roll back, put the earlier Release's values back in the manifest and restore its package references and lock files.
-An independently versioned font package uses the same manifest with its own Release tag in `release`.
+Fonts uses the same manifest with its independent `core-fonts-v<version>` tag in `release`.
 
 A tool release takes `LICENSE` from a verified downloaded Core package and ships it as `licenses/Nvt.Core/LICENSE`.
-That license covers both Core packages.
+That license covers Core package code, including Fonts.
+A tool using Fonts also ships the package's `licenses/` folder and preserves Inter dependency licenses and notices.
+See [Fonts license duties](../../docs/core/modules/Fonts.md#license-duties-and-updates).
 Deliver Core only under its proprietary `LICENSE`.
 The tool's own license does not relicense Core.
 

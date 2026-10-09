@@ -50,6 +50,8 @@ public sealed class ConsoleLinkCache
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(row);
+        // A row always belongs to the snapshot that produced it, so the generation check is true by construction.
+        // The text version and representative checks still reject a stale row.
         return GetLinksCore(snapshot, row.Id, row.LastSequence, snapshot.Generation,
             row.TextVersion, row.TextContent, row.LinkSpans);
     }

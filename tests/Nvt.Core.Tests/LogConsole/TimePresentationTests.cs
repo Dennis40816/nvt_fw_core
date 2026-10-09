@@ -11,14 +11,14 @@ namespace Nvt.Core.Tests.LogConsole;
 public sealed class TimePresentationTests
 {
     /// <summary>Projection and the pure formatter share the approved template and explicit number culture.</summary>
-    /// <param name="cultureName">The explicit app culture.</param>
+    /// <param name="decimalSeparator">The decimal separator of the explicit app culture.</param>
     /// <param name="expected">The complete relative timestamp.</param>
     [Theory]
-    [InlineData("", "2.3 s ago")]
-    [InlineData("de-DE", "2,3 s ago")]
-    public void RelativeSecondsUseExplicitCultureAndApprovedTemplate(string cultureName, string expected)
+    [InlineData(".", "2.3 s ago")]
+    [InlineData(",", "2,3 s ago")]
+    public void RelativeSecondsUseExplicitCultureAndApprovedTemplate(string decimalSeparator, string expected)
     {
-        var culture = CultureInfo.GetCultureInfo(cultureName);
+        var culture = CultureWithSeparator(decimalSeparator);
         var now = DateTimeOffset.UnixEpoch.AddMilliseconds(2300);
         using var store = LogStoreTests.CreateStore(clock: new DelegateTimeProvider(() => now));
         store.Add(LogLevel.Info, "app", "message", DateTimeOffset.UnixEpoch);
@@ -37,7 +37,7 @@ public sealed class TimePresentationTests
         var previous = CultureInfo.CurrentCulture;
         try
         {
-            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+            CultureInfo.CurrentCulture = CultureWithSeparator(",");
             Assert.Equal("before 2.3 seconds", ConsoleTimeFormatter.Format(DateTimeOffset.UnixEpoch,
                 DateTimeOffset.UnixEpoch.AddMilliseconds(2300), ConsoleTimeMode.Relative, "before {0} seconds", CultureInfo.InvariantCulture));
         }
@@ -51,7 +51,7 @@ public sealed class TimePresentationTests
         var now = DateTimeOffset.UnixEpoch.AddMilliseconds(2300);
         using var store = LogStoreTests.CreateStore(clock: new DelegateTimeProvider(() => now));
         store.Add(LogLevel.Info, "app", "message", DateTimeOffset.UnixEpoch);
-        var options = new ConsoleProjectionOptions { Culture = CultureInfo.GetCultureInfo("de-DE") };
+        var options = new ConsoleProjectionOptions { Culture = CultureWithSeparator(",") };
         var filter = new ConsoleFilter { TimeMode = ConsoleTimeMode.Relative };
         using var first = LogStoreTests.Capture(store);
         using var initial = ConsoleProjector.Project(first, filter, new ConsoleViewState(), options);
@@ -79,7 +79,7 @@ public sealed class TimePresentationTests
         using var snapshot = LogStoreTests.Capture(store);
         using var original = ConsoleProjector.Project(snapshot, new ConsoleFilter { TimeMode = mode }, new ConsoleViewState());
         using var explicitInputs = ConsoleProjector.Project(snapshot, new ConsoleFilter { TimeMode = mode }, new ConsoleViewState(),
-            new ConsoleProjectionOptions { Culture = CultureInfo.GetCultureInfo("de-DE"), RelativeTimeTemplate = "{" });
+            new ConsoleProjectionOptions { Culture = CultureWithSeparator(","), RelativeTimeTemplate = "{" });
         Assert.Equal(expected, Assert.Single(original.Rows).TimeText);
         Assert.Equal(expected, Assert.Single(explicitInputs.Rows).TimeText);
     }
@@ -107,5 +107,45 @@ public sealed class TimePresentationTests
         using var destination = new MemoryStream();
         await ConsoleExportFormatter.WriteLogAsync(destination, projection, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(exported, System.Text.Encoding.UTF8.GetString(destination.ToArray()));
+    }
+
+    // A cloned invariant culture does not depend on the ICU data of the machine.
+    private static CultureInfo CultureWithSeparator(string separator)
+    {
+        var culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+        culture.NumberFormat.NumberDecimalSeparator = separator;
+        return culture;
+    }
+
+    /// <summary>The overload without options shows UTC clock time and the default relative template.</summary>
+    /// <param name="mode">The display mode.</param>
+    /// <param name="expected">The default time text.</param>
+    [Theory]
+    [InlineData(ConsoleTimeMode.Absolute, "04:05:06.789")]
+    [InlineData(ConsoleTimeMode.Relative, "2.3 s ago")]
+    public void ThreeArgumentProjectShowsUtcClockTimeForNonZeroOffset(ConsoleTimeMode mode, string expected)
+    {
+        var occurred = DateTimeOffset.UnixEpoch.AddHours(4).AddMinutes(5).AddMilliseconds(6789);
+        var now = occurred.AddMilliseconds(2300);
+        using var store = LogStoreTests.CreateStore(clock: new DelegateTimeProvider(() => now));
+        store.Add(LogLevel.Info, "app", "message", occurred.ToOffset(TimeSpan.FromHours(-3)));
+        using var snapshot = LogStoreTests.Capture(store);
+        using var projection = ConsoleProjector.Project(snapshot, new ConsoleFilter { TimeMode = mode }, new ConsoleViewState());
+        Assert.Equal(expected, Assert.Single(projection.Rows).TimeText);
+    }
+
+    /// <summary>A malformed relative template fails only when relative text is shown.</summary>
+    [Fact]
+    public void MalformedRelativeTemplateFailsOnlyInRelativeMode()
+    {
+        using var store = LogStoreTests.CreateStore();
+        store.Add(LogLevel.Info, "app", "message", DateTimeOffset.UnixEpoch);
+        using var snapshot = LogStoreTests.Capture(store);
+        var options = new ConsoleProjectionOptions { RelativeTimeTemplate = "{" };
+        Assert.Throws<FormatException>(() => ConsoleProjector.Project(snapshot,
+            new ConsoleFilter { TimeMode = ConsoleTimeMode.Relative }, new ConsoleViewState(), options));
+        using var absolute = ConsoleProjector.Project(snapshot,
+            new ConsoleFilter { TimeMode = ConsoleTimeMode.Absolute }, new ConsoleViewState(), options);
+        Assert.Single(absolute.Rows);
     }
 }
