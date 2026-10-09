@@ -51,7 +51,7 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                     bool isSwitch = button is ToggleSwitch || button.Classes.Contains("toggleSwitch");
                     Assert.Same(templates[index], button.Template);
                     Assert.True(button.GetDiagnostic(TemplatedControl.CornerRadiusProperty).Priority is BindingPriority.Style or BindingPriority.StyleTrigger);
-                    Assert.Equal(new CornerRadius(isSwitch || !square ? 999 : 6), button.CornerRadius);
+                    Assert.Equal(new CornerRadius(!square ? 999 : 6), button.CornerRadius);
                     foreach (ToggleState state in States)
                     {
                         SetState(button, state);
@@ -59,7 +59,7 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                         Border body = Part(button, "ToggleBody");
                         Assert.Equal(button.CornerRadius, body.CornerRadius);
                         Border ring = Part(button, "ToggleFocusRing");
-                        Assert.Equal(new CornerRadius(isSwitch || !square ? 999 : 10), ring.CornerRadius);
+                        Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
                         if (state.Focus)
                         {
                             Assert.True(ring.IsVisible);
@@ -68,7 +68,7 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                         }
                         if (isSwitch)
                         {
-                            Assert.True(body.CornerRadius.TopLeft >= body.Bounds.Height / 2);
+                            Assert.Equal(square ? 6 : 999, body.CornerRadius.TopLeft);
                             Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
                             if (state.Checked) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
                         }
@@ -104,8 +104,8 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                 Flush(host);
                 var glyph = Assert.IsType<global::Avalonia.Controls.Shapes.Path>(icon.Content);
                 Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(glyph.Stroke));
-                Assert.Equal(Color.Parse(dark ? state.Hover || state.Pressed ? "#0E3C9E" : "#1148BE"
-                    : state.Hover || state.Pressed ? "#1148BE" : "#1557E9"), ColorOf(icon.Background));
+                Assert.Equal(Color.Parse(dark ? state.Pressed ? "#0B307E" : state.Hover ? "#0E3C9E" : "#1148BE"
+                    : state.Pressed ? "#0E3C9E" : state.Hover ? "#1148BE" : "#1557E9"), ColorOf(icon.Background));
                 Assert.Equal(new CornerRadius(square ? 6 : 999), Part(icon, "ToggleBody").CornerRadius);
                 Assert.Empty(icon.GetVisualDescendants().OfType<CheckBox>());
             }

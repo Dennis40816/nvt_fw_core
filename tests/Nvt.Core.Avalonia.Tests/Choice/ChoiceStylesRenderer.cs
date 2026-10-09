@@ -18,7 +18,7 @@ using static Nvt.Core.Avalonia.Tests.Choice.ChoiceTestHost;
 namespace Nvt.Core.Avalonia.Tests.Choice;
 
 /// <summary>Renders every choice state and the Fluent comparison only when the image destination is configured.</summary>
-public sealed class ChoiceStylesRenderer(ITestOutputHelper output)
+public sealed partial class ChoiceStylesRenderer(ITestOutputHelper output)
 {
     /// <summary>Checks layout and optionally exports four 1200-pixel headless sheets at 100 percent scale.</summary>
     [AvaloniaFact]
