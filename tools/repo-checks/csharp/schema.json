@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Core C# health contracts",
+  "$comment": "Select a document definition by JSON Pointer. The approved 2026-10-09 plan names policy.json and core-health.lock.json but supplies no JSON field names; seam-owners.json has an entry example only. Those document definitions reject input until their missing contracts are approved. Baseline fields come from the plan's Baseline format example (lines 528-569).",
+  "oneOf": [
+    { "$ref": "#/$defs/policy" },
+    { "$ref": "#/$defs/baseline" },
+    { "$ref": "#/$defs/seam-owners" },
+    { "$ref": "#/$defs/core-health.lock" }
+  ],
+  "$defs": {
+    "policy": {
+      "$comment": "eng/code-health/policy.json: no field names or document shape are defined in the plan.",
+      "not": {}
+    },
+    "core-health.lock": {
+      "$comment": "eng/core-health.lock.json: approved Core commit and per-file SHA-256 are required by plan line 90, but their field names and representation are not defined.",
+      "not": {}
+    },
+    "seam-owners": {
+      "$comment": "eng/code-health/seam-owners.json: lines 408-420 define each entry, but do not define the document's collection or wrapper. Validate individual entries with #/$defs/seam-owner-entry.",
+      "not": {}
+    },
+    "nonempty-string": { "type": "string", "minLength": 1 },
+    "count": { "type": "integer", "minimum": 0 },
+    "seam-owner-entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "member",
+        "symbol",
+        "owner",
+        "reason",
+        "kind",
+        "review"
+      ],
+      "properties": { "path": { "$ref": "#/$defs/nonempty-string" },
+        "member": { "$ref": "#/$defs/nonempty-string" },
+        "symbol": { "$ref": "#/$defs/nonempty-string" },
+        "owner": { "$ref": "#/$defs/nonempty-string" },
+        "reason": { "$ref": "#/$defs/nonempty-string" },
+        "kind": { "$ref": "#/$defs/nonempty-string" },
+        "review": { "$ref": "#/$defs/nonempty-string" }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "$comment": "Only metric names from the plan's Metric contract table (lines 502-520).",
+      "properties": {
+        "asyncVoid": {
+          "$ref": "#/$defs/count"
+        },
+        "unsafeUiHandler": { "$ref": "#/$defs/count" },
+        "blockingWait": { "$ref": "#/$defs/count" },
+        "bannedApi": { "$ref": "#/$defs/count" },
+        "stateMembers": { "$ref": "#/$defs/count" },
+        "fileLines": { "$ref": "#/$defs/count" },
+        "methodLines": { "$ref": "#/$defs/count" },
+        "partialFiles": { "$ref": "#/$defs/count" },
+        "axamlCodeBehindLines": { "$ref": "#/$defs/count" },
+        "viewTypeLines": { "$ref": "#/$defs/count" },
+        "suppressions": { "$ref": "#/$defs/count" },
+        "sourceTextAssertions": { "$ref": "#/$defs/count" },
+        "fakeClockDuplicates": { "$ref": "#/$defs/count" },
+        "workspaceDuplicates": { "$ref": "#/$defs/count" },
+        "generationFields": { "$ref": "#/$defs/count" },
+        "nativeImportDuplicates": { "$ref": "#/$defs/count" },
+        "localizedBranchCandidates": { "$ref": "#/$defs/count" }
+      }
+    },
+    "baseline-entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "kind",
+        "symbol",
+        "locations",
+        "ceilings",
+        "owner",
+        "issue"
+      ],
+      "properties": { "project": { "$ref": "#/$defs/nonempty-string" },
+        "kind": { "$ref": "#/$defs/nonempty-string" },
+        "symbol": { "$ref": "#/$defs/nonempty-string" },
+        "locations": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonempty-string" }
+        },
+        "ceilings": { "$ref": "#/$defs/metrics" },
+        "owner": { "$ref": "#/$defs/nonempty-string" },
+        "issue": { "$ref": "#/$defs/nonempty-string" }
+      }
+    },
+    "baseline-finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule",
+        "project",
+        "path",
+        "member",
+        "symbol",
+        "syntaxHash",
+        "count",
+        "owner",
+        "removeBy"
+      ],
+      "properties": { "rule": { "$ref": "#/$defs/nonempty-string" },
+        "project": { "$ref": "#/$defs/nonempty-string" },
+        "path": { "$ref": "#/$defs/nonempty-string" },
+        "member": { "$ref": "#/$defs/nonempty-string" },
+        "symbol": { "$ref": "#/$defs/nonempty-string" },
+        "syntaxHash": {
+          "$comment": "The plan names syntaxHash but does not specify its algorithm or encoding. The enrollment placeholder is not a valid hash.",
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "const": "<computed during host enrollment>"
+          }
+        },
+        "count": { "type": "integer", "minimum": 1 },
+        "owner": { "$ref": "#/$defs/nonempty-string" },
+        "removeBy": { "type": "string", "format": "date" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "measurementVersion",
+        "snapshotCommit",
+        "limits",
+        "entities",
+        "findings"
+      ],
+      "properties": { "schemaVersion": { "const": 1 },
+        "measurementVersion": { "const": "roslyn-physical-v1" },
+        "snapshotCommit": { "type": "string", "pattern": "^[0-9a-fA-F]{7,40}$" },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fileLines",
+            "methodLines",
+            "partialFiles",
+            "stateMembers",
+            "axamlCodeBehindLines"
+          ],
+          "properties": { "fileLines": { "const": 800 },
+            "methodLines": { "const": 80 },
+            "partialFiles": { "const": 8 },
+            "stateMembers": { "const": 30 },
+            "axamlCodeBehindLines": { "const": 150 }
+          }
+        },
+        "entities": { "type": "array", "items": { "$ref": "#/$defs/baseline-entity" }
+        },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/baseline-finding" }
+        }
+      }
+    }
+  }
+}
