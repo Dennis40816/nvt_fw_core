@@ -24,7 +24,7 @@ public enum LogLevel
 /// <summary>The time column mode.</summary>
 public enum ConsoleTimeMode
 {
-    /// <summary>UTC clock time.</summary>
+    /// <summary>Clock time in the app's explicit display zone; UTC by default.</summary>
     Absolute,
     /// <summary>Seconds before the projection's time base.</summary>
     Relative,
@@ -32,7 +32,7 @@ public enum ConsoleTimeMode
     Hidden,
 }
 
-/// <summary>All console inputs. An empty source set selects all sources.</summary>
+/// <summary>Event-filter inputs. An empty source set selects all sources.</summary>
 public sealed record ConsoleFilter
 {
     /// <summary>Gets the enabled levels. An empty set selects no levels.</summary>
