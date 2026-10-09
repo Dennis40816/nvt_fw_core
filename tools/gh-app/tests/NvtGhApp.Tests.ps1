@@ -39,6 +39,11 @@ InModuleScope NvtGhApp {
             Get-Content -LiteralPath $env:NVT_GHAPP_CALLS | ForEach-Object { ConvertFrom-Json $_ }
         }
     }
+    function Get-HelperRecords {
+        if ([IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS)) {
+            @(Get-Content -LiteralPath $env:NVT_GHAPP_HELPER_CALLS | ForEach-Object { ConvertFrom-Json $_ })
+        } else { @() }
+    }
     function Get-Message {
         param([scriptblock]$Action)
         try { $null = & $Action; return 'NO ERROR' } catch { return $_.Exception.Message }
@@ -90,7 +95,7 @@ InModuleScope NvtGhApp {
         }
         $helper = Join-Path $script:FixtureRoot 'helper.ps1'
         $helperSource = @'
-param($Mode, $Owner, $Repo, $ClientId, $InstallationId, $DpapiPath, [switch]$IncludeWorkflowsWrite)
+param($Mode, $Owner, $Repo, $ClientId, $InstallationId, $DpapiPath, [switch]$IncludeWorkflowsWrite, [switch]$IncludeIssuesWrite)
 $record = @{ Arguments = $PSBoundParameters; TokenPresent = [bool]$env:GH_TOKEN; DebugPresent = [bool]$env:GH_DEBUG }
 [IO.File]::AppendAllText($env:NVT_GHAPP_HELPER_CALLS, (ConvertTo-Json $record -Compress) + "`n")
 # NVT_GHAPP_HELPER_MESSAGE makes every call fail with that text on stderr.
@@ -244,6 +249,27 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             @(Get-Calls).Count | Should Be 2
             Assert-NoToken
         }
+        It 'closes an incorrect-author PR through the App before throwing when requested' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App),
+                (New-ApiStep pulls/7 -Value @{ user = @{ login = 'other-author' } }),
+                (New-ApiStep pulls/7 PATCH @{ state = 'closed' } -App))
+            Get-Message { New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile -CloseOnWrongAuthor } |
+                Should Be "PR author does not match botLogin. #7 was closed. https://github.com/$script:RepositoryName/pull/7"
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 3
+            (ConvertFrom-Json $calls[2].Input).state | Should Be closed
+            $calls[2].AppToken | Should Be $true
+            Assert-NoToken
+        }
+        It 'leaves a correct-author PR open with CloseOnWrongAuthor' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App),
+                (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }))
+            $result = New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile -CloseOnWrongAuthor
+            $result.Number | Should Be 7
+            $result.Url | Should Be "https://github.com/$script:RepositoryName/pull/7"
+            @(Get-Calls).Count | Should Be 2
+            Assert-NoToken ($result | Out-String)
+        }
         It 'replaces a PR body from a file through the App' {
             Set-Responses @((New-ApiStep pulls/7 PATCH @{ number = 7 } -App))
             $null = Set-GhAppPullRequestBody 7 $script:BodyFile
@@ -275,6 +301,92 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { New-GhAppPullRequest -Head 'other-owner:branch' -Title title -BodyFile $script:BodyFile } |
                 Should Be 'Branch must be a valid local repository branch name.'
             @(Get-Calls).Count | Should Be 0
+        }
+    }
+
+    Describe 'Issues write comment' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            $script:IssuesLog = Join-Path $script:FixtureRoot 'issues.log'
+            if ([IO.File]::Exists($script:IssuesLog)) { [IO.File]::Delete($script:IssuesLog) }
+        }
+        It 'keeps the flag off for an ordinary comment even with a log path' {
+            Set-Responses @((New-ApiStep issues/9/comments POST @{ id = 1 } -App))
+            $null = Add-GhAppComment 9 $script:BodyFile -IssuesLogPath $script:IssuesLog
+            @(Get-Calls).Count | Should Be 1
+            $records = @(Get-HelperRecords)
+            $records.Count | Should Be 1
+            foreach ($record in $records) { @($record.Arguments.PSObject.Properties.Name) -contains 'IncludeIssuesWrite' | Should Be $false }
+            [IO.File]::Exists($script:IssuesLog) | Should Be $false
+            Assert-NoToken
+        }
+        It 'requires a log path with the switch before any call' {
+            Get-Message { Add-GhAppComment 9 $script:BodyFile -IncludeIssuesWrite } |
+                Should Be 'IncludeIssuesWrite requires IssuesLogPath.'
+            @(Get-Calls).Count | Should Be 0
+            @(Get-HelperRecords).Count | Should Be 0
+            [IO.File]::Exists($script:IssuesLog) | Should Be $false
+        }
+        It 'refuses a pull request after a read without logging or writing' {
+            Set-Responses @((New-ApiStep issues/7 -Value @{ number = 7; pull_request = @{} }))
+            Get-Message { Add-GhAppComment 7 $script:BodyFile -IncludeIssuesWrite -IssuesLogPath $script:IssuesLog } |
+                Should Be 'IncludeIssuesWrite refused: #7 is a pull request.'
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 1
+            $calls[0].AppToken | Should Be $false
+            $calls[0].Arguments[-1] | Should Be GET
+            @(Get-HelperRecords).Count | Should Be 0
+            [IO.File]::Exists($script:IssuesLog) | Should Be $false
+        }
+        It 'requests permission for one issue comment and writes one UTC log line without a token' {
+            Set-Responses @((New-ApiStep issues/9 -Value @{ number = 9 }),
+                (New-ApiStep issues/9/comments POST @{ id = 1 } -App),
+                (New-ApiStep issues/9/comments POST @{ id = 2 } -App))
+            $result = Add-GhAppComment 9 $script:BodyFile -IncludeIssuesWrite -IssuesLogPath $script:IssuesLog
+            $result.id | Should Be 1
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 2
+            $calls[0].AppToken | Should Be $false
+            $calls[1].AppToken | Should Be $true
+            (ConvertFrom-Json $calls[1].Input).body | Should Be "A synthetic description.`nSecond line."
+            $records = @(Get-HelperRecords)
+            $records.Count | Should Be 1
+            $records[0].Arguments.IncludeIssuesWrite | Should Be $true
+            @($records[0].Arguments.PSObject.Properties.Name) -contains 'IncludeWorkflowsWrite' | Should Be $false
+            $lines = @(Get-Content -LiteralPath $script:IssuesLog)
+            $lines.Count | Should Be 1
+            $lines[0] -match '^\d{4}-\d\d-\d\dT[\d:.]+\+00:00 issues-write comment number=9$' | Should Be $true
+            Assert-NoToken ($lines | Out-String)
+            (Get-GhAppContext).ContainsKey('includeIssuesWrite') | Should Be $false
+            # The next call makes only its normal POST and does not request or log extra permission.
+            (Add-GhAppComment 9 $script:BodyFile).id | Should Be 2
+            @(Get-Calls).Count | Should Be 3
+            $records = @(Get-HelperRecords)
+            $records.Count | Should Be 2
+            @($records[1].Arguments.PSObject.Properties.Name) -contains 'IncludeIssuesWrite' | Should Be $false
+            [IO.File]::ReadAllText($script:IssuesLog) | Should Be ($lines[0] + [Environment]::NewLine)
+        }
+        It 'does not request a token or post when the log cannot be written' {
+            Set-Responses @((New-ApiStep issues/9 -Value @{ number = 9 }))
+            Get-Message { Add-GhAppComment 9 $script:BodyFile -IncludeIssuesWrite -IssuesLogPath $script:FixtureRoot } |
+                Should Be 'The issues write log could not be written.'
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 1
+            $calls[0].AppToken | Should Be $false
+            $calls[0].Arguments[-1] | Should Be GET
+            @(Get-HelperRecords).Count | Should Be 0
+        }
+        It 'shows the fixed message when the installation lacks the issues permission' {
+            $env:NVT_GHAPP_HELPER_MESSAGE = 'Installation token lacks the requested issues permission. ghs_' + 'FAKE'
+            Set-Responses @((New-ApiStep issues/9 -Value @{ number = 9 }))
+            $message = Get-Message { Add-GhAppComment 9 $script:BodyFile -IncludeIssuesWrite -IssuesLogPath $script:IssuesLog }
+            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/issues/9/comments (token helper exit 1): Installation token lacks the requested issues permission. (after 3 attempts)"
+            @(Get-Calls).Count | Should Be 1
+            $records = @(Get-HelperRecords)
+            $records.Count | Should Be 3
+            foreach ($record in $records) { $record.Arguments.IncludeIssuesWrite | Should Be $true }
+            @(Get-Content -LiteralPath $script:IssuesLog).Count | Should Be 1
+            Assert-NoToken $message
         }
     }
 
@@ -777,11 +889,6 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
             $script:WorkflowsLog = Join-Path $script:FixtureRoot 'workflows.log'
             if ([IO.File]::Exists($script:WorkflowsLog)) { [IO.File]::Delete($script:WorkflowsLog) }
-        }
-        function Get-HelperRecords {
-            if ([IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS)) {
-                @(Get-Content -LiteralPath $env:NVT_GHAPP_HELPER_CALLS | ForEach-Object { ConvertFrom-Json $_ })
-            } else { @() }
         }
         function Set-WorkflowHead {
             # HEAD becomes the base plus one workflow file. The caller restores HEAD afterwards.

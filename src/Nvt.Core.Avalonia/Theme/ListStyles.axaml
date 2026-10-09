@@ -12,7 +12,7 @@
   <Style Selector="ListBoxItem, ComboBoxItem">
     <Setter Property="Theme" Value="{StaticResource Nvt.List.ItemTheme}" />
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
-    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.List.RowPadding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
@@ -39,12 +39,12 @@
                             Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                             Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                             VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
-          <Border Name="ListSelectionIndicator" IsVisible="False" IsHitTestVisible="False" Width="2" Height="12"
-                  HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,0,0,0"
+          <Border Name="ListSelectionIndicator" IsVisible="False" IsHitTestVisible="False" Width="{DynamicResource Nvt.List.SelectionIndicatorWidth}" Height="{DynamicResource Nvt.List.SelectionIndicatorHeight}"
+                  HorizontalAlignment="Left" VerticalAlignment="Center" Margin="{DynamicResource Nvt.List.SelectionIndicatorMargin}"
                   Background="{TemplateBinding Foreground}" CornerRadius="{DynamicResource Nvt.Shape.RoundCornerRadius}" />
-          <Border Name="ListFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="2"
-                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                  CornerRadius="{TemplateBinding CornerRadius}" />
+          <Border Name="ListFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.InsetFocusRingMargin}"
+                  BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.List.FocusCornerRadius}" />
         </Grid>
       </ControlTemplate>
     </Setter>
@@ -55,7 +55,7 @@
   <Style Selector="ListBox.compact ListBoxItem, ListBoxItem.compact, ComboBoxItem.compact">
     <Setter Property="MinHeight" Value="{DynamicResource Nvt.List.CompactHeight}" />
     <Setter Property="Height" Value="{DynamicResource Nvt.List.CompactHeight}" />
-    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.List.CompactPadding}" />
   </Style>
   <Style Selector="ListBoxItem:pointerover:not(:disabled), ComboBoxItem:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />

@@ -1,0 +1,142 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="Nvt.Expander.Theme" TargetType="Expander" />
+    <ControlTheme x:Key="Nvt.Expander.HeaderTheme" TargetType="ToggleButton" />
+  </Styles.Resources>
+  <Style Selector="Expander">
+    <Setter Property="Theme" Value="{StaticResource Nvt.Expander.Theme}" />
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Expander.ContainerBorderThickness}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderMutedBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Expander.ContainerCornerRadius}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="ContentTransition" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="ExpanderContainer" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{DynamicResource Nvt.Expander.ContainerPadding}">
+          <DockPanel LastChildFill="True">
+            <ToggleButton x:Name="ExpanderHeader" DockPanel.Dock="Top"
+                          Content="{TemplateBinding Header}"
+                          ContentTemplate="{TemplateBinding HeaderTemplate}"
+                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+            <Border x:Name="ExpanderContent" Padding="{DynamicResource Nvt.Expander.ContentPadding}"
+                    Margin="{DynamicResource Nvt.Expander.ContentMargin}"
+                    BorderBrush="{DynamicResource NfcDividerBrush}" BorderThickness="{DynamicResource Nvt.Expander.ContentDividerThickness}"
+                    IsVisible="{TemplateBinding IsExpanded}">
+              <ContentPresenter x:Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            </Border>
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="Theme" Value="{StaticResource Nvt.Expander.HeaderTheme}" />
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Expander.HeaderPadding}" />
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{DynamicResource Nvt.Divider.TransparentBrush}">
+          <Border x:Name="ExpanderHeaderBody" Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="{DynamicResource Nvt.Expander.HeaderSpacing}">
+              <ContentPresenter x:Name="ExpanderHeaderPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Background="{DynamicResource Nvt.Divider.TransparentBrush}" Foreground="{TemplateBinding Foreground}"
+                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center" RecognizesAccessKey="True"
+                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1" />
+              <Border Grid.Column="1" Width="{DynamicResource Nvt.Expander.ChevronSlotSize}" Height="{DynamicResource Nvt.Expander.ChevronSlotSize}" VerticalAlignment="Center">
+                <Path x:Name="ExpanderChevron" Data="{DynamicResource Nvt.Expander.ChevronGeometry}" Width="{DynamicResource Nvt.Expander.ChevronWidth}" Height="{DynamicResource Nvt.Expander.ChevronHeight}"
+                      Stretch="Uniform" StrokeThickness="{DynamicResource Nvt.Expander.ChevronStrokeThickness}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Stroke="{TemplateBinding Foreground}" RenderTransform="rotate(0deg)">
+                  <Path.Transitions>
+                    <Transitions><TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" /></Transitions>
+                  </Path.Transitions>
+                </Path>
+              </Border>
+            </Grid>
+          </Border>
+          <Border x:Name="ExpanderFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Expander.section /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="Height" Value="{DynamicResource Nvt.Expander.SectionHeaderHeight}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.ExpanderPressedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.ExpanderPressedForegroundBrush}" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.ExpanderDisabledForegroundBrush}" />
+  </Style>
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:focus-visible:not(:disabled) /template/ Border#ExpanderFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Expander:expanded /template/ ToggleButton#ExpanderHeader /template/ Path#ExpanderChevron, Expander:up /template/ ToggleButton#ExpanderHeader /template/ Path#ExpanderChevron">
+    <Setter Property="RenderTransform" Value="rotate(180deg)" />
+  </Style>
+  <Style Selector="Expander:up:expanded /template/ ToggleButton#ExpanderHeader /template/ Path#ExpanderChevron">
+    <Setter Property="RenderTransform" Value="rotate(0deg)" />
+  </Style>
+  <Style Selector="Expander:up /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="DockPanel.Dock" Value="Bottom" />
+  </Style>
+  <Style Selector="Expander:left /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="DockPanel.Dock" Value="Right" />
+  </Style>
+  <Style Selector="Expander:right /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="DockPanel.Dock" Value="Left" />
+  </Style>
+  <Style Selector="Expander.reducedMotion /template/ ToggleButton#ExpanderHeader, .reducedMotion Expander /template/ ToggleButton#ExpanderHeader, Expander.reducedMotion /template/ ToggleButton#ExpanderHeader /template/ Path#ExpanderChevron, .reducedMotion Expander /template/ ToggleButton#ExpanderHeader /template/ Path#ExpanderChevron">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="Expander:up /template/ Border#ExpanderContent">
+    <Setter Property="Margin" Value="{DynamicResource Nvt.Expander.ContentUpMargin}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Expander.ContentDividerUpThickness}" />
+  </Style>
+  <Style Selector="Expander:left /template/ Border#ExpanderContent">
+    <Setter Property="Margin" Value="{DynamicResource Nvt.Expander.ContentLeftMargin}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Expander.ContentDividerLeftThickness}" />
+  </Style>
+  <Style Selector="Expander:right /template/ Border#ExpanderContent">
+    <Setter Property="Margin" Value="{DynamicResource Nvt.Expander.ContentRightMargin}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Expander.ContentDividerRightThickness}" />
+  </Style>
+</Styles>

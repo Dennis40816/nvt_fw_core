@@ -1,0 +1,55 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Tab.StripBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedFillBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedHoverFillBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedPressedFillBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.TextBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverTextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedTextBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedTextBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledSelectedFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Tab.IndicatorBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+      <StaticResource x:Key="Nvt.Tab.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Tab.StripBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedFillBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedHoverFillBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedPressedFillBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.TextBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverTextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedTextBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Tab.SelectedTextBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Tab.DisabledSelectedFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Tab.IndicatorBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+      <StaticResource x:Key="Nvt.Tab.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <Thickness x:Key="Nvt.Tab.Padding">14,0</Thickness>
+  <Thickness x:Key="Nvt.Tab.StripPadding">4</Thickness>
+  <Thickness x:Key="Nvt.Tab.ItemMargin">4</Thickness>
+  <Thickness x:Key="Nvt.Tab.ContentPadding">0,12,0,0</Thickness>
+  <Thickness x:Key="Nvt.Tab.EmptyThickness">0</Thickness>
+  <Thickness x:Key="Nvt.Tab.IndicatorMargin">14,0,14,3</Thickness>
+  <x:Double x:Key="Nvt.Tab.IndicatorThickness">2</x:Double>
+  <x:Double x:Key="Nvt.Tab.IndicatorLength">16</x:Double>
+  <sys:TimeSpan x:Key="Nvt.Tab.StateTransitionDuration">0:0:0.15</sys:TimeSpan>
+  <StaticResource x:Key="Nvt.Tab.Height" ResourceKey="NfcControlHeight" />
+  <StaticResource x:Key="Nvt.Tab.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+  <Thickness x:Key="Nvt.Tab.BottomIndicatorMargin">14,3,14,0</Thickness>
+  <Thickness x:Key="Nvt.Tab.LeftIndicatorMargin">0,0,3,0</Thickness>
+  <Thickness x:Key="Nvt.Tab.RightIndicatorMargin">3,0,0,0</Thickness>
+</ResourceDictionary>

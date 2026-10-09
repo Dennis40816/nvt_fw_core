@@ -24,8 +24,10 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
 {
     internal static readonly (string Soft, string Core)[] Tokens =
     [
-        ("SoftCheckedBrush", "NfcAccentSurfaceBrush"),
-        ("SoftCheckedForegroundBrush", "NfcAccentStrongBrush"),
+        ("SoftCheckedBrush", "Nvt.Controls.SelectedBrush"),
+        ("SoftCheckedPointerOverBrush", "Nvt.Controls.SelectedPointerOverBrush"),
+        ("SoftCheckedPressedBrush", "Nvt.Controls.SelectedPressedBrush"),
+        ("SoftCheckedForegroundBrush", "Nvt.Controls.SelectedForegroundBrush"),
         ("SoftPointerOverBrush", "NfcSelectionSurfaceBrush"),
         ("SoftPressedBrush", "NfcSecondaryActionPressedBrush"),
         ("SoftForegroundBrush", "NfcTextSecondaryBrush"),
@@ -127,7 +129,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
                 Border ring = Part(button, "ToggleFocusRing");
                 Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 6), body.CornerRadius);
                 Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 10), ring.CornerRadius);
-                Assert.Equal(ResourceColor(button, "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
+                Assert.Equal(ResourceColor(button, "Nvt.Controls.FocusBrush"), ColorOf(ring.BorderBrush));
                 Assert.Equal(new Thickness(2), ring.BorderThickness);
                 Assert.Equal(new Thickness(-4), ring.Margin);
                 Assert.True(ring.IsVisible);
@@ -177,7 +179,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         {
             Show(host);
             Flush(host);
-            Color ring = ResourceColor(button, "Nvt.Focus.RingBrush");
+            Color ring = ResourceColor(button, "Nvt.Controls.FocusBrush");
             foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "Nvt.Toggle.SoftCheckedBrush" })
             {
                 double ratio = ToggleStylesTests.Contrast(ring, ResourceColor(button, surface));
@@ -219,7 +221,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
                 Assert.Same(palette[foreground], button.Foreground);
                 Assert.Equal(ColorOf(button.Foreground), ColorOf(Assert.Single(
                     button.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Matches only").Foreground));
-                Assert.Same(palette["Nvt.Focus.RingBrush"], Part(button, "ToggleFocusRing").BorderBrush);
+                Assert.Same(palette["Nvt.Controls.FocusBrush"], Part(button, "ToggleFocusRing").BorderBrush);
             }
         }
 
@@ -229,7 +231,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
             for (int index = 0; index < Tokens.Length; index++)
                 palette["Nvt.Toggle." + Tokens[index].Soft] = new SolidColorBrush(Color.FromRgb((byte)(offset + index), 80, 160));
             palette["Nvt.Toggle.TransparentBrush"] = new SolidColorBrush(Colors.Transparent);
-            palette["Nvt.Focus.RingBrush"] = new SolidColorBrush(Color.FromRgb(offset, 160, 80));
+            palette["Nvt.Controls.FocusBrush"] = new SolidColorBrush(Color.FromRgb(offset, 160, 80));
             return palette;
         }
     }
@@ -287,7 +289,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
     private static (string Background, string Foreground) Expected(ToggleState state)
     {
         if (state.Disabled) return (state.Checked ? "Nvt.Toggle.SoftDisabledCheckedBrush" : "Nvt.Toggle.TransparentBrush", "Nvt.Toggle.SoftDisabledForegroundBrush");
-        string background = state.Checked ? state.Hover || state.Pressed ? "SoftPointerOverBrush" : "SoftCheckedBrush"
+        string background = state.Checked ? state.Pressed ? "SoftCheckedPressedBrush" : state.Hover ? "SoftCheckedPointerOverBrush" : "SoftCheckedBrush"
             : state.Pressed ? "SoftPressedBrush" : state.Hover ? "SoftPointerOverBrush" : "TransparentBrush";
         string foreground = state.Checked ? "SoftCheckedForegroundBrush"
             : state.Pressed ? "SoftPressedForegroundBrush" : state.Hover ? "SoftPointerOverForegroundBrush" : "SoftForegroundBrush";

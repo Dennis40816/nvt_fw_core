@@ -1,0 +1,66 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector=":is(TextBlock).title">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Title.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Title.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Title.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).heading">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Heading.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Heading.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Heading.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).body">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Body.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Body.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Body.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).caption">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Caption.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Caption.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Caption.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).mono">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Mono.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Mono.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Mono.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).numbers">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.Numbers.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Numbers.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Numbers.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).bodyStrong">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.BodyStrong.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.BodyStrong.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.BodyStrong.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).captionStrong">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.CaptionStrong.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.CaptionStrong.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.CaptionStrong.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).monoStrong">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.MonoStrong.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.MonoStrong.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.MonoStrong.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).monoCaption">
+    <Setter Property="FontFamily" Value="{DynamicResource Nvt.Font.MonoCaption.Family}" />
+    <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.MonoCaption.Size}" />
+    <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.MonoCaption.Weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+  </Style>
+  <Style Selector=":is(TextBlock).muted">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextMutedBrush}" />
+  </Style>
+</Styles>

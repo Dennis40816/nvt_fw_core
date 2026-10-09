@@ -4,4 +4,9 @@
   <CornerRadius x:Key="Nvt.Shape.GroupCornerRadius">999</CornerRadius>
   <CornerRadius x:Key="Nvt.Shape.FocusCornerRadius">999</CornerRadius>
   <CornerRadius x:Key="Nvt.Shape.RoundCornerRadius">999</CornerRadius>
+  <CornerRadius x:Key="Nvt.Progress.CornerRadius">999</CornerRadius>
+  <CornerRadius x:Key="Nvt.Expander.ContainerCornerRadius">8</CornerRadius>
+  <CornerRadius x:Key="Nvt.List.FocusCornerRadius">999</CornerRadius>
+  <CornerRadius x:Key="Nvt.GridSplitter.GripCornerRadius">2</CornerRadius>
+  <CornerRadius x:Key="Nvt.GridSplitter.FocusCornerRadius">999</CornerRadius>
 </ResourceDictionary>
