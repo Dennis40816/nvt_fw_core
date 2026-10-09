@@ -18,23 +18,23 @@ public sealed class RuntimeQueryCommandConfirmationTests
         var args = new Dictionary<string, string>(StringComparer.Ordinal) { ["CaseKey"] = " unchanged ", ["confirm"] = "invalid" };
         var expected = RuntimeQueryResponseEnvelope.Success(null);
         var calls = 0;
-        Task<RuntimeQueryResponseEnvelope> Handler(IReadOnlyDictionary<string, string>? received)
+        Task<RuntimeQueryResponseEnvelope> Handler(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? received, CancellationToken cancellationToken)
         {
             calls++;
             Assert.Same(args, received);
             return Task.FromResult(expected);
         }
 
-        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
+        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
         {
-            ["probe"] = Handler,
-            ["ping"] = Handler
+            ["probe"] = (args, token) => Handler(RuntimeQueryInvocation.Runtime, args, token),
+            ["ping"] = (args, token) => Handler(RuntimeQueryInvocation.Runtime, args, token)
         };
         var dictionaryRouter = new RuntimeQueryCommandRouter(handlers);
         var router = new RuntimeQueryCommandRouter(handlers.Select(pair =>
-            new RuntimeQueryCommand(pair.Key, RuntimeQueryCommandRisk.WritesData, pair.Value)).ToArray(), requireConfirmation: false);
-        var baseline = await dictionaryRouter.RouteAsync(command, args);
-        var response = await router.RouteAsync(command, args);
+            RuntimeQueryCommand.FromArgs(pair.Key, RuntimeQueryCommandRisk.WritesData, pair.Value)).ToArray(), requireConfirmation: false);
+        var baseline = await dictionaryRouter.RouteAsync(command, args, TestContext.Current.CancellationToken);
+        var response = await router.RouteAsync(command, args, TestContext.Current.CancellationToken);
         Assert.Equal(baseline, response);
         Assert.Equal(success ? expected : RuntimeQueryResponseEnvelope.Failure("UNKNOWN_COMMAND", message!), response);
         Assert.Equal(success ? 2 : 0, calls);
@@ -144,7 +144,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
         var args = confirm is null ? null : new Dictionary<string, string>(StringComparer.Ordinal) { ["confirm"] = confirm };
         var expected = RuntimeQueryResponseEnvelope.Success(null);
         var calls = 0;
-        Task<RuntimeQueryResponseEnvelope> Handler(IReadOnlyDictionary<string, string>? received)
+        Task<RuntimeQueryResponseEnvelope> Handler(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? received, CancellationToken cancellationToken)
         {
             calls++;
             Assert.Null(received);
@@ -152,7 +152,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
         }
 
         var router = new RuntimeQueryCommandRouter([new("probe", risk, Handler)], requireConfirmation: true);
-        var task = router.RouteAsync(" PROBE ", args);
+        var task = router.RouteAsync(" PROBE ", args, TestContext.Current.CancellationToken);
         var response = await task;
         Assert.Equal(runs ? expected : RuntimeQueryResponseEnvelope.Failure(code!, message!), response);
         Assert.Equal(code, response.Error?.Code);
@@ -160,13 +160,13 @@ public sealed class RuntimeQueryCommandConfirmationTests
         Assert.Equal(runs ? 1 : 0, calls);
 
         calls = 0;
-        var disabled = new RuntimeQueryCommandRouter([new("probe", risk, received =>
+        var disabled = new RuntimeQueryCommandRouter([new("probe", risk, (_, received, _) =>
         {
             calls++;
             Assert.Same(args, received);
             return Task.FromResult(expected);
         })], requireConfirmation: false);
-        Assert.Same(expected, await disabled.RouteAsync(" PROBE ", args));
+        Assert.Same(expected, await disabled.RouteAsync(" PROBE ", args, TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
     }
 
@@ -176,9 +176,9 @@ public sealed class RuntimeQueryCommandConfirmationTests
     public async Task ExecuteAsyncKeepsErrorOrder(string json, string code, string message)
     {
         var router = new RuntimeQueryCommandRouter([new("probe", RuntimeQueryCommandRisk.WritesData,
-            _ => throw new InvalidOperationException("The handler must not run."))], requireConfirmation: true);
+            (_, _, _) => throw new InvalidOperationException("The handler must not run."))], requireConfirmation: true);
         var request = JsonSerializer.Deserialize<RuntimeQueryRequest>(json, RuntimeQueryProtocol.CompactJsonOptions);
-        var response = await router.ExecuteAsync(request, "1");
+        var response = await router.ExecuteAsync(request, "1", TestContext.Current.CancellationToken);
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure(code, message), response);
         Assert.Equal(code, response.Error?.Code);
         Assert.Equal(message, response.Error?.Message);
@@ -191,7 +191,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
     {
         var original = args?.ToArray();
         var calls = 0;
-        var router = new RuntimeQueryCommandRouter([new("probe", RuntimeQueryCommandRisk.ReadOnly, received =>
+        var router = new RuntimeQueryCommandRouter([new("probe", RuntimeQueryCommandRisk.ReadOnly, (_, received, _) =>
         {
             calls++;
             if (expected is null)
@@ -208,7 +208,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
 
             return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
         })], requireConfirmation: true);
-        Assert.Equal(RuntimeQueryResponseEnvelope.Success(null), await router.ExecuteAsync(new RuntimeQueryRequest("1", "probe", args), "1"));
+        Assert.Equal(RuntimeQueryResponseEnvelope.Success(null), await router.ExecuteAsync(new RuntimeQueryRequest("1", "probe", args), "1", TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
         Assert.Equal(original, args?.ToArray());
     }
@@ -228,7 +228,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
     public async Task ConstructorPreservesRegistrationOrder(string[] names)
     {
         var commands = names.Select(name => new RuntimeQueryCommand(name, RuntimeQueryCommandRisk.WritesData,
-            _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(name)))).ToList();
+            (_, _, _) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(name)))).ToList();
         var router = new RuntimeQueryCommandRouter(commands, requireConfirmation: true);
         commands.Clear();
         Assert.Equal(names, router.RegisteredCommands);
@@ -238,7 +238,7 @@ public sealed class RuntimeQueryCommandConfirmationTests
         foreach (var name in names)
         {
             Assert.Equal(RuntimeQueryResponseEnvelope.Success(name),
-                await router.RouteAsync(name, new Dictionary<string, string> { ["confirm"] = "true" }));
+                await router.RouteAsync(name, new Dictionary<string, string> { ["confirm"] = "true" }, TestContext.Current.CancellationToken));
         }
     }
 
@@ -254,22 +254,22 @@ public sealed class RuntimeQueryCommandConfirmationTests
         Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope>? result = null, string name = "probe")
     {
         var calls = 0;
-        Task<RuntimeQueryResponseEnvelope> Handler(IReadOnlyDictionary<string, string>? args)
+        Task<RuntimeQueryResponseEnvelope> Handler(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? args, CancellationToken cancellationToken)
         {
             calls++;
             Assert.Same(request!.Args, args);
             return Task.FromResult(result?.Invoke(args) ?? RuntimeQueryResponseEnvelope.Success(null));
         }
 
-        var dictionaryRouter = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
+        var dictionaryRouter = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
         {
-            [name] = Handler
+            [name] = (args, token) => Handler(RuntimeQueryInvocation.Runtime, args, token)
         });
         var router = new RuntimeQueryCommandRouter([new(name, RuntimeQueryCommandRisk.WritesData, Handler)], requireConfirmation: false);
-        var baseline = await dictionaryRouter.ExecuteAsync(request, version);
+        var baseline = await dictionaryRouter.ExecuteAsync(request, version, TestContext.Current.CancellationToken);
         var baselineCalls = calls;
         calls = 0;
-        var response = await router.ExecuteAsync(request, version);
+        var response = await router.ExecuteAsync(request, version, TestContext.Current.CancellationToken);
         Assert.Equal(JsonSerializer.Serialize(baseline, RuntimeQueryProtocol.CompactJsonOptions),
             JsonSerializer.Serialize(response, RuntimeQueryProtocol.CompactJsonOptions));
         Assert.Equal(baselineCalls, calls);

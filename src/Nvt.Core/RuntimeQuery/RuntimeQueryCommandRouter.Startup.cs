@@ -112,9 +112,10 @@ public sealed partial class RuntimeQueryCommandRouter
     /// BeforeFirstFrame also runs BeforeFirstFrameAndRuntime commands. Both phase values select the same pass.
     /// </remarks>
     public async Task<IReadOnlyList<RuntimeQueryStartupCallResult>> ExecuteStartupPhaseAsync(
-        IReadOnlyList<RuntimeQueryStartupCall> calls, RuntimeQueryStartupPhase phase)
+        IReadOnlyList<RuntimeQueryStartupCall> calls, RuntimeQueryStartupPhase phase, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(calls);
+        cancellationToken.ThrowIfCancellationRequested();
         var results = new List<RuntimeQueryStartupCallResult>();
         foreach (var call in calls)
         {
@@ -123,7 +124,9 @@ public sealed partial class RuntimeQueryCommandRouter
                 continue;
             }
 
-            var response = await RouteCoreAsync(call.Command.Name, call.Args, isStartup: true, startupConfirmed: call.Confirmed);
+            cancellationToken.ThrowIfCancellationRequested();
+            var response = await RouteCoreAsync(call.Command.Name, call.Args, isStartup: true,
+                startupConfirmed: call.Confirmed, cancellationToken);
             results.Add(new(call, response));
             if (!response.Ok)
             {

@@ -251,6 +251,55 @@ public sealed class ReportPagerTemplateTests
         Assert.Equal(12, actions.ColumnSpacing);
     }
 
+    /// <summary>Both templates resolve complete role styles without any former host class, including live caption resource changes.</summary>
+    /// <param name="windowed">Whether to build the fixed-window template.</param>
+    /// <param name="dark">Whether to use the dark palette.</param>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void PagerStylesResolveWithoutHostClasses(bool windowed, bool dark)
+    {
+        AssertNoHostStyles(Application.Current!.Styles);
+        using PagerTemplateTestHost host = PagerTemplateTestHost.Create(
+            PagerTemplateTestHost.CreateModel(9, 4, windowed, false), windowed, dark: dark);
+        AssertNoHostStyles(host.Window.Styles);
+        TextBlock status = Assert.IsType<TextBlock>(host.Root.Children[0]);
+        PagerTemplateTestHost.AssertCaptionRoles(status);
+        Assert.Equal(Color.Parse(dark ? "#A1AEC2" : "#526176"), Assert.IsAssignableFrom<ISolidColorBrush>(status.Foreground).Color);
+        Button[] buttons = [.. host.Root.GetVisualDescendants().OfType<Button>()];
+        Assert.Equal(windowed ? 2 : 1, buttons.Length);
+        Assert.All(buttons, PagerTemplateTestHost.AssertNeutralRole);
+
+        var family = new FontFamily("avares://Nvt.Core.Fonts/Assets/CascadiaMono#Cascadia Mono");
+        host.Window.Resources["Nvt.Font.Caption.Family"] = family;
+        host.Window.Resources["Nvt.Font.Caption.Size"] = 16d;
+        host.Window.Resources["Nvt.Font.Caption.Weight"] = FontWeight.SemiBold;
+        PagerTemplateTestHost.Render(host.Window);
+        Assert.Equal(family, status.FontFamily);
+        Assert.Equal(16d, status.FontSize);
+        Assert.Equal(FontWeight.SemiBold, status.FontWeight);
+        Assert.All(buttons, PagerTemplateTestHost.AssertNeutralRole);
+    }
+
+    private static void AssertNoHostStyles(IStyle style)
+    {
+        if (style is Style rule)
+        {
+            string selector = rule.Selector?.ToString() ?? string.Empty;
+            foreach (string name in new[] { "semanticAction", "secondary", "captionText" })
+            {
+                Assert.DoesNotContain($".{name}", selector, StringComparison.Ordinal);
+            }
+        }
+
+        foreach (IStyle child in style.Children)
+        {
+            AssertNoHostStyles(child);
+        }
+    }
+
     private static void AssertPagedControls(ReportPagedListViewModel page, TextBlock status, Button more)
     {
         AssertStatus(page.PageStatus, status);
@@ -276,7 +325,7 @@ public sealed class ReportPagerTemplateTests
         Assert.Equal(status.Text, AutomationProperties.GetName(status));
         Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(status));
         Assert.Equal(expected, ControlAutomationPeer.CreatePeerForElement(status)!.GetName());
-        Assert.Equal("captionText", Assert.Single(status.Classes));
+        PagerTemplateTestHost.AssertCaptionRoles(status);
     }
 
     private static void AssertButton(string expected, Button button)
@@ -284,8 +333,7 @@ public sealed class ReportPagerTemplateTests
         Assert.Equal(expected, button.Content);
         Assert.Equal(button.Content, AutomationProperties.GetName(button));
         Assert.Equal(expected, ControlAutomationPeer.CreatePeerForElement(button)!.GetName());
-        Assert.Contains("semanticAction", button.Classes);
-        Assert.Contains("secondary", button.Classes);
+        PagerTemplateTestHost.AssertNeutralRole(button);
     }
 }
 
@@ -343,11 +391,19 @@ internal sealed class PagerTemplateTestHost(Window window, ContentControl conten
             FontSize = 13,
         };
         window.Resources["Nvt.ReportList.WindowedSpacing"] = 8d;
+        var fonts = new Uri("avares://Nvt.Core.Fonts/FontRoles.axaml");
+        window.Resources.MergedDictionaries.Add(new ResourceInclude(fonts) { Source = fonts });
         window.Resources.MergedDictionaries.Add(resources);
         window.Styles.Add(new FluentTheme());
+        var buttons = new Uri("avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
+        window.Styles.Add(new StyleInclude(buttons) { Source = buttons });
+        window.Classes.Add("reducedMotion");
         try
         {
             window.Show();
+            Render(window);
+            var tokens = new Uri("avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml");
+            window.Resources.MergedDictionaries.Add(new ResourceInclude(tokens) { Source = tokens });
             Render(window);
             return new PagerTemplateTestHost(window, content);
         }
@@ -372,6 +428,50 @@ internal sealed class PagerTemplateTestHost(Window window, ContentControl conten
     {
         Dispatcher.UIThread.RunJobs();
         window.UpdateLayout();
+    }
+
+    internal static void AssertCaptionRoles(TextBlock status)
+    {
+        Assert.Empty(status.Classes);
+        Assert.Equal(Assert.IsType<FontFamily>(status.FindResource("Nvt.Font.Caption.Family")), status.FontFamily);
+        Assert.Equal(Assert.IsType<double>(status.FindResource("Nvt.Font.Caption.Size")), status.FontSize);
+        Assert.Equal(Assert.IsType<FontWeight>(status.FindResource("Nvt.Font.Caption.Weight")), status.FontWeight);
+        Assert.Equal(MutedBrush(status).Color, Assert.IsAssignableFrom<ISolidColorBrush>(status.Foreground).Color);
+    }
+
+    internal static ISolidColorBrush MutedBrush(Control control)
+    {
+        Assert.True(control.TryFindResource("NfcTextMutedBrush", control.ActualThemeVariant, out object? brush));
+        return Assert.IsAssignableFrom<ISolidColorBrush>(brush);
+    }
+
+    internal static void AssertNeutralRole(Button button)
+    {
+        Assert.Equal("actionNeutral", Assert.Single(button.Classes, name => !name.StartsWith(':')));
+        Assert.Null(button.Theme);
+        Assert.NotNull(button.Template);
+        Border border = Assert.Single(button.GetVisualDescendants().OfType<Border>(), item => item.Name == "RoleBorder");
+        Assert.Equal(32d, button.Height);
+        Assert.Equal(32d, button.MinHeight);
+        Assert.Equal(new Thickness(14, 0), button.Padding);
+        Assert.Equal(new Thickness(1), button.BorderThickness);
+        Assert.Equal(Assert.IsType<CornerRadius>(button.FindResource("NfcPillCornerRadius")), button.CornerRadius);
+        Assert.Equal(button.Padding, border.Padding);
+        Assert.Equal(button.CornerRadius, border.CornerRadius);
+        Assert.Equal(Assert.IsType<FontFamily>(button.FindResource("NfcUiFontFamily")), button.FontFamily);
+        Assert.Equal(13d, button.FontSize);
+        AssertRoleBrush(button, button.Background, button.IsEffectivelyEnabled ? "NfcSurfaceBrush" : "NfcSurfaceSubtleBrush");
+        AssertRoleBrush(button, button.BorderBrush, button.IsEffectivelyEnabled ? "NfcBorderBrush" : "NfcBorderMutedBrush");
+        AssertRoleBrush(button, button.Foreground, button.IsEffectivelyEnabled ? "NfcTextBrush" : "NfcTextDisabledBrush");
+        Assert.Same(button.Background, border.Background);
+        Assert.Same(button.BorderBrush, border.BorderBrush);
+    }
+
+    private static void AssertRoleBrush(Button button, IBrush? actual, string resource)
+    {
+        Assert.True(button.TryFindResource(resource, button.ActualThemeVariant, out object? brush), resource);
+        Color expected = Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color;
+        Assert.Equal(expected, Assert.IsAssignableFrom<ISolidColorBrush>(actual).Color);
     }
 
     public void Dispose() => Window.Close();

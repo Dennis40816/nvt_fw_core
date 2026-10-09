@@ -13,7 +13,7 @@ namespace Nvt.Core.Avalonia.Tests.RuntimeQuery;
 [Collection("RuntimeQuery")]
 public sealed class RuntimeQueryUiThreadTests
 {
-    /// <summary>The UI handler receives unchanged inputs, including null requests and an already canceled token.</summary>
+    /// <summary>The UI handler receives unchanged inputs, including null requests and the cancellation token.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -21,7 +21,6 @@ public sealed class RuntimeQueryUiThreadTests
     {
         var original = RuntimeQueryTestValues.DispatcherField.GetValue(null);
         using var cancellation = new CancellationTokenSource();
-        cancellation.Cancel();
         var request = nullRequest ? null : new RuntimeQueryRequest("request-version", "probe",
             new Dictionary<string, string> { ["CaseKey"] = " unchanged " });
         var version = new string(" supplied-version ".ToCharArray());
@@ -33,7 +32,7 @@ public sealed class RuntimeQueryUiThreadTests
             Assert.Same(request, received);
             Assert.Same(version, receivedVersion);
             Assert.Equal(cancellation.Token, token);
-            Assert.True(token.IsCancellationRequested);
+            Assert.False(token.IsCancellationRequested);
             calls++;
             await Task.Yield();
             return expected;

@@ -16,19 +16,26 @@ public static partial class RuntimeQueryGenericCommands
         ArgumentNullException.ThrowIfNull(options);
         return Array.AsReadOnly<RuntimeQueryCommand>(
         [
-            new("help", RuntimeQueryCommandRisk.ReadOnly, _ => Task.FromResult(Help(options))),
-            new("ping", RuntimeQueryCommandRisk.ReadOnly, _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(new
+            new("help", RuntimeQueryCommandRisk.ReadOnly, (_, _, cancellationToken) => Run(() => Help(options), cancellationToken)),
+            new("ping", RuntimeQueryCommandRisk.ReadOnly, (_, _, cancellationToken) => Run(() => RuntimeQueryResponseEnvelope.Success(new
             {
                 toolName = options.ToolName, version = options.ToolVersion, processId = Environment.ProcessId
-            }))),
-            new("focus", RuntimeQueryCommandRisk.ChangesState, _ => Task.FromResult(Focus(options))),
-            new("page", RuntimeQueryCommandRisk.ChangesState, args => Task.FromResult(Page(options.Navigation, args))),
-            new("screenshot", RuntimeQueryCommandRisk.ChangesState, args => ScreenshotAsync(options, args)),
-            new("exit", RuntimeQueryCommandRisk.ChangesState, args => Task.FromResult(Exit(options, args)))
+            }), cancellationToken)),
+            new("focus", RuntimeQueryCommandRisk.ChangesState, (_, _, cancellationToken) => Run(() => Focus(options), cancellationToken)),
+            new("page", RuntimeQueryCommandRisk.ChangesState, (_, args, cancellationToken) => Run(() => Page(options.Navigation, args), cancellationToken)),
+            new("screenshot", RuntimeQueryCommandRisk.ChangesState, (_, args, cancellationToken) => ScreenshotAsync(options, args, cancellationToken)),
+            new("exit", RuntimeQueryCommandRisk.ChangesState, (_, args, cancellationToken) => Run(() => Exit(options, args), cancellationToken))
             {
                 ReceivesConfirmation = true
             }
         ]);
+    }
+
+    private static Task<RuntimeQueryResponseEnvelope> Run(
+        Func<RuntimeQueryResponseEnvelope> action, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(action());
     }
 
     private static RuntimeQueryResponseEnvelope Help(RuntimeQueryGenericCommandOptions options) =>

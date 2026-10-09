@@ -126,7 +126,16 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         }
         catch (TimeoutException ex)
         {
-            _ = _lifecycleCts.CancelAsync();
+            try
+            {
+                // Finish the cancellation callbacks before the source is disposed, or late handlers never see it.
+                await _lifecycleCts.CancelAsync().ConfigureAwait(false);
+            }
+            catch (Exception cancelEx)
+            {
+                _diagnostic?.Invoke(RuntimeQueryDiagnostic.ShutdownFailed, cancelEx);
+            }
+
             lock (_sync)
             {
                 _activeConnection?.Pipe.Dispose();
@@ -288,8 +297,8 @@ public sealed class RuntimeQueryIpcServer : IAsyncDisposable
         try
         {
             var request = JsonSerializer.Deserialize<RuntimeQueryRequest>(requestJson, RuntimeQueryProtocol.CompactJsonOptions);
-            response = await _handler(request, _protocolVersion, cancellationToken)
-                .WaitAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            response = await _handler(request, _protocolVersion, cancellationToken).ConfigureAwait(false);
         }
         catch (JsonException ex)
         {

@@ -2,7 +2,7 @@
 
 # IO：AtomicOutput
 
-[`AtomicOutput.WriteAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) 是 NFU 用於一般串流輸出的輔助方法，抽取至 `Nvt.Core.IO`，目標為 `net8.0`，只依賴 BCL。它在目的地目錄寫入暫存檔、完成 flush，再將暫存檔移至目的地並覆寫原檔。**不得用它取代 NFC 強化過的韌體輸出寫入器。** 工具採用屬於另一個任務。
+[`AtomicOutput.WriteAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) 是 NFU 用於一般串流輸出的輔助方法，抽取至 `Nvt.Core.IO`，目標為 `net10.0`，只依賴 BCL。它在目的地目錄寫入暫存檔、完成 flush，再將暫存檔移至目的地並覆寫原檔。**不得用它取代 NFC 強化過的韌體輸出寫入器。** 工具採用屬於另一個任務。
 
 凍結的來源基準：NFU（`nvt-event-buffer-replay`）、`origin/0.2.0`、commit `915d0c1b571a2c4a95c8c6d2d3cc6421079ff99b`。抽取來源：
 

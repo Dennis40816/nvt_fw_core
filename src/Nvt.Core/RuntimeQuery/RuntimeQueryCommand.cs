@@ -5,21 +5,38 @@ namespace Nvt.Core.RuntimeQuery;
 /// <summary>A runtime query command with its risk and handler.</summary>
 /// <param name="Name">The trimmed, lowercase invariant command name.</param>
 /// <param name="Risk">The command's effect on state, files or data.</param>
-/// <param name="Handler">The caller's command handler, used when InvocationHandler is not set.</param>
+/// <param name="Handler">Receives the invocation, arguments and cooperative cancellation token.</param>
 /// <param name="StartupPhase">When the tool can run this command at startup.</param>
 /// <param name="StartupValueKey">The argument key for one startup value, or null for a flag.</param>
 /// <param name="StartupValidator">Checks startup arguments without running the handler or causing side effects.</param>
 public sealed record RuntimeQueryCommand(
     string Name,
     RuntimeQueryCommandRisk Risk,
-    Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>> Handler,
+    Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>> Handler,
     RuntimeQueryStartupPhase StartupPhase = RuntimeQueryStartupPhase.None,
     string? StartupValueKey = null,
     Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>? StartupValidator = null)
 {
-    /// <summary>The timing-aware handler, used instead of Handler when set.</summary>
-    /// <remarks>Startup and runtime invocations use the same routing and confirmation checks as Handler.</remarks>
-    public Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>? InvocationHandler { get; init; }
+    /// <summary>Creates a command whose handler ignores invocation timing.</summary>
+    /// <param name="name">The trimmed, lowercase invariant command name.</param>
+    /// <param name="risk">The command's effect on state, files or data.</param>
+    /// <param name="handler">Receives the arguments and cooperative cancellation token.</param>
+    /// <param name="startupPhase">When the tool can run this command at startup.</param>
+    /// <param name="startupValueKey">The argument key for one startup value, or null for a flag.</param>
+    /// <param name="startupValidator">Checks startup arguments without running the handler or causing side effects.</param>
+    /// <returns>A command with one invocation-aware handler that forwards arguments and cancellation unchanged.</returns>
+    public static RuntimeQueryCommand FromArgs(
+        string name,
+        RuntimeQueryCommandRisk risk,
+        Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>> handler,
+        RuntimeQueryStartupPhase startupPhase = RuntimeQueryStartupPhase.None,
+        string? startupValueKey = null,
+        Func<IReadOnlyDictionary<string, string>?, RuntimeQueryResponseEnvelope?>? startupValidator = null)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+        return new(name, risk, (_, args, cancellationToken) => handler(args, cancellationToken),
+            startupPhase, startupValueKey, startupValidator);
+    }
 
     /// <summary>Whether the runtime handler receives the confirm argument when the router requires confirmation.</summary>
     /// <remarks>
