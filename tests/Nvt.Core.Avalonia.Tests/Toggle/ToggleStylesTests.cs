@@ -85,7 +85,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     }
                     Border ring = Part(button, "ToggleFocusRing");
                     Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                    Assert.Equal(ResourceColor(button, "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
+                    Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
                     foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
                     {
                         double contrast = Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface));
@@ -149,9 +149,9 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                 Point ringPoint = ring.TranslatePoint(default, button)!.Value;
                 Assert.Equal(4, bodyPoint.X - ringPoint.X);
                 Assert.Equal(4, bodyPoint.Y - ringPoint.Y);
-                Assert.Equal(new CornerRadius(IsSwitch(role) || !square ? 999 : 10), ring.CornerRadius);
+                Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
                 button.Classes.Add("danger");
-                Assert.Equal(ResourceColor(button, "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
+                Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
                 foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
                     Assert.True(Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface)) >= 3);
                 host.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
@@ -242,7 +242,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
     {
         Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
         Border track = Part(button, "ToggleBody");
-        Assert.True(track.CornerRadius.TopLeft >= track.Bounds.Height / 2);
+        Assert.Equal(button.CornerRadius, track.CornerRadius);
         Assert.Equal(new CornerRadius(track.CornerRadius.TopLeft), track.CornerRadius);
         if (selected) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
         Point point = knob.TranslatePoint(default, track)!.Value;

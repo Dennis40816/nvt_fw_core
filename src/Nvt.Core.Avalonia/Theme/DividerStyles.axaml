@@ -1,0 +1,137 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Separator, Border.divider">
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.Divider.LineThickness}" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Separator">
+    <Setter Property="Background" Value="{DynamicResource NfcDividerBrush}" />
+    <Setter Property="Theme" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate><Border Background="{TemplateBinding Background}" /></ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Border.divider">
+    <Setter Property="Background" Value="{DynamicResource NfcDividerBrush}" />
+  </Style>
+  <Style Selector="Separator.vertical, Border.divider.vertical">
+    <Setter Property="Height" Value="NaN" />
+    <Setter Property="Width" Value="{DynamicResource Nvt.Divider.LineThickness}" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Separator.strong">
+    <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}" />
+  </Style>
+  <Style Selector="Border.divider.strong">
+    <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}" />
+  </Style>
+  <Style Selector="GridSplitter">
+    <Setter Property="Theme" Value="{x:Null}" />
+    <Setter Property="Width" Value="{DynamicResource Nvt.GridSplitter.HitSize}" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Divider.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcBorderSoftBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Cursor" Value="SizeWestEast" />
+    <Setter Property="PreviewContent">
+      <Template>
+        <Border Background="{DynamicResource Nvt.GridSplitter.PreviewBrush}" Opacity="{DynamicResource Nvt.GridSplitter.PreviewOpacity}" />
+      </Template>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{TemplateBinding Background}">
+          <Border x:Name="SplitterLine" Width="{DynamicResource Nvt.Divider.LineThickness}"
+                  Background="{TemplateBinding Foreground}" HorizontalAlignment="Center" />
+          <Border x:Name="SplitterGrip" Width="{DynamicResource Nvt.GridSplitter.GripWidth}" Height="{DynamicResource Nvt.GridSplitter.GripLength}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" Background="{DynamicResource NfcBorderBrush}"
+                  CornerRadius="{DynamicResource Nvt.GridSplitter.GripCornerRadius}" IsHitTestVisible="False">
+            <Border.Transitions><Transitions><BrushTransition Property="Background" Duration="0:0:0.15" /></Transitions></Border.Transitions>
+          </Border>
+          <Border x:Name="SplitterFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                  CornerRadius="{DynamicResource Nvt.GridSplitter.FocusCornerRadius}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Setter Property="Transitions">
+      <Transitions><BrushTransition Property="Foreground" Duration="0:0:0.15" /></Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="GridSplitter.vertical">
+    <Setter Property="ResizeDirection" Value="Columns" />
+  </Style>
+  <Style Selector="GridSplitter.horizontal">
+    <Setter Property="ResizeDirection" Value="Rows" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows]">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.GridSplitter.HitSize}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="SizeNorthSouth" />
+  </Style>
+  <Style Selector="GridSplitter:pointerover:not(:disabled), GridSplitter:pressed:not(:disabled)">
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentBrush}" />
+  </Style>
+  <Style Selector="GridSplitter:pointerover:not(:disabled) /template/ Border#SplitterLine, GridSplitter:pressed:not(:disabled) /template/ Border#SplitterLine">
+    <Setter Property="Width" Value="{DynamicResource Nvt.GridSplitter.ActiveLineThickness}" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows] /template/ Border#SplitterLine">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.Divider.LineThickness}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows]:pointerover:not(:disabled) /template/ Border#SplitterLine, GridSplitter[ResizeDirection=Rows]:pressed:not(:disabled) /template/ Border#SplitterLine">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.GridSplitter.ActiveLineThickness}" />
+  </Style>
+  <Style Selector="GridSplitter:focus-visible:not(:disabled) /template/ Border#SplitterFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="GridSplitter:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource NfcBorderMutedBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="GridSplitter.reducedMotion, .reducedMotion GridSplitter">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows] /template/ Border#SplitterGrip">
+    <Setter Property="Width" Value="{DynamicResource Nvt.GridSplitter.GripLength}" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.GridSplitter.GripWidth}" />
+  </Style>
+  <Style Selector="GridSplitter:pressed:not(:disabled)">
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="GridSplitter:pressed:not(:disabled) /template/ Border#SplitterLine">
+    <Setter Property="Width" Value="{DynamicResource Nvt.GridSplitter.PressedLineThickness}" />
+  </Style>
+  <Style Selector="GridSplitter[ResizeDirection=Rows]:pressed:not(:disabled) /template/ Border#SplitterLine">
+    <Setter Property="Width" Value="NaN" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.GridSplitter.PressedLineThickness}" />
+  </Style>
+  <Style Selector="GridSplitter:pointerover:not(:disabled) /template/ Border#SplitterGrip">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentBrush}" />
+  </Style>
+  <Style Selector="GridSplitter:pressed:not(:disabled) /template/ Border#SplitterGrip">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="GridSplitter:disabled /template/ Border#SplitterGrip">
+    <Setter Property="Background" Value="{DynamicResource NfcBorderMutedBrush}" />
+  </Style>
+  <Style Selector="GridSplitter.reducedMotion /template/ Border#SplitterGrip, .reducedMotion GridSplitter /template/ Border#SplitterGrip">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+</Styles>

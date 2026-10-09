@@ -102,20 +102,25 @@ public sealed class SystemExternalProcessRunnerTests
         finally
         {
             cancellation.Cancel();
+
+            // Kill first so the join cannot wait on pending cleanup timers of a frozen manual clock.
+            KillTestProcessTree(parentProcess ?? (parentReady.Task.IsCompletedSuccessfully ? await parentReady.Task : null));
+            KillTestProcessTree(childProcess);
             if (run is not null)
             {
                 try
                 {
-                    _ = await run;
+                    _ = await run.WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
                     // Cancellation is the expected cleanup outcome for this test process.
                 }
+                catch (TimeoutException)
+                {
+                    // The processes are already killed; do not hide the original test failure.
+                }
             }
-
-            KillTestProcessTree(parentProcess ?? (parentReady.Task.IsCompletedSuccessfully ? await parentReady.Task : null));
-            KillTestProcessTree(childProcess);
         }
     }
 
@@ -130,10 +135,12 @@ public sealed class SystemExternalProcessRunnerTests
 
         using var workspace = TestWorkspace.Create();
         string marker = workspace.PathFor("child.pid");
+        var time = new ManualTimeProvider();
+        TimeSpan timeout = TimeSpan.FromSeconds(10);
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var runner = CreateTreeRunner(parentReady);
+        var runner = CreateTreeRunner(parentReady, time);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, TimeSpan.FromSeconds(10));
+        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, timeout);
         Task<ExternalProcessResult>? run = null;
         TestProcessIdentity? parentProcess = null;
         TestProcessIdentity? childProcess = null;
@@ -146,7 +153,12 @@ public sealed class SystemExternalProcessRunnerTests
                 run,
                 TestContext.Current.CancellationToken);
 
-            ExternalProcessResult result = await run;
+            // Establish the real child identities before making the execution timeout eligible to fire.
+            Assert.False(run.IsCompleted, "The timeout preceded the child handshake.");
+            await time.WhenPendingAsync(1, timeout, TestContext.Current.CancellationToken)
+                .WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
+            time.Advance(timeout);
+            ExternalProcessResult result = await run.WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
 
             Assert.True(result.TimedOut);
             Assert.Equal(-1, result.ExitCode);
@@ -156,20 +168,25 @@ public sealed class SystemExternalProcessRunnerTests
         finally
         {
             cancellation.Cancel();
+
+            // Kill first so the join cannot wait on pending cleanup timers of a frozen manual clock.
+            KillTestProcessTree(parentProcess ?? (parentReady.Task.IsCompletedSuccessfully ? await parentReady.Task : null));
+            KillTestProcessTree(childProcess);
             if (run is not null)
             {
                 try
                 {
-                    _ = await run;
+                    _ = await run.WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
                     // Cancellation is the expected emergency cleanup outcome when setup fails.
                 }
+                catch (TimeoutException)
+                {
+                    // The processes are already killed; do not hide the original test failure.
+                }
             }
-
-            KillTestProcessTree(parentProcess ?? (parentReady.Task.IsCompletedSuccessfully ? await parentReady.Task : null));
-            KillTestProcessTree(childProcess);
         }
     }
 
@@ -211,22 +228,84 @@ public sealed class SystemExternalProcessRunnerTests
             Assert.Skip("Windows process execution is required.");
         }
 
-        var runner = new SystemExternalProcessRunner();
-        // NFC used 2 s. A loaded host can need more than 1 s to start the probe, so 10 s leaves room for both
-        // streams to finish; the probe still waits 30 s, so the run still ends through the timeout path.
+        var time = new ManualTimeProvider();
+        TimeSpan timeout = TimeSpan.FromSeconds(10);
+        var outputCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var errorCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        int streams = 0;
+        var runner = new SystemExternalProcessRunner(ExternalProcessRunnerSeams.Production with
+        {
+            Time = time,
+            ScheduleTermination = static termination => Task.FromResult(termination()),
+            Drain = (reader, stop) => ++streams == 1
+                ? DrainWithCaptureSignalAsync(reader, "OUT-PARTIAL-END", outputCaptured, stop)
+                : DrainWithCaptureSignalAsync(reader, "ERR-PARTIAL-END", errorCaptured, stop),
+        });
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         ExternalProcessStartInfo startInfo = CreateStartInfo(
-            Environment.CurrentDirectory, "dual-output-wait", TimeSpan.FromSeconds(10));
+            Environment.CurrentDirectory, "dual-output-wait", timeout);
 
-        ExternalProcessResult result = await runner.RunAsync(
-            startInfo,
-            TestContext.Current.CancellationToken);
+        Task<ExternalProcessResult> run = runner.RunAsync(startInfo, cancellation.Token).AsTask();
+        try
+        {
+            // Both suffixes must be retained by the production drains before the kill can interrupt output.
+            await Task.WhenAll(outputCaptured.Task, errorCaptured.Task)
+                .WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
+            Assert.False(run.IsCompleted, "The timeout preceded output capture.");
+            await time.WhenPendingAsync(1, timeout, TestContext.Current.CancellationToken)
+                .WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
+            time.Advance(timeout);
+            ExternalProcessResult result = await run.WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
 
-        Assert.Equal(-1, result.ExitCode);
-        Assert.True(result.TimedOut);
-        Assert.Equal(BoundedProcessOutputReader.MaximumCapturedCharacters, result.StandardOutput.Length);
-        Assert.Equal(BoundedProcessOutputReader.MaximumCapturedCharacters, result.StandardError.Length);
-        Assert.EndsWith("OUT-PARTIAL-END", result.StandardOutput, StringComparison.Ordinal);
-        Assert.EndsWith("ERR-PARTIAL-END", result.StandardError, StringComparison.Ordinal);
+            Assert.Equal(-1, result.ExitCode);
+            Assert.True(result.TimedOut);
+            Assert.Equal(BoundedProcessOutputReader.MaximumCapturedCharacters, result.StandardOutput.Length);
+            Assert.Equal(BoundedProcessOutputReader.MaximumCapturedCharacters, result.StandardError.Length);
+            Assert.EndsWith("OUT-PARTIAL-END", result.StandardOutput, StringComparison.Ordinal);
+            Assert.EndsWith("ERR-PARTIAL-END", result.StandardError, StringComparison.Ordinal);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            try
+            {
+                _ = await run.WaitAsync(ProcessProbe.FixtureBound, TestContext.Current.CancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+            {
+                // Join emergency termination if output setup fails before advancing the clock.
+            }
+        }
+    }
+
+    private static async Task<BoundedProcessOutput> DrainWithCaptureSignalAsync(
+        TextReader reader, string expected, TaskCompletionSource captured, CancellationToken stop)
+    {
+        using var observed = new CaptureSignalReader(reader, expected, captured);
+        return await ExternalProcessRunnerSeams.Production.Drain(observed, stop).ConfigureAwait(false);
+    }
+
+    /// <summary>Signals on the read after the expected text, once the production drain has retained that text.</summary>
+    private sealed class CaptureSignalReader(TextReader reader, string expected, TaskCompletionSource captured) : TextReader
+    {
+        // Only the dedicated production reader thread accesses these fields.
+        private string _tail = string.Empty;
+        private bool _matched;
+
+        /// <inheritdoc/>
+        public override int Read(char[] buffer, int index, int count)
+        {
+            if (_matched)
+            {
+                _ = captured.TrySetResult();
+            }
+
+            int read = reader.Read(buffer, index, count);
+            string text = string.Concat(_tail, new string(buffer, index, read));
+            _matched |= text.Contains(expected, StringComparison.Ordinal);
+            _tail = text.Length <= expected.Length ? text : text[^expected.Length..];
+            return read;
+        }
     }
 
     private static ExternalProcessStartInfo CreateStartInfo(string root, string mode, TimeSpan timeout)
@@ -240,10 +319,14 @@ public sealed class SystemExternalProcessRunnerTests
             ProcessProbe.Executable, root, ["--mode", mode, "--tree-marker", marker], timeout);
     }
 
-    private static SystemExternalProcessRunner CreateTreeRunner(TaskCompletionSource<TestProcessIdentity> parentReady)
+    private static SystemExternalProcessRunner CreateTreeRunner(TaskCompletionSource<TestProcessIdentity> parentReady, TimeProvider? time = null)
     {
         return new SystemExternalProcessRunner(ExternalProcessRunnerSeams.Production with
         {
+            Time = time ?? ExternalProcessRunnerSeams.Production.Time,
+            ScheduleTermination = time is null
+                ? ExternalProcessRunnerSeams.Production.ScheduleTermination
+                : static termination => Task.FromResult(termination()),
             ObserveExit = (process, token) =>
             {
                 _ = parentReady.TrySetResult(CaptureProcessIdentity(process.Id));

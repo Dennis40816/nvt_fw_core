@@ -20,7 +20,7 @@ using static Nvt.Core.Avalonia.Tests.Toggle.ToggleTestHost;
 namespace Nvt.Core.Avalonia.Tests.Toggle;
 
 /// <summary>Renders the shipped toggle styles with both shared shapes in a headless state sheet.</summary>
-public sealed class ToggleStylesRenderer(ITestOutputHelper output)
+public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
 {
     /// <summary>Renders the chosen palette with two independent theme roots and no per-control shape overrides.</summary>
     [AvaloniaFact]

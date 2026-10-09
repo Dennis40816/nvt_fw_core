@@ -1,0 +1,58 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Form.FillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Form.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Form.ReadOnlyFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.TextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Form.PlaceholderBrush" ResourceKey="NfcTextMutedBrush" />
+      <StaticResource x:Key="Nvt.Form.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Form.BorderBrush" ResourceKey="NfcBorderBrush" />
+      <StaticResource x:Key="Nvt.Form.HoverBorderBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Form.PressedBorderBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Form.ErrorBorderBrush" ResourceKey="NfcDangerBorderBrush" />
+      <StaticResource x:Key="Nvt.Form.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+      <StaticResource x:Key="Nvt.Form.SelectionBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
+      <StaticResource x:Key="Nvt.Form.SelectionTextBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Form.FillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Form.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Form.ReadOnlyFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
+      <StaticResource x:Key="Nvt.Form.TextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Form.PlaceholderBrush" ResourceKey="NfcTextMutedBrush" />
+      <StaticResource x:Key="Nvt.Form.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Form.BorderBrush" ResourceKey="NfcBorderBrush" />
+      <StaticResource x:Key="Nvt.Form.HoverBorderBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Form.PressedBorderBrush" ResourceKey="NfcTextStrongBrush" />
+      <StaticResource x:Key="Nvt.Form.ErrorBorderBrush" ResourceKey="NfcDangerBorderBrush" />
+      <StaticResource x:Key="Nvt.Form.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+      <StaticResource x:Key="Nvt.Form.SelectionBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
+      <StaticResource x:Key="Nvt.Form.SelectionTextBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <Thickness x:Key="Nvt.Form.Padding">12,0</Thickness>
+  <Thickness x:Key="Nvt.Form.BorderThickness">1</Thickness>
+  <Thickness x:Key="Nvt.Form.EmptyThickness">0</Thickness>
+  <CornerRadius x:Key="Nvt.Form.InputCornerRadius">0</CornerRadius>
+  <StaticResource x:Key="Nvt.Form.MultilineCornerRadius" ResourceKey="NfcCompactCornerRadius" />
+  <CornerRadius x:Key="Nvt.Form.MultilineFocusCornerRadius">10</CornerRadius>
+  <x:Double x:Key="Nvt.Form.SpinnerWidth">28</x:Double>
+  <x:Double x:Key="Nvt.Form.SpinnerButtonHeight">15</x:Double>
+  <x:Double x:Key="Nvt.Form.LeftSpinnerFocusOffset">-29</x:Double>
+  <x:Double x:Key="Nvt.Form.SpinnerButtonMinHeight">0</x:Double>
+  <x:Double x:Key="Nvt.Form.GlyphWidth">10</x:Double>
+  <x:Double x:Key="Nvt.Form.GlyphHeight">5</x:Double>
+  <x:Double x:Key="Nvt.Form.GlyphStrokeThickness">1.5</x:Double>
+  <x:Double x:Key="Nvt.Form.InnerFocusOffset">-1</x:Double>
+  <sys:TimeSpan x:Key="Nvt.Form.StateTransitionDuration">0:0:0.15</sys:TimeSpan>
+  <StreamGeometry x:Key="Nvt.Form.ChevronGeometry">M0 0 L5 5 L10 0</StreamGeometry>
+  <StreamGeometry x:Key="Nvt.Form.IncreaseGeometry">M0 5 L5 0 L10 5</StreamGeometry>
+  <StaticResource x:Key="Nvt.Form.Height" ResourceKey="NfcControlHeight" />
+  <StaticResource x:Key="Nvt.Form.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+</ResourceDictionary>

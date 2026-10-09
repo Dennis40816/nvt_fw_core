@@ -88,6 +88,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 | Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Bounded output reader merged into `main`; execution, containment, and executable trust policy stay in each tool. |
 | UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/`; `src/Nvt.Core/Time/` | 1 → 2 | Startup trace merged into `main`; clock in an open pull request. |
 | Log entry and formatter | NFH | NFH | `Nvt.Core` | `src/Nvt.Core/Diagnostics/` | 2 | Planned with the console trial. |
+| Observed UI event operations | NFC, NFH, NFU | NVT CORE | `Nvt.Core`; NFC verified source copy | `src/Nvt.Core/Threading/` | 3 | UiEventRunner added for H04; app handler migrations remain in their repositories. |
 | Coalesced refresh, undo, and UI dispatch | NFH | NFH | `Nvt.Core`; `Nvt.Core.Avalonia` | `src/Nvt.Core/Lifecycle/`; `src/Nvt.Core.Avalonia/Threading/` | 1 → 2 | Refresh and undo merged into `main`; UI dispatch in an open pull request. |
 | CSV quoting | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/Csv/` | 1 → 2 | Pull request open; replay columns stay in NFU. |
 | Source-file navigation | NFU | NFU | `Nvt.Core` | `src/Nvt.Core/SourceFileNavigation/` | 1 → 2 | Pull request open; the tool supplies editor and operating-system policy. |
