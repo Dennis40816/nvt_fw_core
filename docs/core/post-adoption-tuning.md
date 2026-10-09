@@ -29,6 +29,7 @@ Change `Nvt.Focus.RingThickness` in `ThemeTokens.axaml` to change every keyboard
 Change `Nvt.Controls.FocusRingMargin` for all exterior rings, or `Nvt.Controls.InsetFocusRingMargin` for all inset rings.
 Override shared keys at the application resource root to tune every attached instance.
 Change family tokens for narrower adjustments. Dynamic resources update without replacing templates.
+Use `ThemeRestFills.SetRestFill(resources, ThemeRestFill.None)` to hide Choice row and Expander header rest fills while preserving interaction feedback.
 
 Keep switch track, knob, travel and focus dimensions aligned when changing switch geometry.
 `Nvt.Toggle.SwitchKnobTravel` sets both the knob canvas width and the checked position.
