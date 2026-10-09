@@ -15,9 +15,9 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     {
         var navigation = new TestNavigation();
         var router = Router(Options(navigation: navigation));
-        AssertSuccess(await router.RouteAsync("page", null), """{"pages":["zeta","alpha"],"currentPage":"zeta"}""");
-        AssertSuccess(await router.RouteAsync("page", Arg("name", "alpha")), """{"currentPage":"alpha"}""");
-        AssertSuccess(await router.RouteAsync("page", null), """{"pages":["zeta","alpha"],"currentPage":"alpha"}""");
+        AssertSuccess(await router.RouteAsync("page", null, TestContext.Current.CancellationToken), """{"pages":["zeta","alpha"],"currentPage":"zeta"}""");
+        AssertSuccess(await router.RouteAsync("page", Arg("name", "alpha"), TestContext.Current.CancellationToken), """{"currentPage":"alpha"}""");
+        AssertSuccess(await router.RouteAsync("page", null, TestContext.Current.CancellationToken), """{"pages":["zeta","alpha"],"currentPage":"alpha"}""");
         Assert.Equal(1, navigation.SwitchCalls);
     }
 
@@ -29,7 +29,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     public async Task PageReturnsToolDecision(RuntimeQueryPageResult result, string? code, string? message)
     {
         var navigation = new TestNavigation { Result = result };
-        var response = await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", "alpha"));
+        var response = await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", "alpha"), TestContext.Current.CancellationToken);
         if (code is null)
         {
             AssertSuccess(response, """{"currentPage":"alpha"}""");
@@ -48,7 +48,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     public async Task PageSwitchToCurrentPageSucceeds()
     {
         var navigation = new TestNavigation();
-        AssertSuccess(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", "zeta")),
+        AssertSuccess(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", "zeta"), TestContext.Current.CancellationToken),
             """{"currentPage":"zeta"}""");
         Assert.Equal("zeta", navigation.CurrentPage);
         Assert.Equal(1, navigation.SwitchCalls);
@@ -62,7 +62,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     public async Task PageRejectsUnknownName(string name)
     {
         var navigation = new TestNavigation();
-        AssertFailure(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", name)),
+        AssertFailure(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", name), TestContext.Current.CancellationToken),
             "UNKNOWN_PAGE", $"Unknown page '{name}'. Valid pages: zeta, alpha.");
         Assert.Equal("zeta", navigation.CurrentPage);
         Assert.Equal(0, navigation.SwitchCalls);
@@ -76,7 +76,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     public async Task PageRejectsMissingNameValue(string? name)
     {
         var navigation = new TestNavigation();
-        AssertFailure(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", name!)),
+        AssertFailure(await Router(Options(navigation: navigation)).RouteAsync("page", Arg("name", name!), TestContext.Current.CancellationToken),
             "INVALID_ARGUMENTS", "Argument '--name' requires a page name.");
         Assert.Equal(0, navigation.SwitchCalls);
     }
@@ -91,7 +91,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             DecideExit = () => { events.Add("decision"); return RuntimeQueryExitResult.Closing; },
             Close = () => events.Add("close")
         };
-        var response = await Router(options).RouteAsync("exit", null);
+        var response = await Router(options).RouteAsync("exit", null, TestContext.Current.CancellationToken);
         AssertSuccess(response, """{"closing":true}""");
         events.Add("response");
         string[] beforeClose = ["decision", "response"];
@@ -114,7 +114,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             DecideExit = () => { decisions++; return result; },
             Close = () => closes++
         };
-        AssertFailure(await Router(options).RouteAsync("exit", null), code, message);
+        AssertFailure(await Router(options).RouteAsync("exit", null, TestContext.Current.CancellationToken), code, message);
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(1, decisions);
         Assert.Equal(0, closes);
