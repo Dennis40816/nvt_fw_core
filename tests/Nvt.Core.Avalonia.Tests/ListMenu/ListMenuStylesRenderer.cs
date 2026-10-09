@@ -18,7 +18,7 @@ using static Nvt.Core.Avalonia.Tests.ListMenu.ListMenuTestHost;
 namespace Nvt.Core.Avalonia.Tests.ListMenu;
 
 /// <summary>Renders headless list and menu state sheets and a side-by-side Fluent comparison.</summary>
-public sealed class ListMenuStylesRenderer(ITestOutputHelper output)
+public sealed partial class ListMenuStylesRenderer(ITestOutputHelper output)
 {
     /// <summary>Checks the state-sheet geometry and writes exactly four images only when explicitly enabled.</summary>
     [AvaloniaFact]

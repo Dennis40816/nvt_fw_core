@@ -41,6 +41,7 @@ bash tools/codex-queue/qfocus.sh '<QUEUE>'
 | `MIN_FREE_GB` | 預設 `215`；可用磁碟 GiB 下限。 |
 | `TASK_RESERVE_GB` | 預設 `20`；每個 running、cleanup-pending、新任務的正整數 GiB 估量。 |
 | `ACCEPT_POLICY` | 預設 `warn`；`enforce` 要求精確受信任 Accept 模板。兩模式均保留證據、Scope／risk 檢查。 |
+| `PROJECT_PREFIX` | 預設 `Project`；`Prebuild:` 所建置 .NET 專案的名稱前綴，例如 `NvtFwCombiner` 對應 `src/NvtFwCombiner.Desktop/NvtFwCombiner.Desktop.csproj`。必須是普通專案名（英數、`_`、`.`）。 |
 | `EXTRA_ADD_DIRS` | 舊設定；worker 忽略共用資料夾，只授予本任務暫存資料夾。 |
 
 worker 將 `QUEUE_BUILD_NOTES` 設為 `<QUEUE>/build-notes.md`；直接呼叫 `q.py prompt` 可將此環境變數設為選用的 notes 檔。wrapper 保留原無 bytecode／pytest cache、遙測及語言環境設定，並非呼叫者設定項。

@@ -6,6 +6,14 @@
   <x:Double x:Key="Nvt.Choice.CompactHeight">24</x:Double>
   <!-- A checkbox stays a rounded square in Pill and Square, so it never reads as a radio ring. -->
   <CornerRadius x:Key="Nvt.Choice.CheckBoxCornerRadius">6</CornerRadius>
-  <Thickness x:Key="Nvt.Choice.RowPadding">0,6</Thickness>
-  <Thickness x:Key="Nvt.Choice.CompactPadding">0,2</Thickness>
+  <Thickness x:Key="Nvt.Choice.RowPadding">10,6</Thickness>
+  <Thickness x:Key="Nvt.Choice.CompactPadding">10,2</Thickness>
+  <Thickness x:Key="Nvt.Choice.IndicatorBorderThickness">2</Thickness>
+  <x:Double x:Key="Nvt.CheckBox.CheckWidth">12</x:Double>
+  <x:Double x:Key="Nvt.CheckBox.CheckHeight">10</x:Double>
+  <x:Double x:Key="Nvt.CheckBox.CheckStrokeThickness">2</x:Double>
+  <x:Double x:Key="Nvt.CheckBox.DashWidth">10</x:Double>
+  <x:Double x:Key="Nvt.CheckBox.DashHeight">2</x:Double>
+  <Thickness x:Key="Nvt.Choice.LabelMargin">8,0,0,0</Thickness>
+  <x:Double x:Key="Nvt.Choice.LabelMinHeight">20</x:Double>
 </ResourceDictionary>
