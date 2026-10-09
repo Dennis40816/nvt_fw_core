@@ -165,11 +165,41 @@ Toolkit `RelayCommand.Execute` 不強制檢查 `CanExecute`：在結尾直接執
 | `Nvt.ReportList.WindowedPagerTemplate` | `ReportWindowedListViewModel` | 兩列 Grid、可換行狀態 TextBlock，以及含上一頁／下一頁 Button 的兩欄 Grid。 |
 
 範本讀取既有模型，不擁有分頁狀態或命令。
-主應用程式提供 `captionText`、`semanticAction secondary` 樣式及 `Nvt.ReportList.WindowedSpacing` 資源。
-兩個 `Classes` 值均原樣保留 NFC：每個狀態使用 `captionText`，全部分頁按鈕使用 `semanticAction secondary`。
-凍結 commit 的 `Styles/MainWindowControlStyles.axaml:503` 選取 `TextBlock.captionText`；`Styles/MainWindowButtonStyles.axaml:33,45,48` 選取 `Button.semanticAction`，`:51,57,62,67` 選取 `Button.secondary` 及其狀態。
-NFC 載入共用範本後，這些 selector 仍會套用；沒有 class 名稱遷移。
-NFC 的間距固定為 8 DIP，同時保留列間距與按鈕欄間距。
+分頁範本透過 Core 資源提供完整樣式契約。
+使用任一範本前，先載入下列必要資源：
+
+- 載入 `Theme/ThemeTokens.axaml`，提供共用按鈕色盤、尺寸、既有按鈕字型與次要狀態文字色 `NfcTextMutedBrush`。
+- 載入 `Theme/ButtonStyles.axaml`，提供完整的 `actionNeutral` 按鈕角色。祖先上的選用 class `reducedMotion` 只會關閉按鈕動畫，分頁器不需要它。
+- 載入 `Nvt.Core.Fonts/FontRoles.axaml`，提供 `Nvt.Font.Caption.Family`、`Nvt.Font.Caption.Size` 與 `Nvt.Font.Caption.Weight`。
+
+[Theme 模組](Theme.zh-TW.md) 說明按鈕所需資源。
+[Fonts 模組](Fonts.zh-TW.md) 說明字型角色與中文字型 fallback。
+在原有應用程式作用範圍合併資源，再於 Fluent 基本佈景後載入按鈕樣式：
+
+```xml
+<Application.Resources>
+  <ResourceDictionary>
+    <ResourceDictionary.MergedDictionaries>
+      <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+      <ResourceInclude Source="avares://Nvt.Core.Fonts/FontRoles.axaml" />
+      <ResourceInclude Source="avares://Nvt.Core.Avalonia/ReportList/ReportPagerTemplates.axaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <x:Double x:Key="Nvt.ReportList.WindowedSpacing">8</x:Double>
+  </ResourceDictionary>
+</Application.Resources>
+<Application.Styles>
+  <FluentTheme />
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
+</Application.Styles>
+```
+
+每個分頁按鈕使用 `actionNeutral`。
+狀態文字不使用樣式 class，直接套用 Caption 的三個資源。
+Caption 預設使用 `avares://Avalonia.Fonts.Inter/Assets#Inter`、11 DIP 與 Normal（400）。
+按鈕保留共用佈景的既有 family、13 DIP 字級與一般字重。
+移除僅供分頁使用的本地 `semanticAction`、`secondary` 與 `captionText` 樣式。
+仍服務其他控制項的樣式繼續保留。
+主應用程式提供 `Nvt.ReportList.WindowedSpacing`；8 DIP 保留固定視窗的兩個間距。
 累積分頁保留 `0,8,0,0` 邊距、`*,Auto` 欄定義與 10 DIP 欄間距。
 固定視窗保留置中且可換行的狀態、繫結 tooltip 與等寬按鈕欄。
 狀態的無障礙名稱等於可見文字，`AutomationProperties.LiveSetting` 為 `Polite`。
@@ -178,10 +208,10 @@ NFC 的間距固定為 8 DIP，同時保留列間距與按鈕欄間距。
 主應用程式依凍結呼叫端的 `HasMultiplePages` 控制固定視窗分頁範本可見性。
 範本不加入可見性判斷式、列 renderer、UserControl 包裝、佈景／字型匯入、schema 或匯出命令。
 
-主應用程式保留既有 Theme 資源擁有者與全部八個既有字型值。
-UI 字型鏈保持 `fonts:Inter#Inter, Microsoft JhengHei UI, Noto Sans CJK TC, Noto Sans TC, Segoe UI`；技術字型鏈保持 `Cascadia Mono, Consolas`。
-字級保持 10、11、12、13、14 與 16 DIP。
-範本不採用新的 Core 字型角色，也不重新定義字型資源。
+範本本身不匯入任何佈景或字型字典。
+呼叫端保留資源作用範圍，並載入文件列出的必要資源。
+狀態文字改用已選定的共用 Caption 字型角色。
+既有按鈕字型資源保持不變。
 
 ## 測試與來源
 
@@ -243,15 +273,58 @@ Reset 次數上限來自 `tests/NvtFwCombiner.UiSmoke.Tests/MemoryCoveragePublic
 凍結比較字典直接複製兩段來源，保留原始 key 與 `NfcSpace8`，僅改寫模型命名空間以供編譯。
 其來源獨立於新範本，且不包含產品列控制樹。
 
-`ReportPagerCoreThemeGeometryTests` 在 `ThemeTokens.axaml`、`ButtonStyles.axaml` 與 `ScrollStyles.axaml` 下比較獨立凍結片段及共用範本，基本控制項佈景由 Fluent 提供。
-每次比較皆使用 960 × 180 DIP 視窗、明確設定的 render scaling 1.0（96 DPI）、手動視窗大小及版面取整。
-分頁區域寬度為 240 與 960 DIP；邊界輸入比較在同一固定視窗內使用 336 DIP。
-字型透過共用 Core Theme 的 `Nvt.Font.NfcLegacy.Ui.Family`／`NfcUiFontFamily` 與 size-13 資源解析。
-斷言檢查實際 family、13 DIP 字級、一般字重／樣式、固定視窗的兩個 8 DIP 間距、累積分頁邊距與 10 DIP 間距、等寬 star 欄，以及基本控制項的 padding、框線、圓角與最小高度。
-幾何標籤使用內嵌 Inter 完整涵蓋的短、長拉丁文字；實際 shaping 的 glyph 必須存在且不使用字型模擬，每個解析後字型 stream 的 SHA-256 皆須與內嵌 `Inter-Regular.ttf` 相同。
-如此可排除機器安裝的 CJK fallback 字型造成的差異；編譯後繫結／無障礙測試仍保留英文與繁體中文標籤。
-導覽比較涵蓋首頁、中間頁、末頁、停用端點及反向導覽；邊界案例涵蓋空來源、單列、完整與相鄰頁面，以及最大批次大小。
-這些檢查建立 Core Theme 下的幾何契約；NFC 採用時提供自己的 caption 與 secondary 按鈕 selector。
+`PagerStylesResolveWithoutHostClasses` 在應用程式與視窗均未定義三個舊主應用程式 class 時載入兩個範本。
+它檢查角色控制範本、色盤 brush、停用狀態與 Caption 的三個資源。
+執行時替換 Caption 資源，family、字級與字重皆會更新。
+
+`ReportPagerGeometryTests` 與 `ReportPagerCoreThemeGeometryTests` 保留未修改的凍結來源字典，作為獨立證據。
+測試僅在記憶體中遷移凍結控制項的按鈕 class 與 Caption 屬性。
+隨後每個視覺屬性與量測值都必須與編譯後的 Core 控制樹完全相同。
+比較不略過幾何、字型、class 或任何子控制項。
+這證明範本幾何在核准的樣式遷移後保持不變。
+此比較不將未套用角色的 Fluent 按鈕與 Core 角色按鈕視為相同。
+
+Core Theme 檢查載入 `ThemeTokens.axaml`、`ButtonStyles.axaml`、`ScrollStyles.axaml` 與 `FontRoles.axaml`。
+Fluent 提供基本控制項佈景。
+每次檢查使用 960 × 180 DIP 視窗、scaling 1.0、手動視窗大小與版面取整。
+分頁寬度涵蓋 240 與 960 DIP。
+邊界輸入在同一視窗中使用 336 DIP。
+斷言保留兩個 8 DIP 視窗間距、累積分頁邊距、10 DIP 欄間距與等寬 star 欄。
+Neutral 按鈕保留既有角色的 32 DIP 高度、`14,0` padding、1 DIP 框線與佈景圓角。
+短、長拉丁標籤使用內嵌 Inter，不使用字型模擬且不得缺少 glyph。
+解析後字型 stream 的 SHA-256 必須與內嵌 `Inter-Regular.ttf` 相同。
+雙語繫結與無障礙檢查仍保留英文及繁體中文標籤。
+導覽檢查涵蓋首頁、中間頁、末頁、停用端點與反向導覽。
+邊界檢查涵蓋空來源、單列、完整、相鄰與最大批次輸入。
+
+`CaptionTypographyRecordsBeforeAndAfterMeasurements` 記錄預期的 13 至 11 DIP 狀態字級變更。
+它在相同 neutral 按鈕角色下，量測未改寫的凍結狀態文字及 Core Caption。
+兩者皆使用相同內嵌 Inter Regular bytes 與 Normal（400）字重。
+工具採用時，依[字型流程](Fonts.zh-TW.md)與[佈景流程](Theme.zh-TW.md)記錄前後影像。
+
+下列量測使用短英文標籤、960 DIP 分頁寬度、內嵌 Inter Regular 與版面取整。
+凍結狀態文字繼承既有 family，字級為 13 DIP。
+Core 使用 Caption family，字級為 11 DIP。
+兩者字重皆為 Normal（400）。
+Caption family 資源值為 `avares://Avalonia.Fonts.Inter/Assets#Inter`。
+
+| 狀態文字 | 變更前 DesiredSize | 變更後 DesiredSize | 變更前 baseline | 變更後 baseline | 變更前分頁高度 | 變更後分頁高度 |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| `Showing 4/9` | 78 × 16 DIP | 66 × 14 DIP | 12.59375 DIP | 10.65625 DIP | 32 DIP | 32 DIP |
+| `Showing 1-4 of 9` | 105 × 16 DIP | 89 × 14 DIP | 12.59375 DIP | 10.65625 DIP | 56 DIP | 54 DIP |
+
+兩個量測控制樹皆使用 neutral 按鈕角色，以單獨比較 Caption 變更。
+原始凍結控制項在此 headless 應用程式中沒有相符的主應用程式 selector。
+其 Fluent 按鈕高度為 29 DIP，padding 為 `8,5,8,6`，圓角為 3 DIP，最小高度為零。
+角色遷移使用既有 `actionNeutral` 幾何：32 DIP 高度、`14,0` padding、佈景圓角與 32 DIP 最小高度。
+角色本身保持不變。
+範本邊距、間距、對齊與欄定義保持不變。
+
+執行量測測試時設定 `NVT_PAGER_IMAGES_DIR`，即可儲存六張 960 × 180 PNG 畫面，並輸出 SHA-256。
+`before` 畫面保留沒有主應用程式 selector 的原始凍結控制項。
+`before-caption` 畫面僅遷移 neutral 按鈕角色。
+`after` 畫面渲染實際發布的 Core 範本。
+比較 `before-caption` 與 `after`，即可檢視預期的字型變更。
 
 套件還原完成後，於儲存庫根目錄執行：
 
@@ -273,7 +346,8 @@ dotnet test Nvt.Core.sln --no-build
 語言分支改為不可變注入標籤與格式化函式；null 標籤與標籤內的 null 成員，都在凍結的來源與每頁大小驗證後拒絕。
 凍結模型的通知順序與 Toolkit 命令行為保持不變。
 分頁範本與這些模型分開。
-分頁擷取僅重新命名兩個資源 key、模型命名空間與固定視窗間距資源 key。
+分頁擷取重新命名兩個範本 key、模型命名空間與固定視窗間距資源 key。
+樣式遷移以 `actionNeutral` 按鈕、明確的 Caption 字型資源與次要狀態文字色 `NfcTextMutedBrush`，取代三個主應用程式 class。
 原始延後載入資源作用範圍仍由呼叫端擁有，Core 不主動載入資源。
 範本不新增 C# 狀態欄位，也不要求分頁模型變更。
 
