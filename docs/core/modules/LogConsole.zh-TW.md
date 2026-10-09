@@ -18,7 +18,7 @@ NFH 量測包含產品投影與 UI 工作；不同 workload 不能作為直接�
 
 ## 狀態結構
 
-輸入集中在 `ConsoleFilter` record，包含等級、來源、字面搜尋、只看符合、去重與時間模式。
+事件篩選輸入集中在 `ConsoleFilter` record，包含等級、來源、字面搜尋、只看符合、去重與時間模式。
 空來源集合代表所有來源，空等級集合代表不顯示任何等級，空搜尋代表沒有搜尋條件。
 來源 ID 使用 ordinal identity，搜尋使用 ordinal 不分大小寫比較。
 
@@ -46,7 +46,7 @@ ExpandedIds 使用穩定 row ID。
 完整內容 handles、搜尋 ranges、counts 與 memberships 都在 `ConsoleProjection` 中。
 投影不將完整訊息複製成列字串。
 Counts 與空狀態不另外存成 state。
-宿主接受背景投影前，須確認快照與篩選輸入仍相同。
+宿主接受背景投影前，須確認快照、篩選與 presentation 輸入仍相同。
 K2 會讓選單與快捷鍵走相同 commands。
 K1 提供機制與不可變值，不另建一套 controller。
 
@@ -178,6 +178,75 @@ OnlyMatches 關閉時所有符合來源與等級的列仍保留高亮。
 EventCount 是快照的未篩選保留事件數，MatchingEventCount 是可見列的成員總數。
 RowCount 是投影列數，多行訊息不增加事件數。
 
+## 呈現契約
+
+遵循 Console redesign v3 (#82) 的「v3 更新」、「由 app 注入／SourceRegistry」、
+「增量連結解析」與「去重與篩選的投影」。沒有 UI、產品型別、resource lookup、
+thread culture 讀取、本地時區查詢或檔案系統存取。Store admission、ownership、rejection、
+dedupe 與 scanner grammar 維持不變。
+
+### App 注入契約
+
+App 以 `ConsoleProjectionOptions.SourceRegistry` 注入 immutable `ConsoleSource` 陣列。
+每筆包含穩定 ordinal `SourceId`、`DisplayName` 與遞增 `DisplayOrder`。
+ID 必須唯一；null entry、ID、name 或未初始化陣列皆無效。空 ID 與既有 store 相容。
+相同 order 保留 registry 輸入順序。`ConsoleProjection.Sources` 是顯示順序的唯一輸出：
+先列所有宣告來源，再依保留事件首次出現的 Sequence 列未知來源，未知來源以 ID 為名稱，display order 為 `int.MaxValue`。
+`SourceCounts` 為每個宣告來源先填零，仍只套 level filter 並計 raw events。
+篩選與搜尋繼續使用 ID，不將 count 存入來源 metadata，也不在每列重複存 name。
+即使 snapshot version 相同，替換 registry 也會改變下一次 projection。
+宿主的 stale-result check 必須納入 presentation／registry 輸入替換。
+
+新增 `Project(snapshot, filter, viewState, options)`，原有三參數入口仍使用 invariant culture、
+核准的 `Console.Timestamp.Ago` 預設 template `"{0} s ago"` 與 UTC。
+App 傳入已解析的 template 與明確 `CultureInfo`，projection 期間不得修改 culture。
+純函式 `ConsoleTimeFormatter.Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone)`
+是唯一時間格式計算路徑。Placeholder 0 接收依 culture 以 `"0.0"` 格式化的秒數，例如 `2.3` 或 `2,3`。範本只在 Relative 模式格式化：格式錯誤的範本在該模式下由投影拋出 `FormatException`，Absolute 與 Hidden 模式則忽略。
+暫停仍以 `PausedAt` 為基準，後續 capture 或 presentation 變更不會推進相對時間。
+Hidden 維持空字串；absolute 維持 invariant `HH:mm:ss.fff`，以明確 `TimeZoneInfo` 轉換。
+App 可傳自己選擇的本地時區或 UTC；Core 不自行取得本地時區。
+Copy 與 stream export 維持 store 的 UTC occurrence timestamp，不受畫面選項影響。
+
+### 投影列連結
+
+新增 `ConsoleLinkCache.GetLinks(snapshot, row)`，snapshot 是產生該列的版本。
+Caller 直接傳 `ConsoleRow`，不需尋找 raw entry。掃描使用 projection 既有 lease 的 segmented text 與 spans。
+去重列代表內容來自最新保留成員，原始成員被 ring 淘汰後仍可使用；沒有新 owner 或全文複本。
+Entry／group ID 在 cache key 分開，兩個 overload 共用 scanner、index、lock、Synchronize 與三個 retention budgets。
+Search 或來源改名不會失效。每次接受 snapshot 都要呼叫 `Synchronize`，包含 Clear。
+舊列仍可透過 lease 掃描自己的內容，但 stale snapshot 或 representative 不可填入目前 cache。
+Representative 改變時，即使 text version 相同也失效，因為 supplied spans 不在 dedupe key 中。
+超出 cache 額度仍完整回傳結果，但不快取。
+
+### 首行 metadata
+
+`ConsoleRow.GetFirstLine(maxCharacters = 1024)` 呼叫純函式 `ConsoleFirstLine.Read(content, maxCharacters)`。
+按需回傳 `Text` 與 `HasMoreContent`，不在列上儲存 newline 或 truncation flag。
+CR、LF、CRLF 都結束首行且不進入 preview。Cap 使用 UTF-16 字元，允許 0 至 4,096，
+不切開合法 surrogate pair。最多讀 cap + 1 字元，單次最多 1,024，只有有界 prefix 建立字串。
+`HasMoreContent` 表示 preview 省略任何原始內容，包含結尾換行。
+因畫面寬度造成的截斷仍由 UI 計算。
+
+### 假設
+
+設計未指定的細節採以下假設：宣告 order 相同時依輸入順序；未知來源的「首次出現」限於
+retained snapshot，不在 store 新存歷史 registry；preview hard cap 為 4,096；被省略的結尾換行
+也算 more content。群組維持最新保留成員為 representative，更換時失效以尊重不同 structured spans。
+Row link access 伴隨對應 snapshot，使用既有 live-cache generation／version fence。
+
+### 新公開成員與原因
+
+| 型別 | 新公開成員與原因 |
+| --- | --- |
+| `ConsoleSource` | Constructor `(SourceId, DisplayName, DisplayOrder = 0)`、`SourceId`、`DisplayName`、`DisplayOrder`、positional `Deconstruct`：app 來源 metadata，不依賴產品型別。 |
+| `ConsoleProjectionOptions` | 無參數 constructor、`SourceRegistry`、`RelativeTimeTemplate`、`Culture`、`AbsoluteTimeZone`：明確的 app presentation 輸入。 |
+| `ConsoleProjection` | `Sources`：來源顯示名稱與順序的單一輸出。 |
+| `ConsoleProjector` | `Project(snapshot, filter, viewState, options)` overload：注入 registry 與時間呈現。 |
+| `ConsoleLinkCache` | `GetLinks(snapshot, row)` overload：由投影列直接取 bounded cached links。 |
+| `ConsoleTimeFormatter` | `Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone = null)`：唯一純時間格式計算路徑。 |
+| `ConsoleFirstLine` | Constructor `(Text, HasMoreContent)`、`Text`、`HasMoreContent`、positional `Deconstruct`、`Read(content, maxCharacters = 1024)`：有界 derived preview。 |
+| `ConsoleRow` | `GetFirstLine(maxCharacters = 1024)`：不儲存旗標的按需首行入口。 |
+
 ## 連結與 app 注入
 
 `ConsoleLinkScanner` 是純函式，優先找 URL，再找引號與未加引號的路徑。
@@ -218,7 +287,8 @@ Structured span 驗證在起點已排序時以線性時間比較相鄰區間；�
 
 App spans 完全取代推導，明確的空 spans 也同樣優先。
 `ConsoleLinkIndex` 驗證 ranges 並提供 binary hit test。
-`ConsoleLinkCache` 在接受的 snapshot generation 與 version 內，以 EntryId 與 text revision 作為 key，不含搜尋。
+`ConsoleLinkCache` key 包含可區分的 EntryId／GroupId 與 text revision，不含搜尋。
+群組結果另外綁定最新保留的 representative，避免同文字版本、不同 app spans 的成員誤用舊結果。
 `Synchronize` 是唯一語意失效點，每次接受快照都要呼叫，包含 Clear。
 舊快照不能重新填入 live cache。
 掃描在 cache 鎖外執行，發布前再次驗證 snapshot generation、version、live membership 與 text revision。
@@ -261,7 +331,7 @@ Ring、group index、history、version、EvictedCount 與 notification cursor �
 Writer 排程使用一個 interlocked flag，published state 的 reference count 也使用 Interlocked。
 `ContentOwner._contentGate` 只保護 reference lifetime，active read 先 pin 再於鎖外呼叫 app。
 快照以 Interlocked 確保只釋放一次，投影的每個 lease 也只釋放一次。
-`ConsoleLinkCache._cacheGate` 保護 cache 與 revision stamp，其他 model state 不可變。
+`ConsoleLinkCache._cacheGate` 保護 cache，以及包含 live entry／group revisions 和 revision stamp 的單一 immutable state；同步時整體替換。其他 model state 不可變。
 宿主在單一執行緒替換 view state 並處理 commands。
 
 Clock 使用 BCL `TimeProvider`，測試重用 Core 的 `Time.DelegateTimeProvider`。

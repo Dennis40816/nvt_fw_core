@@ -20,7 +20,7 @@ No UI or product logic is included here.
 
 ## State structure
 
-Inputs live in one `ConsoleFilter` record.
+Event-filter inputs live in one `ConsoleFilter` record.
 It contains levels, sources, literal search, only-matches, dedupe, and time mode.
 An empty source set means all sources.
 An empty level set means no levels.
@@ -59,7 +59,7 @@ Its only time source is the snapshot capture instant or the pause instant.
 It returns content handles, search ranges, counts, and row membership.
 It never copies an entire message into a row string.
 Counts and empty-state values belong only to this output.
-The host must reject background projections when snapshot or filter inputs have changed.
+The host must reject background projections when snapshot, filter, or presentation inputs have changed.
 K2 routes menus and shortcuts through the same commands.
 K1 contains mechanisms and immutable values, not another command or controller implementation.
 
@@ -217,6 +217,74 @@ The matching event count sums the visible row memberships.
 The row count counts projected rows.
 Multiline text does not create extra events.
 
+## Presentation contracts
+
+These contracts follow Console redesign v3 (#82), **v3 更新**, **由 app 注入 / SourceRegistry**,
+**增量連結解析**, and **去重與篩選的投影**. They add no UI, product type, resource lookup,
+thread-culture read, local-zone lookup, or file-system access. Store admission, ownership,
+rejection, dedupe, and scanner grammar remain unchanged.
+
+### Source registry
+
+The app supplies `ConsoleProjectionOptions.SourceRegistry`, an immutable array of `ConsoleSource` values.
+Each value supplies a stable ordinal `SourceId`, a `DisplayName`, and ascending `DisplayOrder`.
+IDs must be unique; null entries, IDs, or names and an uninitialized array are invalid.
+Equal display orders preserve input order. Empty IDs remain compatible with store IDs.
+`ConsoleProjection.Sources` is the authoritative display order: all declarations first,
+then unknown IDs in their first retained sequence order. Unknown names equal their IDs, and unknown sources use `int.MaxValue` as their display order.
+The dictionary `SourceCounts` is seeded with zero for every declared source and still counts
+raw events after the level filter only. Filtering and search continue to use IDs.
+No count is stored in source metadata, and no display name is copied into every row.
+Replacing the registry changes the next projection, even with the same snapshot version.
+A host must include registry/presentation replacement in its stale-result check.
+
+### Projected links
+
+`ConsoleLinkCache.GetLinks(snapshot, row)` accepts the snapshot used to
+produce the row. The caller passes a `ConsoleRow` directly, with no raw-entry lookup.
+The row's existing projection lease supplies segmented text and structured spans.
+For dedupe, this is the latest retained member, even after the original member is evicted.
+No new text owner or full-message copy is introduced. Entry and group IDs have distinct cache keys.
+The overload shares the raw-entry overload's scanner, index, lock, synchronization, and all three
+retention budgets. Search and source-name changes do not invalidate links.
+Call `Synchronize` for each accepted snapshot, including Clear. Old rows remain readable through
+their leases, but a stale snapshot or representative cannot populate the current cache.
+A representative change invalidates group results even at the same text version because supplied
+spans are not part of the dedupe key. Oversized results are complete but uncached.
+
+### Explicit time presentation
+
+The additive `Project(snapshot, filter, viewState, options)` overload uses one pure
+`ConsoleTimeFormatter.Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone)` path.
+The original overload uses invariant culture, the approved default `Console.Timestamp.Ago`
+template `"{0} s ago"`, and UTC. The app supplies its resolved resource template and explicit
+`CultureInfo`; it must not mutate that culture during a projection.
+Placeholder 0 receives seconds formatted as `"0.0"` in that culture, such as `2.3` or `2,3`.
+The template is formatted only in Relative mode: a malformed template throws `FormatException` from the projection in that mode and is ignored in Absolute and Hidden modes.
+Pause still uses `PausedAt`, independent of later captures or presentation changes.
+Hidden time stays empty. Absolute time keeps invariant `HH:mm:ss.fff`, converted through the
+explicit `TimeZoneInfo`; the app may pass its chosen local zone or UTC. Core never chooses local time.
+Export and copy continue to use the store's UTC occurrence timestamps, independently of screen options.
+
+### First-line metadata
+
+`ConsoleRow.GetFirstLine(maxCharacters = 1024)` delegates to pure `ConsoleFirstLine.Read(content, maxCharacters)`.
+It returns `Text` and `HasMoreContent` on demand, without storing a newline or truncation flag on a row.
+CR, LF, and CRLF end the first line and are excluded from the preview.
+The cap is in UTF-16 characters, allows 0 through 4,096, and never splits a valid surrogate pair.
+At most cap + 1 characters are read, in requests of at most 1,024, and only the bounded prefix becomes a string.
+`HasMoreContent` means the preview omits any original content, including a terminal line break.
+The UI determines additional truncation caused by its available width.
+
+### Assumptions
+
+The design leaves these details open; this module assumes stable input order for equal declared orders,
+first appearance within the retained snapshot for unknown sources (no historical registry in the store),
+a 4,096-character hard preview ceiling, and omitted terminal line breaks as more content.
+The latest retained member remains the group's link representative; replacing it invalidates its
+cache slot to honor differing structured spans. A matching snapshot accompanies row link access
+for the existing live-cache generation and version fence.
+
 ## Links and app interfaces
 
 `ConsoleLinkScanner` is pure.
@@ -263,7 +331,8 @@ Default arrays, null spans or targets, invalid ranges, and overlaps throw Argume
 App-supplied spans replace scanning completely.
 An explicitly empty span array also wins.
 `ConsoleLinkIndex` validates ranges and provides binary hit testing.
-`ConsoleLinkCache` keys results by entry ID and text revision within the accepted snapshot generation and version.
+`ConsoleLinkCache` keys results by discriminated entry/group identity and text revision.
+A group result is also bound to its latest retained representative, so changed app spans cannot reuse a previous representative's result at the same text version.
 Search is not a cache key.
 `Synchronize` is its only semantic invalidation point.
 Call it for every accepted snapshot, including Clear.
@@ -307,6 +376,10 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 | --- | --- |
 | `LogLevel` | `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`. |
 | `ConsoleTimeMode` | `Absolute`, `Relative`, `Hidden`. |
+| `ConsoleSource` | Constructor `(SourceId, DisplayName, DisplayOrder = 0)`, `SourceId`, `DisplayName`, `DisplayOrder`, positional `Deconstruct`: app source metadata without product types. |
+| `ConsoleProjectionOptions` | Parameterless constructor, `SourceRegistry`, `RelativeTimeTemplate`, `Culture`, `AbsoluteTimeZone`: explicit app presentation inputs. |
+| `ConsoleTimeFormatter` | `Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone = null)`: one pure time formatting path. |
+| `ConsoleFirstLine` | Constructor `(Text, HasMoreContent)`, `Text`, `HasMoreContent`, positional `Deconstruct`, `Read(content, maxCharacters = 1024)`: bounded derived preview. |
 | `ConsoleFilter` | `EnabledLevels`, `SelectedSources`, `SearchText`, `OnlyMatches`, `Deduplicate`, `TimeMode`. |
 | `ConsoleRowId` | `Value`, `IsGroup`. |
 | `ILogTextContent` | `Length`, `ResidentCharacterCount`, `Version`, `Read(offset, destination)`, `Dispose()`. |
@@ -321,15 +394,15 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 | `ConsoleViewState` | `Follow`, `ExpandedIds`, `Selection` (`ImmutableHashSet<long>` of raw EntryIds), `IsExpanded`, `Pause(projection, rowId, textOffset, pixelOffset, pausedAt)`, `Resume()`, `Remap(previous, current)`. |
 | `ConsoleSearchArea` | `Message`, `Source`. |
 | `ConsoleSearchHit` | `Area`, `Start`, `Length`. |
-| `ConsoleRow` | `Id`, `Level`, `SourceId`, `TextContent` (`ILogTextContent`), `TextVersion`, `LinkSpans`, `MemberSequences`, `FirstTimestamp`, `Timestamp`, `LastSequence`, `SearchHits`, `TimeText`, `Count`. |
-| `ConsoleProjection` | `Version`, `Generation`, `LastSequence`, `CapturedAt`, `TimeBase`, `Rows`, `LevelCounts`, `SourceCounts`, `RetainedMembership`, `EventCount`, `NewSincePauseCount`, `EvictedCount`, `Deduplicate`, `ResolvedAnchorId`, `RowCount`, `MatchingEventCount`, `DuplicatesMerged`, `IsEmpty`, `Dispose()`. |
-| `ConsoleProjector` | `Project(snapshot, filter, viewState)`. |
+| `ConsoleRow` | `Id`, `Level`, `SourceId`, `TextContent` (`ILogTextContent`), `TextVersion`, `LinkSpans`, `MemberSequences`, `FirstTimestamp`, `Timestamp`, `LastSequence`, `SearchHits`, `TimeText`, `Count`, additive `GetFirstLine(maxCharacters = 1024)` for derived collapsed previews. |
+| `ConsoleProjection` | `Version`, `Generation`, `LastSequence`, `CapturedAt`, `TimeBase`, `Rows`, `LevelCounts`, `SourceCounts`, additive `Sources` for ordered display metadata, `RetainedMembership`, `EventCount`, `NewSincePauseCount`, `EvictedCount`, `Deduplicate`, `ResolvedAnchorId`, `RowCount`, `MatchingEventCount`, `DuplicatesMerged`, `IsEmpty`, `Dispose()`. |
+| `ConsoleProjector` | `Project(snapshot, filter, viewState)`, additive `Project(snapshot, filter, viewState, options)` for app inputs. |
 | `LinkKind` | `Url`, `File`, `Folder`. |
 | `LinkTarget` | `Kind`, `Path`, optional `Line`, optional `Column`. |
 | `ConsoleLinkSpan` | `Start`, `Length`, `Target`. |
 | `ConsoleLinkScanner` | `Scan(text)`. |
 | `ConsoleLinkIndex` | Constructor `(spans, textLength)`, `Spans`, `HitTest(offset)`. |
-| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot)`, `GetLinks(snapshot, entry)`. |
+| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot)`, `GetLinks(snapshot, entry)`, additive `GetLinks(snapshot, row)` for projected links without raw-entry reconstruction. |
 | `ConsoleExportOptions` | `IncludeTime = true`, `IncludeLevel = true`. |
 | `ConsoleExportFormatter` | `FormatVisible(projection, options)`, `FormatSelection(projection, selection, options)`, `WriteLogAsync(destination, projection, options, cancellationToken)`. |
 
@@ -342,7 +415,7 @@ Published-state reference counts use Interlocked.
 `ContentOwner._contentGate` protects reference lifetime only.
 Active reads pin the content before invoking app code outside the lock.
 Each snapshot disposes its leases once through `Interlocked`.
-`ConsoleLinkCache._cacheGate` protects its cache and revision stamp.
+`ConsoleLinkCache._cacheGate` protects its cache and one immutable state containing the live entry/group revisions and revision stamp; synchronization replaces this state together.
 All other model state is immutable.
 Hosts own view-state replacement and command access on one thread.
 

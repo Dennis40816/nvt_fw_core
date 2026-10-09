@@ -5,6 +5,8 @@ It adds a shared interface without removing existing scripts.
 It requires PowerShell 7.4 or later, Git 2.38 or later for merge proof, GitHub CLI, and an owner-installed token helper.
 The offline tests require Windows and Pester 3.4.0.
 
+[templates/review-template.md](templates/review-template.md) is an independent read-only review prompt with placeholders `{WORKTREE}`, `{BASE}`, `{HEAD}`, `{REPORT}`, `{TESTLOG}`.
+
 ## Configure one repository
 
 The owner creates `~/.nvt/gh-app/<owner>-<repo>.json` outside every repository.
@@ -101,7 +103,8 @@ Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
 This function opens a PR with a description from a UTF-8 body file.
 It then reads the author and compares it with `botLogin`.
 An incorrect author stops execution with the full PR URL.
-The function leaves that PR open for inspection.
+The function leaves that PR open for inspection by default.
+`-CloseOnWrongAuthor` closes it through the App before throwing when the author does not match.
 `-Base` defaults to `main`, and `-Draft` creates a draft.
 Head and base names must identify branches in the configured repository.
 
@@ -121,6 +124,8 @@ Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt
 ## Add-GhAppComment
 
 This function adds a file's contents as a PR or issue comment.
+
+`-IncludeIssuesWrite` requests `issues: write` for one issue comment; it is off by default and chosen per call. The owner must agree before each use. Supply `-IssuesLogPath` outside the repository; each use logs one UTC line before posting. Pull request targets are refused because PR comments do not need this permission.
 
 ```powershell
 Add-GhAppComment -Number 7 -BodyFile .\comment.txt
