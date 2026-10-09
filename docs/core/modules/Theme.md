@@ -1151,7 +1151,7 @@ Dark selected outlines use the brighter Core accent to separate the indicator fr
 
 ### Choice tokens
 
-`ThemeTokens.axaml` includes `ChoiceTokens.axaml`. Its six geometry tokens have identical Light and Dark values.
+`ThemeTokens.axaml` includes `ChoiceTokens.axaml`. Its 14 geometry tokens have identical Light and Dark values.
 Geometry comes from Choice and Shape tokens. Row colors come from the shared palette and `ControlTokens.axaml`.
 
 | Token | Light | Dark |
@@ -1367,6 +1367,25 @@ Owner review still needs real popup placement, 150 ms motion, long Traditional C
 ### Post-adoption geometry tokens
 
 These defaults are identical in both shapes and themes. Shape-dependent corners remain in the shape token table above.
+
+The frozen parent is repository `Dennis40816/nvt_fw_core`, at commit ref `c6c50c1c26b428f1c81d2397515feab3ff0e28fa` (full SHA).
+The replaced literals come from these files under `src/Nvt.Core.Avalonia/Theme`:
+
+- `ChoiceStyles.axaml` and `DividerStyles.axaml`.
+- `ExpanderStyles.axaml` and `ListStyles.axaml`.
+- `MenuStyles.axaml` and `ToggleStyles.axaml`.
+
+The frozen sheet set contains 45 redesign sheets:
+
+- `checkbox`, `radiobutton`, `list` and `combobox`.
+- `menu`, `contextmenu`, `expander` and `progressbar`.
+- `gridsplitter`, `switch` and `toggle`.
+
+Each name has four sheets: `<control>-pill-light.png`, `<control>-pill-dark.png`, `<control>-square-light.png` and `<control>-square-dark.png`.
+The remaining sheet is `separator.png`, which shows both themes and does not depend on shape.
+
+Native `ToggleSwitch` moves its knob to a new `Nvt.Toggle.SwitchKnobTravel` only after its checked state changes.
+Changing that token updates the knob canvas width immediately, but keeps the old knob position until the next toggle.
 
 | Token | Pill | Square |
 | --- | --- | --- |

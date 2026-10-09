@@ -1150,7 +1150,7 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 ### 選項 token
 
-`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中六個幾何 token 在 Light 與 Dark 使用相同值。
+`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中 14 個幾何 token 在 Light 與 Dark 使用相同值。
 幾何使用 Choice 與 Shape token；列顏色使用共用色盤與 `ControlTokens.axaml`。
 
 | Token | Light | Dark |
@@ -1367,6 +1367,25 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 
 以下預設值在兩種形狀與主題中相同。形狀相關圓角仍列於上方形狀 token 表。
 
+凍結的父版本為儲存庫 `Dennis40816/nvt_fw_core`，commit ref 為 `c6c50c1c26b428f1c81d2397515feab3ff0e28fa`（完整 SHA）。
+被取代的固定值來自 `src/Nvt.Core.Avalonia/Theme` 下的檔案：
+
+- `ChoiceStyles.axaml` 與 `DividerStyles.axaml`。
+- `ExpanderStyles.axaml` 與 `ListStyles.axaml`。
+- `MenuStyles.axaml` 與 `ToggleStyles.axaml`。
+
+凍結的圖表集包含 45 張重新設計圖表：
+
+- `checkbox`、`radiobutton`、`list` 與 `combobox`。
+- `menu`、`contextmenu`、`expander` 與 `progressbar`。
+- `gridsplitter`、`switch` 與 `toggle`。
+
+每個名稱有四張圖：`<control>-pill-light.png`、`<control>-pill-dark.png`、`<control>-square-light.png` 與 `<control>-square-dark.png`。
+另一張為 `separator.png`，同時展示兩種主題，且不受形狀影響。
+
+原生 `ToggleSwitch` 只有在勾選狀態改變後，才會將旋鈕移至新的 `Nvt.Toggle.SwitchKnobTravel` 位置。
+變更此 token 會立即更新旋鈕畫布寬度，但旋鈕會保留原位置，直到下一次切換。
+
 | Token | Pill 預設值 | Square 預設值 |
 | --- | --- | --- |
 | `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
@@ -1421,4 +1440,4 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 | `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 
-請參閱 [導入後微調指南（英文）](../post-adoption-tuning.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。
+請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。

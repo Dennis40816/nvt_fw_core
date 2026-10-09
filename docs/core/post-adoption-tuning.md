@@ -1,3 +1,5 @@
+[English](post-adoption-tuning.md) | [中文](post-adoption-tuning.zh-TW.md)
+
 # Post-adoption tuning
 
 Edit tokens to tune the controls together. Keep geometry out of style files.
@@ -25,13 +27,24 @@ Use the existing resource-reference kind for the property. These controls use `D
 Leave structural zeros, grid positions, single-line limits and stacking order in styles.
 
 Change `Nvt.Focus.RingThickness` in `ThemeTokens.axaml` to change every keyboard focus ring with one value.
-Change `Nvt.Controls.FocusRingMargin` for all exterior rings, or `Nvt.Controls.InsetFocusRingMargin` for all inset rings.
+Change `Nvt.Controls.FocusRingMargin` for exterior rings on Choice controls, Expander, GridSplitter and non-switch ToggleButton roles.
+It does not change Button-role rings.
+Switch rings use `Nvt.Toggle.SwitchFocusWidth` and `Nvt.Toggle.SwitchFocusHeight` to set their geometry.
+Change `Nvt.Controls.InsetFocusRingMargin` for inset rings on list and menu items.
+
+Keep these coupled values aligned:
+
+- `Nvt.Shape.FocusCornerRadius`: Square 10 DIP = the 6 DIP control corner + the 4 DIP exterior margin.
+- `Nvt.List.FocusCornerRadius`: Square 4 DIP = the 6 DIP control corner - the 2 DIP inset margin.
+- `Nvt.Expander.ContainerPadding`: 6 DIP, aligned with the 6 DIP divider gap.
+- `Nvt.Menu.PopupOffset`: -16 DIP, aligned with `Nvt.Menu.PopupShadowMargin` at 16 DIP.
+
 Override shared keys at the application resource root to tune every attached instance.
 Change family tokens for narrower adjustments. Dynamic resources update without replacing templates.
 
 Keep switch track, knob, travel and focus dimensions aligned when changing switch geometry.
 `Nvt.Toggle.SwitchKnobTravel` sets both the knob canvas width and the checked position.
-Native `ToggleSwitch` recalculates knob placement when its checked state changes.
+Native `ToggleSwitch` keeps the old knob position until its checked state changes, then uses the new travel value.
 `Nvt.Menu.PopupOffset` compensates for popup shadow margins on both axes.
 Check submenu offsets when changing popup padding or shadow margins.
 
