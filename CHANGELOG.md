@@ -2,7 +2,7 @@
 
 This file lists the changes in each Core release. The GitHub Release of each `core-v*` tag carries the same notes. Core follows SemVer; 1.x makes no breaking changes.
 
-Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` gets its own version and tag later.
+Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` starts at `0.1.0` with independent `core-fonts-v*` tags.
 
 ## Unreleased
 
@@ -50,6 +50,10 @@ NFC, NFH, and NFU have no inspected dependency on Core `NumberScrubber`.
 NFC keeps its local large-step behavior in `HexEditorPanel` on future adoption.
 Range rejection is withdrawn because binding coherence was not proved. The existing range contract remains unchanged.
 Both Inputs documents describe valid bound-update order and the retained reversed-range hazard.
+
+### Added
+
+- `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
 ## 0.5.0 - 2026-10-08
 

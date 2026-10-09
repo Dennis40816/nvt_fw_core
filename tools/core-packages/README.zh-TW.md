@@ -69,6 +69,20 @@ Release 標籤與資產名稱只允許英文字母、數字、`.`、`_` 與 `-`�
 資產名稱必須以 `.nupkg` 結尾。
 SHA-256 必須是 64 個小寫十六進位字元。
 
+每個套件各自固定 Release，不要求所有套件使用相同版本。
+`core-v<version>` 包含 `Nvt.Core` 與 `Nvt.Core.Avalonia`。
+`Nvt.Core.Fonts` 使用獨立版本 `0.1.0` 與 `core-fonts-v0.1.0`。
+[範例 manifest](core-packages.example.json) 已包含 `Nvt.Core.Fonts.0.1.0.nupkg`。
+範例字型項目的全零 SHA-256 是佔位值，必須換成該 Release 的 `SHA256SUMS` 所列雜湊。
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Nvt.Core" Version="0.5.0" />
+  <PackageReference Include="Nvt.Core.Avalonia" Version="0.5.0" />
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+</ItemGroup>
+```
+
 ```text
 python fetch_core_packages.py [--manifest PATH] [--dest PATH] [--offline] [--base-url URL]
 ```
@@ -97,10 +111,12 @@ SHA-256 不符時不重試。
 升級時，將 manifest 改為新 Release 的資產名稱與 `SHA256SUMS` 中的 SHA-256。
 更新確切套件參考與鎖定檔，再執行工具的採用驗證。
 回復時，將較早 Release 的值放回 manifest，並還原其套件參考與鎖定檔。
-字型套件若有獨立版本與標籤，也使用同一份 manifest，並在 `release` 填入自己的 Release 標籤。
+字型套件使用同一份 manifest，並在 `release` 固定獨立的 `core-fonts-v<version>` 標籤。
 
 工具發行時，從已驗證的 Core 下載套件取出 `LICENSE`，放入 `licenses/Nvt.Core/LICENSE`。
-此授權涵蓋兩個 Core 套件。
+此授權涵蓋 Core 套件程式碼，包括 Fonts。
+使用 Fonts 的工具也須隨附套件中的 `licenses/`，並保留 Inter 相依套件的授權與聲明。
+詳見 [Fonts 授權義務](../../docs/core/modules/Fonts.zh-TW.md#授權義務與更新)。
 Core 只能依其專有 `LICENSE` 散布。
 工具本身的授權不會重新授權 Core。
 
