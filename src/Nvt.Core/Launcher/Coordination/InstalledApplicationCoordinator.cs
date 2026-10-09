@@ -7,15 +7,15 @@ using Nvt.Core.Launcher.Persistence;
 namespace Nvt.Core.Launcher.Coordination;
 
 /// <summary>Caller-supplied presentation and stable entry point for one installed application.</summary>
-public sealed record InstalledApplicationPresentation(string DisplayName, string LaunchEntryPoint, string IconPath);
+internal sealed record InstalledApplicationPresentation(string DisplayName, string LaunchEntryPoint, string IconPath);
 
 /// <summary>Installed facts an upper layer can use to create or remove a desktop shortcut.</summary>
-public sealed record InstalledApplicationInfo(
+internal sealed record InstalledApplicationInfo(
     string ProductId, ManagedAppVersion InstalledVersion, string ExecutablePath,
     string DisplayName, string LaunchEntryPoint, string IconPath);
 
 /// <summary>Mandatory product presentation adapter; Core invents no executable, icon or display names.</summary>
-public interface IInstalledApplicationPresentation
+internal interface IInstalledApplicationPresentation
 {
     /// <summary>Reads the display name, stable launch entry point and icon for this exact installed app.</summary>
     ValueTask<InstalledApplicationPresentation> ReadAsync(
@@ -24,7 +24,7 @@ public interface IInstalledApplicationPresentation
 
 /// <summary>Starts one explicitly named installed app and reads its verified installed/shortcut facts.</summary>
 /// <remarks>Every state, repository and process port must be composed for the supplied product identity.</remarks>
-public sealed class InstalledApplicationCoordinator
+internal sealed class InstalledApplicationCoordinator
 {
     private readonly ProductDescriptor _product;
     private readonly string _installRoot;
