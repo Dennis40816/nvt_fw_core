@@ -24,7 +24,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 模組位於 `src/Nvt.Core/ReportList/`。
 命名空間為 `Nvt.Core.ReportList`。
-目標框架為 .NET 8。
+目標框架為 .NET 10。
 模組僅依賴 BCL。
 模組統一擁有下列四個泛型集合型別。
 分頁模型位於 `src/Nvt.Core.Avalonia/ReportList/`，命名空間為 `Nvt.Core.Avalonia.ReportList`，目標框架為 .NET 10。

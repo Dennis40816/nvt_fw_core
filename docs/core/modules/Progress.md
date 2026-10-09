@@ -18,7 +18,7 @@ Tests cover default progress, explicit null text, and retained text and fraction
 ## Summary
 
 Progress supplies validated fraction data, the single-active background job service from NVT FW UTIL (NFU), and two Freeform Helper (NFH) parts: the progress interval gate and the loading scope coordinator.
-The module uses only the .NET base class libraries and targets net8.0.
+The module uses only the .NET base class libraries and targets net10.0.
 Its namespace is `Nvt.Core.Progress`.
 
 Each tool keeps its update rate, progress payloads, result payloads, and presentation policy.

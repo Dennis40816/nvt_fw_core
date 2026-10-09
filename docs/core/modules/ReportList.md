@@ -24,7 +24,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 The module lives in `src/Nvt.Core/ReportList/`.
 The namespace is `Nvt.Core.ReportList`.
-It targets .NET 8.
+It targets .NET 10.
 It depends only on the BCL.
 It owns all four generic collection types below.
 The paging models live in `src/Nvt.Core.Avalonia/ReportList/`, namespace `Nvt.Core.Avalonia.ReportList`, targeting .NET 10.
