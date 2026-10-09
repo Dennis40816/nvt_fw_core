@@ -55,20 +55,33 @@ Launcher 傳輸測試內部的 LinkedProbeWorkspace 是另一份工作區副本�
 
 ## 基準與刻意差異
 
-這些工具取代 `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` 與
-`tests/Nvt.Core.Tests/Processes/TestWorkspace.cs`，來源為儲存庫
-Dennis40816/nvt_fw_core 的提交 d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559
-（PR #147 的時鐘）。可用 `git show <commit>:<path>` 比對。以下行為是刻意改變，
-已遷移的 Core 測試不依賴舊行為：
+這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的
+`tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` 與
+`tests/Nvt.Core.Tests/Processes/TestWorkspace.cs`。這兩個檔案在提交
+d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與本變更的父提交
+f90900bbb04f84e590aa77dc47b6e04b7a77d9c6 完全相同。可用
+`git show <commit>:<path>` 比對。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
 
-- 釋放後呼叫 Change 回傳 false，不再重新啟動計時器。
-- 同一次 Advance 中被前一個回呼釋放的單次計時器，在選取前即被移除，不會觸發。
-- 遞迴或並行的 Advance 擲出 InvalidOperationException。
-- 回呼例外會讓時鐘停在該回呼的到期時間。
-- 無效的計時器時間與溢位會擲出例外；建構子必須明確提供起始時間。
-- 工作區清除在所有作業系統執行，500 ms 內最多十次，失敗時擲出含路徑的 IOException。
-- 位於系統暫存目錄之外的根目錄在建構時失敗；前綴為 nvt-。
-- GetPath 拒絕冒號、父目錄片段，以及僅由點或空白組成的片段。
+時鐘：
 
-此套件隨 Core 專案一起建置。`core-v*` 發布流程目前仍只發布 Nvt.Core 與
-Nvt.Core.Avalonia；發布本套件屬於發布後的後續工作。
+- LocalTimeZone 是 UTC。舊時鐘沿用機器時區。
+- 建構子必須明確提供起始時間。舊時鐘使用固定起點。
+- 釋放後呼叫 Change 回傳 false。舊時鐘會重新啟動計時器。
+- `Change(Infinite, period)` 會取代週期。舊時鐘保留舊週期。
+- 計時器在時鐘選取後才被釋放，仍會執行已取得的回呼。舊時鐘只會略過單次計時器，週期計時器仍會執行。沒有測試固定這一項，因為需要在選取與呼叫之間製造競爭。
+- 計時器的 DisposeAsync 會等待執行中的回呼。舊版立即回傳。
+- 遞迴或並行的 Advance 擲出 InvalidOperationException。舊時鐘允許。
+- 無效的計時器時間與超出 UTC 範圍的 Advance 會擲出例外。週期大到溢位時只觸發一次就停止；舊時鐘會溢位回繞並不斷重複觸發。
+- 可同時有多個等待者（內部的 WhenPendingAsync）。舊時鐘只保留最後一個，第一個永遠不會完成。
+- 週期計時器重新排程時會通知等待者；已取消的等待者會被移除。
+
+與舊時鐘相同：回呼例外會讓時間停在該回呼的到期時間；被前一個回呼釋放的計時器不會觸發。
+
+工作區：
+
+- 清除在所有作業系統執行，500 ms 內最多十次，失敗時擲出含路徑的 IOException。
+- 位於系統暫存目錄之外的根目錄，或暫存目錄本身，在建構時失敗；前綴為 nvt-。
+- GetPath 以 Path.GetFullPath 正規化（a/./b 變成 a/b，單一點為根目錄），並拒絕空白路徑、冒號、父目錄片段，以及僅由點或空白組成的片段。反斜線在所有作業系統都是分隔符號。
+
+此套件隨 Core 專案一起建置，但 `scripts/pack.ps1` 以名稱只封裝 `Nvt.Core` 與
+`Nvt.Core.Avalonia`，所以 `core-v*` 發布不會發布本套件。發布本套件屬於後續工作。

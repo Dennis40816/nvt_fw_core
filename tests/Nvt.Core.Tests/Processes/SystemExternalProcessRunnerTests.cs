@@ -136,7 +136,7 @@ public sealed class SystemExternalProcessRunnerTests
 
         using var workspace = TestWorkspace.Create();
         string marker = workspace.GetPath("child.pid");
-        var time = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         TimeSpan timeout = TimeSpan.FromSeconds(10);
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
         var runner = CreateTreeRunner(parentReady, time);
@@ -229,7 +229,7 @@ public sealed class SystemExternalProcessRunnerTests
             Assert.Skip("Windows process execution is required.");
         }
 
-        var time = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         TimeSpan timeout = TimeSpan.FromSeconds(10);
         var outputCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var errorCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

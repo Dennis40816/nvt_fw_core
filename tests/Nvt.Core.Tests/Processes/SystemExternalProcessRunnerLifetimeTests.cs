@@ -495,7 +495,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         // The chain is root -> middle -> leaf. The shared probe passes both redirected streams down,
         // records the leaf and middle identities, and signals ready only after the middle has exited.
         // The pipe-holder is therefore live with an exited direct parent before timeout termination.
-        var time = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         var phases = new PhaseRecorder(time);
         TimeSpan timeout = TimeSpan.FromSeconds(3);
         ExternalProcessCleanupTiming timing = ExternalProcessCleanupTiming.Default;
@@ -548,7 +548,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         string pingPidFile = workspace.GetPath("stopped-orphan.pid");
         string orphanReady = pingPidFile + ".ready";
         string innerPidFile = pingPidFile + ".middle";
-        var time = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         var phases = new PhaseRecorder(time);
         var capacity = new ExternalProcessCapacity(1);
         var captured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

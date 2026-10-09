@@ -8,11 +8,11 @@ public sealed class ManualTimeProvider : TimeProvider
     // Guard: _gate protects the timestamp, timer schedules, advancing flag and pending waiters.
     private readonly object _gate = new();
     private readonly List<ManualTimer> _timers = [];
+    private readonly List<PendingWaiter> _waiters = [];
     private readonly DateTimeOffset _start;
     private readonly long _maximumTimestamp;
     private long _now;
     private bool _advancing;
-    private readonly List<PendingWaiter> _waiters = [];
 
     /// <summary>Creates a clock at <paramref name="start"/>, normalized to UTC, with timestamp zero.</summary>
     public ManualTimeProvider(DateTimeOffset start)
@@ -125,7 +125,22 @@ public sealed class ManualTimeProvider : TimeProvider
             }
             var waiter = new PendingWaiter(count, within);
             _waiters.Add(waiter);
-            return waiter.Source.Task.WaitAsync(cancellationToken);
+            if (cancellationToken.CanBeCanceled)
+            {
+                CancellationTokenRegistration registration = cancellationToken.Register(static state =>
+                {
+                    (ManualTimeProvider owner, PendingWaiter pending, CancellationToken token) = ((ManualTimeProvider, PendingWaiter, CancellationToken))state!;
+                    lock (owner._gate)
+                    {
+                        _ = owner._waiters.Remove(pending);
+                    }
+                    _ = pending.Source.TrySetCanceled(token);
+                }, (this, waiter, cancellationToken));
+                // Release the token registration once the waiter completes; the token may outlive the provider.
+                _ = waiter.Source.Task.ContinueWith(static (_, state) => ((CancellationTokenRegistration)state!).Dispose(),
+                    registration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            }
+            return waiter.Source.Task;
         }
     }
 

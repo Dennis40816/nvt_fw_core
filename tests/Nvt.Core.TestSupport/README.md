@@ -65,20 +65,36 @@ the Launcher transport tests is another workspace copy and also remains.
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
-`tests/Nvt.Core.Tests/Processes/TestWorkspace.cs` as they were in repository
-Dennis40816/nvt_fw_core at commit d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559
-(the PR #147 clock). Compare with `git show <commit>:<path>`. These behaviors
-differ on purpose, and the migrated Core tests do not depend on the old ones:
+`tests/Nvt.Core.Tests/Processes/TestWorkspace.cs` of repository
+Dennis40816/nvt_fw_core (branch `main`, the PR #147 clock). The two files are
+identical at commit d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 and at the parent
+of this change, f90900bbb04f84e590aa77dc47b6e04b7a77d9c6. Compare with
+`git show <commit>:<path>`. These behaviors differ on purpose, and the migrated
+Core tests do not depend on the old ones:
 
-- Change after disposal returns false. It no longer re-arms the timer.
-- A one-shot timer disposed by an earlier callback is removed before selection, so it does not fire.
-- Recursive or concurrent Advance throws InvalidOperationException.
-- A callback exception stops the clock at that callback's due time.
-- Invalid timer durations and overflow throw. The constructor requires an explicit start.
-- Workspace cleanup runs on every OS, with at most ten attempts in 500 ms, and throws IOException naming the path.
-- A root outside the OS temp directory fails at construction. The prefix is nvt-.
-- GetPath rejects colons, parent segments and segments of only dots or spaces.
+Clock:
 
-The package is built with the Core projects. The `core-v*` release workflow
-still publishes only Nvt.Core and Nvt.Core.Avalonia. Publishing this package is
-a release follow-up.
+- LocalTimeZone is UTC. The old clock inherited the machine zone.
+- The constructor needs an explicit start. The old clock used a fixed origin.
+- Change after disposal returns false. The old clock re-armed the timer.
+- `Change(Infinite, period)` replaces the period. The old clock kept the old one.
+- A timer that is disposed after the clock selected it still runs its claimed callback. The old clock skipped one-shot timers only. Periodic timers still ran. No test pins this one: it needs a race between selection and invoke.
+- Timer DisposeAsync waits for a callback that is already running. The old one returned at once.
+- Recursive or concurrent Advance throws InvalidOperationException. The old clock allowed it.
+- Invalid timer durations and an advance beyond the UTC range throw. A period that would overflow the timestamp range fires once, then stops. The old clock wrapped and fired again and again.
+- Several waiters can be pending together (internal WhenPendingAsync). The old clock kept only the last one, and the first never completed.
+- A periodic re-arm signals a waiter. A canceled waiter is removed.
+
+Same as the old clock: a callback exception leaves time at that callback's due
+time, and a timer disposed by an earlier callback does not fire.
+
+Workspace:
+
+- Cleanup runs on every OS, with at most ten attempts in 500 ms, and throws IOException naming the path.
+- A root outside the OS temp directory, or the temp directory itself, fails at construction. The prefix is nvt-.
+- GetPath normalizes with Path.GetFullPath (a/./b becomes a/b, a single dot is the root). It rejects empty and whitespace paths, colons, parent segments and segments of only dots or spaces. A backslash is a separator on every OS.
+
+The package is built with the Core projects but is not packed by
+`scripts/pack.ps1` (it packs `Nvt.Core` and `Nvt.Core.Avalonia` by name), so the
+`core-v*` release does not publish it. Publishing this package is a release
+follow-up.

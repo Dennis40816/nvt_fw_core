@@ -369,15 +369,15 @@ public sealed class ManualTimeProviderTests
         await Bounded(second);
     }
 
-    /// <summary>A periodic timer that re-arms inside the window satisfies a waiter registered during the callback.</summary>
+    /// <summary>A periodic re-arm into the window completes a waiter that no earlier timer could satisfy.</summary>
     [Fact]
     public async Task PeriodicRearmSignalsWaiter()
     {
         var time = new ManualTimeProvider(Start);
-        Task? waiter = null;
-        using ITimer timer = time.CreateTimer(_ => waiter ??= time.WhenPendingAsync(1, Seconds(1), Token), null, Seconds(1), Seconds(1));
-        time.Advance(Seconds(1));
-        Assert.NotNull(waiter);
+        using ITimer timer = time.CreateTimer(static _ => { }, null, Seconds(3), Seconds(1));
+        Task waiter = time.WhenPendingAsync(1, Seconds(1), Token);
+        Assert.False(waiter.IsCompleted);
+        time.Advance(Seconds(3));
         await Bounded(waiter);
     }
 
@@ -418,7 +418,7 @@ public sealed class ManualTimeProviderTests
         await Bounded(disposal.AsTask());
     }
 
-    /// <summary>A one-shot timer disposed by an earlier callback in the same advance is not invoked.</summary>
+    /// <summary>Preserved from the old clock: a one-shot timer disposed by an earlier callback in the same advance is not invoked.</summary>
     [Fact]
     public void TimerDisposedByEarlierCallbackDoesNotFire()
     {

@@ -83,10 +83,31 @@ public sealed class TestWorkspaceTests
     {
         string outside = Path.GetPathRoot(Path.GetTempPath())!;
         string root = Path.Combine(outside, "nvt-outside-root-check");
-        if (root.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase))
+        if (root.StartsWith(Path.GetTempPath(), StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            Assert.Skip("The temporary directory is the volume root, so no outside path exists.");
         }
+        Assert.Throws<ArgumentException>(() => new TestWorkspace(root, static _ => { }, static _ => { }));
+    }
+
+    /// <summary>A trailing separator on the internal root does not break path resolution.</summary>
+    [Fact]
+    public void TrailingSeparatorOnTheRootIsIgnored()
+    {
+        using var owner = TestWorkspace.Create();
+        var workspace = new TestWorkspace(owner.RootPath + Path.DirectorySeparatorChar, static _ => { }, static _ => { });
+        Assert.Equal(owner.RootPath, workspace.RootPath);
+        Assert.Equal(Path.Combine(owner.RootPath, "a"), workspace.GetPath("a"));
+    }
+
+    /// <summary>The temporary directory itself is not a valid root, with or without a trailing separator.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TemporaryDirectoryItselfIsRejected(bool trailingSeparator)
+    {
+        string temp = Path.TrimEndingDirectorySeparator(Path.GetTempPath());
+        string root = trailingSeparator ? temp + Path.DirectorySeparatorChar : temp;
         Assert.Throws<ArgumentException>(() => new TestWorkspace(root, static _ => { }, static _ => { }));
     }
 

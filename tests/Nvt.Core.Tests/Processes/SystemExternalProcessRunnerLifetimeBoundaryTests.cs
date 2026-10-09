@@ -42,7 +42,7 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
         }
 
         using var workspace = TestWorkspace.Create();
-        var time = new ManualTimeProvider(new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         var capacity = new ExternalProcessCapacity(limit);
         var invocations = new List<RetainedReaders>();
         var request = new ExternalProcessStartInfo(

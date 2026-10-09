@@ -21,11 +21,12 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
     internal TestWorkspace(string rootPath, Action<string> delete, Action<TimeSpan> waitForRetry,
         Func<TimeSpan>? retryElapsed = null)
     {
-        RootPath = Path.GetFullPath(rootPath);
+        RootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(rootPath));
         string temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())) + Path.DirectorySeparatorChar;
-        if (!RootPath.StartsWith(temp, PathComparison))
+        if (!RootPath.StartsWith(temp, PathComparison) ||
+            string.Equals(Path.TrimEndingDirectorySeparator(RootPath), Path.TrimEndingDirectorySeparator(temp), PathComparison))
         {
-            throw new ArgumentException("The workspace must be below the temporary directory.", nameof(rootPath));
+            throw new ArgumentException("The workspace must be a directory below the temporary directory.", nameof(rootPath));
         }
         _delete = delete;
         _waitForRetry = waitForRetry;
@@ -84,12 +85,6 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
         return resolved;
     }
 
-    /// <summary>Deletes the directory, retrying sharing/access failures for at most ten attempts within 500 ms.</summary>
-    /// <remarks>
-    /// Disposal is idempotent, including failure: later calls report the same retained-path exception.
-    /// The retry budget bounds retries and waits; an OS filesystem call already in progress cannot be interrupted.
-    /// </remarks>
-    /// <exception cref="IOException">Cleanup failed; the exception identifies the retained directory.</exception>
     private void DisposeCore()
     {
         lock (_gate)
@@ -140,10 +135,16 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>Deletes the directory, retrying sharing/access failures for at most ten attempts within 500 ms.</summary>
+    /// <remarks>
+    /// Disposal is idempotent, including failure: later calls report the same retained-path exception.
+    /// The retry budget bounds retries and waits; an OS filesystem call already in progress cannot be interrupted.
+    /// </remarks>
+    /// <exception cref="IOException">Cleanup failed; the exception identifies the retained directory.</exception>
     public void Dispose() => DisposeCore();
 
-    /// <inheritdoc />
+    /// <summary>Performs the same synchronous, bounded cleanup as <see cref="Dispose"/>.</summary>
+    /// <exception cref="IOException">Cleanup failed; the exception identifies the retained directory.</exception>
     public ValueTask DisposeAsync()
     {
         DisposeCore();

@@ -6,8 +6,8 @@ using System.IO.Pipes;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
-using Nvt.Core.Tests.LinkedProbe;
 using Nvt.Core.TestSupport;
+using Nvt.Core.Tests.LinkedProbe;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 

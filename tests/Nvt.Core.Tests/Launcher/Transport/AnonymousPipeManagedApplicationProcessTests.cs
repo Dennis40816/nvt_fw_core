@@ -284,7 +284,7 @@ public sealed class AnonymousPipeManagedApplicationProcessTests
         {
             TestWorkspace workspace = TestWorkspace.Create();
             try { return new(workspace, ProcessProbe.CopyAndRename(workspace, "Fixture")); }
-            catch { ((IDisposable)workspace).Dispose(); throw; }
+            catch { workspace.Dispose(); throw; }
         }
 
         internal void RequireLifetimeCustodyCapability() =>
@@ -314,7 +314,7 @@ public sealed class AnonymousPipeManagedApplicationProcessTests
                     ? TestContext.Current.CancellationToken : cancellationToken);
         }
 
-        public void Dispose() => ((IDisposable)_files.Workspace).Dispose();
+        public void Dispose() => _files.Workspace.Dispose();
 
         private sealed record ProbeFiles(TestWorkspace Workspace, string Executable);
     }
