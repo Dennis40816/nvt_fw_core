@@ -98,6 +98,8 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
+- Added the public API inventory for the non-Launcher `Nvt.Core` namespaces (`PublicAPI.Unshipped.txt`, 745 entries) and the consumer table in `docs/core/api-inventory.md`. The analyzer gate follows in a later change.
+
 ## 0.5.0 - 2026-10-08
 
 No breaking changes since 0.4.0.
