@@ -44,7 +44,7 @@ owner（Dennis）的暫定目標，原話：
 
 ## Nvt.Core 程式庫
 
-[Nvt.Core.sln](Nvt.Core.sln) 包含不依賴 UI 的 `Nvt.Core`（`net8.0`）、`Nvt.Core.Avalonia`（`net10.0`、Avalonia 12.1.1），以及各自的空白 xUnit 測試專案。Avalonia 測試專案參照 `Avalonia.Headless.XUnit`；Task 0 不抽取應用程式主機或執行階段程式碼。
+[Nvt.Core.sln](Nvt.Core.sln) 包含不依賴 UI 的 `Nvt.Core`（`net10.0`）、`Nvt.Core.Avalonia`（`net10.0`、Avalonia 12.1.1），以及各自的空白 xUnit 測試專案。Avalonia 測試專案參照 `Avalonia.Headless.XUnit`；Task 0 不抽取應用程式主機或執行階段程式碼。
 
 凍結的設定基準：NFC（`nvt_fw_combiner`）、`origin/1.2.x`、commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`。慣例取自：
 
@@ -53,7 +53,7 @@ owner（Dennis）的暫定目標，原話：
 - `tests/NvtFwCombiner.Domain.Tests/NvtFwCombiner.Domain.Tests.csproj`
 - `tests/NvtFwCombiner.UiSmoke.Tests/NvtFwCombiner.UiSmoke.Tests.csproj`
 
-僅保留共用編譯／建置設定及本骨架使用的套件。SDK 為 `10.0.301`，套件版本集中鎖定為 NFC 基準的版本。外部腳本負責還原套件並提交產生的 `packages.lock.json`。還原後以以下指令驗證：
+僅保留共用編譯／建置設定及本骨架使用的套件。SDK 為 `10.0.303`，套件版本集中鎖定為 NFC 基準的版本。外部腳本負責還原套件並提交產生的 `packages.lock.json`。還原後以以下指令驗證：
 
 ```powershell
 $env:AVALONIA_TELEMETRY_OPTOUT = '1'

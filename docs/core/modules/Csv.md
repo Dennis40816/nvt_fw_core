@@ -2,7 +2,7 @@
 
 # Csv: CsvQuoting
 
-[`CsvQuoting.Quote`](../../../src/Nvt.Core/Csv/CsvQuoting.cs) quotes one CSV field. It is in `Nvt.Core.Csv`, targets `net8.0` and depends only on the BCL. Tool adoption is a separate task.
+[`CsvQuoting.Quote`](../../../src/Nvt.Core/Csv/CsvQuoting.cs) quotes one CSV field. It is in `Nvt.Core.Csv`, targets `net10.0` and depends only on the BCL. Tool adoption is a separate task.
 
 Frozen parent baseline: NFU (`Dennis40816/nvt-event-buffer-replay`), `origin/0.2.0`, commit `915d0c1b571a2c4a95c8c6d2d3cc6421079ff99b`. Extracted from two identical private helpers:
 
