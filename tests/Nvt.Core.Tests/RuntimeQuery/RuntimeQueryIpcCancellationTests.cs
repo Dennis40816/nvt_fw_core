@@ -147,10 +147,15 @@ public sealed class RuntimeQueryIpcCancellationTests
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var events = new ConcurrentQueue<RuntimeQueryDiagnostic>();
         var pipeName = RuntimeQueryTestValues.NewPipeName();
         await using var server = new RuntimeQueryIpcServer(pipeName, "1", 5000, 1500, RuntimeQueryTestValues.NfhError,
-            (kind, _) => events.Enqueue(kind), async (_, _, token) =>
+            (kind, _) =>
+            {
+                events.Enqueue(kind);
+                if (kind == RuntimeQueryDiagnostic.Stopped) stopped.TrySetResult();
+            }, async (_, _, token) =>
             {
                 entered.SetResult();
                 await Task.Delay(Timeout.Infinite, token);
@@ -166,6 +171,8 @@ public sealed class RuntimeQueryIpcCancellationTests
         Assert.True(readError is null or IOException);
         Assert.Empty(responseBytes.ToArray());
         Assert.DoesNotContain(RuntimeQueryDiagnostic.HandlerFailed, events);
+        // The run loop reports Stopped after DisposeAsync returns, so wait for it instead of reading it at once.
+        await stopped.Task.WaitAsync(timeout.Token);
         Assert.Contains(RuntimeQueryDiagnostic.Stopped, events);
     }
 
