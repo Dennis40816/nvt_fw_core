@@ -2,13 +2,18 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入三個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
+Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+<ResourceInclude Source="avares://Nvt.Core.Fonts/FontRoles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/FormStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TabStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TextStyles.axaml" />
 ```
 
 ## 共用色票
@@ -121,10 +126,10 @@ Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具�
 | Text padding / 文字內距 | 14 horizontal / 水平, 0 vertical / 垂直 |
 | Icon button / 圖示按鈕 | 32 × 32, padding / 內距 0 |
 | Button and chip border / 按鈕與膠囊邊界 | 1 |
-| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 10,0; radius / 圓角 6 |
+| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 `12,0`, Pill / Square radius / 圓角 `999` / `6` |
 | Spacing / 間距 | `NfcSpace2/4/8/12/16/24`; `NfcFieldSpacing` = 4 |
 
-以上皆為邏輯像素，不再額外乘 DPI。按鈕內容置中、單行、字元省略並裁切；圖示角色繼承所組合色彩角色。焦點需容器預留 4 px；相鄰控制項建議間隔 8 px。接合邊為零圓角；多行編輯器與資料視覺不套用 32 px。字型與字型 fallback 不變。本次沒有增加一般輸入框樣式。
+以上皆為邏輯像素，不再額外乘 DPI。按鈕內容置中、單行、字元省略並裁切；圖示角色繼承所組合色彩角色。焦點需容器預留 4 px；相鄰控制項建議間隔 8 px。接合邊為零圓角；多行編輯器與資料視覺不套用 32 px。字型與字型 fallback 不變。`FormStyles.axaml` 提供共用輸入控制項樣式。
 
 ## 按鈕角色與狀態
 
@@ -1150,7 +1155,7 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 ### 選項 token
 
-`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中六個幾何 token 在 Light 與 Dark 使用相同值。
+`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中 14 個幾何 token 在 Light 與 Dark 使用相同值。
 幾何使用 Choice 與 Shape token；列顏色使用共用色盤與 `ControlTokens.axaml`。
 
 | Token | Light | Dark |
@@ -1367,6 +1372,25 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 
 以下預設值在兩種形狀與主題中相同。形狀相關圓角仍列於上方形狀 token 表。
 
+凍結的父版本為儲存庫 `Dennis40816/nvt_fw_core`，commit ref 為 `c6c50c1c26b428f1c81d2397515feab3ff0e28fa`（完整 SHA）。
+被取代的固定值來自 `src/Nvt.Core.Avalonia/Theme` 下的檔案：
+
+- `ChoiceStyles.axaml` 與 `DividerStyles.axaml`。
+- `ExpanderStyles.axaml` 與 `ListStyles.axaml`。
+- `MenuStyles.axaml` 與 `ToggleStyles.axaml`。
+
+凍結的圖表集包含 45 張重新設計圖表：
+
+- `checkbox`、`radiobutton`、`list` 與 `combobox`。
+- `menu`、`contextmenu`、`expander` 與 `progressbar`。
+- `gridsplitter`、`switch` 與 `toggle`。
+
+每個名稱有四張圖：`<control>-pill-light.png`、`<control>-pill-dark.png`、`<control>-square-light.png` 與 `<control>-square-dark.png`。
+另一張為 `separator.png`，同時展示兩種主題，且不受形狀影響。
+
+原生 `ToggleSwitch` 只有在勾選狀態改變後，才會將旋鈕移至新的 `Nvt.Toggle.SwitchKnobTravel` 位置。
+變更此 token 會立即更新旋鈕畫布寬度，但旋鈕會保留原位置，直到下一次切換。
+
 | Token | Pill 預設值 | Square 預設值 |
 | --- | --- | --- |
 | `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
@@ -1421,7 +1445,7 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 | `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 
-請參閱 [導入後微調指南（英文）](../post-adoption-tuning.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。
+請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。
 
 ## Astra 表單與頁籤
 
@@ -1429,6 +1453,19 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 
 在 Fluent 之後載入 `FormStyles.axaml` 與 `TabStyles.axaml`。ComboBox 彈出項目仍載入 `ListStyles.axaml`。
 `ThemeTokens.axaml` 自動合併 `FormTokens.axaml` 與 `TabTokens.axaml`。
+載入這些樣式之前，必須先將 `ThemeTokens` 合併至應用程式層級資源。
+`Nvt.Form.StateTransitionDuration` 與 `Nvt.Tab.StateTransitionDuration` 使用載入時的 `StaticResource` 值。
+執行期覆寫 token 不會改變既有轉場時間。重新載入樣式才能套用新的時間。
+
+`FormStyles` 全域套用至 TextBox、NumericUpDown 與 ComboBox，也涵蓋其他控制項範本內的 TextBox。
+內嵌 TextBox 可加上 `formEmbedded`，保留原生範本並將最小高度設為零。
+其他表單 setter 仍會套用。可編輯 ComboBox 使用此類別；NumericUpDown 則刻意保留 Core 輸入範本。
+Tab 導覽直接到達可編輯 ComboBox 的輸入框，保留原生焦點轉交會遺失的鍵盤焦點可見狀態。
+TextBox 繼承 `FontFamily`，因此等寬編輯器可在祖先設定字型。
+`AcceptsReturn=True` 使用頂端對齊，兩種形狀皆採 6 DIP 圓角與 10 DIP 焦點圓角。
+32 DIP 最小高度允許編輯器增高。
+TextBox、NumericUpDown、ComboBox 與 TabItem 使用 `UseLayoutRounding=False`，保留精確的焦點外距與微調幾何。
+非整數 DPI 下，邊框與文字可能較柔和，因為邊界不會捨入至實體像素。
 
 - TextBox 使用柔和填色、32 DIP 最小列高與原生文字編輯呈現器。
 - NumericUpDown 共用外框，內含無邊框輸入框與兩個緊湊的微調按鈕。
@@ -1437,6 +1474,8 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 - 控制項支援一般、滑入、按下或展開、鍵盤焦點、停用，以及執行期 Pill／Square 切換。
 
 TextBox 與 NumericUpDown 保留原生 `IsReadOnly` 行為。
+唯讀會抑制滑入填色與邊框。錯誤狀態保留唯讀填色，並使用錯誤邊框。
+TextBox 沒有原生 `:pressed` 狀態。狀態圖表強制設定此偽類別，以預覽保留的樣式規則。
 ComboBox 沒有原生唯讀屬性。`readOnly` 類別只提供唯讀視覺狀態。
 採用端負責限制選取。樣式保留原生鍵盤行為。
 
@@ -1446,8 +1485,9 @@ ComboBox 沒有原生唯讀屬性。`readOnly` 類別只提供唯讀視覺狀態
 數值輸入的焦點環包住整個微調控制項。驗證呈現器仍保留，且不裁切外環。
 控制項本身或祖先的 `reducedMotion` 類別會停用色彩轉場。
 
-表單沿用緊湊欄位列、無邊框數值輸入與小型微調目標的設計意圖。
-頁籤沿用中性頁籤列與明確選取狀態的設計意圖。Core 使用自己的名稱與色盤。
+表單是 Core 原創設計，從 NFH 外觀取用緊湊欄位列、無邊框數值輸入與小型微調目標的設計意圖。
+頁籤是 Core 原創設計，從 NFH 外觀取用中性頁籤列與明確選取狀態的設計意圖。
+Core 使用自己的名稱與色盤。
 採用端移除重複的欄位尺寸、關閉選單、微調按鈕、頁籤列、指示線與焦點樣式。
 保留資料繫結、驗證、命令、無障礙名稱與既有彈出項目邏輯。
 
@@ -1458,7 +1498,7 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 
 | Token | Light | Dark | 別名來源 |
 | --- | --- | --- | --- |
-| `Nvt.Form.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Form.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Form.FillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Form.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
 | `Nvt.Form.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
@@ -1474,7 +1514,7 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 | `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
 | `Nvt.Form.SelectionBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
 | `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
-| `Nvt.Tab.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.FillBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
@@ -1499,7 +1539,7 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 焦點重用 `Nvt.Shape.FocusCornerRadius`：Pill 999，Square 10。
 外環厚度與外側邊距重用 `Nvt.Focus.RingThickness` 和 `Nvt.Controls.FocusRingMargin`。
 
-調整数值控制項時，請同步調整 `SpinnerWidth`、`BorderThickness`、`InnerFocusOffset` 和 `LeftSpinnerFocusOffset`。
+調整數值控制項時，請同步調整 `SpinnerWidth`、`BorderThickness`、`InnerFocusOffset` 和 `LeftSpinnerFocusOffset`。
 左側位移為微調寬度加邊框內縮後的負值。兩個 15 DIP 按鈕可放入 32 DIP 欄位。
 
 | Token | Pill | Square |
@@ -1508,6 +1548,8 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 | `Nvt.Form.BorderThickness` | `1` | `1` |
 | `Nvt.Form.EmptyThickness` | `0` | `0` |
 | `Nvt.Form.InputCornerRadius` | `0` | `0` |
+| `Nvt.Form.MultilineCornerRadius` | `6` | `6` |
+| `Nvt.Form.MultilineFocusCornerRadius` | `10` | `10` |
 | `Nvt.Form.SpinnerWidth` | `28` | `28` |
 | `Nvt.Form.SpinnerButtonHeight` | `15` | `15` |
 | `Nvt.Form.LeftSpinnerFocusOffset` | `-29` | `-29` |
@@ -1593,9 +1635,13 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 
 `TextStyles.axaml` 提供可選用的 TextBlock 文字角色，也適用其 SelectableTextBlock 子類別。
 每個類別都從既有 `Nvt.Font.<Role>.*` token 設定字型家族、大小與字重。
-所有角色使用 `NfcTextBrush`。另外加上 `muted`，只將前景改為 `NfcTextMutedBrush`。
+所有角色都將前景設為 `NfcTextBrush`，覆寫繼承的前景，包括選取列與實心按鈕的前景。
+另外加上 `muted`，只將前景改為 `NfcTextMutedBrush`。
+這些類別套用至任何符合的 TextBlock，也包含其他控制項範本內的文字。
+既有 `title`、`body`、`caption` 或 `muted` 等同名類別可能因此與這些樣式衝突。
 
-參考 `Nvt.Core.Fonts`、合併 `FontRoles.axaml`，並在 Fluent 之後載入 `TextStyles.axaml`。
+這些角色需要 `Nvt.Core.Fonts` 套件及其資源。
+參考 `Nvt.Core.Fonts`，在載入文字樣式之前合併 `FontRoles.axaml`，並在 Fluent 之後載入 `TextStyles.axaml`。
 依 [Fonts 模組](Fonts.zh-TW.md) 使用 `WithNvtCoreFonts()` 設定既有中文後備字型。
 樣式不需要新的字型註冊或公開 C# API。
 採用後移除重複的本機文字角色樣式。
@@ -1656,5 +1702,5 @@ Fluent 比較圖使用 `forms-before-light.png` 與 `tabs-before-light.png`。
 
 測試涵蓋執行期圓角、token 幾何、錯誤優先順序、僅鍵盤顯示且不裁切的焦點環、原生編輯、微調、頁籤導覽與字型角色三項設定。
 擁有者仍需檢閱實際應用程式的彈出位置、150 ms 動態轉場、長繁體中文內容與頁面組合。
-ComboBox 已驗證的範圍為關閉欄位外觀。唯讀視覺類別不會限制選取。
-token 歸屬與驗證流程請參閱 [採用後調整](../post-adoption-tuning.md)。
+ComboBox 測試涵蓋關閉欄位、可編輯輸入框與原生驗證幾何。唯讀視覺類別不會限制選取。
+token 歸屬與驗證流程請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)。

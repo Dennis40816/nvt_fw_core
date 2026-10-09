@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Templates;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -78,7 +80,7 @@ public sealed class FormStylesTests
         {
             ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
             FormsTestHost.Show(host);
-            foreach (FormState state in FormsTestHost.States)
+            foreach (FormState state in FormsTestHost.States.Concat(FormsTestHost.ReadOnlyStates))
             {
                 FormsTestHost.SetState(control, state);
                 Flush(host);
@@ -139,12 +141,159 @@ public sealed class FormStylesTests
             Assert.Equal(control.Bounds.Width + 8, ring.Bounds.Width);
             Assert.Equal(control.Bounds.Height + 8, ring.Bounds.Height);
             Assert.Null(control.FocusAdorner);
-            Assert.Single(control.GetVisualDescendants().OfType<Border>(), part => part.Name == "FormFocusRing" && part.IsEffectivelyVisible);
+            Assert.Single(control.GetVisualDescendants().OfType<Border>(), part => part.Name is "FormFocusRing" or "SpinnerFocusRing" && part.IsEffectivelyVisible);
             control.IsEnabled = false;
             Flush(host);
             Assert.False(ring.IsVisible);
         }
         finally { host.Close(); }
+    }
+
+    /// <summary>Traces the field body while native validation adds its error presenter.</summary>
+    [AvaloniaTheory]
+    [InlineData("textbox", false, false)]
+    [InlineData("textbox", true, true)]
+    [InlineData("numericupdown", false, false)]
+    [InlineData("numericupdown", true, true)]
+    [InlineData("combobox", false, false)]
+    [InlineData("combobox", true, true)]
+    public void NativeValidationKeepsFocusRingAroundBody(string kind, bool dark, bool square)
+    {
+        TemplatedControl control = FormsTestHost.Sample(kind, new("Rest"));
+        Window host = FormsTestHost.Create(new StackPanel { Margin = new Thickness(24), Children = { control } }, dark);
+        try
+        {
+            ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+            FormsTestHost.Show(host);
+            // Use the exact native validation payload from the regression report.
+#pragma warning disable CA2201
+            DataValidationErrors.SetError(control, new Exception("x"));
+#pragma warning restore CA2201
+            Control target = control is NumericUpDown ? Part<TextBox>(control, "PART_TextBox") : control;
+            Assert.True(target.Focus(NavigationMethod.Tab));
+            Flush(host);
+            Assert.True(DataValidationErrors.GetHasErrors(control));
+            Assert.Contains(":error", control.Classes);
+            Border body = FormsTestHost.Body(control);
+            Assert.Equal(ResourceColor(control, "Nvt.Form.ErrorBorderBrush"), ColorOf(body.BorderBrush));
+            Assert.True(control.Bounds.Height > body.Bounds.Height);
+            AssertBodyRing(control, host);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Keeps editable selectors at 32 DIP with one outer keyboard focus ring and native text input.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void EditableComboBoxUsesOneOuterRing(bool dark, bool square)
+    {
+        var before = new Grid { Focusable = true, Height = 20 };
+        var after = new Grid { Focusable = true, Height = 20 };
+        var combo = new ComboBox { IsEditable = true, ItemsSource = new[] { "Alpha", "Beta" }, SelectedIndex = 0 };
+        Window host = FormsTestHost.Create(new StackPanel { Margin = new Thickness(24), Spacing = 16, Children = { before, combo, after } }, dark);
+        try
+        {
+            ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+            FormsTestHost.Show(host);
+            TextBox input = Part<TextBox>(combo, "PART_EditableTextBox");
+            Assert.Equal(0, input.MinHeight);
+            Assert.Equal(32, combo.Bounds.Height);
+            Assert.True(input.Focus(NavigationMethod.Pointer));
+            Flush(host);
+            Assert.False(FormsTestHost.Ring(combo).IsVisible);
+            Assert.True(before.Focus());
+            KeyStroke(host, Key.Tab);
+            Assert.True(input.IsFocused);
+            Assert.True(combo.IsKeyboardFocusWithin);
+            Assert.True(input.Classes.Contains(":focus-visible"), $"Combo: {string.Join(", ", combo.Classes)}, Input: {string.Join(", ", input.Classes)}");
+            AssertBodyRing(combo, host);
+            Assert.DoesNotContain(input.GetVisualDescendants().OfType<Border>(), part => part.Name == "FormFocusRing" && part.IsEffectivelyVisible);
+            host.KeyTextInput("Custom");
+            Assert.Equal("Custom", combo.Text);
+            DataValidationErrors.SetError(combo, new InvalidOperationException("x"));
+            Flush(host);
+            Assert.Equal(ResourceColor(combo, "Nvt.Form.ErrorBorderBrush"), ColorOf(FormsTestHost.Body(combo).BorderBrush));
+            AssertBodyRing(combo, host);
+            KeyStroke(host, Key.Tab);
+            Assert.True(after.IsFocused);
+            Assert.False(FormsTestHost.Ring(combo).IsVisible);
+            Assert.True(input.Focus(NavigationMethod.Tab));
+            Flush(host);
+            AssertBodyRing(combo, host);
+            combo.IsEnabled = false;
+            Flush(host);
+            Assert.False(FormsTestHost.Ring(combo).IsVisible);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Uses compact multiline corners, top alignment, and the inherited monospace font in both shapes.</summary>
+    [AvaloniaFact]
+    public void MultilineTextBoxPreservesEditorGeometryAndInheritedFont()
+    {
+        var text = new TextBox { AcceptsReturn = true, Text = "First line\nSecond line", Height = 120 };
+        Window host = FormsTestHost.Create(new StackPanel { Margin = new Thickness(24), Children = { text } });
+        try
+        {
+            var family = (global::Avalonia.Media.FontFamily)host.FindResource("Nvt.Font.Mono.Family")!;
+            host.FontFamily = family;
+            FormsTestHost.Show(host);
+            foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill })
+            {
+                ThemeShapes.SetShape(host.Resources, shape);
+                Assert.True(text.Focus(NavigationMethod.Tab));
+                Flush(host);
+                Assert.Equal(new CornerRadius(6), FormsTestHost.Body(text).CornerRadius);
+                Assert.Equal(new CornerRadius(10), FormsTestHost.Ring(text).CornerRadius);
+                Assert.Equal(VerticalAlignment.Top, text.VerticalContentAlignment);
+                Assert.Equal(VerticalAlignment.Top, Part<TextPresenter>(text, "PART_TextPresenter").VerticalAlignment);
+                Assert.Equal(family, text.FontFamily);
+                Assert.Equal(family, Part<TextPresenter>(text, "PART_TextPresenter").FontFamily);
+                Assert.Equal(120, text.Bounds.Height);
+                AssertBodyRing(text, host);
+            }
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Lets embedded editors retain their native template and opt out of the minimum row height.</summary>
+    [AvaloniaFact]
+    public void EmbeddedTextBoxCanOptOutOfTemplateAndMinimumHeight()
+    {
+        var input = new TextBox { Text = "Embedded", Classes = { "formEmbedded" } };
+        var owner = new Button
+        {
+            Template = new FuncControlTemplate<Button>((_, _) => input),
+        };
+        Window host = FormsTestHost.Create(new StackPanel { Children = { owner } });
+        try
+        {
+            FormsTestHost.Show(host);
+            Assert.Same(owner, input.TemplatedParent);
+            Assert.Equal(0, input.MinHeight);
+            Assert.DoesNotContain(input.GetVisualDescendants().OfType<Border>(), part => part.Name == "FormBody");
+            input.Classes.Remove("formEmbedded");
+            Flush(host);
+            Assert.Equal(32, input.MinHeight);
+            Assert.NotNull(FormsTestHost.Body(input));
+        }
+        finally { host.Close(); }
+    }
+
+    private static void AssertBodyRing(Control control, Window host)
+    {
+        Border body = FormsTestHost.Body(control);
+        Border ring = FormsTestHost.Ring(control);
+        Assert.True(ring.IsEffectivelyVisible);
+        Assert.Equal(new Point(-4, -4), ring.TranslatePoint(default, body));
+        Assert.Equal(body.Bounds.Width + 8, ring.Bounds.Width);
+        Assert.Equal(body.Bounds.Height + 8, ring.Bounds.Height);
+        foreach (Visual ancestor in ring.GetVisualAncestors().TakeWhile(ancestor => ancestor != host))
+            Assert.False(ancestor.ClipToBounds, $"Focus ring clipped by {ancestor.GetType().Name}");
+        Assert.Single(control.GetVisualDescendants().OfType<Border>(), part => part.Name is "FormFocusRing" or "SpinnerFocusRing" && part.IsEffectivelyVisible);
     }
 
     /// <summary>Keeps the numeric ring aligned when the native spinner moves left or is hidden.</summary>

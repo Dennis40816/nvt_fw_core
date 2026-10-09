@@ -2,13 +2,18 @@
 
 # Theme (`Nvt.Core.Avalonia.Theme`)
 
-Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the three style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file. The eight legacy font values and resource resolver remain unchanged.
+Theme defines one neutral and semantic palette, radii, sizes, states and focus ring for NFC, NFH and NFU. Each tool keeps its accent. Merge the tokens into application resources and load the style includes after Fluent. `ButtonStyles.axaml` is the only Core button style file. The eight legacy font values and resource resolver remain unchanged.
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+<ResourceInclude Source="avares://Nvt.Core.Fonts/FontRoles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/FormStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TabStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TextStyles.axaml" />
 ```
 
 ## Shared palette
@@ -121,10 +126,10 @@ Filled buttons use `Nvt.Button.PrimaryLabelBrush` from `ThemeTokens.axaml`, refe
 | Text padding / 文字內距 | 14 horizontal / 水平, 0 vertical / 垂直 |
 | Icon button / 圖示按鈕 | 32 × 32, padding / 內距 0 |
 | Button and chip border / 按鈕與膠囊邊界 | 1 |
-| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 10,0; radius / 圓角 6 |
+| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 `12,0`, Pill / Square radius / 圓角 `999` / `6` |
 | Spacing / 間距 | `NfcSpace2/4/8/12/16/24`; `NfcFieldSpacing` = 4 |
 
-All values are logical pixels; do not multiply by DPI again. Button content is centered, single-line, trimmed by character ellipsis and clipped. Icons inherit their composed color role. Containers reserve 4 px for focus; 8 px between adjacent controls is recommended. Joined edges have zero radius; multiline editors and data visuals are not constrained to 32 px. Fonts and fallbacks are unchanged. This change adds no general input-control style.
+All values are logical pixels; do not multiply by DPI again. Button content is centered, single-line, trimmed by character ellipsis and clipped. Icons inherit their composed color role. Containers reserve 4 px for focus; 8 px between adjacent controls is recommended. Joined edges have zero radius; multiline editors and data visuals are not constrained to 32 px. Fonts and fallbacks are unchanged. `FormStyles.axaml` provides shared input-control styles.
 
 ## Button roles and states
 
@@ -1151,7 +1156,7 @@ Dark selected outlines use the brighter Core accent to separate the indicator fr
 
 ### Choice tokens
 
-`ThemeTokens.axaml` includes `ChoiceTokens.axaml`. Its six geometry tokens have identical Light and Dark values.
+`ThemeTokens.axaml` includes `ChoiceTokens.axaml`. Its 14 geometry tokens have identical Light and Dark values.
 Geometry comes from Choice and Shape tokens. Row colors come from the shared palette and `ControlTokens.axaml`.
 
 | Token | Light | Dark |
@@ -1368,6 +1373,25 @@ Owner review still needs real popup placement, 150 ms motion, long Traditional C
 
 These defaults are identical in both shapes and themes. Shape-dependent corners remain in the shape token table above.
 
+The frozen parent is repository `Dennis40816/nvt_fw_core`, at commit ref `c6c50c1c26b428f1c81d2397515feab3ff0e28fa` (full SHA).
+The replaced literals come from these files under `src/Nvt.Core.Avalonia/Theme`:
+
+- `ChoiceStyles.axaml` and `DividerStyles.axaml`.
+- `ExpanderStyles.axaml` and `ListStyles.axaml`.
+- `MenuStyles.axaml` and `ToggleStyles.axaml`.
+
+The frozen sheet set contains 45 redesign sheets:
+
+- `checkbox`, `radiobutton`, `list` and `combobox`.
+- `menu`, `contextmenu`, `expander` and `progressbar`.
+- `gridsplitter`, `switch` and `toggle`.
+
+Each name has four sheets: `<control>-pill-light.png`, `<control>-pill-dark.png`, `<control>-square-light.png` and `<control>-square-dark.png`.
+The remaining sheet is `separator.png`, which shows both themes and does not depend on shape.
+
+Native `ToggleSwitch` moves its knob to a new `Nvt.Toggle.SwitchKnobTravel` only after its checked state changes.
+Changing that token updates the knob canvas width immediately, but keeps the old knob position until the next toggle.
+
 | Token | Pill | Square |
 | --- | --- | --- |
 | `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
@@ -1430,6 +1454,19 @@ Forms and tabs now share the soft Astra control family. This change adds styles 
 
 Load `FormStyles.axaml` and `TabStyles.axaml` after Fluent. Keep `ListStyles.axaml` for ComboBox popup rows.
 `ThemeTokens.axaml` automatically merges `FormTokens.axaml` and `TabTokens.axaml`.
+Merge `ThemeTokens` at application scope before loading these styles.
+`Nvt.Form.StateTransitionDuration` and `Nvt.Tab.StateTransitionDuration` use load-time `StaticResource` values.
+Runtime token overrides do not change existing transition durations. Reload the styles to apply a new duration.
+
+`FormStyles` applies globally to TextBox, NumericUpDown, and ComboBox, including TextBoxes inside other control templates.
+Add `formEmbedded` to an embedded TextBox to retain its native template and use a zero minimum height.
+Other form setters still apply. Editable ComboBox uses this opt-out; NumericUpDown deliberately retains the Core input template.
+Tab navigation reaches the editable ComboBox input directly, preserving keyboard focus visibility when the native focus forwarding would lose it.
+TextBox inherits `FontFamily`, so a monospace editor can set its font on an ancestor.
+`AcceptsReturn=True` uses top alignment, 6 DIP corners, and 10 DIP focus corners in both shapes.
+Its 32 DIP minimum permits taller editors.
+TextBox, NumericUpDown, ComboBox, and TabItem use `UseLayoutRounding=False` to preserve the exact focus outset and spinner geometry.
+Fractional DPI can soften borders and text because their bounds are not rounded to physical pixels.
 
 - TextBox uses a soft field fill, a 32 DIP minimum row, and the native editing presenter.
 - NumericUpDown uses the same outer field, a borderless input, and two compact spin buttons.
@@ -1438,6 +1475,8 @@ Load `FormStyles.axaml` and `TabStyles.axaml` after Fluent. Keep `ListStyles.axa
 - Controls support rest, hover, pressed or open, keyboard focus, disabled, and runtime Pill or Square shapes.
 
 TextBox and NumericUpDown retain native `IsReadOnly` behavior.
+Read-only suppresses hover fills and borders. Errors retain the read-only fill and use the error border.
+TextBox has no native `:pressed` state. Its state sheet forces that pseudo-class to preview the retained style rule.
 ComboBox has no native read-only property. Its `readOnly` class provides the read-only visual state only.
 The adopting application owns selection restrictions. The style preserves native keyboard behavior.
 
@@ -1447,8 +1486,9 @@ Focus uses one 2 DIP ring with a 2 DIP gap. Pointer focus and disabled controls 
 Numeric input focus surrounds the entire spinner. The validation presenters remain available and do not clip the ring.
 The `reducedMotion` class disables color transitions on a control or ancestor.
 
-The form intent follows compact field rows, a borderless numeric input, and small spin targets.
-The tab intent follows a neutral strip and distinct selection. Core uses its own names and palette.
+Forms are an original Core design that takes compact rows, borderless numeric input, and small spin targets as intent from the NFH look.
+Tabs are an original Core design that takes a neutral strip and distinct selection as intent from the NFH look.
+Core uses its own names and palette.
 Adopting tools remove competing field geometry, closed-selector, spinner, tab-strip, indicator, and focus styles.
 Keep bindings, validation, commands, accessibility names, and existing popup-row logic.
 
@@ -1459,7 +1499,7 @@ Replace a complete family palette together when tuning its theme.
 
 | Token | Light | Dark | Alias |
 | --- | --- | --- | --- |
-| `Nvt.Form.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Form.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Form.FillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Form.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
 | `Nvt.Form.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
@@ -1475,7 +1515,7 @@ Replace a complete family palette together when tuning its theme.
 | `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
 | `Nvt.Form.SelectionBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
 | `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
-| `Nvt.Tab.TransparentBrush` | `Transparent` | `Transparent` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.FillBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
@@ -1509,6 +1549,8 @@ The left offset negates the spinner width plus the border inset. Both 15 DIP spi
 | `Nvt.Form.BorderThickness` | `1` | `1` |
 | `Nvt.Form.EmptyThickness` | `0` | `0` |
 | `Nvt.Form.InputCornerRadius` | `0` | `0` |
+| `Nvt.Form.MultilineCornerRadius` | `6` | `6` |
+| `Nvt.Form.MultilineFocusCornerRadius` | `10` | `10` |
 | `Nvt.Form.SpinnerWidth` | `28` | `28` |
 | `Nvt.Form.SpinnerButtonHeight` | `15` | `15` |
 | `Nvt.Form.LeftSpinnerFocusOffset` | `-29` | `-29` |
@@ -1594,9 +1636,13 @@ The shared selected text and focus pairs retain their existing measured ratios.
 
 `TextStyles.axaml` adds opt-in font roles to TextBlock and its SelectableTextBlock subclass.
 Each class sets family, size, and weight from the existing `Nvt.Font.<Role>.*` tokens.
-All roles use `NfcTextBrush`. Add `muted` separately to change only foreground to `NfcTextMutedBrush`.
+All roles set foreground to `NfcTextBrush`, overriding inherited foregrounds, including those from selected rows and filled buttons.
+Add `muted` separately to change only foreground to `NfcTextMutedBrush`.
+These classes apply to any matching TextBlock, including text inside other control templates.
+Existing classes with names such as `title`, `body`, `caption`, or `muted` can therefore collide with these styles.
 
-Reference `Nvt.Core.Fonts`, merge `FontRoles.axaml`, and include `TextStyles.axaml` after Fluent.
+The roles require the `Nvt.Core.Fonts` package and its resources.
+Reference `Nvt.Core.Fonts`, merge `FontRoles.axaml` before loading the text styles, and include `TextStyles.axaml` after Fluent.
 Use `WithNvtCoreFonts()` for the existing Chinese fallback setup in the [Fonts module](Fonts.md).
 The styles require no new font registration or public C# API.
 Remove local duplicate role styles after adopting the shared classes.
@@ -1657,5 +1703,5 @@ Each sheet is 1200 pixels wide at scale one and stays below one megabyte.
 
 Tests cover runtime corners, token geometry, error precedence, keyboard-only unclipped rings, native editing, spinning, tab navigation, and font-role triplets.
 Owner review still covers popup placement in an actual application, live 150 ms motion, long Traditional Chinese content, and application compositions.
-The closed ComboBox shell is the verified selector scope. The read-only visual class does not enforce selection restrictions.
+ComboBox tests cover the closed shell, editable input, and native validation geometry. The read-only visual class does not enforce selection restrictions.
 See [Post-adoption tuning](../post-adoption-tuning.md) for the token ownership and validation workflow.
