@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "src/Nvt.Core/Threading/UiEventRunner.cs",
+      "compileSymbol": "NVT_CORE_SOURCE_CONSUMPTION",
+      "sha256": "95a382e09250f1cc2f887935fb126dfe358a9eb4771d24f2a6fc5b2eeeed1c05",
+      "byteLength": 5480
+    }
+  ]
+}

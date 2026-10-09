@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);NVT_CORE_SOURCE_CONSUMPTION</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Nvt.Core\Threading\UiEventRunner.cs" Link="Threading\UiEventRunner.cs" />
+    <None Include="..\..\src\Nvt.Core\Threading\UiEventRunner.cs"
+          Link="canonical\UiEventRunner.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\tools\source-consumption\manifest.json"
+          Link="canonical\manifest.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

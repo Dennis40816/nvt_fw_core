@@ -95,6 +95,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 ### Added
 
 - Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time and bounded temporary workspace cleanup. Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. It is not packed or published by the `core-v*` release; publishing is a follow-up.
+- Threading: `UiEventRunner` observes UI event operation failures on the calling context, handles operation-token cancellation, and contains primary and fallback reporter failures. NFC can compile the canonical source as internal with `NVT_CORE_SOURCE_CONSUMPTION` and verify its LF-byte SHA-256 using `tools/source-consumption/manifest.json`.
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
 ## 0.5.0 - 2026-10-08

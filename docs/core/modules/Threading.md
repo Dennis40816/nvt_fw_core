@@ -2,6 +2,45 @@
 
 # Threading
 
+## UiEventRunner
+
+[`UiEventRunner`](../../../src/Nvt.Core/Threading/UiEventRunner.cs) is a sealed, UI-independent helper in `Nvt.Core.Threading`. It targets `net10.0` and uses only BCL dependencies. Hosts supply primary and emergency reporters; the runner has no Avalonia dependency or global reporting state.
+
+### Public API and usage
+
+~~~csharp
+public UiEventRunner(Action<string, Exception> report, Action<string, Exception> fallbackReport);
+public void Run(string operation, Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+public Task RunAsync(string operation, Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+~~~
+
+A synchronous event handler can call `uiEvents.Run("CopyReport", token => CopyReportAsync(token), lifetimeToken)`. `Run` delegates to the fully observing `RunAsync` and returns when the delegate yields pending work. Both begin on the calling thread and synchronization context; they do not queue the action to a worker thread. The await retains that context for failure reporting.
+
+- Synchronous delegate throws and faulted tasks reach the primary reporter once with the unchanged name and original exception.
+- Cancellation is silent only if the supplied token is cancelled and the exception carries that token. A different token is an error even if both tokens are cancelled.
+- An operation that links the supplied token with another source (for example to add a timeout) throws a cancellation that carries the linked token. The runner reports it. Catch it in the operation and rethrow with `cancellationToken.ThrowIfCancellationRequested()` when the supplied token is the one that was cancelled.
+- If the primary reporter throws, the fallback receives the same operation name and original operation exception once. If the fallback also throws, its failure is swallowed.
+- Null reporters, operation names, and actions throw `ArgumentNullException` synchronously at the public boundary. Empty operation names are allowed and passed unchanged.
+- The operation owns its busy flag, cancellation source, cleanup `finally`, and success status. Observation-task completion does not make a failed save or export successful.
+
+### Source consumption and provenance
+
+This helper is new work from the owner-approved C# health plan (2026-10-09, H04, section 7); it is not an extraction from an app baseline. NFH and NFU consume the Core package. NFC copies the canonical file and checks its SHA-256 without taking a Core runtime dependency.
+
+Define `NVT_CORE_SOURCE_CONSUMPTION` to compile the same type as `internal` in namespace `Nvt.Core.Threading`. Consumer CI must reject compiling the copy while also referencing the package, including transitive references. Remove the copy and symbol when adopting the package. The [source-consumption guide and manifest](../../../tools/source-consumption/README.md) describe copying, LF preservation, verification, and upgrades.
+
+### Runner verification
+
+[`UiEventRunnerTests`](../../../tests/Nvt.Core.Tests/Threading/UiEventRunnerTests.cs) cover success, both failure forms, token identity and cancellation state, reporter failure containment, immediate invocation on the calling context, pending `Run` completion, and null validation. A queued synchronization context records posted exceptions; signal waits are bounded and use no fixed sleeps. The [standalone source-consumption project](../../../tests/Nvt.Core.SourceConsumption.Tests/) compiles the linked file without a Core reference and verifies internal visibility, SHA-256, and byte length.
+
+~~~powershell
+./tools/source-consumption/New-SourceConsumptionManifest.ps1 -Check
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Threading.UiEventRunnerTests"
+dotnet test tests/Nvt.Core.SourceConsumption.Tests/Nvt.Core.SourceConsumption.Tests.csproj --no-build
+~~~
+
+App handler migrations and consumer CI integration remain in their own repositories.
+
 ## Breaking changes before 0.9.0
 
 `UiThread.IsUiThreadThatRunsALoop` has been removed.
