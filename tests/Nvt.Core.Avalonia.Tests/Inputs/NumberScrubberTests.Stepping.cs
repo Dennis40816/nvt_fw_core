@@ -12,6 +12,19 @@ namespace Nvt.Core.Avalonia.Tests.Inputs;
 /// <summary>Characterizes wheel input, drag rounding and pointer capture lifecycle.</summary>
 public sealed partial class NumberScrubberTests
 {
+    /// <summary>Page keys remain unhandled and do not introduce large-step behavior.</summary>
+    [AvaloniaTheory]
+    [InlineData(Key.PageUp)]
+    [InlineData(Key.PageDown)]
+    public void PageKeysLeaveValueUnchanged(Key key)
+    {
+        var control = new NumberScrubber { Value = 4m, SmallChange = 0.5m };
+        Assert.False(Press(Input(control), key).Handled);
+        Drain();
+        Assert.Equal(4m, control.Value);
+        Assert.Equal("4", Input(control).Text);
+    }
+
     /// <summary>Wheel input keeps the Alt gate, fractional rounding and handled state.</summary>
     [AvaloniaTheory]
     [InlineData(true, KeyModifiers.None, 1d, true, "4", false)]
@@ -31,7 +44,6 @@ public sealed partial class NumberScrubberTests
         var control = new NumberScrubber
         {
             Value = 4m, SmallChange = 0.5m, RequireAltForWheel = requireAlt, SnapToStep = snap,
-            LargeChange = 100m,
         };
         PointerWheelEventArgs args = Wheel(control, delta, modifiers);
         Assert.Equal(Parse(expectedValue), control.Value);

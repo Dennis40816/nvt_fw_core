@@ -15,7 +15,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.MessageCenter` supplies a passive display contract, modal session, and export workflow in `Nvt.Core`, targeting `net8.0` with BCL dependencies only. The host supplies admitted activity entries, display strings, counts, view identity, export I/O, and status callbacks.
+`Nvt.Core.MessageCenter` supplies a passive display contract, modal session, and export workflow in `Nvt.Core`, targeting `net10.0` with BCL dependencies only. The host supplies admitted activity entries, display strings, counts, view identity, export I/O, and status callbacks.
 
 ## Public API
 

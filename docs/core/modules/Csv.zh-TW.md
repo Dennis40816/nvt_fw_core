@@ -2,7 +2,7 @@
 
 # Csv：CsvQuoting
 
-[`CsvQuoting.Quote`](../../../src/Nvt.Core/Csv/CsvQuoting.cs) 處理單一 CSV 欄位的引號。它位於 `Nvt.Core.Csv`，目標為 `net8.0`，只依賴 BCL。工具採用屬於另一個任務。
+[`CsvQuoting.Quote`](../../../src/Nvt.Core/Csv/CsvQuoting.cs) 處理單一 CSV 欄位的引號。它位於 `Nvt.Core.Csv`，目標為 `net10.0`，只依賴 BCL。工具採用屬於另一個任務。
 
 凍結的來源基準：NFU（`Dennis40816/nvt-event-buffer-replay`）、`origin/0.2.0`、commit `915d0c1b571a2c4a95c8c6d2d3cc6421079ff99b`。抽取自兩份完全相同的私有 helper：
 
