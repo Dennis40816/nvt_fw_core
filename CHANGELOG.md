@@ -2,7 +2,7 @@
 
 This file lists the changes in each Core release. The GitHub Release of each `core-v*` tag carries the same notes. Core follows SemVer; 1.x makes no breaking changes.
 
-Each release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` gets its own version and tag later.
+Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` starts at `0.1.0` with independent `core-fonts-v*` tags.
 
 ## Unreleased
 
@@ -27,6 +27,10 @@ Future adoption must guard defaults and replace `Options` reads with `CreateOpti
 NFU has no inspected source migration.
 Rebuild its CSV, AtomicOutput, and SourceFileNavigation consumers against the accepted package.
 Integrators must pin the accepted release, update package-download hashes, regenerate locks, and restore in locked mode.
+
+### Added
+
+- `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
 ## 0.5.0 - 2026-10-08
 
