@@ -409,6 +409,24 @@ exit 91
         self.assertEqual(len(prebuild), 4)
         self.assertEqual(prebuild[0][2], "src/Project.Desktop/Project.Desktop.csproj")
         self.assertEqual(prebuild[1][2], "tests/Project.Bootstrap.Tests/Project.Bootstrap.Tests.csproj")
+        custom = q["prebuild_commands"](q["parse"](BRIEF + "Prebuild: Desktop Bootstrap\n"), "enforce", "NvtFwCombiner")
+        self.assertEqual(custom[0][2], "src/NvtFwCombiner.Desktop/NvtFwCombiner.Desktop.csproj")
+        self.assertEqual(custom[1][2], "tests/NvtFwCombiner.Bootstrap.Tests/NvtFwCombiner.Bootstrap.Tests.csproj")
+
+    def test_project_prefix_is_read_from_queue_env_without_sourcing_it(self):
+        queue = ROOT / "prefix-queue"
+        queue.mkdir(exist_ok=True)
+        env = queue / "queue.env"
+        self.assertEqual(q["project_prefix"](queue / "missing"), "Project")
+        for text, expected in (("REPO=/x\n", "Project"), ("PROJECT_PREFIX=NvtFwCombiner\n", "NvtFwCombiner"),
+                               ("export PROJECT_PREFIX='Acme.Core'  # note\n", "Acme.Core"), ("PROJECT_PREFIX=\n", "Project")):
+            with self.subTest(text=text):
+                env.write_text(text, encoding="utf-8")
+                self.assertEqual(q["project_prefix"](queue), expected)
+        for bad in ("PROJECT_PREFIX=../evil", "PROJECT_PREFIX=a b", "PROJECT_PREFIX=$(bad)", "PROJECT_PREFIX=-x"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, "PROJECT_PREFIX"):
+                env.write_text(bad + "\n", encoding="utf-8")
+                q["project_prefix"](queue)
 
     def test_r3_host_children_remove_six_environment_variables(self):
         real_run = subprocess.run
