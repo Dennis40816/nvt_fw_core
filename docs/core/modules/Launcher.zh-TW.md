@@ -64,7 +64,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net8.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer。verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。`Nvt.Core.Launcher.Coordination` 透過注入的 process 介面執行 READY supervision；process creation 與原生 custody 由對應機制負責。
+`Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net10.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer。verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。`Nvt.Core.Launcher.Coordination` 透過注入的 process 介面執行 READY supervision；process creation 與原生 custody 由對應機制負責。
 
 抽取範圍包含版本與內容身分、descriptor、套件政策介面、正規化套件結果、不可變應用程式與 Launcher 狀態、轉移函式、durable snapshot 比較、通用 inventory、刪除 owner 保護、repository/state 介面、raw state access 與 writer custody。`UpdateSourceRegistry.cs` 僅抽取 `VersionSourceRegistryState`。`VersionManagementPolicy.cs` 僅抽取 inventory 與通用刪除判斷；保留門檻、自動刪除政策與探索通知留在 NFC。`LauncherMutationFence.cs` 抽取保護值、介面及 writer-scoped experience guard；嚴格 JSON projection adapter 留在 NFC。原生 custody 結構屬於 Files。嚴格 wire DTO/codec 由產品 owner 保留；execution token、ZIP plan 與測試 hook 為 internal。
 

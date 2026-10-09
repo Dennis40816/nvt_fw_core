@@ -2,7 +2,7 @@
 
 # SourceFileNavigation
 
-The BCL-only process-start and default-open mechanisms are available in `Nvt.Core.SourceFileNavigation`, targeting `net8.0`. This extraction follows the owner decision of 2026-10-05 to move reusable modules into Core by 2026-10-18. Tool adoption remains a separate task requiring review and owner approval.
+The BCL-only process-start and default-open mechanisms are available in `Nvt.Core.SourceFileNavigation`, targeting `net10.0`. This extraction follows the owner decision of 2026-10-05 to move reusable modules into Core by 2026-10-18. Tool adoption remains a separate task requiring review and owner approval.
 
 ## Frozen source
 
