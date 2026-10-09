@@ -1,0 +1,337 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Styles.Resources>
+    <ControlTheme x:Key="Nvt.Form.SpinnerTheme" TargetType="ButtonSpinner">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <DockPanel>
+            <StackPanel Name="PART_SpinnerPanel" DockPanel.Dock="Right" Orientation="Vertical"
+                        Width="{DynamicResource Nvt.Form.SpinnerWidth}" IsVisible="{TemplateBinding ShowButtonSpinner}">
+              <RepeatButton Name="PART_IncreaseButton" Classes="formSpin" Focusable="False"
+                            MinHeight="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}">
+                <Path Data="{DynamicResource Nvt.Form.IncreaseGeometry}" Stroke="{Binding $parent[RepeatButton].Foreground}"
+                      StrokeThickness="{DynamicResource Nvt.Form.GlyphStrokeThickness}" StrokeLineCap="Round" StrokeJoin="Round"
+                      Width="{DynamicResource Nvt.Form.GlyphWidth}" Height="{DynamicResource Nvt.Form.GlyphHeight}" Stretch="Uniform" />
+              </RepeatButton>
+              <RepeatButton Name="PART_DecreaseButton" Classes="formSpin" Focusable="False"
+                            MinHeight="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}">
+                <Path Data="{DynamicResource Nvt.Form.ChevronGeometry}" Stroke="{Binding $parent[RepeatButton].Foreground}"
+                      StrokeThickness="{DynamicResource Nvt.Form.GlyphStrokeThickness}" StrokeLineCap="Round" StrokeJoin="Round"
+                      Width="{DynamicResource Nvt.Form.GlyphWidth}" Height="{DynamicResource Nvt.Form.GlyphHeight}" Stretch="Uniform" />
+              </RepeatButton>
+            </StackPanel>
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+          </DockPanel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^[ButtonSpinnerLocation=Left] /template/ StackPanel#PART_SpinnerPanel">
+        <Setter Property="DockPanel.Dock" Value="Left" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+  <Style Selector="TextBox, NumericUpDown, ComboBox">
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Form.Height}" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Form.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.FillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Form.TextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Form.BorderThickness}" />
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="UseLayoutRounding" Value="False" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="{StaticResource Nvt.Form.StateTransitionDuration}" />
+        <BrushTransition Property="BorderBrush" Duration="{StaticResource Nvt.Form.StateTransitionDuration}" />
+        <BrushTransition Property="Foreground" Duration="{StaticResource Nvt.Form.StateTransitionDuration}" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="NumericUpDown, ComboBox">
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+  </Style>
+  <Style Selector="TextBox.formEmbedded">
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}" />
+  </Style>
+  <Style Selector="TextBox">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
+  </Style>
+  <Style Selector="ComboBox[IsEditable=True]">
+    <!-- Let Tab reach the editor directly; native ComboBox focus forwarding uses Unspecified navigation. -->
+    <Setter Property="IsTabStop" Value="False" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.PlaceholderBrush}" />
+  </Style>
+  <Style Selector="TextBox:not(.formEmbedded)">
+    <Setter Property="CaretBrush" Value="{DynamicResource Nvt.Form.TextBrush}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource Nvt.Form.SelectionBrush}" />
+    <Setter Property="SelectionForegroundBrush" Value="{DynamicResource Nvt.Form.SelectionTextBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DataValidationErrors ClipToBounds="False">
+          <Grid>
+            <Border Name="FormBody" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <ContentPresenter Content="{TemplateBinding InnerLeftContent}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                <DockPanel Grid.Column="1" Name="PART_InnerDockPanel" Margin="{TemplateBinding Padding}">
+                  <TextBlock Name="PART_FloatingPlaceholder" DockPanel.Dock="Top" IsVisible="False"
+                             Text="{TemplateBinding PlaceholderText}" Foreground="{TemplateBinding PlaceholderForeground}" />
+                  <ScrollViewer Name="PART_ScrollViewer"
+                                HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                                VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+                                IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}"
+                                AllowAutoHide="{TemplateBinding (ScrollViewer.AllowAutoHide)}"
+                                BringIntoViewOnFocusChange="{TemplateBinding (ScrollViewer.BringIntoViewOnFocusChange)}">
+                    <Panel>
+                      <TextBlock Name="PART_Placeholder" Text="{TemplateBinding PlaceholderText}" Foreground="{TemplateBinding PlaceholderForeground}"
+                                 TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="{TemplateBinding TextWrapping}"
+                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                        <TextBlock.IsVisible>
+                          <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding ElementName="PART_TextPresenter" Path="PreeditText" Converter="{x:Static StringConverters.IsNullOrEmpty}" />
+                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="Text" Converter="{x:Static StringConverters.IsNullOrEmpty}" />
+                          </MultiBinding>
+                        </TextBlock.IsVisible>
+                      </TextBlock>
+                      <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}"
+                                     CaretIndex="{TemplateBinding CaretIndex}" CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                                     SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                                     TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="{TemplateBinding TextWrapping}"
+                                     LineHeight="{TemplateBinding LineHeight}" LetterSpacing="{TemplateBinding LetterSpacing}"
+                                     PasswordChar="{TemplateBinding PasswordChar}" RevealPassword="{TemplateBinding RevealPassword}"
+                                     SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                     CaretBrush="{TemplateBinding CaretBrush}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                     VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Panel>
+                  </ScrollViewer>
+                </DockPanel>
+                <ContentPresenter Grid.Column="2" Content="{TemplateBinding InnerRightContent}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+              </Grid>
+            </Border>
+            <Border Name="FormFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+                    BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                    CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+            <!-- Only the numeric input needs a zero-measure overlay around the entire spinner. -->
+            <Canvas Name="SpinnerFocusOverlay" IsHitTestVisible="False">
+              <Grid Name="FormFocusHost">
+                <Border Name="SpinnerFocusRing" IsVisible="False" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+                        BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                        CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+              </Grid>
+            </Canvas>
+          </Grid>
+        </DataValidationErrors>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox[AcceptsReturn=True]">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Form.MultilineCornerRadius}" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+  </Style>
+  <Style Selector="TextBox[AcceptsReturn=True] /template/ Border#FormFocusRing">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Form.MultilineFocusCornerRadius}" />
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DataValidationErrors ClipToBounds="False">
+          <Border Name="FormBody" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+            <ButtonSpinner Name="PART_Spinner" Theme="{StaticResource Nvt.Form.SpinnerTheme}" IsTabStop="False" Focusable="False" ClipToBounds="False"
+                           AllowSpin="{TemplateBinding AllowSpin}" ShowButtonSpinner="{TemplateBinding ShowButtonSpinner}"
+                           ButtonSpinnerLocation="{TemplateBinding ButtonSpinnerLocation}" Foreground="{TemplateBinding Foreground}"
+                           CornerRadius="{TemplateBinding CornerRadius}">
+              <TextBox Name="PART_TextBox" Background="{DynamicResource Nvt.Form.TransparentBrush}" BorderThickness="{DynamicResource Nvt.Form.EmptyThickness}"
+                       CornerRadius="{DynamicResource Nvt.Form.InputCornerRadius}" MinHeight="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}"
+                       Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                       PlaceholderText="{TemplateBinding PlaceholderText}" PlaceholderForeground="{TemplateBinding PlaceholderForeground}"
+                       IsReadOnly="{TemplateBinding IsReadOnly}" Text="{TemplateBinding Text}"
+                       TextAlignment="{TemplateBinding TextAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                       HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" AcceptsReturn="False"
+                       InnerLeftContent="{Binding InnerLeftContent, RelativeSource={RelativeSource TemplatedParent}}"
+                       InnerRightContent="{Binding InnerRightContent, RelativeSource={RelativeSource TemplatedParent}}" />
+            </ButtonSpinner>
+          </Border>
+        </DataValidationErrors>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DataValidationErrors ClipToBounds="False">
+          <Grid>
+            <Border Name="FormBody" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+              <DockPanel>
+                <Border DockPanel.Dock="Right" Width="{DynamicResource Nvt.Form.SpinnerWidth}">
+                  <Path Data="{DynamicResource Nvt.Form.ChevronGeometry}" Stroke="{TemplateBinding Foreground}"
+                        Width="{DynamicResource Nvt.Form.GlyphWidth}" Height="{DynamicResource Nvt.Form.GlyphHeight}"
+                        StrokeThickness="{DynamicResource Nvt.Form.GlyphStrokeThickness}" StrokeLineCap="Round" StrokeJoin="Round"
+                        Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+                </Border>
+                <Grid Margin="{TemplateBinding Padding}">
+                  <TextBlock Text="{TemplateBinding PlaceholderText}" Foreground="{TemplateBinding PlaceholderForeground}"
+                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                             IsVisible="{Binding SelectionBoxItem, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static ObjectConverters.IsNull}}" />
+                  <ContentPresenter Name="SelectionPresenter" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                    HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    IsVisible="{TemplateBinding IsEditable, Converter={x:Static BoolConverters.Not}}" />
+                  <TextBox Name="PART_EditableTextBox" Classes="formEmbedded" IsVisible="{TemplateBinding IsEditable}" Text="{TemplateBinding Text, Mode=TwoWay}"
+                           MinHeight="{DynamicResource Nvt.Form.SpinnerButtonMinHeight}"
+                           Padding="{DynamicResource Nvt.Form.EmptyThickness}" Background="{DynamicResource Nvt.Form.TransparentBrush}"
+                           BorderThickness="{DynamicResource Nvt.Form.EmptyThickness}" Foreground="{TemplateBinding Foreground}"
+                           PlaceholderText="{TemplateBinding PlaceholderText}" VerticalContentAlignment="Center">
+                    <TextBox.Tag><x:Boolean>False</x:Boolean></TextBox.Tag>
+                  </TextBox>
+                </Grid>
+              </DockPanel>
+            </Border>
+            <Border Name="FormFocusRing" IsVisible="{Binding #PART_EditableTextBox.Tag}" IsHitTestVisible="False" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+                    BorderBrush="{DynamicResource Nvt.Form.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                    CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}" />
+            <Popup Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}" PlacementTarget="FormBody"
+                   MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                   IsLightDismissEnabled="True" InheritsTransform="True">
+              <Border Background="{DynamicResource NfcSurfaceBrush}" BorderBrush="{DynamicResource NfcBorderBrush}"
+                      BorderThickness="{DynamicResource Nvt.Menu.PopupBorderThickness}" Padding="{DynamicResource Nvt.Menu.PopupPadding}"
+                      CornerRadius="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}">
+                <ScrollViewer HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                              VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+                              IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}">
+                  <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+        </DataValidationErrors>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox:pointerover:not(:disabled), NumericUpDown:pointerover:not(:disabled), ComboBox:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.HoverFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.HoverBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox:pressed:not(:disabled), NumericUpDown:pressed:not(:disabled), ComboBox:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.PressedFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.PressedBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox[IsReadOnly=True]:not(:disabled), NumericUpDown[IsReadOnly=True]:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.ReadOnlyFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.BorderBrush}" />
+  </Style>
+  <Style Selector="ComboBox:dropdownopen:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.PressedFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.PressedBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox:disabled, NumericUpDown:disabled, ComboBox:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.DisabledFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="TextBox.error, TextBox:error, NumericUpDown.error, NumericUpDown:error, ComboBox.error, ComboBox:error">
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.ErrorBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox:focus-visible:not(:disabled) /template/ Border#FormFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox, NumericUpDown /template/ TextBox#PART_TextBox:pointerover, NumericUpDown /template/ TextBox#PART_TextBox:disabled, NumericUpDown /template/ TextBox#PART_TextBox[IsReadOnly=True]">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Form.EmptyThickness}" />
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox:focus-visible /template/ Border#FormFocusRing, ComboBox /template/ TextBox#PART_EditableTextBox /template/ Border#FormFocusRing">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TextBox /template/ Canvas#SpinnerFocusOverlay">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox /template/ Canvas#SpinnerFocusOverlay">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="NumericUpDown:not(:disabled) /template/ TextBox#PART_TextBox:focus-visible /template/ Border#SpinnerFocusRing">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="ComboBox:focus-visible:not(:disabled) /template/ TextBox#PART_EditableTextBox">
+    <Setter Property="Tag"><x:Boolean>True</x:Boolean></Setter>
+  </Style>
+  <Style Selector="ComboBox:focus-within:not(:disabled) /template/ TextBox#PART_EditableTextBox:focus-visible">
+    <!-- This private template part signals the outer ring without drawing an inner ring. -->
+    <Setter Property="Tag"><x:Boolean>True</x:Boolean></Setter>
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox /template/ Grid#FormFocusHost">
+    <Setter Property="Width" Value="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=Border, Tree=Visual}}" />
+    <Setter Property="Height" Value="{Binding Bounds.Height, RelativeSource={RelativeSource AncestorType=Border, Tree=Visual}}" />
+    <Setter Property="Canvas.Left" Value="{DynamicResource Nvt.Form.InnerFocusOffset}" />
+    <Setter Property="Canvas.Top" Value="{DynamicResource Nvt.Form.InnerFocusOffset}" />
+  </Style>
+  <Style Selector="NumericUpDown[ButtonSpinnerLocation=Left][ShowButtonSpinner=True] /template/ TextBox#PART_TextBox /template/ Grid#FormFocusHost">
+    <Setter Property="Canvas.Left" Value="{DynamicResource Nvt.Form.LeftSpinnerFocusOffset}" />
+  </Style>
+  <Style Selector="RepeatButton.formSpin">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Theme" Value="{x:Null}" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Form.EmptyThickness}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Form.EmptyThickness}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Form.TextBrush}" />
+    <Setter Property="Height" Value="{DynamicResource Nvt.Form.SpinnerButtonHeight}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template"><ControlTemplate><ContentPresenter Name="SpinContentPresenter"
+      Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Content="{TemplateBinding Content}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" /></ControlTemplate></Setter>
+  </Style>
+  <Style Selector="RepeatButton.formSpin:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.HoverFillBrush}" />
+  </Style>
+  <Style Selector="RepeatButton.formSpin:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.PressedFillBrush}" />
+  </Style>
+  <Style Selector="RepeatButton.formSpin:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner">
+    <Setter Property="AllowSpin" Value="False" />
+  </Style>
+  <Style Selector="TextBox.reducedMotion, .reducedMotion TextBox, NumericUpDown.reducedMotion, .reducedMotion NumericUpDown, ComboBox.reducedMotion, .reducedMotion ComboBox">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="TextBox:disabled">
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown:disabled">
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="ComboBox:disabled">
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource Nvt.Form.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="ComboBox.readOnly:not(:disabled):not(.error):not(:error)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.ReadOnlyFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.BorderBrush}" />
+  </Style>
+  <Style Selector="TextBox /template/ DataValidationErrors /template/ ContentPresenter#PART_ContentPresenter, NumericUpDown /template/ DataValidationErrors /template/ ContentPresenter#PART_ContentPresenter, ComboBox /template/ DataValidationErrors /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="ClipToBounds" Value="False" />
+  </Style>
+  <Style Selector="RepeatButton.formSpin">
+    <Setter Property="Transitions">
+      <Transitions><BrushTransition Property="Background" Duration="{StaticResource Nvt.Form.StateTransitionDuration}" /></Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="RepeatButton.formSpin.reducedMotion, .reducedMotion RepeatButton.formSpin">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ TextBox#PART_TextBox:disabled /template/ Border#FormBody, NumericUpDown /template/ TextBox#PART_TextBox[IsReadOnly=True] /template/ Border#FormBody">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Form.TransparentBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.TransparentBrush}" />
+  </Style>
+</Styles>

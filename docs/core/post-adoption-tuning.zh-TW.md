@@ -11,6 +11,7 @@
 | MenuItem、ContextMenu 與選單分隔線 | `ListTokens.axaml` |
 | Expander、ProgressBar、Separator 與 GridSplitter | `DividerTokens.axaml` |
 | ToggleButton 角色與 ToggleSwitch | `ToggleTokens.axaml` |
+| TextBox、NumericUpDown、關閉狀態的 ComboBox、TabControl 與 TabItem | `FormTokens.axaml` 與 `TabTokens.axaml` |
 | 共用選取顏色，以及外側或內縮焦點邊距 | `ControlTokens.axaml` |
 | 隨形狀改變的圓角 | `ShapePill.axaml` 與 `ShapeSquare.axaml` |
 | 共用列高、字型與焦點框粗細 | `ThemeTokens.axaml` |
@@ -67,12 +68,15 @@ dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --logge
 | `ListMenuStylesRenderer` | `RenderRedesignListsAndMenus` | `NVT_LIST_IMAGES_DIR` | 清單、下拉項目列、選單、快顯選單 |
 | `DividerStylesRenderer` | `RenderRedesignDividers` | `NVT_DIVIDER_IMAGES_DIR` | Expander、進度列、分割線、分隔線 |
 | `ToggleStylesRenderer` | `RenderRedesignToggles` | `NVT_TOGGLE_IMAGES_DIR` | 開關與 Toggle 角色 |
+| `FormStylesRenderer` | `RenderForms` | `NVT_FORMS_IMAGES_DIR` | TextBox、NumericUpDown、ComboBox 與 Fluent 比較圖 |
+| `TabStylesRenderer` | `RenderTabs` | `NVT_FORMS_IMAGES_DIR` | TabItem 與 Fluent 比較圖 |
+| `TextStylesRenderer` | `RenderTextStyles` | `NVT_FORMS_IMAGES_DIR` | Light 與 Dark 的文字角色 |
 
 ```text
-dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --filter "FullyQualifiedName~RenderRedesign"
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --filter "FullyQualifiedName~RenderRedesign|FullyQualifiedName~FormStylesRenderer|FullyQualifiedName~TabStylesRenderer|FullyQualifiedName~TextStylesRenderer"
 ```
 
-Renderer 以無頭模式輸出 45 張圖表，縮放比例為 100%。
+Renderer 以無頭模式輸出 65 張圖表，縮放比例為 100%。
 檔名使用 `<control>-<pill|square>-<light|dark>.png` 與 `separator.png`。
 未設定這些變數時，renderer 測試會檢查版面，但不寫入影像。
 只調整幾何時，將解碼後的像素與先前圖表比較。每個像素都必須相同。

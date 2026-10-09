@@ -97,6 +97,8 @@ public sealed class ThemeContractTests
     public void EveryThemeResourceReferenceResolves(bool dark)
     {
         var host = new Window { RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light };
+        var fonts = new Uri("avares://Nvt.Core.Fonts/FontRoles.axaml");
+        host.Resources.MergedDictionaries.Add(new ResourceInclude(fonts) { Source = fonts });
         try
         {
             string[] files = [.. typeof(ThemeContractTests).Assembly.GetManifestResourceNames()

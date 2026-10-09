@@ -11,6 +11,7 @@ Edit tokens to tune the controls together. Keep geometry out of style files.
 | MenuItem, ContextMenu and menu separators | `ListTokens.axaml` |
 | Expander, ProgressBar, Separator and GridSplitter | `DividerTokens.axaml` |
 | ToggleButton roles and ToggleSwitch | `ToggleTokens.axaml` |
+| TextBox, NumericUpDown, closed ComboBox, TabControl and TabItem | `FormTokens.axaml` and `TabTokens.axaml` |
 | Shared selected colors and exterior or inset focus margins | `ControlTokens.axaml` |
 | Shape-dependent corners | `ShapePill.axaml` and `ShapeSquare.axaml` |
 | Shared row heights, fonts and focus thickness | `ThemeTokens.axaml` |
@@ -67,12 +68,15 @@ Set each renderer variable to an output directory before rendering.
 | `ListMenuStylesRenderer` | `RenderRedesignListsAndMenus` | `NVT_LIST_IMAGES_DIR` | List, dropdown rows, menu, context menu |
 | `DividerStylesRenderer` | `RenderRedesignDividers` | `NVT_DIVIDER_IMAGES_DIR` | Expander, progress bar, splitter, separator |
 | `ToggleStylesRenderer` | `RenderRedesignToggles` | `NVT_TOGGLE_IMAGES_DIR` | Switch and toggle roles |
+| `FormStylesRenderer` | `RenderForms` | `NVT_FORMS_IMAGES_DIR` | TextBox, NumericUpDown, ComboBox and Fluent comparison |
+| `TabStylesRenderer` | `RenderTabs` | `NVT_FORMS_IMAGES_DIR` | TabItem and Fluent comparison |
+| `TextStylesRenderer` | `RenderTextStyles` | `NVT_FORMS_IMAGES_DIR` | Text roles in Light and Dark |
 
 ```text
-dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --filter "FullyQualifiedName~RenderRedesign"
+dotnet test tests/Nvt.Core.Avalonia.Tests/Nvt.Core.Avalonia.Tests.csproj --filter "FullyQualifiedName~RenderRedesign|FullyQualifiedName~FormStylesRenderer|FullyQualifiedName~TabStylesRenderer|FullyQualifiedName~TextStylesRenderer"
 ```
 
-The renderers write 45 headless sheets at 100% scale.
+The renderers write 65 headless sheets at 100% scale.
 They use `<control>-<pill|square>-<light|dark>.png` and `separator.png`.
 Without these variables, renderer tests check layout without writing images.
 For geometry-only changes, compare decoded pixels against the previous sheets. Every pixel must match.

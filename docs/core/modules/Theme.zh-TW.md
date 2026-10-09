@@ -2,13 +2,18 @@
 
 # Theme（`Nvt.Core.Avalonia.Theme`）
 
-Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入三個樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
+Theme 為 NFC、NFH、NFU 定義同一套中性色、語意色、圓角、尺寸、狀態與焦點框。各工具只保留主色。將 token 合併至應用程式資源，並在 Fluent 之後載入樣式檔。只有 `ButtonStyles.axaml` 是 Core 按鈕樣式檔。八個舊有字型值與資源解析器保持不變。
 
 ```xml
 <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml" />
+<ResourceInclude Source="avares://Nvt.Core.Fonts/FontRoles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ToggleStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/FormStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ListStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TabStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/TextStyles.axaml" />
 ```
 
 ## 共用色票
@@ -121,10 +126,10 @@ Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具�
 | Text padding / 文字內距 | 14 horizontal / 水平, 0 vertical / 垂直 |
 | Icon button / 圖示按鈕 | 32 × 32, padding / 內距 0 |
 | Button and chip border / 按鈕與膠囊邊界 | 1 |
-| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 10,0; radius / 圓角 6 |
+| Single-line field guidance / 單行欄位原則 | 32, padding / 內距 `12,0`, Pill / Square radius / 圓角 `999` / `6` |
 | Spacing / 間距 | `NfcSpace2/4/8/12/16/24`; `NfcFieldSpacing` = 4 |
 
-以上皆為邏輯像素，不再額外乘 DPI。按鈕內容置中、單行、字元省略並裁切；圖示角色繼承所組合色彩角色。焦點需容器預留 4 px；相鄰控制項建議間隔 8 px。接合邊為零圓角；多行編輯器與資料視覺不套用 32 px。字型與字型 fallback 不變。本次沒有增加一般輸入框樣式。
+以上皆為邏輯像素，不再額外乘 DPI。按鈕內容置中、單行、字元省略並裁切；圖示角色繼承所組合色彩角色。焦點需容器預留 4 px；相鄰控制項建議間隔 8 px。接合邊為零圓角；多行編輯器與資料視覺不套用 32 px。字型與字型 fallback 不變。`FormStyles.axaml` 提供共用輸入控制項樣式。
 
 ## 按鈕角色與狀態
 
@@ -1441,3 +1446,261 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 
 請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。
+
+## Astra 表單與頁籤
+
+表單與頁籤現在共用柔和的 Astra 控制項外觀。本次新增樣式與 token，不變更公開 C# API。
+
+在 Fluent 之後載入 `FormStyles.axaml` 與 `TabStyles.axaml`。ComboBox 彈出項目仍載入 `ListStyles.axaml`。
+`ThemeTokens.axaml` 自動合併 `FormTokens.axaml` 與 `TabTokens.axaml`。
+載入這些樣式之前，必須先將 `ThemeTokens` 合併至應用程式層級資源。
+`Nvt.Form.StateTransitionDuration` 與 `Nvt.Tab.StateTransitionDuration` 使用載入時的 `StaticResource` 值。
+執行期覆寫 token 不會改變既有轉場時間。重新載入樣式才能套用新的時間。
+
+`FormStyles` 全域套用至 TextBox、NumericUpDown 與 ComboBox，也涵蓋其他控制項範本內的 TextBox。
+內嵌 TextBox 可加上 `formEmbedded`，保留原生範本並將最小高度設為零。
+其他表單 setter 仍會套用。可編輯 ComboBox 使用此類別；NumericUpDown 則刻意保留 Core 輸入範本。
+Tab 導覽直接到達可編輯 ComboBox 的輸入框，保留原生焦點轉交會遺失的鍵盤焦點可見狀態。
+TextBox 繼承 `FontFamily`，因此等寬編輯器可在祖先設定字型。
+`AcceptsReturn=True` 使用頂端對齊，兩種形狀皆採 6 DIP 圓角與 10 DIP 焦點圓角。
+32 DIP 最小高度允許編輯器增高。
+TextBox、NumericUpDown、ComboBox 與 TabItem 使用 `UseLayoutRounding=False`，保留精確的焦點外距與微調幾何。
+非整數 DPI 下，邊框與文字可能較柔和，因為邊界不會捨入至實體像素。
+
+- TextBox 使用柔和填色、32 DIP 最小列高與原生文字編輯呈現器。
+- NumericUpDown 共用外框，內含無邊框輸入框與兩個緊湊的微調按鈕。
+- ComboBox 的關閉欄位採用相同外觀，展開時使用按下填色。彈出項目保留 List 外觀。
+- TabControl 新增柔和頁籤列。TabItem 採用柔和選取填色，並在內容方向顯示選取指示線。
+- 控制項支援一般、滑入、按下或展開、鍵盤焦點、停用，以及執行期 Pill／Square 切換。
+
+TextBox 與 NumericUpDown 保留原生 `IsReadOnly` 行為。
+唯讀會抑制滑入填色與邊框。錯誤狀態保留唯讀填色，並使用錯誤邊框。
+TextBox 沒有原生 `:pressed` 狀態。狀態圖表強制設定此偽類別，以預覽保留的樣式規則。
+ComboBox 沒有原生唯讀屬性。`readOnly` 類別只提供唯讀視覺狀態。
+採用端負責限制選取。樣式保留原生鍵盤行為。
+
+在任一表單控制項加上 `error`，即可使用 `Nvt.Form.ErrorBorderBrush`。
+原生 `:error` 驗證狀態也使用此 token。錯誤邊框優先於滑入、焦點、唯讀與停用邊框。
+焦點只顯示一道 2 DIP 外環，與控制項相隔 2 DIP。滑鼠焦點與停用控制項不顯示外環。
+數值輸入的焦點環包住整個微調控制項。驗證呈現器仍保留，且不裁切外環。
+控制項本身或祖先的 `reducedMotion` 類別會停用色彩轉場。
+
+表單是 Core 原創設計，從 NFH 外觀取用緊湊欄位列、無邊框數值輸入與小型微調目標的設計意圖。
+頁籤是 Core 原創設計，從 NFH 外觀取用中性頁籤列與明確選取狀態的設計意圖。
+Core 使用自己的名稱與色盤。
+採用端移除重複的欄位尺寸、關閉選單、微調按鈕、頁籤列、指示線與焦點樣式。
+保留資料繫結、驗證、命令、無障礙名稱與既有彈出項目邏輯。
+
+### 表單與頁籤色盤 token
+
+Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有新增色彩常值。
+調整主題時，請一起替換整組控制項家族色盤。
+
+| Token | Light | Dark | 別名來源 |
+| --- | --- | --- | --- |
+| `Nvt.Form.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Form.FillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Form.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
+| `Nvt.Form.ReadOnlyFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Form.TextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
+| `Nvt.Form.PlaceholderBrush` | `#526176` | `#A1AEC2` | `NfcTextMutedBrush` |
+| `Nvt.Form.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
+| `Nvt.Form.BorderBrush` | `#718096` | `#708198` | `NfcBorderBrush` |
+| `Nvt.Form.HoverBorderBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
+| `Nvt.Form.PressedBorderBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
+| `Nvt.Form.ErrorBorderBrush` | `#C04A5C` | `#C96579` | `NfcDangerBorderBrush` |
+| `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
+| `Nvt.Form.SelectionBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Tab.FillBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
+| `Nvt.Tab.HoverFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Tab.PressedFillBrush` | `#E2E8F0` | `#243247` | `NfcSecondaryActionPressedBrush` |
+| `Nvt.Tab.SelectedFillBrush` | `#EFF3FD` | `#1A2940` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Tab.SelectedHoverFillBrush` | `#E3ECFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE7FA` | `#243C5B` | `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.Tab.TextBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
+| `Nvt.Tab.HoverTextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
+| `Nvt.Tab.PressedTextBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
+| `Nvt.Tab.SelectedTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
+| `Nvt.Tab.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
+| `Nvt.Tab.DisabledSelectedFillBrush` | `#E8EEF5` | `#1E293B` | `NfcSelectionSurfaceBrush` |
+| `Nvt.Tab.IndicatorBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
+
+### 表單與頁籤幾何 token
+
+以下新預設值在 Light 與 Dark 相同。內層輸入框保持零圓角，形狀由外框統一負責。
+控制項與頁籤列重用 `Nvt.Shape.ControlCornerRadius` 和 `Nvt.Shape.GroupCornerRadius`：Pill 999，Square 6。
+焦點重用 `Nvt.Shape.FocusCornerRadius`：Pill 999，Square 10。
+外環厚度與外側邊距重用 `Nvt.Focus.RingThickness` 和 `Nvt.Controls.FocusRingMargin`。
+
+調整數值控制項時，請同步調整 `SpinnerWidth`、`BorderThickness`、`InnerFocusOffset` 和 `LeftSpinnerFocusOffset`。
+左側位移為微調寬度加邊框內縮後的負值。兩個 15 DIP 按鈕可放入 32 DIP 欄位。
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Form.Padding` | `12,0` | `12,0` |
+| `Nvt.Form.BorderThickness` | `1` | `1` |
+| `Nvt.Form.EmptyThickness` | `0` | `0` |
+| `Nvt.Form.InputCornerRadius` | `0` | `0` |
+| `Nvt.Form.MultilineCornerRadius` | `6` | `6` |
+| `Nvt.Form.MultilineFocusCornerRadius` | `10` | `10` |
+| `Nvt.Form.SpinnerWidth` | `28` | `28` |
+| `Nvt.Form.SpinnerButtonHeight` | `15` | `15` |
+| `Nvt.Form.LeftSpinnerFocusOffset` | `-29` | `-29` |
+| `Nvt.Form.SpinnerButtonMinHeight` | `0` | `0` |
+| `Nvt.Form.GlyphWidth` | `10` | `10` |
+| `Nvt.Form.GlyphHeight` | `5` | `5` |
+| `Nvt.Form.GlyphStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.Form.InnerFocusOffset` | `-1` | `-1` |
+| `Nvt.Form.StateTransitionDuration` | `0:0:0.15` | `0:0:0.15` |
+| `Nvt.Form.ChevronGeometry` | `M0 0 L5 5 L10 0` | `M0 0 L5 5 L10 0` |
+| `Nvt.Form.IncreaseGeometry` | `M0 5 L5 0 L10 5` | `M0 5 L5 0 L10 5` |
+| `Nvt.Form.Height` | `32` | `32` |
+| `Nvt.Tab.Padding` | `14,0` | `14,0` |
+| `Nvt.Tab.StripPadding` | `4` | `4` |
+| `Nvt.Tab.ItemMargin` | `4` | `4` |
+| `Nvt.Tab.ContentPadding` | `0,12,0,0` | `0,12,0,0` |
+| `Nvt.Tab.EmptyThickness` | `0` | `0` |
+| `Nvt.Tab.IndicatorMargin` | `14,0,14,3` | `14,0,14,3` |
+| `Nvt.Tab.IndicatorThickness` | `2` | `2` |
+| `Nvt.Tab.IndicatorLength` | `16` | `16` |
+| `Nvt.Tab.StateTransitionDuration` | `0:0:0.15` | `0:0:0.15` |
+| `Nvt.Tab.Height` | `32` | `32` |
+| `Nvt.Tab.BottomIndicatorMargin` | `14,3,14,0` | `14,3,14,0` |
+| `Nvt.Tab.LeftIndicatorMargin` | `0,0,3,0` | `0,0,3,0` |
+| `Nvt.Tab.RightIndicatorMargin` | `3,0,0,0` | `3,0,0,0` |
+
+### 表單與頁籤對比
+
+這些配對沿用既有 37 組表格的 WCAG 相對亮度方法，使用不透明 sRGB 色彩。
+比值適用兩種形狀，四捨五入至小數點後三位。
+啟用文字維持 4.5:1。停用文字、邊框、有效指示線與焦點環維持 3:1。
+共用選取文字與焦點配對保留既有實測比值。
+`FormsContrastTests` 會在兩種形狀與主題下，以編譯後資源量測所有配對。
+
+| 對比配對 | Light | Dark |
+| --- | --- | --- |
+| 表單文字、插入點與微調圖示／一般／唯讀 | 13.982:1 | 12.766:1 |
+| 表單提示文字／一般／唯讀 | 6.027:1 | 7.006:1 |
+| 表單邊框／一般／唯讀 | 3.838:1 | 3.959:1 |
+| 表單錯誤邊框／一般／唯讀 | 4.587:1 | 4.212:1 |
+| 表單焦點環／一般／唯讀 | 6.359:1 | 8.692:1 |
+| 表單文字、插入點與微調圖示／滑入 | 12.525:1 | 11.866:1 |
+| 表單提示文字／滑入 | 5.399:1 | 6.512:1 |
+| 表單邊框／滑入 | 6.488:1 | 9.853:1 |
+| 表單錯誤邊框／滑入 | 4.109:1 | 3.916:1 |
+| 表單焦點環／滑入 | 5.696:1 | 8.080:1 |
+| 表單文字、插入點與微調圖示／按下／展開 | 11.866:1 | 10.501:1 |
+| 表單提示文字／按下／展開 | 5.115:1 | 5.763:1 |
+| 表單邊框／按下／展開 | 14.482:1 | 12.373:1 |
+| 表單錯誤邊框／按下／展開 | 3.893:1 | 3.465:1 |
+| 表單焦點環／按下／展開 | 5.397:1 | 7.150:1 |
+| 表單停用文字、提示、邊框與微調圖示 | 4.358:1 | 4.599:1 |
+| 表單錯誤邊框／停用填色 | 4.587:1 | 4.212:1 |
+| 表單反白文字 | 8.759:1 | 10.216:1 |
+| 表單與頁籤焦點環／應用程式 | 6.073:1 | 10.341:1 |
+| 表單一般邊框／應用程式 | 3.665:1 | 4.710:1 |
+| 表單滑入邊框／應用程式 | 6.917:1 | 12.611:1 |
+| 表單按下邊框／應用程式 | 16.296:1 | 17.895:1 |
+| 表單錯誤邊框／應用程式 | 4.381:1 | 5.012:1 |
+| 表單停用邊框／應用程式 | 4.162:1 | 5.471:1 |
+| 表單與頁籤焦點環／表面 | 6.653:1 | 9.798:1 |
+| 表單一般邊框／表面 | 4.015:1 | 4.462:1 |
+| 表單滑入邊框／表面 | 7.578:1 | 11.948:1 |
+| 表單按下邊框／表面 | 17.853:1 | 16.955:1 |
+| 表單錯誤邊框／表面 | 4.800:1 | 4.748:1 |
+| 表單停用邊框／表面 | 4.559:1 | 5.184:1 |
+| 頁籤文字／一般 | 7.243:1 | 10.600:1 |
+| 頁籤焦點環／一般 | 6.359:1 | 8.692:1 |
+| 頁籤文字／滑入 | 12.525:1 | 11.866:1 |
+| 頁籤焦點環／滑入 | 5.696:1 | 8.080:1 |
+| 頁籤文字／按下 | 14.482:1 | 12.373:1 |
+| 頁籤焦點環／按下 | 5.397:1 | 7.150:1 |
+| 頁籤文字與指示線／選取 | 8.759:1 | 10.216:1 |
+| 頁籤焦點環／選取 | 5.991:1 | 8.082:1 |
+| 頁籤文字與指示線／選取滑入 | 8.185:1 | 8.898:1 |
+| 頁籤焦點環／選取滑入 | 5.598:1 | 7.039:1 |
+| 頁籤文字與指示線／選取按下 | 7.807:1 | 7.830:1 |
+| 頁籤焦點環／選取按下 | 5.340:1 | 6.194:1 |
+| 頁籤文字／停用 | 4.358:1 | 4.599:1 |
+| 頁籤文字與指示線／選取停用 | 3.903:1 | 4.275:1 |
+
+## 文字樣式類別
+
+`TextStyles.axaml` 提供可選用的 TextBlock 文字角色，也適用其 SelectableTextBlock 子類別。
+每個類別都從既有 `Nvt.Font.<Role>.*` token 設定字型家族、大小與字重。
+所有角色都將前景設為 `NfcTextBrush`，覆寫繼承的前景，包括選取列與實心按鈕的前景。
+另外加上 `muted`，只將前景改為 `NfcTextMutedBrush`。
+這些類別套用至任何符合的 TextBlock，也包含其他控制項範本內的文字。
+既有 `title`、`body`、`caption` 或 `muted` 等同名類別可能因此與這些樣式衝突。
+
+這些角色需要 `Nvt.Core.Fonts` 套件及其資源。
+參考 `Nvt.Core.Fonts`，在載入文字樣式之前合併 `FontRoles.axaml`，並在 Fluent 之後載入 `TextStyles.axaml`。
+依 [Fonts 模組](Fonts.zh-TW.md) 使用 `WithNvtCoreFonts()` 設定既有中文後備字型。
+樣式不需要新的字型註冊或公開 C# API。
+採用後移除重複的本機文字角色樣式。
+
+類別不設定行高，也不改動未加類別的 TextBlock、SelectableTextBlock 與 Label 預設值。
+每個文字控制項使用一個角色類別，需要時再搭配 `muted`。
+H1 至 H3 階層規則不在本次變更範圍。
+
+| 類別 | 角色 token 前綴 | 字型家族 | 大小 | 字重 |
+| --- | --- | --- | ---: | ---: |
+| `title` | `Nvt.Font.Title.*` | Inter | 24 | 600 |
+| `heading` | `Nvt.Font.Heading.*` | Inter | 16 | 600 |
+| `body` | `Nvt.Font.Body.*` | Inter | 13 | 400 |
+| `caption` | `Nvt.Font.Caption.*` | Inter | 11 | 400 |
+| `mono` | `Nvt.Font.Mono.*` | Cascadia Mono | 13 | 400 |
+| `numbers` | `Nvt.Font.Numbers.*` | Cascadia Mono | 13 | 400 |
+| `bodyStrong` | `Nvt.Font.BodyStrong.*` | Inter | 13 | 600 |
+| `captionStrong` | `Nvt.Font.CaptionStrong.*` | Inter | 11 | 600 |
+| `monoStrong` | `Nvt.Font.MonoStrong.*` | Cascadia Mono | 13 | 600 |
+| `monoCaption` | `Nvt.Font.MonoCaption.*` | Cascadia Mono | 11 | 400 |
+
+角色後綴為 `Family`（FontFamily）、`Size`（double）與 `Weight`（FontWeight）。
+
+| 前景 token | Light | Dark |
+| --- | --- | --- |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `NfcTextMutedBrush` | `#526176` | `#A1AEC2` |
+
+這些文字配對沿用相同 sRGB 方法，兩種形狀皆維持 4.5:1 文字門檻。
+
+| 對比配對 | Light | Dark |
+| --- | --- | --- |
+| 所有文字類別／應用程式 | 13.353:1 | 15.188:1 |
+| muted 類別／應用程式 | 5.756:1 | 8.335:1 |
+| 所有文字類別／表面 | 14.629:1 | 14.390:1 |
+| muted 類別／表面 | 6.306:1 | 7.897:1 |
+| 所有文字類別／柔和表面 | 13.982:1 | 12.766:1 |
+| muted 類別／柔和表面 | 6.027:1 | 7.006:1 |
+| 所有文字類別／滑入填色 | 12.525:1 | 11.866:1 |
+| muted 類別／滑入填色 | 5.399:1 | 6.512:1 |
+| 所有文字類別／按下填色 | 11.866:1 | 10.501:1 |
+| muted 類別／按下填色 | 5.115:1 | 5.763:1 |
+| 所有文字類別／選取填色 | 13.172:1 | 11.870:1 |
+| muted 類別／選取填色 | 5.678:1 | 6.514:1 |
+| 所有文字類別／選取滑入填色 | 12.309:1 | 10.338:1 |
+| muted 類別／選取滑入填色 | 5.306:1 | 5.673:1 |
+| 所有文字類別／選取按下填色 | 11.741:1 | 9.098:1 |
+| muted 類別／選取按下填色 | 5.061:1 | 4.993:1 |
+
+### 渲染與檢閱
+
+執行新增的 renderer 測試前，先設定 `NVT_FORMS_IMAGES_DIR`。
+`FormStylesRenderer`、`TabStylesRenderer` 和 `TextStylesRenderer` 以合成資料輸出英文圖表。
+控制項圖表使用 `<control>-<pill|square>-<light|dark>.png`。
+文字圖表使用 `textstyles-light.png` 與 `textstyles-dark.png`。
+Fluent 比較圖使用 `forms-before-light.png` 與 `tabs-before-light.png`。
+每張圖寬 1200 像素、比例為一，且小於一 MB。
+
+測試涵蓋執行期圓角、token 幾何、錯誤優先順序、僅鍵盤顯示且不裁切的焦點環、原生編輯、微調、頁籤導覽與字型角色三項設定。
+擁有者仍需檢閱實際應用程式的彈出位置、150 ms 動態轉場、長繁體中文內容與頁面組合。
+ComboBox 測試涵蓋關閉欄位、可編輯輸入框與原生驗證幾何。唯讀視覺類別不會限制選取。
+token 歸屬與驗證流程請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)。
