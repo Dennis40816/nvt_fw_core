@@ -45,7 +45,7 @@ public sealed class IconTests
     public Task ConstantsAreSinglePrivateUseCharactersWithBundledGlyphs() => RunAsync(() =>
     {
         Dictionary<string, string> constants = ReadConstants();
-        Assert.Equal(68, constants.Count);
+        Assert.Equal(71, constants.Count);
         var family = Resource<FontFamily>("Nvt.Font.Icon.Family");
         Assert.Equal(new FontFamily(IconFamily), family);
         Assert.True(FontManager.Current.TryGetGlyphTypeface(
