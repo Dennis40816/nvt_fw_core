@@ -30,7 +30,13 @@
 - 每個角色包含一個家族、一個大小與一個字重。工具樣式必須一起套用三者。
 - NVT FW Combiner（NFC）的舊字型資源留在 Theme 模組，維持不變。
 
-打包另開 pull request 處理，加入套件版本、打包步驟與套件內的授權檔案。
+套件 ID 為 `Nvt.Core.Fonts`，獨立 SemVer 從 `0.1.0` 開始。
+版本定義於 `Nvt.Core.Fonts.csproj`，不隨 Core 版本變動。
+發行標籤使用 `core-fonts-v<version>`；首版為 `core-fonts-v0.1.0`。
+Release 包含單一 nupkg、`SHA256SUMS` 與 `SOURCE.md`。
+套件保留內嵌字型、Core 授權、README，以及現有字型授權與 Material Symbols NOTICE。
+直接相依套件只有 `Avalonia` 與 `Avalonia.Fonts.Inter`。
+詳見 [發行程序](../releasing.md) 與 [套件下載指南](../../../tools/core-packages/README.zh-TW.md)。
 
 ## 角色與資源鍵
 
@@ -116,10 +122,17 @@ Inter SemiBold 檔案回報的舊式家族名稱為 `Inter SemiBold`，要求的
 
 ## 工具採用方式
 
-1. 參考 `Nvt.Core.Fonts`，版本由整合者選定。
-2. 將 `FontRoles.axaml` 合併至應用程式資源。
-3. 在應用程式 builder 呼叫 `WithNvtCoreFonts()`。
-4. 在工具自己的樣式內，一起套用角色的家族、大小與字重。
+1. 在工具 manifest 固定 `core-fonts-v0.1.0`、`Nvt.Core.Fonts.0.1.0.nupkg` 與 Release 的 SHA-256。
+2. 在還原前下載並驗證 Release 套件，將 `Nvt.Core.Fonts` 參考固定為 `0.1.0`，並更新鎖定檔。
+3. 將 `FontRoles.axaml` 合併至應用程式資源。
+4. 在應用程式 builder 呼叫 `WithNvtCoreFonts()`。
+5. 在工具自己的樣式內，一起套用角色的家族、大小與字重。
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+</ItemGroup>
+```
 
 ```xml
 <Application.Resources>
@@ -209,4 +222,4 @@ Material Symbols 使用 Apache License 2.0。
 3. Material Symbols 使用 NOTICE 中的精確命令，並使用所記錄的 fontTools 版本與 `SOURCE_DATE_EPOCH`。
 4. 檢查固定軸值、家族名稱、字重與圖示連字。來源或命令改變時，更新 NOTICE。
 5. 更新雜湊測試與兩份模組文件。執行字型測試與整個 solution 的測試。
-6. 同步維護授權檔案與第三方聲明。套件發佈由整合者於打包工作中處理。
+6. 同步維護授權檔案與第三方聲明。增加 Fonts 版本，依獨立標籤發行，再更新工具的 manifest 與鎖定檔。

@@ -24,7 +24,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         };
         var original = args.ToArray();
         var calls = 0;
-        var command = new RuntimeQueryCommand("probe", risk, received =>
+        var command = new RuntimeQueryCommand("probe", risk, (_, received, _) =>
         {
             calls++;
             Assert.NotNull(received);
@@ -45,7 +45,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         }
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: true);
 
-        Assert.Equal(RuntimeQueryResponseEnvelope.Success(null), await router.RouteAsync("probe", args));
+        Assert.Equal(RuntimeQueryResponseEnvelope.Success(null), await router.RouteAsync("probe", args, TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
         Assert.Equal(original, args.ToArray());
     }
@@ -63,7 +63,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         var args = new Dictionary<string, string>(StringComparer.Ordinal) { ["confirm"] = "invalid", ["value"] = " unchanged " };
         var expected = RuntimeQueryResponseEnvelope.Success(null);
         var calls = 0;
-        var command = new RuntimeQueryCommand("probe", risk, received =>
+        var command = new RuntimeQueryCommand("probe", risk, (_, received, _) =>
         {
             calls++;
             Assert.Same(args, received);
@@ -71,7 +71,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         }) { ReceivesConfirmation = receivesConfirmation };
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: false);
 
-        Assert.Same(expected, await router.RouteAsync("probe", args));
+        Assert.Same(expected, await router.RouteAsync("probe", args, TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
     }
 
@@ -84,7 +84,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         var args = confirm is null ? null : new Dictionary<string, string>(StringComparer.Ordinal) { ["confirm"] = confirm };
         var expected = RuntimeQueryResponseEnvelope.Success(null);
         var calls = 0;
-        var command = new RuntimeQueryCommand("probe", risk, received =>
+        var command = new RuntimeQueryCommand("probe", risk, (_, received, _) =>
         {
             calls++;
             Assert.Same(args, received);
@@ -92,7 +92,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         }) { ReceivesConfirmation = true };
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: true);
 
-        Assert.Equal(runs ? expected : RuntimeQueryResponseEnvelope.Failure(code!, message!), await router.RouteAsync("probe", args));
+        Assert.Equal(runs ? expected : RuntimeQueryResponseEnvelope.Failure(code!, message!), await router.RouteAsync("probe", args, TestContext.Current.CancellationToken));
         Assert.Equal(runs ? 1 : 0, calls);
     }
 
@@ -103,7 +103,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
     public async Task OptInPreservesStartupConfirmation(bool requireConfirmation)
     {
         var calls = 0;
-        var command = new RuntimeQueryCommand("probe", RuntimeQueryCommandRisk.WritesData, args =>
+        var command = new RuntimeQueryCommand("probe", RuntimeQueryCommandRisk.WritesData, (_, args, _) =>
         {
             calls++;
             Assert.Null(args);
@@ -116,7 +116,7 @@ public sealed class RuntimeQueryCommandConfirmationDeliveryTests
         Assert.Equal(requireConfirmation, Assert.Single(parsed.Calls).Confirmed);
         Assert.Equal(requireConfirmation ? Array.Empty<string>() : ["--confirm"], parsed.RemainingArguments);
         Assert.Equal(0, calls);
-        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup);
+        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup, TestContext.Current.CancellationToken);
         Assert.Equal(RuntimeQueryResponseEnvelope.Success(null), Assert.Single(results).Response);
         Assert.Equal(1, calls);
     }

@@ -18,7 +18,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 ## API
 
 [`CommonTextResources`](../../../src/Nvt.Core/Locale/CommonTextResources.cs) is in `Nvt.Core.Locale`.
-It targets `net8.0`.
+It targets `net10.0`.
 It depends only on the BCL.
 `CommonLanguage` contains `English` and `TraditionalChinese`.
 `For(language)` returns one lazy cached bundle per language.

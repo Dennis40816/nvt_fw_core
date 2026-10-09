@@ -126,7 +126,7 @@ The owner chose this two-step adoption on 2026-10-07. It replaces the 2026-10-06
 
 Applies to all C# code in NVT repositories. New code follows these rules from the first PR. Existing code is migrated in separate PRs, not inside unrelated changes.
 
-Reviews check every pull request against the 11 rules below; see [Review and approval](../agents/review.md).
+Reviews check every pull request against the 11 rules below and the six more state rules after them; see [Review and approval](../agents/review.md).
 
 1. **Store each fact once.** If a value can be computed from other state, use a get-only property or a pure function. Raise `NotifyPropertyChangedFor` on the sources. Do not store `HasX` or `XCount` next to `X`.
 2. **Group fields that are set and cleared together.** Put them in one `record` or one child ViewModel. Replace the whole object in one step.
@@ -186,6 +186,84 @@ Ask the questions below for each field, from top to bottom. Stop at the first "y
 - `NumberScrubber` keeps three drag fields. They exist only during a drag, so they become one nullable `ScrubSession` (step 3). Its `_isEditing` repeats the focus state, so it is computed (step 1). See #86.
 - `BackgroundJobService.CancelRequested` repeats `Status == Cancelling`. It becomes a get-only property (step 1). See #86.
 - `WindowsStableRelativeWriteTree` tracks one lifecycle with six fields. They become one phase value (step 2). See #85.
+
+### More state rules
+
+These rules extend the 11 rules above. Review checks them in the same way.
+
+12. **Publish once, in order.** Finish every step that can fail, then commit, then notify once. Never reassign a published snapshot.
+13. **Check where you adopt, not where you start.** Prepare the new state privately and adopt it once under the lock. Use the one shared generation helper. Do not add a new `long _*Generation` field.
+14. **Own your collections.** A published snapshot holds a private copy and exposes a read-only view. Background code takes a snapshot of a UI collection before it enumerates it.
+15. **Observers must not break the publisher.** Isolate the exceptions of each observer.
+16. **Read an external provider once per revision.** A computed property over a provider does not call it again for each binding pass.
+17. **Keep state in one place.** Do not push a setting into a control and read it back. A default value lives in one file, not in both code and XAML.
+
+## C# code rules
+
+Applies to all C# code in NVT repositories. A rule that has an automatic check fails the build or the repository health check. A rule marked "Review" goes on the pull request checklist. For a rule marked "Review", the reviewer lists every site of the defect class, not only the first one. The fix covers the class in one commit.
+
+Existing code enters the health check as a baseline. New code must pass. The baseline only goes down.
+
+### Enforcement baseline
+
+Core ships one `Directory.Build.props` fragment, one `.editorconfig` and the banned-symbol lists. Each repository copies them byte for byte and checks the copy against a lock file. See `tools/repo-checks/csharp/README.md`.
+
+| Setting | Value |
+|---|---|
+| `Nullable`, `TreatWarningsAsErrors`, `EnforceCodeStyleInBuild` | on |
+| `AnalysisLevel` | `latest-recommended` |
+| `.editorconfig` | every rule the repository relies on has an explicit severity |
+| `Microsoft.CodeAnalysis.BannedApiAnalyzers` | RS0030 with the lists in rule R2 |
+| `Microsoft.VisualStudio.Threading.Analyzers` | VSTHRD100 error, VSTHRD002 and VSTHRD110 warning with an occurrence ratchet |
+| `Microsoft.CodeAnalysis.PublicApiAnalyzers` (Core only) | RS0016 and RS0017 error |
+| Repository health check (CI) | the counts of `async void`, state members per type, file and method size, partial files per type, suppressions and source-text assertions must not grow |
+| CI | `dotnet format --verify-no-changes`. In test projects use `GenerateDocumentationFile=false` instead of per-file `CS1591` pragmas |
+
+### Code rules
+
+| # | Rule | Check |
+|---|---|---|
+| R1 | No `async void` except UI event handlers. Those call one shared helper that catches, reports and keeps the UI usable. No `.Result`, `.Wait()` or `GetAwaiter().GetResult()` on the UI thread. Fire-and-forget goes only through a helper that observes the exception. | VSTHRD100, VSTHRD002, VSTHRD110 |
+| R2 | Time, sleep, processes, environment and file writes go through an injected seam. Production code reads time only from `TimeProvider`. Banned outside the seam owner: `DateTime(Offset).Now` and `UtcNow`, `Environment.TickCount64`, `Stopwatch.GetTimestamp`, `Thread.Sleep`, `Task.Delay` without a provider, `Process.Start`, environment variable and folder lookups, `File.Write*`, `Move`, `Copy` and `ReadAll*`, `System.Diagnostics.Trace.*`, and the static `Dispatcher.UIThread`. | RS0030 |
+| R3 | Use one seam shape: an internal `<Type>Seams` record of delegates with one `TimeProvider` field, passed to the constructor. | Review |
+| R4 | One protected writer per repository is the only way to write output. Its API accepts only a guarded path value. It stages the data and renames atomically. Project and settings files use Core `AtomicOutput`. | RS0030 and a metadata test |
+| R5 | Adapters return typed results, not exceptions. A catch that swallows an exception names the reason and reports through the injected diagnostics callback. No unfiltered `catch (Exception)` without a written reason. After an irreversible commit, nothing may throw before the receipt is recorded. | CA1031 and review. Fault-injection test for each adapter |
+| R6 | Parse external input into a typed, immutable, admitted object. Reject unknown, duplicate, missing, dangling and out-of-range values by default. Use one admission function for each input kind, shared by the UI, the CLI and loaders. Give each field a negative test. | Strict `System.Text.Json` options, `Enum.IsDefined` at boundaries, review |
+| R7 | A cache key, identity or fingerprint is one record that lists every input. A test changes each field in turn and asserts that the key changes. | Test pattern |
+| R8 | Never branch on localized text. Store typed state and project the text at render time. | Review and a script for comparisons on resource values |
+| R9 | Do not copy a start, verify or cleanup sequence. Two copies become one helper, and the differences become parameters. A `bool` parameter must not choose between two method bodies. Declare each native function once. | Clone report (informational) and a script for duplicate `LibraryImport` |
+| R10 | A public type or option needs a consumer in the same pull request. Types are internal by default. Delete code with no caller in the pull request that removes its last caller. | PublicApiAnalyzers (Core), IDE0051 and IDE0052, unused-internal script |
+| R11 | Pass an explicit `StringComparison`. Do not call `Single()` on a data-driven set. Write `(T?)null` instead of a conditional that silently converts to an empty value. | CA1307, CA1309, CA1310, CA1862 and review |
+| R12 | Private fields use `_camelCase`. A new lock is `Lock _gate`. | IDE1006, IDE0330 |
+
+### Architecture rules
+
+| # | Rule | Check |
+|---|---|---|
+| A1 | Ask "Core or product?" first. Core takes the mechanism, the product keeps the policy. Extract with zero difference and port the tests with the code. A product does not keep its own copy after it adopts the Core type. | Review and a duplication list |
+| A2 | Layers point inward: Views, ViewModels, Services, then Application and Domain. ViewModels import no `Avalonia.Controls`. Controls know no ViewModels. Presentation renders typed results. It never classifies facts or parses raw JSON. | Project-graph and metadata architecture tests |
+| A3 | Code-behind only wires the view: at most 150 lines for each `.axaml.cs`, no orchestration and no lifecycle state. Every user action goes through a `Command`. Compiled bindings are on, and every `.axaml` declares `x:DataType`. | Health check, `AvaloniaUseCompiledBindingsByDefault` |
+| A4 | Size limits: a file has at most 800 lines, a method at most 80 lines (150 needs a split plan in the pull request), a type at most 8 partial files and 30 state members. Split a pull request of about 1,500 added lines by owner before review. | Health check and the pull request template |
+| A5 | Split by the owner of one lifecycle (a child ViewModel, a nullable record, a phase record). Never split by file, as in `ViewModel.Part2.cs`. | Review |
+| A6 | One resolver for each resource (paths, local state), one normative validator for each rule, one protected writer. Guards live inside the resolver. | Review and RS0030 |
+| A7 | Architecture tests assert compiled metadata, the project graph and behavior. Use source-text checks only for forbidden symbols. | Script: a read of `src/` files outside the architecture test project |
+| A8 | Static mutable state belongs only in adapters, documented with its protector. No static state for identity or lifecycle. | Metadata test that lists static non-readonly fields |
+
+### Test rules
+
+| # | Rule | Check |
+|---|---|---|
+| T1 | No fixed sleep and no wall-clock range in an assertion. Wait on a signal with a token and a hard cap, or drive a manual clock. | RS0030 in test projects and review |
+| T2 | One shared test-support project per repository (Core first) holds the manual clock, the temp workspace and the process probe. Tests do not declare their own. | Script: a second `TimeProvider` implementation or `TestWorkspace` fails |
+| T3 | Tests are hermetic. The path resolver fails closed in test processes. Use one headless Avalonia session for each collection. Process-wide state lives only in a serial collection. | Base fixture and review |
+| T4 | Test behavior, not source text or private members (`BindingFlags.NonPublic`). | Health check count |
+| T5 | A flaky test is a bug. Open an issue even when the retry passed. | Existing CI gate |
+
+### Review process
+
+- The reviewer prompt asks for every site of a defect class, not the first one.
+- The pull request template carries the checklist for the rules marked "Review".
+- Independent reviews check these rules and the state rules above.
 
 ## Where records live
 

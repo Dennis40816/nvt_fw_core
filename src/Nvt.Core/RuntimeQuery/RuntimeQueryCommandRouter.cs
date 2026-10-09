@@ -5,15 +5,16 @@ namespace Nvt.Core.RuntimeQuery;
 /// <summary>Checks requests and routes command names to the caller's handlers.</summary>
 public sealed partial class RuntimeQueryCommandRouter
 {
-    private readonly IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>> _handlers;
+    private readonly Dictionary<string, Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>? _handlers;
+    private readonly IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>? _argumentHandlers;
     private readonly Dictionary<string, RuntimeQueryCommand>? _commands;
     private readonly bool _requireConfirmation;
 
     /// <summary>Creates a router from the caller's completed handler table.</summary>
     public RuntimeQueryCommandRouter(
-        IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>> handlers)
+        IReadOnlyDictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>> handlers)
     {
-        _handlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
+        _argumentHandlers = handlers ?? throw new ArgumentNullException(nameof(handlers));
         RegisteredCommands = Array.AsReadOnly(handlers.Keys.ToArray());
     }
 
@@ -23,7 +24,7 @@ public sealed partial class RuntimeQueryCommandRouter
     public RuntimeQueryCommandRouter(IReadOnlyList<RuntimeQueryCommand> commands, bool requireConfirmation)
     {
         ArgumentNullException.ThrowIfNull(commands);
-        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal);
+        var handlers = new Dictionary<string, Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal);
         var definitions = new Dictionary<string, RuntimeQueryCommand>(StringComparer.Ordinal);
         var names = new string[commands.Count];
         for (var index = 0; index < commands.Count; index++)
@@ -52,8 +53,11 @@ public sealed partial class RuntimeQueryCommandRouter
     public IReadOnlyList<string> RegisteredCommands { get; }
 
     /// <summary>Checks for a null request, checks the caller's version, then routes the command.</summary>
-    public async Task<RuntimeQueryResponseEnvelope> ExecuteAsync(RuntimeQueryRequest? request, string expectedVersion)
+    /// <remarks>Cancellation stops work before dispatch. Started handlers own cooperative cancellation and committed cleanup.</remarks>
+    public async Task<RuntimeQueryResponseEnvelope> ExecuteAsync(
+        RuntimeQueryRequest? request, string expectedVersion, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (request is null)
         {
             return RuntimeQueryResponseEnvelope.Failure(
@@ -68,20 +72,27 @@ public sealed partial class RuntimeQueryCommandRouter
                 message: $"Unsupported request version '{request.Version}'. Expected '{expectedVersion}'.");
         }
 
-        return await RouteAsync(request.Command, request.Args);
+        return await RouteAsync(request.Command, request.Args, cancellationToken);
     }
 
     /// <summary>Normalizes the name, rejects startup-only commands, checks confirmation, then calls the handler.</summary>
-    public Task<RuntimeQueryResponseEnvelope> RouteAsync(string? commandText, IReadOnlyDictionary<string, string>? args)
+    public Task<RuntimeQueryResponseEnvelope> RouteAsync(
+        string? commandText, IReadOnlyDictionary<string, string>? args, CancellationToken cancellationToken = default)
     {
-        return RouteCoreAsync(commandText, args, isStartup: false, startupConfirmed: false);
+        return RouteCoreAsync(commandText, args, isStartup: false, startupConfirmed: false, cancellationToken);
     }
 
     private Task<RuntimeQueryResponseEnvelope> RouteCoreAsync(
-        string? commandText, IReadOnlyDictionary<string, string>? args, bool isStartup, bool startupConfirmed)
+        string? commandText, IReadOnlyDictionary<string, string>? args, bool isStartup, bool startupConfirmed,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var command = commandText?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(command) || !_handlers.TryGetValue(command, out var handler))
+        Func<RuntimeQueryInvocation, IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>? handler = null;
+        Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>? argumentHandler = null;
+        if (string.IsNullOrWhiteSpace(command) || !(_handlers is not null
+            ? _handlers.TryGetValue(command, out handler)
+            : _argumentHandlers!.TryGetValue(command, out argumentHandler)))
         {
             return Task.FromResult(RuntimeQueryResponseEnvelope.Failure(
                 code: "UNKNOWN_COMMAND",
@@ -132,8 +143,9 @@ public sealed partial class RuntimeQueryCommandRouter
             }
         }
 
-        return _commands?.GetValueOrDefault(command)?.InvocationHandler is { } invocationHandler
-            ? invocationHandler(isStartup ? RuntimeQueryInvocation.Startup : RuntimeQueryInvocation.Runtime, args)
-            : handler(args);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _handlers is not null
+            ? handler!(isStartup ? RuntimeQueryInvocation.Startup : RuntimeQueryInvocation.Runtime, args, cancellationToken)
+            : argumentHandler!(args, cancellationToken);
     }
 }

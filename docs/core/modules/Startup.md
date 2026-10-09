@@ -5,7 +5,7 @@
 `Nvt.Core.Startup.StartupTrace` records startup milestones, elapsed time, and
 allocation totals. The host application chooses the output environment variable,
 schema name, milestone names, and any extra JSON sections. There are no package
-dependencies beyond the .NET 8 base libraries.
+dependencies beyond the .NET 10 base libraries.
 
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 

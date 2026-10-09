@@ -216,12 +216,12 @@ public sealed class BootstrapStartupProtocolTests
         Assert.True(await signal.ReportAdmittedAsync(TestContext.Current.CancellationToken));
     }
 
-    /// <summary>Setting an empty environment value removes it on Windows, preserving absent admission.</summary>
+    /// <summary>An unset environment value is absent admission. A literal empty value stays invalid on every runtime.</summary>
     [Fact]
-    public async Task BootstrapAdmissionEmptyEnvironmentValueIsAbsent()
+    public async Task BootstrapAdmissionUnsetEnvironmentValueIsAbsent()
     {
         RequireWindows();
-        using var environment = AdmissionEnvironment("");
+        using var environment = AdmissionEnvironment(null);
         Assert.Null(Environment.GetEnvironmentVariable(TransportFixture.Names.BootstrapAdmissionHandle));
         using BootstrapAdmissionSignal signal = BootstrapAdmissionSignal.Capture(TransportFixture.Names);
         Assert.Equal(BootstrapAdmissionInheritanceOutcome.NotInherited, signal.Outcome);

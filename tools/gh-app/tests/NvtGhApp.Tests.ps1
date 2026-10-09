@@ -85,14 +85,16 @@ InModuleScope NvtGhApp {
         foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX, $env:NVT_GHAPP_HELPER_CALLS, $script:LogFile, $script:LedgerFile)) {
             if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) }
         }
-        foreach ($name in @('GH_TOKEN', 'GITHUB_TOKEN', 'GH_REPO', 'GH_HOST', 'GH_DEBUG', 'NVT_GHAPP_HELPER_FAIL')) {
+        foreach ($name in @('GH_TOKEN', 'GITHUB_TOKEN', 'GH_REPO', 'GH_HOST', 'GH_DEBUG', 'NVT_GHAPP_HELPER_FAIL', 'NVT_GHAPP_HELPER_MESSAGE')) {
             [Environment]::SetEnvironmentVariable($name, $null, 'Process')
         }
         $helper = Join-Path $script:FixtureRoot 'helper.ps1'
         $helperSource = @'
-param($Mode, $Owner, $Repo, $ClientId, $InstallationId, $DpapiPath)
+param($Mode, $Owner, $Repo, $ClientId, $InstallationId, $DpapiPath, [switch]$IncludeWorkflowsWrite)
 $record = @{ Arguments = $PSBoundParameters; TokenPresent = [bool]$env:GH_TOKEN; DebugPresent = [bool]$env:GH_DEBUG }
 [IO.File]::AppendAllText($env:NVT_GHAPP_HELPER_CALLS, (ConvertTo-Json $record -Compress) + "`n")
+# NVT_GHAPP_HELPER_MESSAGE makes every call fail with that text on stderr.
+if ($env:NVT_GHAPP_HELPER_MESSAGE) { [Console]::Error.Write($env:NVT_GHAPP_HELPER_MESSAGE); exit 1 }
 # NVT_GHAPP_HELPER_FAIL is the number of calls that fail before the helper succeeds.
 if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:NVT_GHAPP_HELPER_FAIL) {
     [Console]::Error.Write('ghs_' + 'FAKE'); exit 1
@@ -770,6 +772,106 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         Merge-GhAppApprovedPullRequest -Numbers $Numbers -Worktree $script:GitRoot -LogPath $script:LogFile -PollSeconds 1 -TimeoutSeconds $TimeoutSeconds -DeleteBranchPrefix 'test/'
     }
 
+    Describe 'Workflows write push' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            $script:WorkflowsLog = Join-Path $script:FixtureRoot 'workflows.log'
+            if ([IO.File]::Exists($script:WorkflowsLog)) { [IO.File]::Delete($script:WorkflowsLog) }
+        }
+        function Get-HelperRecords {
+            if ([IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS)) {
+                @(Get-Content -LiteralPath $env:NVT_GHAPP_HELPER_CALLS | ForEach-Object { ConvertFrom-Json $_ })
+            } else { @() }
+        }
+        function Set-WorkflowHead {
+            # HEAD becomes the base plus one workflow file. The caller restores HEAD afterwards.
+            $identity = @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgSign=false')
+            $file = Join-Path $script:GitRoot 'workflow.data'
+            [IO.File]::WriteAllText($file, 'name: synthetic')
+            $sha = (Invoke-GhAppGit $script:GitRoot @('hash-object', '-w', $file)).Trim()
+            $null = Invoke-GhAppGit $script:GitRoot @('read-tree', $script:BaseTree)
+            $null = Invoke-GhAppGit $script:GitRoot @('update-index', '--add', '--cacheinfo', "100644,$sha,.github/workflows/ci.yml")
+            $tree = (Invoke-GhAppGit $script:GitRoot @('write-tree')).Trim()
+            $commit = (Invoke-GhAppGit $script:GitRoot ($identity + @('commit-tree', $tree, '-p', $script:BaseCommit, '-m', 'workflow fixture'))).Trim()
+            $null = Invoke-GhAppGit $script:GitRoot @('update-ref', 'HEAD', $commit)
+            @{ Tree = $tree; Blob = $sha }
+        }
+        function Restore-Head {
+            $null = Invoke-GhAppGit $script:GitRoot @('update-ref', 'HEAD', $script:LocalHead)
+            $null = Invoke-GhAppGit $script:GitRoot @('read-tree', $script:HeadTree)
+        }
+        It 'keeps the flag off for an ordinary push' {
+            Set-Responses @(New-PushSteps)
+            $null = Invoke-PushFixture
+            $records = @(Get-HelperRecords)
+            $records.Count | Should BeGreaterThan 0
+            foreach ($record in $records) { @($record.Arguments.PSObject.Properties.Name) -contains 'IncludeWorkflowsWrite' | Should Be $false }
+            [IO.File]::Exists($script:WorkflowsLog) | Should Be $false
+        }
+        It 'refuses the switch when the push changes no workflow file, before any call' {
+            Set-Responses @()
+            Get-Message {
+                Push-GhAppBranch -Worktree $script:GitRoot -LocalBase $script:BaseCommit -RemoteParent $script:HeadSha `
+                    -Branch test/module -MessageFile $script:BodyFile -IncludeWorkflowsWrite -WorkflowsLogPath $script:WorkflowsLog
+            } | Should Be 'IncludeWorkflowsWrite refused: the push changes no file under .github/workflows/.'
+            @(Get-Calls).Count | Should Be 0
+            @(Get-HelperRecords).Count | Should Be 0
+            [IO.File]::Exists($script:WorkflowsLog) | Should Be $false
+        }
+        It 'requires a log path with the switch' {
+            Set-Responses @()
+            Get-Message {
+                Push-GhAppBranch -Worktree $script:GitRoot -LocalBase $script:BaseCommit -RemoteParent $script:HeadSha `
+                    -Branch test/module -MessageFile $script:BodyFile -IncludeWorkflowsWrite
+            } | Should Be 'IncludeWorkflowsWrite requires WorkflowsLogPath.'
+            @(Get-Calls).Count | Should Be 0
+        }
+        It 'passes the flag to every token request of a workflow push and writes one log line without a token' {
+            $workflow = Set-WorkflowHead
+            try {
+                Set-Responses @((New-ApiStep 'pulls?state=open&head=example-owner%3Atest%2Fmodule&per_page=100&page=1' -Value @()),
+                    (New-ApiStep "git/commits/$script:HeadSha" -Value @{ tree = @{ sha = $script:BaseTree } }),
+                    (New-ApiStep git/blobs POST @{ sha = $workflow.Blob } -App),
+                    (New-ApiStep git/trees POST @{ sha = $workflow.Tree } -App),
+                    (New-ApiStep git/commits POST @{ sha = $script:MergeSha } -App),
+                    (New-ApiStep 'git/ref/heads/test%2Fmodule' -ExitCode 1 -ErrorText 'HTTP 404'),
+                    (New-ApiStep git/refs POST @{} -App))
+                $result = Push-GhAppBranch -Worktree $script:GitRoot -LocalBase $script:BaseCommit -RemoteParent $script:HeadSha `
+                    -Branch test/module -MessageFile $script:BodyFile -IncludeWorkflowsWrite -WorkflowsLogPath $script:WorkflowsLog
+            } finally { Restore-Head }
+            $result.Files | Should Be 1
+            $records = @(Get-HelperRecords)
+            $records.Count | Should Be 4
+            foreach ($record in $records) { $record.Arguments.IncludeWorkflowsWrite | Should Be $true }
+            $lines = @(Get-Content -LiteralPath $script:WorkflowsLog)
+            $lines.Count | Should Be 1
+            $lines[0] -match '^\d{4}-\d\d-\d\dT[\d:.]+\+00:00 workflows-write push branch=test/module files=1 workflowFiles=1$' | Should Be $true
+            Assert-NoToken ($lines | Out-String)
+            # The stored configuration is unchanged, so the next push is an ordinary one.
+            (Get-GhAppContext).ContainsKey('includeWorkflowsWrite') | Should Be $false
+        }
+        It 'shows the fixed message when the installation lacks the workflows permission' {
+            $workflow = Set-WorkflowHead
+            $env:NVT_GHAPP_HELPER_MESSAGE = 'Installation token lacks the requested workflows permission. ghs_' + 'FAKE'
+            try {
+                Set-Responses @((New-ApiStep 'pulls?state=open&head=example-owner%3Atest%2Fmodule&per_page=100&page=1' -Value @()),
+                    (New-ApiStep "git/commits/$script:HeadSha" -Value @{ tree = @{ sha = $script:BaseTree } }))
+                $message = Get-Message {
+                    Push-GhAppBranch -Worktree $script:GitRoot -LocalBase $script:BaseCommit -RemoteParent $script:HeadSha `
+                        -Branch test/module -MessageFile $script:BodyFile -IncludeWorkflowsWrite -WorkflowsLogPath $script:WorkflowsLog
+                }
+            } finally { Restore-Head }
+            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/git/blobs (token helper exit 1): Installation token lacks the requested workflows permission. (after 3 attempts)"
+            Assert-NoToken $message
+        }
+        It 'does not show any other helper error text' {
+            $env:NVT_GHAPP_HELPER_MESSAGE = 'some other failure ghs_' + 'FAKE'
+            Set-Responses @((New-ApiStep pulls/7 PATCH @{} -App))
+            $message = Get-Message { Set-GhAppPullRequestBody 7 $script:BodyFile }
+            $message | Should Be "HTTP unknown /repos/$script:RepositoryName/pulls/7 (token helper exit 1) (after 3 attempts)"
+            Assert-NoToken $message
+        }
+    }
     Describe 'Owner-approved merges' {
         BeforeEach {
             Reset-Fixture; Import-Fixture; Mock Start-Sleep {}

@@ -1,7 +1,14 @@
 # Releasing Core
 
-Core ships as two versioned NuGet packages: `Nvt.Core` and `Nvt.Core.Avalonia`.
-Both packages use the independent Core SemVer in `Directory.Build.props`, starting at `0.1.0`.
+Core has two independent release lines.
+
+| Release line | Version source | Tag | Pack command | Packages |
+| --- | --- | --- | --- | --- |
+| Core | `Directory.Build.props` | `core-v<version>` | `./scripts/pack.ps1 -Package Core` | `Nvt.Core`, `Nvt.Core.Avalonia` |
+| Fonts | `src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj` | `core-fonts-v<version>` | `./scripts/pack.ps1 -Package Fonts` | `Nvt.Core.Fonts` |
+
+The Core packages share their Core SemVer. Fonts starts at `0.1.0` and advances independently.
+Omitting `-Package` selects Core.
 Never replace a version with different package content.
 
 Run the pack script's offline tests with PowerShell 7:
@@ -10,13 +17,13 @@ Run the pack script's offline tests with PowerShell 7:
 pwsh -File ./scripts/tests/test-pack.ps1
 ```
 
-1. Set a new version in `Directory.Build.props`. In [CHANGELOG.md](../../CHANGELOG.md), move the "Unreleased" entries under the new version. Merge the reviewed source into `main`.
+1. Set a new Core version in `Directory.Build.props`. In [CHANGELOG.md](../../CHANGELOG.md), move the "Unreleased" entries under the new version. Merge the reviewed source into `main`.
 2. Check out that commit with a clean working tree.
 3. Fetch the version tags and run the pack script with PowerShell 7:
 
    ```powershell
    git fetch origin --tags
-   pwsh -File ./scripts/pack.ps1
+   pwsh -File ./scripts/pack.ps1 -Package Core
    ```
 
 The script runs locked restore, Release build, tests, and pack without another build or restore.
@@ -53,6 +60,51 @@ Do not substitute a local rebuild for a Release asset.
 Packing twice gives different `.nupkg` bytes because package archives record timestamps, so the Release asset and its `SHA256SUMS` entry are a version's only valid copy.
 If release creation fails after a draft exists, preserve its assets and resolve the failure without rebuilding that version.
 
+## Release Fonts
+
+1. Set the Fonts version in `src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj` and record its changes in `CHANGELOG.md`.
+2. Merge the reviewed source into `main`, check out that commit, and fetch tags with `git fetch origin --tags`.
+3. Preserve earlier output elsewhere and run `pwsh -File ./scripts/pack.ps1 -Package Fonts` from a clean tree.
+4. Create `core-fonts-v<version>` at that reviewed commit, then push that tag.
+5. Use the workflow's immutable Release assets for adoption. Preserve any existing draft and its original assets if publication fails.
+
+For the initial Fonts release, the tag is `core-fonts-v0.1.0`.
+
+```powershell
+git tag -a core-fonts-v0.1.0 -m "Core Fonts 0.1.0"
+git push origin core-fonts-v0.1.0
+```
+
+The `Core / release fonts` job verifies the project version and creates `Core Fonts <tag>` with `--verify-tag`.
+It attaches exactly these assets:
+
+- `Nvt.Core.Fonts.0.1.0.nupkg`
+- `SHA256SUMS`, with one checksum line
+- `SOURCE.md`, with version, source commit, repository URL, and `Package: Nvt.Core.Fonts`
+
+The package contains its assembly with five embedded font files, XML documentation, `LICENSE`, `README.md`, and the font `licenses/` folder.
+The license folder includes the Material Symbols modification `NOTICE`.
+Its only direct dependencies are `Avalonia` and `Avalonia.Fonts.Inter`.
+Inter remains in its dependency package.
+
+Fonts packing runs the same locked restore, Release build, and solution tests as Core.
+It requires a clean tree and empty `artifacts/packages/`.
+Local packing rejects an existing Fonts version tag.
+A tag push must match the selected release line, project version, HEAD, and `GITHUB_SHA`.
+Only the first tag-triggered release may pack an existing tag. Existing Releases, including drafts, block repacking.
+The Fonts tag runs neither the Core release job nor the verify job.
+Core tags run neither the Fonts release job nor the verify job.
+
+Check a locally built candidate's contents with the optional pack test argument:
+
+```powershell
+pwsh -File ./scripts/tests/test-pack.ps1 -FontsPackagePath ./artifacts/packages/Nvt.Core.Fonts.0.1.0.nupkg
+```
+
+The check verifies the embedded font bytes, license files, readme, repository metadata, and direct dependency list.
+
+## Pin packages in a tool
+
 Every tool downloads Core packages into `artifacts/core-packages/` at the repository root before restore.
 The tool ignores that folder in git and commits only `core-packages.json` as its package record.
 The manifest pins each package's Release tag, asset name, and SHA-256 from that Release's `SHA256SUMS`.
@@ -62,7 +114,12 @@ The public Core repository needs no download token.
 A tool takes only the Core packages it references.
 Add `Nvt.Core.Avalonia` when the tool adopts shared UI.
 Both Core packages always use the same version.
-A font package with its own version and tag uses the same manifest with its own `release` value.
+Add `Nvt.Core.Fonts` when the tool adopts font roles, the Chinese fallback, or Material Symbols.
+Pin Core packages to `core-v<Core version>` and Fonts to `core-fonts-v<Fonts version>` in the same manifest.
+For example, Core `0.5.0` and Fonts `0.1.0` use different Release tags and exact package versions.
+Each entry has its own asset name and SHA-256 from that Release's `SHA256SUMS`.
+The [example manifest](../../tools/core-packages/core-packages.example.json) includes all three packages.
+Replace its placeholder Fonts checksum with the published checksum before adoption.
 
 Follow the [Core package download guide](../../tools/core-packages/README.md) to add or upgrade Core in a designated tool:
 
@@ -85,5 +142,7 @@ To roll back, put the earlier Release's values back in the manifest and restore 
 
 Deliver Core only under its proprietary `LICENSE`, including inside designated tools' releases.
 Each tool release takes `LICENSE` from a verified downloaded package and ships it as `licenses/Nvt.Core/LICENSE`.
-It covers both Core packages.
+It covers Core package code, including Fonts.
+Tools using Fonts also ship the font `licenses/` folder and preserve Inter dependency licenses and notices.
+See [Fonts license duties](modules/Fonts.md#license-duties-and-updates).
 Each tool's own license does not relicense Core.

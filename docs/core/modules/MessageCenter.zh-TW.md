@@ -15,7 +15,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-`Nvt.Core.MessageCenter` 在 `Nvt.Core` 提供被動顯示契約、模態工作階段與匯出工作流程，目標為 `net8.0`，只依賴 BCL。主程式提供已准入的活動項目、顯示字串、計數、檢視身分、匯出 I/O 與狀態回呼。
+`Nvt.Core.MessageCenter` 在 `Nvt.Core` 提供被動顯示契約、模態工作階段與匯出工作流程，目標為 `net10.0`，只依賴 BCL。主程式提供已准入的活動項目、顯示字串、計數、檢視身分、匯出 I/O 與狀態回呼。
 
 ## 公開 API
 

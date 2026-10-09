@@ -30,6 +30,7 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.4.0 | 2026-10-08 | RuntimeQuery exit confirmation and the startup-and-runtime phase for NFC, plus shared icon names | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.4.0) |
 | 0.9.0 | 2026-10-13 | Feature freeze. After it, only fixes. | Planned |
 | 1.0.0 | 2026-10-15 | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
+| Fonts 0.1.0 | — | Independent font package and `core-fonts-v0.1.0` tag; required for the 1.0.0 scope | Packaging in progress |
 
 NFC meets the 1.0.0 condition when its 1.3.x trunk uses Core and the owner confirms its screens in a development build (owner decision 2026-10-07). Core 1.0.0 does not wait for an NFC customer release.
 
@@ -105,6 +106,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
 | Console: redesigned shared control, adopted by NFH | 1.0.0 | Design proposal merged; the control is in progress | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
+| `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Packaging in progress | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
 **6. Launcher**
 
@@ -135,7 +137,6 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 
 | Item | Target | Status | Link |
 | --- | --- | --- | --- |
-| `Nvt.Core.Fonts` with its own version and tag | 1.x | Planned | [CHANGELOG](CHANGELOG.md) |
 | NFH UI candidates, extracted when a second tool needs one | 1.x | Recorded | [components.md](docs/components.md#nfh-candidates-extract-when-a-second-tool-needs-them) |
 | Log entry and formatter | 1.x | Planned with the console | [components.md](docs/components.md#7-utility-functions) |
 | Shared release stages for tools | 1.x | Planned | [shared CI](docs/shared-ci/README.md) |

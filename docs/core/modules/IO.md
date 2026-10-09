@@ -2,7 +2,7 @@
 
 # IO: AtomicOutput
 
-[`AtomicOutput.WriteAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) is NFU's ordinary stream-output helper, exposed in `Nvt.Core.IO` on `net8.0` with BCL dependencies only. It writes a sibling temporary file, flushes it, then moves it over the destination. **It must not replace NFC's hardened firmware output writer.** Tool adoption is a separate task.
+[`AtomicOutput.WriteAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) is NFU's ordinary stream-output helper, exposed in `Nvt.Core.IO` on `net10.0` with BCL dependencies only. It writes a sibling temporary file, flushes it, then moves it over the destination. **It must not replace NFC's hardened firmware output writer.** Tool adoption is a separate task.
 
 Frozen parent baseline: NFU (`nvt-event-buffer-replay`), `origin/0.2.0`, commit `915d0c1b571a2c4a95c8c6d2d3cc6421079ff99b`. Extracted from:
 
