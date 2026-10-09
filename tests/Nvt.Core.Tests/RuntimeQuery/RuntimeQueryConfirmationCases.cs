@@ -88,7 +88,7 @@ public static class RuntimeQueryConfirmationCases
     ];
 
     private static RuntimeQueryCommand Command(string name) =>
-        new(name, RuntimeQueryCommandRisk.ReadOnly, _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)));
+        new(name, RuntimeQueryCommandRisk.ReadOnly, (_, _, _) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)));
 
     private static Dictionary<string, string> Args(params string[] pairs)
     {

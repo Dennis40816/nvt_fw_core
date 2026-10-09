@@ -16,16 +16,16 @@ public sealed class RuntimeQuerySourceContractTests
     {
         var expected = RuntimeQueryResponseEnvelope.Success(sourceTest);
         var calls = 0;
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
         {
-            [command] = received =>
+            [command] = (received, cancellationToken) =>
             {
                 calls++;
                 Assert.Same(args, received);
                 return Task.FromResult(expected);
             }
         });
-        Assert.Same(expected, await router.ExecuteAsync(new RuntimeQueryRequest("1", command, args), "1"));
+        Assert.Same(expected, await router.ExecuteAsync(new RuntimeQueryRequest("1", command, args), "1", TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
     }
 
@@ -36,14 +36,14 @@ public sealed class RuntimeQuerySourceContractTests
         // Port of the source test ExecuteAsync_QueryNotchValidation_RejectsInvalidFirmwareNullSentinel.
         // The source handler throws. The router and request check must let that exception escape.
         var expected = new InvalidOperationException("NullValue must be in [0,65535].");
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
         {
-            ["notch-validation"] = _ => throw expected
+            ["notch-validation"] = (_, cancellationToken) => throw expected
         });
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => router.ExecuteAsync(
-            new RuntimeQueryRequest("1", "notch-validation", new Dictionary<string, string> { ["regular-id"] = "100" }), "1"));
+            new RuntimeQueryRequest("1", "notch-validation", new Dictionary<string, string> { ["regular-id"] = "100" }), "1", TestContext.Current.CancellationToken));
         Assert.Same(expected, exception);
         Assert.Equal("NullValue must be in [0,65535].", exception.Message);
-        Assert.Same(expected, Assert.Throws<InvalidOperationException>(() => { _ = router.RouteAsync("notch-validation", null); }));
+        Assert.Same(expected, Assert.Throws<InvalidOperationException>(() => { _ = router.RouteAsync("notch-validation", null, TestContext.Current.CancellationToken); }));
     }
 }

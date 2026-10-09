@@ -110,25 +110,30 @@ function Get-GhAppToken {
     param([hashtable]$Context, [string]$ApiPath)
     $process = $null
     $token = $null
+    $helperError = $null
     try {
         $executable = Join-Path $PSHOME $(if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' })
         $arguments = @('-NoProfile', '-NonInteractive', '-File', $Context.tokenHelperPath,
             '-Mode', 'token', '-Owner', $Context.owner, '-Repo', $Context.repo,
             '-ClientId', $Context.clientId, '-InstallationId', [string]$Context.installationId,
             '-DpapiPath', $Context.dpapiPath)
+        # Only a push that changes workflow files sets this flag, and only for that one call chain.
+        if ($Context.ContainsKey('includeWorkflowsWrite') -and $Context.includeWorkflowsWrite) { $arguments += '-IncludeWorkflowsWrite' }
         $process = [Diagnostics.Process]::Start((New-GhAppProcessInfo $executable $arguments))
         $process.StandardInput.Close()
         $outputTask = $process.StandardOutput.ReadToEndAsync()
         $errorTask = $process.StandardError.ReadToEndAsync()
         $process.WaitForExit()
         $token = $outputTask.GetAwaiter().GetResult()
-        $null = $errorTask.GetAwaiter().GetResult()
+        $helperError = $errorTask.GetAwaiter().GetResult()
         if ($process.ExitCode -ne 0 -or $token -cnotmatch '^[\x21-\x7e]+\z') { throw 'Invalid helper result.' }
         return $token
     } catch {
         # Report only the helper's exit code. Its output and error text may hold secrets.
+        # One fixed message is safe to show: GitHub did not grant the workflows permission to the installation.
         $code = $(if ($null -ne $process -and $process.HasExited) { $process.ExitCode } else { 'none' })
-        throw "HTTP unknown $ApiPath (token helper exit $code)"
+        $known = $(if ($helperError -clike '*Installation token lacks the requested workflows permission.*') { ': Installation token lacks the requested workflows permission.' } else { '' })
+        throw "HTTP unknown $ApiPath (token helper exit $code)$known"
     }
     finally {
         if ($null -ne $process) { $process.Dispose() }
@@ -473,6 +478,7 @@ function Push-GhAppBranch {
     param([Parameter(Mandatory)][string]$Worktree, [Parameter(Mandatory)][string]$LocalBase,
         [Parameter(Mandatory)][string]$RemoteParent, [Parameter(Mandatory)][string]$Branch,
         [Parameter(Mandatory)][string]$MessageFile, [string]$ExtraParent, [switch]$AllowOpenPr,
+        [switch]$IncludeWorkflowsWrite, [string]$WorkflowsLogPath,
         [Alias('Repo')][string]$Repository)
     $context = Get-GhAppContext $Repository
     $parents = @(Assert-GhAppSha 'RemoteParent' $RemoteParent)
@@ -484,6 +490,20 @@ function Push-GhAppBranch {
     # every newer base file into a deletion, so require HEAD to be built on it.
     $ancestor = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $LocalBase, 'HEAD') -AllowedExitCodes @(0, 1) -Result
     if ($ancestor.ExitCode -ne 0) { throw "LocalBase $LocalBase is not an ancestor of HEAD; rebase onto the remote base first." }
+    if ($IncludeWorkflowsWrite) {
+        # The switch is off by default. It is allowed only for a push whose tree changes a workflow file.
+        if ([string]::IsNullOrWhiteSpace($WorkflowsLogPath)) { throw 'IncludeWorkflowsWrite requires WorkflowsLogPath.' }
+        $changes = @(Get-GhAppTreeChanges $Worktree $LocalBase)
+        $workflowFiles = @($changes | Where-Object { $_.Path.StartsWith('.github/workflows/', [StringComparison]::Ordinal) })
+        if ($workflowFiles.Count -eq 0) { throw 'IncludeWorkflowsWrite refused: the push changes no file under .github/workflows/.' }
+        $logPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkflowsLogPath)
+        $line = "$([DateTimeOffset]::UtcNow.ToString('o')) workflows-write push branch=$Branch files=$($changes.Count) workflowFiles=$($workflowFiles.Count)"
+        try { [IO.File]::AppendAllText($logPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false)) }
+        catch { throw 'The workflows write log could not be written.' }
+        # A copy carries the flag, so the stored configuration and every other call stay unchanged.
+        $context = $context.Clone()
+        $context.includeWorkflowsWrite = $true
+    }
     $headFilter = [Uri]::EscapeDataString("$($context.owner):$Branch")
     $open = @(Get-GhAppItems $context "pulls?state=open&head=$headFilter")
     foreach ($pr in $open) {

@@ -18,3 +18,7 @@ build/
 .packages/
 TestResults/
 *.trx
+
+# Python
+__pycache__/
+*.pyc

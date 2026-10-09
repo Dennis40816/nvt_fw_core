@@ -30,6 +30,7 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
         Assert.Equal(TimeSpan.FromSeconds(1), ExternalProcessCleanupTiming.Default.ReaderStopReserve);
         Assert.Equal(ExternalProcessCleanupTiming.Default, ExternalProcessRunnerSeams.Production.Timing);
         Assert.Null(ExternalProcessRunnerSeams.Production.Observe);
+        Assert.Same(TimeProvider.System, ExternalProcessRunnerSeams.Production.Time);
         ExternalProcessCleanupTiming.Default.Validate();
         Assert.Equal(PhaseNames, Enum.GetNames<ExternalProcessRunnerPhase>());
         Assert.Equal(Enumerable.Range(0, PhaseNames.Length), Enum.GetValues<ExternalProcessRunnerPhase>().Select(phase => (int)phase));

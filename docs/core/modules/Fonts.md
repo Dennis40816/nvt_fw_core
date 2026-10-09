@@ -30,7 +30,13 @@ Tool repositories therefore avoid storing the font files again with each Core re
 - Give each role one family, one size, and one weight. Each tool style applies all three together.
 - Keep NVT FW Combiner's (NFC) legacy font resources in the Theme module unchanged.
 
-Packaging follows in a separate pull request. It adds the package version, the pack step, and the license files in the package.
+The package ID is `Nvt.Core.Fonts`. Its independent SemVer starts at `0.1.0`.
+`Nvt.Core.Fonts.csproj` defines its version, independently of Core.
+Release tags use `core-fonts-v<version>`; the initial tag is `core-fonts-v0.1.0`.
+A Release contains one nupkg, `SHA256SUMS`, and `SOURCE.md`.
+The package carries embedded fonts, the Core license, README, existing font licenses, and the Material Symbols NOTICE.
+Its only direct dependencies are `Avalonia` and `Avalonia.Fonts.Inter`.
+See the [release procedure](../releasing.md) and [package download guide](../../../tools/core-packages/README.md).
 
 ## Roles and resource keys
 
@@ -116,10 +122,17 @@ The Inter SemiBold file reports `Inter SemiBold` as its legacy family name. The 
 
 ## Tool adoption
 
-1. Reference `Nvt.Core.Fonts` with the version selected by the integrator.
-2. Merge `FontRoles.axaml` into the application's resources.
-3. Call `WithNvtCoreFonts()` on the application's builder.
-4. Apply each role's family, size, and weight in the tool's own styles.
+1. Pin `core-fonts-v0.1.0`, `Nvt.Core.Fonts.0.1.0.nupkg`, and the Release's SHA-256 in the tool's manifest.
+2. Download and verify the Release package before restore. Pin `Nvt.Core.Fonts` to `0.1.0` and update lock files.
+3. Merge `FontRoles.axaml` into the application's resources.
+4. Call `WithNvtCoreFonts()` on the application's builder.
+5. Apply each role's family, size, and weight in the tool's own styles.
+
+```xml
+<ItemGroup>
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+</ItemGroup>
+```
 
 ```xml
 <Application.Resources>
@@ -209,4 +222,4 @@ When updating a font:
 3. For Material Symbols, rerun the exact command from NOTICE with its recorded fontTools version and `SOURCE_DATE_EPOCH`.
 4. Check the fixed axes, family names, font weights, and icon ligatures. Update NOTICE if the source or command changes.
 5. Update the hash tests and both module documents. Run the font tests and the solution tests.
-6. Keep license files and third-party notices current. The integrator handles package publication in the packaging work.
+6. Keep licenses and notices current. Advance the Fonts version, release its independent tag, then update tool manifests and lock files.
