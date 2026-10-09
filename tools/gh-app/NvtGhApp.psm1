@@ -119,6 +119,7 @@ function Get-GhAppToken {
             '-DpapiPath', $Context.dpapiPath)
         # Only a push that changes workflow files sets this flag, and only for that one call chain.
         if ($Context.ContainsKey('includeWorkflowsWrite') -and $Context.includeWorkflowsWrite) { $arguments += '-IncludeWorkflowsWrite' }
+        if ($Context.ContainsKey('includeIssuesWrite') -and $Context.includeIssuesWrite) { $arguments += '-IncludeIssuesWrite' }
         $process = [Diagnostics.Process]::Start((New-GhAppProcessInfo $executable $arguments))
         $process.StandardInput.Close()
         $outputTask = $process.StandardOutput.ReadToEndAsync()
@@ -130,9 +131,10 @@ function Get-GhAppToken {
         return $token
     } catch {
         # Report only the helper's exit code. Its output and error text may hold secrets.
-        # One fixed message is safe to show: GitHub did not grant the workflows permission to the installation.
+        # Only fixed permission messages are safe to show.
         $code = $(if ($null -ne $process -and $process.HasExited) { $process.ExitCode } else { 'none' })
-        $known = $(if ($helperError -clike '*Installation token lacks the requested workflows permission.*') { ': Installation token lacks the requested workflows permission.' } else { '' })
+        $known = $(if ($helperError -clike '*Installation token lacks the requested workflows permission.*') { ': Installation token lacks the requested workflows permission.' }
+            elseif ($helperError -clike '*Installation token lacks the requested issues permission.*') { ': Installation token lacks the requested issues permission.' } else { '' })
         throw "HTTP unknown $ApiPath (token helper exit $code)$known"
     }
     finally {
@@ -527,7 +529,7 @@ function New-GhAppPullRequest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Head, [Parameter(Mandatory)][string]$Title,
         [Parameter(Mandatory)][string]$BodyFile, [string]$Base = 'main', [switch]$Draft,
-        [Alias('Repo')][string]$Repository)
+        [Alias('Repo')][string]$Repository, [switch]$CloseOnWrongAuthor)
     $context = Get-GhAppContext $Repository
     Assert-GhAppBranch $Head
     Assert-GhAppBranch $Base
@@ -535,7 +537,14 @@ function New-GhAppPullRequest {
         body = (Read-GhAppBody $BodyFile); draft = [bool]$Draft } -AsApp
     $pr = Invoke-GhAppApi $context GET "pulls/$($created.number)"
     $url = "https://github.com/$($context.owner)/$($context.repo)/pull/$($created.number)"
-    if ($pr.user.login -cne $context.botLogin) { throw "PR author does not match botLogin. Inspect $url" }
+    if ($pr.user.login -cne $context.botLogin) {
+        if ($CloseOnWrongAuthor) {
+            $closed = Invoke-GhAppApi $context PATCH "pulls/$($created.number)" @{ state = 'closed' } -AsApp
+            if ($closed.state -cne 'closed') { throw "#$($created.number) close was not confirmed." }
+            throw "PR author does not match botLogin. #$($created.number) was closed. $url"
+        }
+        throw "PR author does not match botLogin. Inspect $url"
+    }
     [pscustomobject]@{ Number = $created.number; Url = $url }
 }
 
@@ -550,8 +559,22 @@ function Set-GhAppPullRequestBody {
 function Add-GhAppComment {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
-        [Parameter(Mandatory)][Alias('CommentFile')][string]$BodyFile, [Alias('Repo')][string]$Repository)
+        [Parameter(Mandatory)][Alias('CommentFile')][string]$BodyFile, [Alias('Repo')][string]$Repository,
+        [switch]$IncludeIssuesWrite, [string]$IssuesLogPath)
     $context = Get-GhAppContext $Repository
+    if ($IncludeIssuesWrite) {
+        if ([string]::IsNullOrWhiteSpace($IssuesLogPath)) { throw 'IncludeIssuesWrite requires IssuesLogPath.' }
+        $target = Invoke-GhAppApi $context GET "issues/$Number"
+        if ($null -ne $target.PSObject.Properties['pull_request']) { throw "IncludeIssuesWrite refused: #$Number is a pull request." }
+        $line = "$([DateTimeOffset]::UtcNow.ToString('o')) issues-write comment number=$Number"
+        try {
+            $logPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($IssuesLogPath)
+            [IO.File]::AppendAllText($logPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+        } catch { throw 'The issues write log could not be written.' }
+        # A copy carries the flag, so the stored configuration and every other call stay unchanged.
+        $context = $context.Clone()
+        $context.includeIssuesWrite = $true
+    }
     Invoke-GhAppApi $context POST "issues/$Number/comments" @{ body = (Read-GhAppBody $BodyFile) } -AsApp
 }
 
