@@ -264,19 +264,22 @@ function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
         elseif ($line -match '^\s*([^#;=\s]+)\s*=\s*(.*?)\s*$' -and $section -eq '*.cs') { $protected[$Matches[1]] = $Matches[2] }
     }
     $ranks = @{ none = 0; silent = 1; suggestion = 2; warning = 3; error = 4 }
+    # Roslyn drops a leading BOM when it reads the file, so the first line must be read the same way.
+    $Editor = $Editor.TrimStart([char]0xFEFF)
     $lineNumber = 0
     $inPreamble = $true
     foreach ($line in $Editor -split '\r?\n') {
         $lineNumber++
         if ($line -match '^\s*\[.+\]\s*$') { $inPreamble = $false }
-        if ($line -notmatch '^\s*([^#;=\s]+)\s*=\s*(.*?)\s*$') { continue }
-        $key = $Matches[1]; $value = $Matches[2].ToLowerInvariant()
+        # Roslyn accepts '=' or ':' as the separator and ignores a trailing '#' or ';' comment.
+        if ($line -notmatch '^\s*([^#;=:\s]+)\s*[=:]\s*(.*?)\s*$') { continue }
+        $key = $Matches[1]; $value = ($Matches[2] -replace '\s*[#;].*$', '').ToLowerInvariant()
         if ($Path -ne '.editorconfig' -and $inPreamble -and $key -eq 'root' -and $value -eq 'true') { throw "HC_DRIFT ${Path}:$lineNumber descendant root=true discards protected policy" }
-        if ($Path -ne '.editorconfig') {
-            if ($key -eq 'generated_code') { throw "HC_DRIFT ${Path}:$lineNumber generated_code is not allowed in a descendant EditorConfig" }
-            if ($key -like 'dotnet_analyzer_diagnostic.*') { throw "HC_DRIFT ${Path}:$lineNumber $key is not allowed in a descendant EditorConfig" }
-            if ($key -match '^dotnet_diagnostic\.[^.]+\.severity$' -and $value -in @('none', 'silent', 'suggestion')) { throw "HC_DRIFT ${Path}:$lineNumber weaker severity $key=$value" }
-        }
+        # Applies to every EditorConfig outside the managed block, including the root tail that follows it.
+        if ($key -eq 'generated_code') { throw "HC_DRIFT ${Path}:$lineNumber generated_code is not allowed outside the managed block" }
+        if ($key -like 'dotnet_analyzer_diagnostic.*') { throw "HC_DRIFT ${Path}:$lineNumber $key is not allowed outside the managed block" }
+        if ($key -like 'dotnet_code_quality.*') { throw "HC_DRIFT ${Path}:$lineNumber $key narrows analysis and is not allowed outside the managed block" }
+        if ($key -match '^dotnet_diagnostic\.[^.]+\.severity$' -and $value -in @('none', 'silent', 'suggestion')) { throw "HC_DRIFT ${Path}:$lineNumber weaker severity $key=$value" }
         if (-not $protected.ContainsKey($key)) { continue }
         $expected = $protected[$key]
         $stronger = $ranks.ContainsKey($value) -and $ranks.ContainsKey($expected) -and $ranks[$value] -ge $ranks[$expected]
@@ -320,7 +323,10 @@ function Test-BundleDrift {
     }
     $common = [IO.File]::ReadAllText((Join-Path $Root 'eng/core-health/.editorconfig'))
     Test-ManagedBlock $common (Read-EditorText (Join-Path $Root '.editorconfig'))
-    foreach ($path in @(Get-HealthFiles | Where-Object { $_.EndsWith('/.editorconfig') -and $_ -notin @('eng/core-health/.editorconfig', 'tools/repo-checks/csharp/.editorconfig') })) {
+    # Only Core compares tools/repo-checks/csharp/.editorconfig with the pin, so only Core may skip it here.
+    $exempt = @('eng/core-health/.editorconfig')
+    if ($Repo -eq 'core') { $exempt += 'tools/repo-checks/csharp/.editorconfig' }
+    foreach ($path in @(Get-HealthFiles | Where-Object { $_.EndsWith('/.editorconfig', [StringComparison]::OrdinalIgnoreCase) -and $_ -cnotin $exempt })) {
         Test-EditorOverrides $common (Read-EditorText (Join-Path $Root $path)) $path
     }
 }

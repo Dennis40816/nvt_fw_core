@@ -431,8 +431,38 @@ class Fixture {
                 r = self.check_editor(f'[*.cs]\ndotnet_diagnostic.CA1234.severity = {value}\n')
                 self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
-    def test_new_editorconfig_key_rules_do_not_apply_to_the_repository_root_file(self):
-        r = self.check_editor('[*.cs]\ngenerated_code = true\n', '.editorconfig')
+    def test_new_editorconfig_key_rules_also_apply_to_the_root_tail(self):
+        for text in ('[*.cs]\ngenerated_code = true\n', '[*.cs]\ndotnet_diagnostic.CA2000.severity = none\n',
+                     '[*.cs]\ndotnet_analyzer_diagnostic.severity = none\n'):
+            with self.subTest(text=text):
+                r = self.check_editor(text, '.editorconfig')
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('HC_DRIFT .editorconfig:2', r.stdout + r.stderr)
+
+    def test_descendant_editorconfig_rejects_code_quality_options(self):
+        r = self.check_editor('[*.cs]\ndotnet_code_quality.CA2000.excluded_symbol_names = Foo\n')
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT src/.editorconfig:2', r.stdout + r.stderr)
+
+    def test_editorconfig_bom_does_not_hide_root_true(self):
+        self.write('editor.txt', '\ufeffroot = true\n[*.cs]\n')
+        r = self.run_ps("Test-EditorOverrides (Get-Content eng/core-health/.editorconfig -Raw) (Read-EditorText (Join-Path $Root 'editor.txt')) 'src/.editorconfig'")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT src/.editorconfig:1', r.stdout + r.stderr)
+
+    def test_editorconfig_parsing_matches_roslyn_for_bom_colon_and_inline_comments(self):
+        cases = (
+            ('[*.cs]\ndotnet_diagnostic.CA2000.severity : none\n', 'src/.editorconfig:2'),
+            ('[*.cs]\ndotnet_diagnostic.CA2000.severity = none # reviewed\n', 'src/.editorconfig:2'),
+            ('[*.cs]\ndotnet_diagnostic.CA2000.severity = suggestion ; x\n', 'src/.editorconfig:2'),
+            ('root : true\n[*.cs]\n', 'src/.editorconfig:1'),
+        )
+        for text, where in cases:
+            with self.subTest(text=text):
+                r = self.check_editor(text)
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('HC_DRIFT ' + where, r.stdout + r.stderr)
+        r = self.check_editor('[*.cs]\ndotnet_diagnostic.CA2000.severity = warning # ok\n')
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
     # --- Enroll owner ---
@@ -520,6 +550,20 @@ class Fixture {
         r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
         self.assertNotEqual(0, r.returncode)
         self.assertIn('hash of BannedSymbols.Common.txt differs from base', r.stderr)
+
+    def test_differently_cased_editorconfig_name_is_checked(self):
+        self.app_repo()
+        self.write('src/.EditorConfig', '[*.cs]\ndotnet_diagnostic.CA1234.severity = none\n')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT src/.EditorConfig:2', r.stderr)
+
+    def test_csharp_editorconfig_copy_is_checked_outside_core(self):
+        self.app_repo()
+        self.write('tools/repo-checks/csharp/.editorconfig', '[*.cs]\ndotnet_diagnostic.RS0030.severity = none\n')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT tools/repo-checks/csharp/.editorconfig:2', r.stderr)
 
     def test_core_root_keeps_the_canonical_comparison_for_applications(self):
         self.app_repo()

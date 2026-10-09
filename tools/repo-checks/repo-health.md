@@ -139,7 +139,8 @@ in the lock. With BaseRef it also requires every lock hash to equal the merge-ba
 lock, because the pin alone cannot detect a pull request that edits a bundle file and
 its lock hash together. Lock-only mode has no canonical Core objects, so a copy of the
 checker kept in the application repository is governed by code review, not by a
-self-check. Core itself always compares with its own canonical tree.
+self-check. Application CI must always pass -BaseRef: without it, a bundle file and its
+lock hash edited together are accepted. Core itself always compares with its own canonical tree.
 No network operation occurs. A pin change is a separately reviewed synchronization;
 first integrate the approved pin before using it as the base for adoption changes.
 
@@ -150,9 +151,14 @@ non-severity settings in descendant/root-tail configuration and accept only equa
 or stronger protected severities. The rule is conservative on purpose: a protected
 `[*.cs]` key such as indent_size with a different value is rejected in ANY section,
 even one that cannot match `.cs` (for example `[*.json]`); move or delete such lines.
-A descendant EditorConfig (not the root file or the bundle copies) must also not
-contain a generated_code key, a dotnet_analyzer_diagnostic.* key, or a
-dotnet_diagnostic.<ID>.severity of none, silent or suggestion; warning and error stay allowed. Per-project Debug, Release and other declared
+Outside the managed block (every descendant file, and the root file's tail after the
+block) an EditorConfig must also not contain a generated_code key, a
+dotnet_analyzer_diagnostic.* key, a dotnet_code_quality.* option (it narrows analysis
+without changing a severity), or a dotnet_diagnostic.<ID>.severity of none, silent or
+suggestion; warning and error stay allowed. The line reader follows Roslyn: it drops a
+leading BOM, accepts `=` or `:` as the separator, and ignores a trailing `#` or `;`
+comment. File names are matched case-insensitively. Only Core skips
+`tools/repo-checks/csharp/.editorconfig`, because only Core compares it with the pin. Per-project Debug, Release and other declared
 configurations must retain the shared settings, SDK WarningsAsErrors IDs, exact
 ledger warning exemptions and approved analyzer package references/assets/versions.
 NoWarn must equal the suppression ledger in every evaluated configuration.
@@ -196,13 +202,14 @@ loading supports provider tests, and never executes enrollment or verification.
 
 ## Known limitations
 
-An independent review of the first gate found five gaps. The gate does not close them yet. Each has an Issue.
+An independent review of the first gate found six gaps. The gate does not close them yet. Each has an Issue.
 
 1. Dennis40816/nvt_fw_core#163: analyzer configuration outside files named `.editorconfig` (`EditorConfigFiles`, `GlobalAnalyzerConfigFiles`, removed `Analyzer` items) is not checked.
 2. Dennis40816/nvt_fw_core#164: sources and EditorConfig files under any `bin`, `obj` or `artifacts` folder escape coverage.
 3. Dennis40816/nvt_fw_core#165: a baseline entity can be re-pointed, so one structural allowance can offset another.
 4. Dennis40816/nvt_fw_core#166: `eng/code-health/seam-owners.json` and the project `HealthLayer` are not compared with the merge base.
 5. Dennis40816/nvt_fw_core#167: suppressed analyzer results leave no fingerprint.
+6. Dennis40816/nvt_fw_core#168: the format ledger depends on the checkout line endings (see "Checkout line endings").
 
 Policy-change rule until these are fixed: a pull request that changes any of the files below is a policy change. The reviewer reads the change as policy, not as routine code, and the pull request says so.
 
