@@ -1,0 +1,102 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:theme="using:Nvt.Core.Avalonia.Theme">
+  <Styles.Resources>
+    <theme:ProgressRadiusConverter x:Key="Nvt.Progress.RadiusConverter" />
+  </Styles.Resources>
+  <!-- Retain Fluent's range projection, percentage text, and indeterminate template animations. -->
+  <Style Selector="ProgressBar">
+    <Setter Property="Theme">
+      <DynamicResource ResourceKey="{x:Type ProgressBar}" />
+    </Setter>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Progress.Height}" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Progress.TrackBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Progress.IndicatorBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Progress.CornerRadius}" />
+    <Setter Property="ShowProgressText" Value="False" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ProgressBar:horizontal, ProgressBar:vertical, ProgressBar:indeterminate">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+  </Style>
+  <Style Selector="ProgressBar.thin">
+    <Setter Property="Height" Value="{DynamicResource Nvt.Progress.ThinHeight}" />
+  </Style>
+  <Style Selector="ProgressBar.thick">
+    <Setter Property="Height" Value="{DynamicResource Nvt.Progress.ThickHeight}" />
+  </Style>
+  <Style Selector="ProgressBar:vertical">
+    <Setter Property="Height" Value="NaN" />
+    <Setter Property="Width" Value="{DynamicResource Nvt.Progress.Height}" />
+    <Setter Property="MinWidth" Value="0" />
+  </Style>
+  <Style Selector="ProgressBar.thin:vertical">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Progress.ThinHeight}" />
+  </Style>
+  <Style Selector="ProgressBar.thick:vertical">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Progress.ThickHeight}" />
+  </Style>
+  <Style Selector="ProgressBar:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Progress.DisabledIndicatorBrush}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ProgressBar:horizontal /template/ Border#ProgressBarRoot, ProgressBar:vertical /template/ Border#ProgressBarRoot, ProgressBar:horizontal /template/ Border#PART_Indicator, ProgressBar:vertical /template/ Border#PART_Indicator, ProgressBar:indeterminate /template/ Border#IndeterminateProgressBarIndicator, ProgressBar:indeterminate /template/ Border#IndeterminateProgressBarIndicator2, ProgressBar:indeterminate /template/ Border#ReducedMotionIndicator">
+    <Setter Property="CornerRadius">
+      <MultiBinding Converter="{StaticResource Nvt.Progress.RadiusConverter}">
+        <ReflectionBinding Path="CornerRadius" RelativeSource="{RelativeSource AncestorType=ProgressBar}" />
+        <ReflectionBinding Path="Bounds" RelativeSource="{RelativeSource Self}" />
+      </MultiBinding>
+    </Setter>
+  </Style>
+  <Style Selector="ProgressBar:indeterminate:horizontal /template/ Border#IndeterminateProgressBarIndicator, ProgressBar:indeterminate:horizontal /template/ Border#IndeterminateProgressBarIndicator2">
+    <Setter Property="Height" Value="{ReflectionBinding Bounds.Height, RelativeSource={RelativeSource AncestorType=ProgressBar}}" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="ProgressBar:indeterminate:vertical /template/ Border#IndeterminateProgressBarIndicator, ProgressBar:indeterminate:vertical /template/ Border#IndeterminateProgressBarIndicator2">
+    <Setter Property="Height" Value="{ReflectionBinding Bounds.Width, RelativeSource={RelativeSource AncestorType=ProgressBar}}" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="ProgressBar /template/ Border#ProgressBarRoot">
+    <Setter Property="Background" Value="{ReflectionBinding Background, RelativeSource={RelativeSource AncestorType=ProgressBar}}" />
+  </Style>
+  <Style Selector="ProgressBar /template/ Border#PART_Indicator, ProgressBar /template/ Border#IndeterminateProgressBarIndicator, ProgressBar /template/ Border#IndeterminateProgressBarIndicator2">
+    <Setter Property="Background" Value="{ReflectionBinding Foreground, RelativeSource={RelativeSource AncestorType=ProgressBar}}" />
+  </Style>
+  <!-- A static third of the track replaces animated template parts only while motion is reduced. -->
+  <Style Selector="ProgressBar.reducedMotion:indeterminate, .reducedMotion ProgressBar:indeterminate">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="ProgressBarRoot" Background="{TemplateBinding Background}">
+          <Grid ColumnDefinitions="*,*,*">
+            <Border x:Name="PART_Indicator" IsVisible="False" />
+            <Border x:Name="ReducedMotionIndicator" Grid.Column="1" Background="{TemplateBinding Foreground}" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ProgressBar.reducedMotion:indeterminate:vertical, .reducedMotion ProgressBar:indeterminate:vertical">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border x:Name="ProgressBarRoot" Background="{TemplateBinding Background}">
+          <Grid RowDefinitions="*,*,*">
+            <Border x:Name="PART_Indicator" IsVisible="False" />
+            <Border x:Name="ReducedMotionIndicator" Grid.Row="1" Background="{TemplateBinding Foreground}" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ProgressBar.reducedMotion, .reducedMotion ProgressBar">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+</Styles>

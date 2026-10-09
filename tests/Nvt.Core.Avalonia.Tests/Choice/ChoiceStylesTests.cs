@@ -56,7 +56,7 @@ public sealed class ChoiceStylesTests(ITestOutputHelper output)
                     Border indicator = Part<Border>(control, "ChoiceIndicator");
                     Assert.Equal(ResourceColor(control, fill), ColorOf(indicator.Background));
                     Assert.Equal(ResourceColor(control, border), ColorOf(indicator.BorderBrush));
-                    string labelToken = state.Disabled ? "NfcTextDisabledBrush" : "NfcTextBrush";
+                    string labelToken = state.Disabled ? "NfcTextDisabledBrush" : "Nvt.Controls.ChoiceForegroundBrush";
                     Assert.Equal(ResourceColor(control, labelToken), ColorOf(label.Foreground));
                     Assert.Equal(1, control.Opacity);
                     Assert.Null(control.FocusAdorner);

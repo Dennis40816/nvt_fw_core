@@ -491,6 +491,171 @@ dotnet test Nvt.Core.sln --no-build
 
 影像涵蓋 Light／Dark、英文／繁中、各互動狀態、DPI 與長文字。產品行為與資料色留在工具。
 
+## Expander
+
+內容分隔線與標頭相隔 6 DIP，在焦點環向外延伸的 4 DIP 之外保留 2 DIP；向上展開時採鏡像間距。
+
+
+1 DIP 淡邊框與表面底色將標頭和內容組成同一區塊。容器圓角為 Pill 8、Square 6 DIP。
+容器 padding 6 保護外側焦點框。標頭 padding 為 12,0；內容為 24,12,12,12。
+1 DIP 分隔線跟隨標頭與內容交界，向上展開時換邊。巢狀兄弟項目建議間距 8 DIP。
+Pill 標頭在展開後仍為膠囊。section 不再用穿過焦點框的頂線。
+
+在 Fluent 後載入 `Theme/ExpanderStyles.axaml`，並將 `ThemeTokens.axaml` 合併至應用程式資源。
+一般 `Expander` 標頭高 32 DIP。加上 `section` 後，標頭高 44 DIP，使用 SemiBold 字重。
+標頭預設無邊框，圓角跟隨共用 Pill 或 Square 形狀。
+12 × 6 箭頭、20 DIP 箭頭容器與 10 DIP 間距均與 `CollapsiblePanel` 一致。
+樣式支援 `ExpandDirection` 的 Down 與 Up，不處理 Left 與 Right。
+`CollapsiblePanel` 保留原有模板與行為。
+
+靜止與展開標頭使用 `NfcSurfaceSubtleBrush`。滑過使用 `NfcSelectionSurfaceBrush`；按下使用 `Nvt.Controls.ExpanderPressedBrush`。
+停用標頭使用 `Nvt.Controls.ExpanderDisabledForegroundBrush`，並忽略滑過、按下與焦點視覺。
+鍵盤焦點顯示一個兩 DIP 焦點框，與控制項外緣相隔兩 DIP。滑鼠焦點不顯示焦點框。
+向下或向上展開時，內容分別位於標頭下方或上方。箭頭隨方向及展開狀態旋轉。
+顏色與箭頭轉場持續 150 毫秒。在控制項或祖先加上 `reducedMotion` 可停用轉場。
+Avalonia 保留 Space 切換、存取鍵、展開事件與無障礙名稱。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `NfcControlHeight` | 32 | 32 |
+| `Nvt.Expander.SectionHeaderHeight` | 44 | 44 |
+| `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
+| `Nvt.Controls.ExpanderPressedBrush` | `#CBD5E1` | `#29384D` |
+| `NfcTextBrush` | `#1E293B` | `#E2E8F0` |
+| `Nvt.Controls.ExpanderPressedForegroundBrush` | `#0B1220` | `#FFFFFF` |
+| `Nvt.Controls.ExpanderDisabledForegroundBrush` | `#637085` | `#91A1B9` |
+| `Nvt.Divider.TransparentBrush` | `#00FFFFFF` | 相同 |
+
+標頭使用 `Nvt.Shape.ControlCornerRadius`：兩種主題下，Pill 為 999、Square 為 6。
+焦點框使用 `Nvt.Shape.FocusCornerRadius`：兩種主題下，Pill 為 999、Square 為 10。
+分隔線與焦點框顏色使用下方記載的共用 token。
+採用時移除本機標頭模板、高度、滑鼠移入邊框、圓角規則與焦點裝飾。
+標頭內容、命令、存取鍵與繫結仍由宿主管理。
+
+```xml
+<Expander Header="Details" />
+<Expander Classes="section" Header="Advanced options" ExpandDirection="Up" />
+```
+
+## ProgressBar
+
+在 Fluent 後載入 `Theme/ProgressStyles.axaml`。樣式保留 Fluent 的範圍投影、百分比文字與不確定進度動畫。
+預設粗細為六 DIP。加上 `thin` 為三 DIP，`thick` 為十 DIP。
+確定與不確定進度軌道維持相同粗細。垂直進度列將粗細套用至寬度。
+`ShowProgressText` 預設為 false。呼叫端仍管理範圍、數值、文字設定、可見性與不確定模式。
+停用進度列保留軌道，指示器改用停用 token。
+筆刷轉場持續 150 毫秒。
+
+`ProgressIndicator` 保留公開 API 與 `ProgressBar` 樣式身分。
+既有 `Progress` 屬性仍將已知比例投影至 `Value`；缺少比例時保留最後數值。
+控制項透過既有樣式鍵取得這些 token，不需要另一套元件模板或 selector。
+使用 `LoadingSurface` 時仍保留 `Progress/ProgressStyles.axaml`。該元件樣式檔服務不同用途。
+
+在進度列或祖先加上 `reducedMotion`，可將不確定動畫替換為位於軌道中間三分之一的靜止指示器。
+離開不確定模式後，恢復原生確定進度模板。減少動作也會停用筆刷轉場。
+靜止模板保留原生必要指示器部件與進度無障礙 peer。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Progress.Height` | 6 | 6 |
+| `Nvt.Progress.ThinHeight` | 3 | 3 |
+| `Nvt.Progress.ThickHeight` | 10 | 10 |
+| `Nvt.Progress.TrackBrush` | `#CBD5E1`, `NfcBorderMutedBrush` | `#334155`, `NfcBorderMutedBrush` |
+| `Nvt.Progress.IndicatorBrush` | `#1557E9`, `NfcAccentBrush` | `#5FA5FA`, `NfcAccentBrush` |
+| `Nvt.Progress.DisabledIndicatorBrush` | `#68778C`，`NfcTextDisabledBrush` | `#7B8CA5`，相同別名 |
+
+較淡軌道使用 `NfcBorderMutedBrush`，指示器使用 `NfcAccentBrush`。
+內部轉換器將 `Nvt.Progress.CornerRadius` 限制為短邊的一半。
+Pill 端點為 1.5、3、5 DIP；Square 在各粗細皆為 1 DIP。
+軌道、確定進度、兩個動畫指示器與減少動作指示器均使用相同規則。
+替換 `Nvt.Progress.*` 色盤字典，可同步更新已附加的進度列與指示器。
+採用時移除本機軌道色、指示器色、粗細、圓角與衝突模板。
+
+```xml
+<ProgressBar Value="42" />
+<ProgressBar Classes="thin" IsIndeterminate="True" />
+<ProgressBar Classes="thick reducedMotion" IsIndeterminate="True" />
+```
+
+## Separator
+
+分隔線屬於裝飾，不受形狀影響。預設改用較淡的 `NfcDividerBrush`；strong 維持原值。
+
+在 Fluent 後載入 `Theme/DividerStyles.axaml`。
+`Separator` 與 `Border.divider` 顯示相同的一 DIP 線，預設不留 margin。
+預設為水平線。加上 `vertical` 改為垂直線；加上 `strong` 改用較強邊框色。
+分隔線維持非互動控制項，並保留原生無障礙行為。
+選單內的分隔線由清單與選單樣式負責，使用該樣式自己的 margin 與顏色。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `NfcDividerBrush` | `#E2E8F0` | `#273449` |
+| `NfcBorderBrush` | `#718096` | `#708198` |
+
+移除本機分隔線背景、粗細與預設 margin 規則。呼叫端配置間距保留在控制項外部。
+原生分隔線與一般 divider 邊框使用相同類別。
+
+```xml
+<Separator />
+<Separator Classes="vertical strong" />
+<Border Classes="divider" />
+<Border Classes="divider vertical strong" />
+```
+
+## GridSplitter
+
+垂直 splitter 中央新增 4 × 24 DIP 握柄，水平版為 24 × 4 DIP。
+`Nvt.GridSplitter.GripCornerRadius` 為 Pill 2、Square 1。靜止握柄使用 `NfcBorderBrush`。
+滑過使用 `NfcAccentBrush`，按下使用 `NfcAccentStrongBrush`。點擊區域維持 6 DIP。
+
+在 Fluent 後載入 `Theme/DividerStyles.axaml`。
+預設垂直分隔線提供六 DIP 點擊區域，中央顯示一 DIP 線。
+加上 `vertical` 調整欄寬，或 `horizontal` 調整列高。明確指定 `ResizeDirection="Rows"` 也會選用水平外觀。
+滑過顯示兩 DIP 主色線；拖曳改用三 DIP 強主色線，指標離開目標後仍保留。
+停用時線條與握柄均改用較淡邊框色，並抑制互動視覺。
+鍵盤焦點顯示一個兩 DIP 焦點框，與控制項外緣相隔兩 DIP。滑鼠焦點不顯示焦點框。
+游標跟隨調整方向。Avalonia 保留拖曳、方向鍵調整與尺寸限制。
+設定 `ShowsPreview="True"` 時，拖曳會顯示 50% 透明的主色預覽條（`Nvt.GridSplitter.PreviewBrush`、`Nvt.GridSplitter.PreviewOpacity`），放開指標後才調整相鄰區域。
+顏色轉場持續 150 毫秒。在 splitter 或祖先加上 `reducedMotion` 可停用轉場。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.GridSplitter.HitSize` | 6 | 6 |
+| `Nvt.Divider.LineThickness` | 1 | 1 |
+| `Nvt.GridSplitter.ActiveLineThickness` | 2 | 2 |
+| `Nvt.GridSplitter.PreviewBrush` | `NfcAccentBrush` | `NfcAccentBrush` |
+| `Nvt.GridSplitter.PreviewOpacity` | 0.5 | 0.5 |
+| `NfcBorderSoftBrush` | `#94A3B8` | `#475569` |
+| `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Focus.RingThickness` | 2 | 2 |
+
+兩種方向使用 `Nvt.GridSplitter.FocusCornerRadius`：Pill 999、Square 2。
+採用時移除本機 splitter 模板、寬度、滑鼠移入填色、游標與焦點裝飾。
+Grid 位置、調整行為、拖曳增量、鍵盤增量與預覽設定仍由宿主管理。
+
+```xml
+<GridSplitter Classes="vertical" Grid.Column="1" ResizeBehavior="PreviousAndNext" />
+<GridSplitter Classes="horizontal" Grid.Row="1" ResizeBehavior="PreviousAndNext" />
+```
+
+`DividerStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_DIVIDER_IMAGES_DIR` 時寫入圖片。
+輸出 `divider-light.png`、`divider-dark.png`、`divider-square-light.png` 與左右並排的 `divider-before-light.png`。
+每張圖片寬 1200 像素，縮放為一，檔案小於一 MB。
+Divider 測試固定幾何、所有標頭狀態、對比、執行期形狀、token 替換、動作政策、無障礙名稱與原生鍵盤行為。
+實際指標拖曳驗證兩側相鄰格均依拖曳距離調整。
+
+既定樣式在兩種形狀下均達到以下最低對比。
+指示器檢查涵蓋啟用進度列。焦點框檢查涵蓋相鄰表面、應用程式背景與選取表面。
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| 啟用標頭各狀態的文字 | 12.525:1 | 11.866:1 |
+| 停用標頭文字 | 4.794:1 | 5.997:1 |
+| 進度指示器對軌道 | 3.960:1 | 4.067:1 |
+| 焦點框對相鄰表面 | 4.228:1 | 5.572:1 |
+
 ## 捲軸樣式
 
 `Theme/ScrollStyles.axaml` 把 NFC 的捲軸外觀定為 Core 共用外觀，另加入 NFH 的兩個選用 class，讓內容寬度不超過可視寬度。
@@ -572,29 +737,30 @@ ComboBox 本體保留原有主題與範本。
 鍵盤焦點顯示一個 2 DIP 框，向內縮 2 DIP，避免捲動時裁切。
 滑鼠焦點不顯示框，焦點也不改變清單項目顏色。
 
-基準版本沒有 `toggleSoft` 資源，因此清單別名直接對應 Core 色票。
+List 別名與 Choice 列、勾選 MenuItem、`toggleSoft` 共用 `Nvt.Controls.Selected*` 資源。
 同時覆寫 `Nvt.List.Selected*` 資源，即可在執行時替換選取色票。
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.List.SelectedBrush` | `#F7F9FE`，`NfcAccentSurfaceSubtleBrush` | `#162034`，`NfcAccentSurfaceSubtleBrush` |
-| `Nvt.List.SelectedPointerOverBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
-| `Nvt.List.SelectedPressedBrush` | `#EFF3FD`，`NfcAccentSurfaceBrush` | `#1A2940`，`NfcAccentSurfaceBrush` |
-| `Nvt.List.SelectedLabelBrush` | `#1148BE`，`NfcAccentStrongBrush` | `#8FBFFB`，`NfcAccentStrongBrush` |
+| `Nvt.List.SelectedBrush` | `#EFF3FD`, `Nvt.Controls.SelectedBrush` | `#1A2940`, `Nvt.Controls.SelectedBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#E3ECFC`, `Nvt.Controls.SelectedPointerOverBrush` | `#20334F`, `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#DCE7FA`, `Nvt.Controls.SelectedPressedBrush` | `#243C5B`, `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#0E3C9E`, `Nvt.Controls.SelectedForegroundBrush` | `#BEDAFF`, `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.List.TransparentBrush` | `#00FFFFFF`，`Nvt.Toggle.TransparentBrush` | 相同 |
 | `Nvt.List.CompactHeight` | 24 | 24 |
 
 項目使用 `Nvt.Shape.ControlCornerRadius`：Pill 為 999，Square 為 6。
 標記使用 `Nvt.Shape.RoundCornerRadius`。
-焦點沿用 `Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`。
+焦點使用 `Nvt.Controls.FocusBrush` 與 `Nvt.Focus.RingThickness`。
+`Nvt.List.FocusCornerRadius` 為 Pill 999、Square 4。
 顏色轉場持續 150 ms，項目或上層的 `reducedMotion` 類別可停用轉場。
 
 ## Menu、MenuItem、ContextMenu 與選單分隔線
 
 `MenuStyles.axaml` 提供選單列、彈出命令、右鍵選單與選單分隔線。
 選單項目點擊範圍高 32 DIP，padding 為 10,0。
-項目表面四周預留 4 DIP，容納外側焦點框。
-如此可在捲動範圍內保留一個 2 DIP 框與 2 DIP 間隔。
+有色表面完整高 32 DIP。焦點框寬 2 DIP、內縮 2 DIP，與 List 相同。
+內縮避免捲動裁切；Square 焦點圓角為 4 DIP。
 
 選單表面使用 `NfcSurfaceBrush`、1 DIP 的 `NfcBorderBrush` 框線與 padding 4。
 表面圓角跟隨共用形狀，並以現有表面圓角 token 為上限。
@@ -606,25 +772,30 @@ Pill 表面圓角為 8 DIP，Square 為 6 DIP。
 滑鼠移入、原生選單選取與鍵盤焦點使用 `NfcSelectionSurfaceBrush`。
 按下使用 `NfcSecondaryActionPressedBrush`。
 停用內容使用 `NfcTextDisabledBrush`，opacity 維持 1。
-勾選項目顯示勾號。有圖示時使用 20 DIP 圖示欄。
-快捷鍵文字使用 `NfcTextMutedBrush`，子選單保留箭頭。
+勾選項目使用共用選取底色、前景、滑過與按下 token。
+12 DIP 勾號置於固定 20 DIP 欄位，與標籤留 8 DIP 間距；圖示保留自己的 20 DIP 欄。
+普通 menu-bar 命令省略勾號欄。原生導覽選取與勾選狀態維持獨立。
+快捷鍵文字使用 `NfcTextMutedBrush`；勾選項目改用選取前景。子選單保留箭頭。
 選單列採用相同項目狀態與高度。
 
 焦點框跟隨 Avalonia 的 `:focus-visible` 狀態。
 原生方向鍵導覽保留 Avalonia 的選單選取行為。
 樣式保留方向鍵、Enter、Escape、存取鍵、命令與自動化功能。
-選單分隔線高 1 DIP，使用 `NfcBorderBrush`。
+選單分隔線高 1 DIP，使用 `NfcDividerBrush`，保留 margin 10,4。
 舊式 `MenuItem Header="-"` 分隔線也採用相同外觀。
 顏色轉場持續 150 ms，`reducedMotion` 也會停用選單轉場。
 
 | Token | Light | Dark |
 | --- | --- | --- |
 | `Nvt.Menu.PopupShadow` | `0 4 12 0 #26000000` | `0 4 12 0 #66000000` |
+| `Nvt.Menu.CheckSize` | 12 | 12 |
+| `Nvt.Menu.IconSlotSize` | 20 | 20 |
+| `Nvt.Menu.LabelGap` | `0,0,8,0` | `0,0,8,0` |
 | `Nvt.Menu.PopupShadowMargin` | 16 | 16 |
 | `Nvt.Menu.PopupMaximumCornerRadius` | 8，`NfcSurfaceCornerRadius` | 8，`NfcSurfaceCornerRadius` |
 | `Nvt.Menu.ChevronGeometry` | `M1 1 L5 5 L1 9` | 相同 |
 
-陰影透明度色碼是唯一新增的顏色常值，定義於 `ListTokens.axaml`。
+陰影透明度色碼定義於 `ListTokens.axaml`；共用淡色定義於 `ControlTokens.axaml`。
 樣式中的所有顏色與圓角均來自 token 或所屬控制項。
 彈出圓角轉換器為 internal，此控制項家族沒有新增 public C# API。
 
@@ -658,9 +829,9 @@ Headless 測試涵蓋兩種主題與形狀、狀態優先順序、精確尺寸�
 
 | 對比 | Light | Dark |
 | --- | --- | --- |
-| 選取清單文字與標記 | 7.018:1 | 7.674:1 |
+| 選取清單文字與標記 | 7.807:1 | 7.830:1 |
 | 停用文字 | 3.903:1 | 4.275:1 |
-| 焦點框對項目填色 | 4.006:1 | 4.930:1 |
+| 焦點框對項目填色 | 5.340:1 | 6.194:1 |
 
 `ListMenuStylesRenderer` 僅在設定 `NVT_LIST_IMAGES_DIR` 時匯出。
 輸出 `list-light.png`、`list-dark.png`、`list-square-light.png` 與 `list-before-light.png`。
@@ -777,14 +948,14 @@ Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持
 | --- | --- | --- |
 | `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#1148BE` |
 | `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
 | `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#A82035` |
 | `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
 | `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
 | `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2563EB` |
 | `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#1D4ED8` |
-| `Nvt.Toggle.SwitchPressedBrush` | `#1D4ED8` | `#1D4ED8` |
+| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#1E40AF` |
 | `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 
@@ -833,7 +1004,8 @@ Light 與 Dark 使用相同數值。
 | `Nvt.Shape.FocusCornerRadius` | 999 | 10 |
 | `Nvt.Shape.RoundCornerRadius` | 999 | 999 |
 
-兩種形狀下，開關軌道與開關焦點框皆使用 `Nvt.Shape.RoundCornerRadius`。
+開關軌道使用 `Nvt.Shape.ControlCornerRadius`，焦點框使用 `Nvt.Shape.FocusCornerRadius`。
+旋鈕保持圓形；軌道 52 × 28、旋鈕 22 × 22、移動 24 DIP 均不變。
 既有 Button 角色維持目前的圓角資源。
 
 ### 切換控制項採用步驟
@@ -872,18 +1044,19 @@ Light 與 Dark 使用相同數值。
 | Off pointer over | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftPointerOverForegroundBrush` |
 | Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
 | On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
-| On pointer over 或 pressed | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| On pointer over | `Nvt.Toggle.SoftCheckedPointerOverBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
+| On pressed | `Nvt.Toggle.SoftCheckedPressedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
 | Disabled，off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Disabled，on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Keyboard focus | 保留目前填色。 | 保留目前前景色。 |
 
-以下別名在兩種主題皆重用既有 Core 資源，不新增寫死的顏色。
+以下別名在兩種主題共用 Core 資源。選取狀態使用改版驗證章節記載的淡色色盤。
 替換包含這些 `Nvt.Toggle.Soft*` 鍵的單一字典，即可一起更新已掛載的控制項。
 
 | Token | Core 資源 | Light | Dark |
 | --- | --- | --- | --- |
-| `Nvt.Toggle.SoftCheckedBrush` | `NfcAccentSurfaceBrush` | `#EFF3FD` | `#1A2940` |
-| `Nvt.Toggle.SoftCheckedForegroundBrush` | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Controls.SelectedBrush` | `#EFF3FD` | `#1A2940` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
 | `Nvt.Toggle.SoftPointerOverBrush` | `NfcSelectionSurfaceBrush` | `#E8EEF5` | `#1E293B` |
 | `Nvt.Toggle.SoftPressedBrush` | `NfcSecondaryActionPressedBrush` | `#E2E8F0` | `#243247` |
 | `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
@@ -896,16 +1069,16 @@ Light 與 Dark 使用相同數值。
 焦點圓角使用 `Nvt.Shape.FocusCornerRadius`：Pill 為 999，Square 為 10。
 既有 `ThemeShapes.SetShape` 方法可於執行期一起切換。
 
-鍵盤焦點使用 `focus-visible`、`Nvt.Focus.RingBrush` 與 `Nvt.Focus.RingThickness`，外側間隙為 2 px。
+鍵盤焦點使用 `focus-visible`、`Nvt.Controls.FocusBrush` 與 `Nvt.Focus.RingThickness`，外側間隙為 2 px。
 指標焦點不顯示焦點框。
 背景與前景轉場皆為 150 ms。
 按下時使用 0.98 繪製縮放，配置尺寸與點擊範圍不變。
 Space 切換數值，Tab 聚焦控制項，停用控制項忽略輸入。
 
 文字與圖示繼承相同前景色，在兩種主題皆達到 4.5:1 對比。
-On 的對比在 Light 為 7.018:1，Dark 為 7.674:1。
-On pointer over 與 pressed 分別為 6.673:1 與 7.672:1。
-焦點環對頁面底與勾選淡色底的對比，亮色為 4.446:1 至 4.938:1，暗色為 5.573:1 至 7.131:1。測試要求至少 3:1。
+Light 選取靜止、滑過、按下文字對比為 8.759、8.185、7.807:1。
+Dark 分別為 10.216、8.898、7.830:1。
+此角色使用 `Nvt.Controls.FocusBrush`。對三種選取底色的最低值，Light 為 5.340:1、Dark 為 6.194:1。
 Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1。
 
 採用分成三步：
@@ -931,10 +1104,14 @@ Disabled on 的文字對其選取底色，亮色為 3.903:1，暗色為 4.275:1�
 
 ## CheckBox
 
+可見列使用 `Nvt.Shape.ControlCornerRadius`，核取指示框保留圓角 6 的方形。
+靜止使用 subtle 表面；滑過與按下改變整列底色。勾選與不確定列共用三段淡色選取狀態。
+列 padding 為 10,6；compact 為 10,2。啟用標籤使用 `Nvt.Controls.ChoiceForegroundBrush`。
+
 `ChoiceStyles.axaml` 為原生核取方塊提供共用 Core 外觀，不需指定外觀 class。
 將 `ThemeTokens.axaml` 合併至應用程式資源，並在 Fluent 後載入 `ChoiceStyles.axaml`。
 
-指示框尺寸為 20 × 20 DIP。標籤使用 `NfcTextBrush`、`NfcUiFontFamily` 與 13 DIP 的 `NfcFontSize13` 內文字級。
+指示框尺寸為 20 × 20 DIP。標籤使用 `Nvt.Controls.ChoiceForegroundBrush`、`NfcUiFontFamily` 與 13 DIP 的 `NfcFontSize13` 內文字級。
 指示框與標籤間距為 8 DIP。整列可點擊，最小高度為 32 DIP。
 長字串標籤會換行並增加列高，指示框維持與第一行對齊。
 自訂內容保留原有內容模板，並自行控制文字換行。
@@ -951,18 +1128,18 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 下表適用於核取方塊的未勾選、勾選、不確定，以及單選按鈕的未勾選、勾選。
 焦點僅改變外側焦點框。指標焦點不顯示焦點框。
-鍵盤焦點在整列外側顯示一個 2 DIP 的 `Nvt.Focus.RingBrush` 焦點框，間隔為 2 DIP。
+鍵盤焦點在整列外側顯示一個 2 DIP 的 `Nvt.Controls.FocusBrush` 焦點框，間隔為 2 DIP。
 預設焦點裝飾器已關閉。
 筆刷轉場為 150 ms。控制項或祖先加上 `reducedMotion` 即可關閉轉場。
 
 | 狀態 | 指示框底色 | 指示框外框 | 標籤 |
 | --- | --- | --- | --- |
-| 未勾選靜止 | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
-| 未勾選指標移入 | `NfcSurfaceSubtleBrush` | `NfcTextSecondaryBrush` | `NfcTextBrush` |
-| 未勾選按下 | `NfcSelectionSurfaceBrush` | `NfcTextStrongBrush` | `NfcTextBrush` |
-| 勾選或不確定 | `Nvt.Toggle.SelectedBrush` | `NfcAccentBorderBrush` | `NfcTextBrush` |
-| 已選取指標移入 | `Nvt.Toggle.SelectedPointerOverBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
-| 已選取按下 | `Nvt.Toggle.SelectedPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcTextBrush` |
+| 未勾選靜止 | `NfcSurfaceBrush` | `NfcBorderBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
+| 未勾選指標移入 | `NfcSurfaceSubtleBrush` | `NfcTextSecondaryBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
+| 未勾選按下 | `NfcSelectionSurfaceBrush` | `NfcTextStrongBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
+| 勾選或不確定 | `Nvt.Toggle.SelectedBrush` | `NfcAccentBorderBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
+| 已選取指標移入 | `Nvt.Toggle.SelectedPointerOverBrush` | `NfcAccentBorderStrongBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
+| 已選取按下 | `Nvt.Toggle.SelectedPressedBrush` | `NfcAccentBorderStrongBrush` | `Nvt.Controls.ChoiceForegroundBrush` |
 | 停用未勾選 | `NfcSurfaceSubtleBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
 | 停用已選取 | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` | `NfcTextDisabledBrush` |
 | 鍵盤焦點 | 保留目前底色 | 保留目前外框 | 保留目前標籤 |
@@ -973,8 +1150,8 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 ### 選項 token
 
-`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中六個幾何 token 在 Light 與 Dark 使用相同值。
-所有顏色與單選圓角均使用既有 Core token。唯一新增的值是核取方塊圓角，定義為 `Nvt.Choice.CheckBoxCornerRadius`。此控制項家族不新增顏色常數。
+`ThemeTokens.axaml` 包含 `ChoiceTokens.axaml`。其中 14 個幾何 token 在 Light 與 Dark 使用相同值。
+幾何使用 Choice 與 Shape token；列顏色使用共用色盤與 `ControlTokens.axaml`。
 
 | Token | Light | Dark |
 | --- | --- | --- |
@@ -982,8 +1159,8 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 | `Nvt.Choice.DotSize` | 10 | 10 |
 | `Nvt.Choice.CompactHeight` | 24 | 24 |
 | `Nvt.Choice.CheckBoxCornerRadius` | 6 | 6 |
-| `Nvt.Choice.RowPadding` | `0,6` | `0,6` |
-| `Nvt.Choice.CompactPadding` | `0,2` | `0,2` |
+| `Nvt.Choice.RowPadding` | `10,6` | `10,6` |
+| `Nvt.Choice.CompactPadding` | `10,2` | `10,2` |
 | `NfcControlHeight` | 32 | 32 |
 | `NfcFontSize13` | 13 | 13 |
 | `NfcSurfaceBrush` | `#FFFFFF` | `#111827` |
@@ -998,10 +1175,10 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 | `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
 | `Nvt.Toggle.SelectedBrush` | `#1557E9` | `#1148BE` |
 | `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#1148BE` | `#0E3C9E` |
+| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
 | `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
-| `Nvt.Focus.RingBrush` | `#1F6FD1` | `#4DA3FF` |
+| `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
 | `Nvt.Focus.RingThickness` | 2 | 2 |
 
 勾號沿用 `NfcDoneIconGeometry`。
@@ -1014,12 +1191,12 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 | 對比 | Light | Dark |
 | --- | --- | --- |
-| 啟用標籤 | 11.866:1 | 10.501:1 |
+| 啟用標籤 | 14.328:1 | 11.215:1 |
 | 停用標籤 | 3.698:1 | 3.783:1 |
 | 所有狀態的指示框外框 | 3.257:1 | 3.256:1 |
 | 所有選取狀態的白色圖示，含停用 | 4.559:1 | 3.422:1 |
 | 啟用勾選底色上的白色圖示 | 5.879:1 | 7.794:1 |
-| 鍵盤焦點框 | 4.006:1 | 4.930:1 |
+| 鍵盤焦點框 | 5.340:1 | 6.194:1 |
 
 ### CheckBox 採用步驟
 
@@ -1039,6 +1216,8 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 ```
 
 ## RadioButton
+
+整列與 CheckBox 共用幾何、顏色、對比與執行期形狀切換。20 DIP 外圈與 10 DIP 指示點維持圓形。
 
 `ChoiceStyles.axaml` 同時為原生單選按鈕提供外觀，不需指定外觀 class。
 載入 CheckBox 章節所述的相同主題 token 與樣式。
@@ -1076,3 +1255,189 @@ Avalonia 12.1.1 需由宿主設定 `XYFocus.NavigationModes="Keyboard"`，方向
 輸出 `choice-light.png`、`choice-dark.png`、`choice-square-light.png` 與 `choice-before-light.png`，每張寬 1200 像素、比例為 100%。
 比較圖將 Fluent 與 Core 控制項並排呈現。
 測試涵蓋所有狀態、對比、列幾何、換行、原生操作、執行期字典與形狀、無障礙及減少動態效果。
+
+## 控制項改版驗證
+
+本次只修改樣式與資源，沒有公開 C# API 變更。
+在 Fluent 後載入既有家族樣式；`ThemeTokens.axaml` 自動引入 `ControlTokens.axaml`。
+移除衝突的本機幾何、色盤、列填色、握柄與焦點樣式，保留應用邏輯與原生鍵盤行為。
+
+ListBoxItem、ComboBoxItem、勾選 MenuItem、Choice 列與 `toggleSoft` 共用選取底色。
+List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換。
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Controls.SelectedBrush` | `#EFF3FD` | `#1A2940` |
+| `Nvt.Controls.SelectedPointerOverBrush` | `#E3ECFC` | `#20334F` |
+| `Nvt.Controls.SelectedPressedBrush` | `#DCE7FA` | `#243C5B` |
+| `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
+| `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
+| `Nvt.Controls.ChoiceForegroundBrush` | `#0F172A` | `#FFFFFF` |
+| `Nvt.Controls.ExpanderPressedBrush` | `#CBD5E1` | `#29384D` |
+| `Nvt.Controls.ExpanderPressedForegroundBrush` | `#0B1220` | `#FFFFFF` |
+| `Nvt.Controls.ExpanderDisabledForegroundBrush` | `#637085` | `#91A1B9` |
+| `Nvt.Toggle.SoftCheckedPointerOverBrush` | `#E3ECFC` | `#20334F` |
+| `Nvt.Toggle.SoftCheckedPressedBrush` | `#DCE7FA` | `#243C5B` |
+
+| Token | Pill | Square |
+| --- | --- | --- |
+| `Nvt.Progress.CornerRadius` | 999 | 1 |
+| `Nvt.Expander.ContainerCornerRadius` | 8 | 6 |
+| `Nvt.List.FocusCornerRadius` | 999 | 4 |
+| `Nvt.GridSplitter.GripCornerRadius` | 2 | 1 |
+| `Nvt.GridSplitter.FocusCornerRadius` | 999 | 2 |
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `Nvt.Expander.ContainerPadding` | `6` | `6` |
+| `Nvt.Expander.HeaderPadding` | `12,0` | `12,0` |
+| `Nvt.Expander.ContentPadding` | `24,12,12,12` | `24,12,12,12` |
+| `Nvt.Expander.ContentMargin` | `0,6,0,0` | `0,6,0,0` |
+| `Nvt.Expander.ContentUpMargin` | `0,0,0,6` | `0,0,0,6` |
+| `Nvt.Expander.ContentLeftMargin` | `0,0,6,0` | `0,0,6,0` |
+| `Nvt.Expander.ContentRightMargin` | `6,0,0,0` | `6,0,0,0` |
+| `Nvt.Expander.ContainerBorderThickness` | `1` | `1` |
+| `Nvt.Expander.ContentDividerThickness` | `0,1,0,0` | `0,1,0,0` |
+| `Nvt.Expander.ContentDividerUpThickness` | `0,0,0,1` | `0,0,0,1` |
+| `Nvt.Expander.ContentDividerLeftThickness` | `0,0,1,0` | `0,0,1,0` |
+| `Nvt.Expander.ContentDividerRightThickness` | `1,0,0,0` | `1,0,0,0` |
+| `Nvt.GridSplitter.GripWidth` | 4 | 4 |
+| `Nvt.GridSplitter.GripLength` | 24 | 24 |
+| `Nvt.GridSplitter.PressedLineThickness` | 3 | 3 |
+
+下列新配色使用 WCAG 相對亮度、不透明 sRGB 色彩，適用兩種形狀；數值取三位小數。
+文字、圖示、啟用外框與焦點均保留原文件最低對比。
+裝飾分隔線與停用 splitter 提示依設計刻意變淡，不承載文字或啟用控制項辨識。
+
+| Contrast | Light | Dark |
+| --- | --- | --- |
+| 選取：文字、圖示與標記 | 8.759:1 | 10.216:1 |
+| 選取：Choice 標籤 | 16.075:1 | 14.633:1 |
+| 選取：Choice 外框 | 5.294:1 | 5.748:1 |
+| 選取：淡色列焦點 | 5.991:1 | 8.082:1 |
+| 選取滑過：文字、圖示與標記 | 8.185:1 | 8.898:1 |
+| 選取滑過：Choice 標籤 | 15.022:1 | 12.744:1 |
+| 選取滑過：Choice 外框 | 6.558:1 | 6.683:1 |
+| 選取滑過：淡色列焦點 | 5.598:1 | 7.039:1 |
+| 選取按下：文字、圖示與標記 | 7.807:1 | 7.830:1 |
+| 選取按下：Choice 標籤 | 14.328:1 | 11.215:1 |
+| 選取按下：Choice 外框 | 6.255:1 | 5.882:1 |
+| 選取按下：淡色列焦點 | 5.340:1 | 6.194:1 |
+| Choice 標籤／靜止 | 17.063:1 | 15.737:1 |
+| Choice 外框／靜止 | 3.838:1 | 3.959:1 |
+| Choice 焦點／靜止 | 6.359:1 | 8.692:1 |
+| Choice 標籤／滑過 | 15.285:1 | 14.629:1 |
+| Choice 外框／滑過 | 6.488:1 | 9.853:1 |
+| Choice 焦點／滑過 | 5.696:1 | 8.080:1 |
+| Choice 標籤／按下 | 14.482:1 | 12.945:1 |
+| Choice 外框／按下 | 14.482:1 | 12.373:1 |
+| Choice 焦點／按下 | 5.397:1 | 7.150:1 |
+| Choice 停用文字與外框／列 | 4.358:1 | 4.599:1 |
+| Expander 靜止文字與箭頭 | 13.982:1 | 12.766:1 |
+| Expander 滑過文字與箭頭 | 12.525:1 | 11.866:1 |
+| Expander 按下文字與箭頭 | 12.611:1 | 11.884:1 |
+| Expander 停用文字與箭頭 | 4.794:1 | 5.997:1 |
+| Expander 容器／表面（裝飾） | 1.485:1 | 1.713:1 |
+| 分隔線與內容交界／表面（裝飾） | 1.233:1 | 1.414:1 |
+| 進度指示器／軌道 | 3.960:1 | 4.067:1 |
+| 進度指示器／表面 | 5.879:1 | 6.968:1 |
+| 停用進度指示器／軌道 | 3.071:1 | 3.026:1 |
+| Splitter 靜止握柄／表面 | 4.015:1 | 4.462:1 |
+| Splitter 滑過握柄／表面 | 5.879:1 | 6.968:1 |
+| Splitter 按下線條與握柄／表面 | 7.794:1 | 9.303:1 |
+| Splitter 停用線條與握柄／表面（非互動） | 1.485:1 | 1.713:1 |
+| 實心選取按下白色符號 | 9.728:1 | 12.081:1 |
+| Switch 按下白色旋鈕 | 8.722:1 | 8.722:1 |
+
+審查提議深色 Expander 按下底色 `#334155`，即使白字也只有 10.355:1，低於原本 11.866:1。
+改用 `#29384D` 配白字後為 11.884:1。亮色按下文字改為 `#0B1220`，保留 12.525:1 下限。
+選取文字改為 `#0E3C9E`／`#BEDAFF`；淡色列焦點改為 `#1557C0`／`#8FC5FF`。
+這些配色補償較強的選取底色，不修改全域 `Nfc*` 或 `Nvt.Focus.*` 色彩。
+本次要求 section 保留 44 DIP，因此未採用審查的 40 DIP 建議。
+本次不新增平面圖示角色；既有 Toggle 角色保留幾何，並增加明確的選取按下回饋。
+
+新增的 `RenderRedesign*` 測試沿用家族環境變數，輸出 `<control>-<pill|square>-<light|dark>.png`。
+`separator.png` 同時展示兩個主題，標示 "Not affected by shape"。
+每張圖寬 1200 像素、英文標籤、縮放一倍，檔案小於一 MB。
+進度圖展示靜止的不確定進度占位狀態。ProgressBar 與 Separator 不適用互動狀態。
+每個指定控制項、所有 Toggle 角色與 ComboBoxItem 均有獨立執行期測試，且不替換模板。
+仍需業主檢視真實 popup 定位、150 毫秒動作、繁中長標籤與應用組合畫面。
+
+### 導入後幾何 token
+
+以下預設值在兩種形狀與主題中相同。形狀相關圓角仍列於上方形狀 token 表。
+
+凍結的父版本為儲存庫 `Dennis40816/nvt_fw_core`，commit ref 為 `c6c50c1c26b428f1c81d2397515feab3ff0e28fa`（完整 SHA）。
+被取代的固定值來自 `src/Nvt.Core.Avalonia/Theme` 下的檔案：
+
+- `ChoiceStyles.axaml` 與 `DividerStyles.axaml`。
+- `ExpanderStyles.axaml` 與 `ListStyles.axaml`。
+- `MenuStyles.axaml` 與 `ToggleStyles.axaml`。
+
+凍結的圖表集包含 45 張重新設計圖表：
+
+- `checkbox`、`radiobutton`、`list` 與 `combobox`。
+- `menu`、`contextmenu`、`expander` 與 `progressbar`。
+- `gridsplitter`、`switch` 與 `toggle`。
+
+每個名稱有四張圖：`<control>-pill-light.png`、`<control>-pill-dark.png`、`<control>-square-light.png` 與 `<control>-square-dark.png`。
+另一張為 `separator.png`，同時展示兩種主題，且不受形狀影響。
+
+原生 `ToggleSwitch` 只有在勾選狀態改變後，才會將旋鈕移至新的 `Nvt.Toggle.SwitchKnobTravel` 位置。
+變更此 token 會立即更新旋鈕畫布寬度，但旋鈕會保留原位置，直到下一次切換。
+
+| Token | Pill 預設值 | Square 預設值 |
+| --- | --- | --- |
+| `Nvt.Choice.IndicatorBorderThickness` | `2` | `2` |
+| `Nvt.CheckBox.CheckWidth` | `12` | `12` |
+| `Nvt.CheckBox.CheckHeight` | `10` | `10` |
+| `Nvt.CheckBox.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.CheckBox.DashWidth` | `10` | `10` |
+| `Nvt.CheckBox.DashHeight` | `2` | `2` |
+| `Nvt.Choice.LabelMargin` | `8,0,0,0` | `8,0,0,0` |
+| `Nvt.Choice.LabelMinHeight` | `20` | `20` |
+| `Nvt.Controls.FocusRingMargin` | `-4` | `-4` |
+| `Nvt.Expander.HeaderSpacing` | `10` | `10` |
+| `Nvt.Expander.ChevronSlotSize` | `20` | `20` |
+| `Nvt.Expander.ChevronGeometry` | `M0 0 L6 6 L12 0` | `M0 0 L6 6 L12 0` |
+| `Nvt.Expander.ChevronWidth` | `12` | `12` |
+| `Nvt.Expander.ChevronHeight` | `6` | `6` |
+| `Nvt.Expander.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.List.RowPadding` | `10,5` | `10,5` |
+| `Nvt.List.SelectionIndicatorWidth` | `2` | `2` |
+| `Nvt.List.SelectionIndicatorHeight` | `12` | `12` |
+| `Nvt.List.SelectionIndicatorMargin` | `4,0,0,0` | `4,0,0,0` |
+| `Nvt.Controls.InsetFocusRingMargin` | `2` | `2` |
+| `Nvt.List.CompactPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.PopupOffset` | `-16` | `-16` |
+| `Nvt.Menu.PopupBorderThickness` | `1` | `1` |
+| `Nvt.Menu.PopupPadding` | `4` | `4` |
+| `Nvt.Menu.ItemPadding` | `10,0` | `10,0` |
+| `Nvt.Menu.CheckStrokeThickness` | `2` | `2` |
+| `Nvt.Menu.GestureMargin` | `24,0,0,0` | `24,0,0,0` |
+| `Nvt.Menu.ChevronWidth` | `6` | `6` |
+| `Nvt.Menu.ChevronHeight` | `10` | `10` |
+| `Nvt.Menu.ChevronMargin` | `16,0,0,0` | `16,0,0,0` |
+| `Nvt.Menu.ChevronStrokeThickness` | `1.5` | `1.5` |
+| `Nvt.Menu.SubMenuHorizontalOffset` | `-20` | `-20` |
+| `Nvt.Menu.SeparatorThickness` | `1` | `1` |
+| `Nvt.Menu.SeparatorMargin` | `10,4` | `10,4` |
+| `Nvt.Toggle.SegmentGroupPadding` | `4` | `4` |
+| `Nvt.Toggle.SegmentSpacing` | `2` | `2` |
+| `Nvt.Toggle.Height` | `40` | `40` |
+| `Nvt.Toggle.Padding` | `20,0` | `20,0` |
+| `Nvt.Toggle.IconSize` | `40` | `40` |
+| `Nvt.Toggle.SwitchWidth` | `58` | `58` |
+| `Nvt.Toggle.SwitchTrackWidth` | `52` | `52` |
+| `Nvt.Toggle.SwitchTrackHeight` | `28` | `28` |
+| `Nvt.Toggle.SwitchTrackBorderThickness` | `2` | `2` |
+| `Nvt.Toggle.SwitchKnobTravel` | `24` | `24` |
+| `Nvt.Toggle.SwitchKnobMargin` | `6,0,0,0` | `6,0,0,0` |
+| `Nvt.Toggle.SwitchKnobSize` | `22` | `22` |
+| `Nvt.Toggle.SwitchKnobTopOffset` | `3` | `3` |
+| `Nvt.Toggle.SwitchFocusWidth` | `60` | `60` |
+| `Nvt.Toggle.SwitchFocusHeight` | `36` | `36` |
+| `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
+| `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
+
+請參閱 [導入後微調指南](../post-adoption-tuning.zh-TW.md)，了解 token 歸屬、共用調整、對比檢查與控制項圖表輸出。

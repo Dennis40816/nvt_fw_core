@@ -1,0 +1,47 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderMutedBrush" />
+      <StaticResource x:Key="Nvt.Progress.IndicatorBrush" ResourceKey="NfcAccentBrush" />
+      <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderMutedBrush" />
+      <StaticResource x:Key="Nvt.Progress.IndicatorBrush" ResourceKey="NfcAccentBrush" />
+      <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <SolidColorBrush x:Key="Nvt.Divider.TransparentBrush" Color="#00FFFFFF" />
+  <Thickness x:Key="Nvt.Expander.ContainerPadding">6</Thickness>
+  <Thickness x:Key="Nvt.Expander.HeaderPadding">12,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentPadding">24,12,12,12</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentMargin">0,6,0,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentUpMargin">0,0,0,6</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentLeftMargin">0,0,6,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentRightMargin">6,0,0,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContainerBorderThickness">1</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentDividerThickness">0,1,0,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentDividerUpThickness">0,0,0,1</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentDividerLeftThickness">0,0,1,0</Thickness>
+  <Thickness x:Key="Nvt.Expander.ContentDividerRightThickness">1,0,0,0</Thickness>
+  <x:Double x:Key="Nvt.GridSplitter.GripWidth">4</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.GripLength">24</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.PressedLineThickness">3</x:Double>
+  <x:Double x:Key="Nvt.Expander.SectionHeaderHeight">44</x:Double>
+  <x:Double x:Key="Nvt.Progress.Height">6</x:Double>
+  <x:Double x:Key="Nvt.Progress.ThinHeight">3</x:Double>
+  <x:Double x:Key="Nvt.Progress.ThickHeight">10</x:Double>
+  <x:Double x:Key="Nvt.Divider.LineThickness">1</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.HitSize">6</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.ActiveLineThickness">2</x:Double>
+  <x:Double x:Key="Nvt.GridSplitter.PreviewOpacity">0.5</x:Double>
+  <x:Double x:Key="Nvt.Expander.HeaderSpacing">10</x:Double>
+  <x:Double x:Key="Nvt.Expander.ChevronSlotSize">20</x:Double>
+  <StreamGeometry x:Key="Nvt.Expander.ChevronGeometry">M0 0 L6 6 L12 0</StreamGeometry>
+  <x:Double x:Key="Nvt.Expander.ChevronWidth">12</x:Double>
+  <x:Double x:Key="Nvt.Expander.ChevronHeight">6</x:Double>
+  <x:Double x:Key="Nvt.Expander.ChevronStrokeThickness">1.5</x:Double>
+</ResourceDictionary>
