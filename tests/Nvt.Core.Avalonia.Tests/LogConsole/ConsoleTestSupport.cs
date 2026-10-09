@@ -39,6 +39,14 @@ internal sealed class ConsoleTestStore : IDisposable
         _safety.CancelAfter(TimeSpan.FromSeconds(60));
         Store = new LogStore(maxEntries: maxEntries, clock: new DelegateTimeProvider(() => UtcNow), schedule: callback => _writer.Enqueue(callback));
     }
+    internal void AddPublishedEntries(int count)
+    {
+        for (var index = 0; index < count; index++)
+        {
+            Store.Add(LogLevel.Info, "app", "entry " + index);
+            Fence();
+        }
+    }
     internal void Fence()
     {
         var capture = Store.CaptureLatestAsync(_safety.Token).AsTask();
@@ -70,6 +78,26 @@ internal sealed class ConsoleTestStore : IDisposable
 
 internal static class ConsoleTestView
 {
+    internal static System.ComponentModel.PropertyChangedEventHandler OnProperty(string name, Action callback)
+        => (_, args) => { if (args.PropertyName == name) callback(); };
+
+    internal static System.ComponentModel.PropertyChangedEventHandler OnFirstProperty(string name, Action count, Action first)
+    {
+        var called = false; // UI-thread-only callback lifetime.
+        return OnProperty(name, () => { count(); if (called) return; called = true; first(); });
+    }
+    private static string? PrepareEvidenceDirectory()
+    {
+        var evidence = Environment.GetEnvironmentVariable("NVT_CONSOLE_EVIDENCE");
+        if (!string.IsNullOrEmpty(evidence)) Directory.CreateDirectory(evidence);
+        return evidence;
+    }
+    internal static void SaveEvidence(global::Avalonia.Media.Imaging.RenderTargetBitmap frame, string name)
+    {
+        var evidence = PrepareEvidenceDirectory();
+        if (string.IsNullOrEmpty(evidence)) return;
+        frame.Save(Path.Combine(evidence, name), global::Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+    }
     internal static Window Create(Control content, bool dark = false, ThemeShape shape = ThemeShape.Pill, double width = 1200, double height = 144)
     {
         var window = new Window { Content = content, Width = width, Height = height,
@@ -78,6 +106,8 @@ internal static class ConsoleTestView
         window.Resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
         window.Styles.Add(new FluentTheme());
         ThemeShapes.SetShape(window.Resources, shape);
+        // Prepare the caller-supplied evidence destination for every view, including the unchanged icon tests.
+        _ = PrepareEvidenceDirectory();
         window.Show();
         Pump(window);
         return window;

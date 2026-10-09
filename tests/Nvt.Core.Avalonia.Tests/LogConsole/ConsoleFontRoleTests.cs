@@ -15,6 +15,7 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 /// <summary>Checks resolved Core roles on Console actions and popup items.</summary>
 public sealed class ConsoleFontRoleTests
 {
+    private static readonly string[] MenuNames = ["Time", "Export", "Display", "More"];
     /// <summary>Actions and every Console menu resolve Body resources in both themes and shapes, including Chinese source text.</summary>
     [AvaloniaTheory]
     [InlineData(false, ThemeShape.Pill)]
@@ -37,7 +38,7 @@ public sealed class ConsoleFontRoleTests
             var actions = surface.GetVisualDescendants().OfType<Button>().Where(button => button is not ToggleButton).ToArray();
             Assert.NotEmpty(actions);
             Assert.All(actions, AssertBodyRole);
-            foreach (var name in new[] { "Time", "Export", "Display", "More" })
+            Assert.All(MenuNames, name =>
             {
                 window.Width = name is "Display" or "More" ? 640 : 1200;
                 ConsoleTestView.Pump(window);
@@ -47,7 +48,7 @@ public sealed class ConsoleFontRoleTests
                 Assert.True(menu.IsOpen);
                 Assert.All(menu.Items.OfType<MenuItem>(), AssertBodyRole);
                 menu.Hide();
-            }
+            });
             var sources = toolbar.FindControl<Button>("Sources")!;
             ConsoleTestView.Click(window, sources);
             var sourceMenu = Assert.IsType<MenuFlyout>(sources.Flyout);

@@ -27,6 +27,7 @@ internal sealed class ConsoleLayoutConverter : IValueConverter, IMultiValueConve
         var sizes = values.Select(value => System.Convert.ToDouble(value, CultureInfo.InvariantCulture)).ToArray();
         return (parameter as string) switch
         {
+            "Top" => new Thickness(0, sizes[0], 0, 0),
             "HeaderHeight" => sizes[0] + sizes[1] + sizes[1],
             "ToolbarHeight" => sizes[2] != 0
                 ? sizes[0] + sizes[0] + sizes[1] + sizes[1] + sizes[1]

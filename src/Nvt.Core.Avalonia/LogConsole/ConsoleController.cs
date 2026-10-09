@@ -28,6 +28,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private ConsoleProjection _projection;
     private ConsoleProjection? _retired;
     private ConsoleExportOptions _exportOptions = new();
+    private Exception? _refreshError;
     // UI-thread-only nesting; Dispose defers lease release until all active callbacks return.
     private int _notificationDepth;
 
@@ -41,6 +42,13 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         _dispatcher = dispatcher!;
         _store = store;
         Options = (options ?? new()) with { SourceRegistry = sources };
+        ArgumentNullException.ThrowIfNull(Options.RelativeTimeTemplate);
+        ArgumentNullException.ThrowIfNull(Options.Culture);
+        try { _ = string.Format(Options.Culture, Options.RelativeTimeTemplate, 0.0); }
+        catch (FormatException error)
+        {
+            throw new ArgumentException("RelativeTimeTemplate must be a valid composite format with placeholder 0.", nameof(options), error);
+        }
         ToggleLevelCommand = Command<LogLevel>(level =>
         {
             if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
@@ -89,11 +97,8 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     public ConsoleProjection Projection => _projection;
     /// <summary>Gets the independent export flags used by app adapters.</summary>
     public ConsoleExportOptions ExportOptions => _exportOptions;
-    /// <summary>Gets a summary derived from the current filter, without stored counts or flags.</summary>
-    public string FilterSummary => (_filter.EnabledLevels.IsEmpty ? "no levels" : string.Join(", ", _filter.EnabledLevels.Order())) + "; "
-        + (_filter.SelectedSources.IsEmpty ? "all sources" : string.Join(", ", _filter.SelectedSources.Order(StringComparer.Ordinal)))
-        + (_filter.SearchText.Length == 0 ? string.Empty : $"; search ‘{_filter.SearchText}’ ({(_filter.OnlyMatches ? "matches only" : "highlight")})")
-        + (_filter.Deduplicate ? "; dedupe" : string.Empty);
+    /// <summary>Gets the most recent refresh failure; the next successful refresh clears it.</summary>
+    public Exception? RefreshError => _refreshError;
     /// <summary>Toggles one level, including levels with zero events.</summary>
     public ICommand ToggleLevelCommand { get; }
     /// <summary>Toggles search filtering while preserving highlights.</summary>
@@ -133,8 +138,8 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         ArgumentNullException.ThrowIfNull(state);
         if (_viewState == state) return;
         _viewState = state;
-        Notify(nameof(ViewState));
         Schedule(true);
+        Notify(nameof(ViewState));
     }
 
     /// <summary>Captures a pause at the current projection without changing selection or expansion.</summary>
@@ -165,9 +170,8 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     {
         if (_filter == filter) return;
         _filter = filter;
-        Notify(nameof(Filter));
-        Notify(nameof(FilterSummary));
         Schedule(true);
+        Notify(nameof(Filter));
     }
     private void SetExportOptions(ConsoleExportOptions options)
     {
@@ -200,23 +204,51 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         _retired?.Dispose();
         _retired = null;
         if (!refresh) return;
-        using var snapshot = _store.CaptureSnapshot();
-        var next = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
-        if (!IsActive()) { next.Dispose(); return; }
-        var remapped = _viewState.Remap(_projection, next);
-        if (_viewState.Follow is ConsoleFollow.Paused && _projection.Deduplicate != next.Deduplicate)
-            next = ConsoleProjectionTransfer.WithPausedOrder(next, remapped);
-        // Clear advances admission generation before the writer publishes its reset.
-        if (!IsActive() || !_store.IsCurrent(snapshot.Generation)) { next.Dispose(); return; }
-        _retired = _projection;
-        _projection = next;
-        _viewState = remapped;
+        ConsoleProjection? next = null;
         try
         {
-            Notify(nameof(ViewState));
-            Notify(nameof(Projection));
+            using var snapshot = _store.CaptureSnapshot();
+            next = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
+            if (!IsActive()) { next.Dispose(); return; }
+            var remapped = _viewState.Remap(_projection, next);
+            if (_viewState.Follow is ConsoleFollow.Paused && _projection.Deduplicate != next.Deduplicate)
+                next = ConsoleProjectionTransfer.WithPausedOrder(next, remapped);
+            // Clear advances admission generation before the writer publishes its reset.
+            if (!IsActive() || !_store.IsCurrent(snapshot.Generation)) { next.Dispose(); return; }
+            _retired = _projection;
+            _projection = next;
+            _viewState = remapped;
         }
-        finally { Schedule(false); }
+        catch (Exception error)
+        {
+            next?.Dispose();
+            try
+            {
+                if (SetRefreshError(error)) Notify(nameof(RefreshError));
+            }
+            finally { Schedule(false); }
+            return;
+        }
+        var errorChanged = SetRefreshError(null);
+        try { Notify(nameof(ViewState)); }
+        finally
+        {
+            try { Notify(nameof(Projection)); }
+            finally
+            {
+                try
+                {
+                    if (errorChanged) Notify(nameof(RefreshError));
+                }
+                finally { Schedule(false); }
+            }
+        }
+    }
+    private bool SetRefreshError(Exception? error)
+    {
+        if (ReferenceEquals(_refreshError, error)) return false;
+        _refreshError = error;
+        return true;
     }
     private void Notify(string name)
     {

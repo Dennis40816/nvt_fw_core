@@ -5,6 +5,9 @@ using Nvt.Core.LogConsole;
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
+// ConsoleProjection owns only the leases in Rows; every other member is immutable metadata.
+// WithPausedOrder carries every row and its exact lease once, so the returned projection
+// becomes their sole owner. The input must neither escape nor be disposed after transfer.
 // Transfers fresh leases without retaining them twice. Remap needs both memberships;
 // reorder afterward so a dedupe change preserves pause order with one Project call.
 internal static class ConsoleProjectionTransfer

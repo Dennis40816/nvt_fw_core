@@ -39,7 +39,7 @@ public sealed class ConsoleSourceMenuTests
         fixture.Store.Add(LogLevel.Info, "transient", "event");
         fixture.Fence();
         using var controller = fixture.Controller();
-        if (explicitSelection) controller.SetSelectedSources(["transient"]);
+        controller.SetSelectedSources(explicitSelection ? ["transient"] : []);
         var toolbar = new ConsoleToolbar { Controller = controller };
         var window = ConsoleTestView.Create(toolbar, height: 400);
         try

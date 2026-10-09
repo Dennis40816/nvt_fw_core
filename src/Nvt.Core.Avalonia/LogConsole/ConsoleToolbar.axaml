@@ -1,12 +1,12 @@
 <!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:lc="using:Nvt.Core.Avalonia.LogConsole" xmlns:log="using:Nvt.Core.LogConsole"
-             xmlns:icons="using:Nvt.Core.Avalonia.Icons" xmlns:focus="using:Nvt.Core.Avalonia.Focus" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleToolbar" x:Name="Root" MinWidth="640">
-  <UserControl.Resources><lc:ConsoleValueConverter x:Key="ConsoleValue"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/></UserControl.Resources>
-  <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/LogConsoleStyles.axaml"/></UserControl.Styles>
-  <UserControl.Height><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="ToolbarHeight"><Binding Source="{StaticResource NfcControlHeight}"/><Binding Source="{StaticResource NfcSpace8}"/><Binding Path="IsVisible" ElementName="NarrowSearchRow"/></MultiBinding></UserControl.Height>
+             xmlns:icons="using:Nvt.Core.Avalonia.Icons" xmlns:focus="using:Nvt.Core.Avalonia.Focus" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleToolbar" x:Name="Root" lc:ConsoleDimensions.NarrowBreakpoint="{lc:ConsoleResource NarrowBreakpoint}" MinWidth="{lc:ConsoleResource MinimumWidth}">
+  <UserControl.Resources><lc:ConsoleValueConverter x:Key="ConsoleValue"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/><lc:ConsoleTextConverter x:Key="ConsoleText"/></UserControl.Resources>
+  <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleControlStyles.axaml"/></UserControl.Styles>
+  <UserControl.Height><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="ToolbarHeight"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace8"/><Binding Path="IsVisible" ElementName="NarrowSearchRow"/></MultiBinding></UserControl.Height>
   <Border Background="{DynamicResource NfcSurfaceSubtleBrush}" DataContext="{Binding Controller, ElementName=Root}">
-    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><Binding Source="{StaticResource NfcSpace16}"/><Binding Source="{StaticResource NfcSpace8}"/></MultiBinding></Border.Padding>
+    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><DynamicResource ResourceKey="NfcSpace16"/><DynamicResource ResourceKey="NfcSpace8"/></MultiBinding></Border.Padding>
     <Grid x:Name="Rows" RowDefinitions="Auto,Auto">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="{DynamicResource NfcControlHeight}">
         <Border Grid.Column="1" Width="{DynamicResource NfcSpace16}"/>
@@ -14,62 +14,56 @@
         <StackPanel x:Name="Levels" Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}"><ToggleButton x:Name="LevelTrace" Classes="toggleSoft consoleToggle consoleLevel consoleTrace"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Trace, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Trace}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Trace}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Trace}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.MoreHoriz}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Trace"><Binding Path="Projection.LevelCounts[Trace]"/><DynamicResource ResourceKey="Nvt.Console.Level.Trace"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Trace"><Binding Path="Projection.LevelCounts[Trace]"/><DynamicResource ResourceKey="Nvt.Console.Level.Trace"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.MoreHoriz}"/>
     </ToggleButton><ToggleButton x:Name="LevelDebug" Classes="toggleSoft consoleToggle consoleLevel consoleDebug"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Debug, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Debug}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Debug}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Debug}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.BugReport}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Debug"><Binding Path="Projection.LevelCounts[Debug]"/><DynamicResource ResourceKey="Nvt.Console.Level.Debug"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Debug"><Binding Path="Projection.LevelCounts[Debug]"/><DynamicResource ResourceKey="Nvt.Console.Level.Debug"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.BugReport}"/>
     </ToggleButton><ToggleButton x:Name="LevelInfo" Classes="toggleSoft consoleToggle consoleLevel consoleInfo"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Info, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Info}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Info}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Info}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Info}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Info"><Binding Path="Projection.LevelCounts[Info]"/><DynamicResource ResourceKey="Nvt.Console.Level.Info"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Info"><Binding Path="Projection.LevelCounts[Info]"/><DynamicResource ResourceKey="Nvt.Console.Level.Info"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Info}"/>
     </ToggleButton><ToggleButton x:Name="LevelWarn" Classes="toggleSoft consoleToggle consoleLevel consoleWarn"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Warn, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Warn}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Warn}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Warn}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Warning}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Warn"><Binding Path="Projection.LevelCounts[Warn]"/><DynamicResource ResourceKey="Nvt.Console.Level.Warn"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Warn"><Binding Path="Projection.LevelCounts[Warn]"/><DynamicResource ResourceKey="Nvt.Console.Level.Warn"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Warning}"/>
     </ToggleButton><ToggleButton x:Name="LevelError" Classes="toggleSoft consoleToggle consoleLevel consoleError"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Error, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Error}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Error}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Error}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Error}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Error"><Binding Path="Projection.LevelCounts[Error]"/><DynamicResource ResourceKey="Nvt.Console.Level.Error"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Error"><Binding Path="Projection.LevelCounts[Error]"/><DynamicResource ResourceKey="Nvt.Console.Level.Error"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Error}"/>
     </ToggleButton><ToggleButton x:Name="LevelFatal" Classes="toggleSoft consoleToggle consoleLevel consoleFatal"
                   IsChecked="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Fatal, Mode=OneWay}"
                   Command="{Binding ToggleLevelCommand}" CommandParameter="{x:Static log:LogLevel.Fatal}"
-                  AutomationProperties.Name="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Fatal}"
-                  ToolTip.Tip="{Binding Projection, Converter={StaticResource ConsoleValue}, ConverterParameter=Level:Fatal}"
+
                   ToolTip.Placement="Bottom" focus:FocusToolTipBehavior.IsEnabled="True">
-      <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Cancel}"/>
+      <AutomationProperties.Name><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Fatal"><Binding Path="Projection.LevelCounts[Fatal]"/><DynamicResource ResourceKey="Nvt.Console.Level.Fatal"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></AutomationProperties.Name><ToolTip.Tip><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Level:Fatal"><Binding Path="Projection.LevelCounts[Fatal]"/><DynamicResource ResourceKey="Nvt.Console.Level.Fatal"/><DynamicResource ResourceKey="Nvt.Console.Count"/></MultiBinding></ToolTip.Tip><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Cancel}"/>
     </ToggleButton></StackPanel>
         <Button x:Name="Sources" Grid.Column="2" Classes="consoleAction actionGhost" HorizontalAlignment="Right"
-                AutomationProperties.Name="Select sources"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock Text="{Binding Filter, Converter={StaticResource ConsoleValue}, ConverterParameter=SourceSummary}" VerticalAlignment="Center"/><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
+                AutomationProperties.Name="{lc:ConsoleResource Sources.Name}"><Button.Content><StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace4}"><TextBlock x:Name="SourceLabel" VerticalAlignment="Center"><TextBlock.Text><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Sources"><Binding Path="Filter"/><DynamicResource ResourceKey="Nvt.Console.Sources.All"/><DynamicResource ResourceKey="Nvt.Console.Sources.Selected"/></MultiBinding></TextBlock.Text></TextBlock><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.ExpandMore}"/></StackPanel></Button.Content>
           <Button.Flyout><MenuFlyout/></Button.Flyout>
         </Button>
         <ToggleButton x:Name="Dedupe" Grid.Column="4" Classes="toggleSoft consoleToggle"
-                      IsChecked="{Binding Filter.Deduplicate, Mode=OneWay}" Command="{Binding ToggleDedupeCommand}" AutomationProperties.Name="Dedupe"><TextBlock Classes="consoleToggleLabel" Text="{Binding Projection.DuplicatesMerged, StringFormat='Dedupe ×{0}'}"/></ToggleButton>
+                      IsChecked="{Binding Filter.Deduplicate, Mode=OneWay}" Command="{Binding ToggleDedupeCommand}" AutomationProperties.Name="{lc:ConsoleResource Dedupe}"><TextBlock Classes="consoleToggleLabel"><TextBlock.Text><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Dedupe"><Binding Path="Projection.DuplicatesMerged"/><DynamicResource ResourceKey="Nvt.Console.Dedupe.Count"/></MultiBinding></TextBlock.Text></TextBlock></ToggleButton>
       </Grid>
-      <Grid x:Name="NarrowSearchRow" Margin="{Binding Source={StaticResource NfcSpace8}, Converter={StaticResource ConsoleLayout}, ConverterParameter=Top}" Grid.Row="1" Height="{DynamicResource NfcControlHeight}" IsVisible="False"><Grid x:Name="NarrowSearch" ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
+      <Grid x:Name="NarrowSearchRow"  Grid.Row="1" Height="{DynamicResource NfcControlHeight}" IsVisible="False"><Grid.Margin><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Top"><DynamicResource ResourceKey="NfcSpace8"/></MultiBinding></Grid.Margin><Grid x:Name="NarrowSearch" ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">
       <Border Grid.Column="1" Width="{DynamicResource NfcSpace8}"/>
-      <Grid><TextBox x:Name="SearchBox" Classes="consoleSearch" PlaceholderText="Search messages, sources or paths"
-                    Text="{Binding Filter.SearchText, Mode=OneWay}" TextChanged="SearchChanged" AutomationProperties.Name="Search console"/>
+      <Grid><TextBox x:Name="SearchBox" Classes="consoleSearch" PlaceholderText="{lc:ConsoleResource Search.Placeholder}"
+                    Text="{Binding Filter.SearchText, Mode=OneWay}" TextChanged="SearchChanged" AutomationProperties.Name="{lc:ConsoleResource Search.Name}"/>
         <Button x:Name="ClearSearch" Classes="consoleAction actionGhost actionIconButton" HorizontalAlignment="Right"
-                AutomationProperties.Name="Clear search" ToolTip.Tip="Clear search"><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Close}"/></Button>
+                AutomationProperties.Name="{lc:ConsoleResource Search.Clear}" ToolTip.Tip="{lc:ConsoleResource Search.Clear}"><TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.Close}"/></Button>
       </Grid>
       <ToggleButton x:Name="OnlyMatches" Grid.Column="2" Classes="toggleSoft consoleToggle"
-                    IsChecked="{Binding Filter.OnlyMatches, Mode=OneWay}" Command="{Binding ToggleOnlyMatchesCommand}" AutomationProperties.Name="Only matches"><TextBlock Classes="consoleToggleLabel" Text="Only matches"/></ToggleButton>
+                    IsChecked="{Binding Filter.OnlyMatches, Mode=OneWay}" Command="{Binding ToggleOnlyMatchesCommand}" AutomationProperties.Name="{lc:ConsoleResource OnlyMatches}"><TextBlock Classes="consoleToggleLabel" Text="{lc:ConsoleResource OnlyMatches}"/></ToggleButton>
     </Grid></Grid>
     </Grid>
   </Border>

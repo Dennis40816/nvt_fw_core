@@ -22,7 +22,7 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 /// <summary>Verifies console state and view contracts.</summary>
 public sealed class ConsoleViewTests
 {
-    /// <summary>Header Toolbar And Empty State Render For Themes Shapes And Layouts.</summary>
+    /// <summary>Both themes and shapes render the same responsive console geometry and accessible actions.</summary>
     [AvaloniaTheory]
     [InlineData(false, ThemeShape.Pill, 1200)]
     [InlineData(true, ThemeShape.Pill, 1200)]
@@ -47,24 +47,19 @@ public sealed class ConsoleViewTests
             Assert.Equal(width <= 960 ? 88 : 48, toolbar.Bounds.Height);
             Assert.Equal(width <= 960, toolbar.FindControl<Grid>("NarrowSearchRow")!.IsVisible);
             Assert.Equal(width > 960, header.FindControl<Grid>("WideSearch")!.IsVisible);
-            foreach (var button in surface.GetVisualDescendants().OfType<Button>())
+            Assert.All(surface.GetVisualDescendants().OfType<Button>(), button =>
             {
                 Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(button)), button.Name);
                 Assert.NotNull(ControlAutomationPeer.CreatePeerForElement(button));
-            }
+            });
             using var frame = new RenderTargetBitmap(new PixelSize(width, width <= 960 ? 184 : 144), new Vector(96, 96));
             frame.Render(window);
-            var evidence = Environment.GetEnvironmentVariable("NVT_CONSOLE_EVIDENCE");
-            if (!string.IsNullOrEmpty(evidence))
-            {
-                Directory.CreateDirectory(evidence);
-                frame.Save(Path.Combine(evidence, $"{(dark ? "dark" : "light")}-{shape.ToString().ToLowerInvariant()}-{width}-header-toolbar-empty.png"), PngBitmapEncoderOptions.Default);
-            }
+            ConsoleTestView.SaveEvidence(frame, $"{(dark ? "dark" : "light")}-{shape.ToString().ToLowerInvariant()}-{width}-header-toolbar-empty.png");
         }
         finally { window.Close(); }
     }
 
-    /// <summary>Breakpoint Moves Search Display Export And Clear.</summary>
+    /// <summary>Crossing the breakpoint relocates search and preserves access to display, export, and clear.</summary>
     [AvaloniaTheory]
     [InlineData(960, true)]
     [InlineData(961, false)]
@@ -90,7 +85,7 @@ public sealed class ConsoleViewTests
         finally { window.Close(); }
     }
 
-    /// <summary>Level Tooltip Uses Raw Count And Toggle Updates Controller.</summary>
+    /// <summary>A level tooltip keeps its raw count when that level is excluded from visible rows.</summary>
     [AvaloniaFact]
     public void LevelTooltipUsesRawCountAndToggleUpdatesController()
     {
@@ -119,11 +114,13 @@ public sealed class ConsoleViewTests
         finally { window.Close(); }
     }
 
-    /// <summary>Search Clear Only Matches Dedupe And Reset Share Controller State.</summary>
+    /// <summary>Typing and visible actions share controller filters across both responsive rows.</summary>
     [AvaloniaFact]
     public void SearchClearOnlyMatchesDedupeAndResetShareControllerState()
     {
         using var fixture = new ConsoleTestStore();
+        fixture.Store.Add(LogLevel.Info, "app", "other");
+        fixture.Fence();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
         var window = ConsoleTestView.Create(surface);
@@ -152,6 +149,8 @@ public sealed class ConsoleViewTests
             ConsoleTestView.Click(window, header.FindControl<Button>("ClearSearch")!);
             ConsoleTestView.Pump(window);
             Assert.Empty(controller.Filter.SearchText);
+            controller.SetSelectedSources(["idle"]);
+            ConsoleTestView.Pump(window);
             var reset = surface.Children[2].GetVisualDescendants().OfType<Button>().Single();
             ConsoleTestView.Click(window, reset);
             ConsoleTestView.Pump(window);
@@ -161,7 +160,7 @@ public sealed class ConsoleViewTests
         finally { window.Close(); }
     }
 
-    /// <summary>Source Menu Includes Injected Zero Counts And Supports Multiple Selection.</summary>
+    /// <summary>The source menu includes idle declarations and preserves multi-selection until reset.</summary>
     [AvaloniaFact]
     public void SourceMenuIncludesInjectedZeroCountsAndSupportsMultipleSelection()
     {
@@ -220,7 +219,7 @@ public sealed class ConsoleViewTests
         finally { window.Close(); }
     }
 
-    /// <summary>Export Bindings And Include Flags Work In Wide And More Menus.</summary>
+    /// <summary>Wide and narrow export menus invoke all host commands and independent inclusion options.</summary>
     [AvaloniaFact]
     public void ExportBindingsAndIncludeFlagsWorkInWideAndMoreMenus()
     {
@@ -232,18 +231,8 @@ public sealed class ConsoleViewTests
         var window = ConsoleTestView.Create(header, height: 48);
         try
         {
-            foreach (var name in new[] { "Export", "More" })
-            {
-                var button = header.FindControl<Button>(name)!;
-                var menu = Assert.IsType<MenuFlyout>(button.Flyout);
-                menu.ShowAt(button);
-                ConsoleTestView.Pump(window);
-                var items = menu.Items.OfType<MenuItem>().ToArray();
-                foreach (var item in items.Take(3)) { Assert.NotNull(item.Command); item.Command!.Execute(null); }
-                items.Single(item => Equals(item.Header, "Include time")).Command!.Execute(null);
-                items.Single(item => Equals(item.Header, "Include level")).Command!.Execute(null);
-                menu.Hide();
-            }
+            InvokeExportMenu(header, "Export", window);
+            InvokeExportMenu(header, "More", window);
             Assert.Equal(6, calls);
             Assert.True(controller.ExportOptions.IncludeTime);
             Assert.True(controller.ExportOptions.IncludeLevel);
@@ -260,27 +249,42 @@ public sealed class ConsoleViewTests
         var window = ConsoleTestView.Create(header, height: 48);
         try
         {
-            foreach (var name in new[] { "Time", "Display" })
-            {
-                var button = header.FindControl<Button>(name)!;
-                var menu = Assert.IsType<MenuFlyout>(button.Flyout);
-                menu.ShowAt(button);
-                ConsoleTestView.Pump(window);
-                var choices = menu.Items.OfType<MenuItem>().Take(3).ToArray();
-                choices[1].Command!.Execute(choices[1].CommandParameter);
-                ConsoleTestView.Pump(window);
-                Assert.Equal(ConsoleTimeMode.Relative, controller.Filter.TimeMode);
-                Assert.True(choices[1].IsChecked);
-                Assert.False(choices[0].IsChecked);
-                choices[2].Command!.Execute(choices[2].CommandParameter);
-                ConsoleTestView.Pump(window);
-                Assert.Equal(ConsoleTimeMode.Hidden, controller.Filter.TimeMode);
-                Assert.True(choices[2].IsChecked);
-                Assert.All(choices, choice => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(choice))));
-                menu.Hide();
-            }
+            AssertTimeMenu(header, "Time", controller, window);
+            AssertTimeMenu(header, "Display", controller, window);
         }
         finally { window.Close(); }
+    }
+
+    private static void InvokeExportMenu(ConsoleHeader header, string name, Window window)
+    {
+        var button = header.FindControl<Button>(name)!;
+        var menu = Assert.IsType<MenuFlyout>(button.Flyout);
+        menu.ShowAt(button);
+        ConsoleTestView.Pump(window);
+        var items = menu.Items.OfType<MenuItem>().ToArray();
+        Assert.All(items.Take(3), item => { Assert.NotNull(item.Command); item.Command!.Execute(null); });
+        items.Single(item => Equals(item.Header, "Include time")).Command!.Execute(null);
+        items.Single(item => Equals(item.Header, "Include level")).Command!.Execute(null);
+        menu.Hide();
+    }
+    private static void AssertTimeMenu(ConsoleHeader header, string name, ConsoleController controller, Window window)
+    {
+        var button = header.FindControl<Button>(name)!;
+        var menu = Assert.IsType<MenuFlyout>(button.Flyout);
+        menu.ShowAt(button);
+        ConsoleTestView.Pump(window);
+        var choices = menu.Items.OfType<MenuItem>().Take(3).ToArray();
+        choices[1].Command!.Execute(choices[1].CommandParameter);
+        ConsoleTestView.Pump(window);
+        Assert.Equal(ConsoleTimeMode.Relative, controller.Filter.TimeMode);
+        Assert.True(choices[1].IsChecked);
+        Assert.False(choices[0].IsChecked);
+        choices[2].Command!.Execute(choices[2].CommandParameter);
+        ConsoleTestView.Pump(window);
+        Assert.Equal(ConsoleTimeMode.Hidden, controller.Filter.TimeMode);
+        Assert.True(choices[2].IsChecked);
+        Assert.All(choices, choice => Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(choice))));
+        menu.Hide();
     }
 
 }

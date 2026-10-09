@@ -110,11 +110,17 @@ public sealed class ConsoleViewInteractionTests
     }
 
     /// <summary>Every level and wide toggle exposes the same name and checked state that its click changes.</summary>
-    [AvaloniaFact]
-    public void LevelAndFilterToggleAutomationNamesAndStatesFollowClicks()
+    [AvaloniaTheory]
+    [InlineData(LogLevel.Trace)]
+    [InlineData(LogLevel.Debug)]
+    [InlineData(LogLevel.Info)]
+    [InlineData(LogLevel.Warn)]
+    [InlineData(LogLevel.Error)]
+    [InlineData(LogLevel.Fatal)]
+    public void LevelAndFilterToggleAutomationNamesAndStatesFollowClicks(LogLevel level)
     {
         using var fixture = new ConsoleTestStore();
-        foreach (var level in Enum.GetValues<LogLevel>()) fixture.Store.Add(level, "app", "event");
+        fixture.Store.Add(level, "app", "event");
         fixture.Fence();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
@@ -123,19 +129,16 @@ public sealed class ConsoleViewInteractionTests
         var window = ConsoleTestView.Create(surface);
         try
         {
-            foreach (var level in Enum.GetValues<LogLevel>())
-            {
-                var button = toolbar.FindControl<ToggleButton>("Level" + level)!;
-                var name = level + " · 1";
-                Assert.Equal(name, ToolTip.GetTip(button));
-                AssertToggle(button, name, true);
-                ConsoleTestView.Click(window, button);
-                AssertToggle(button, name, false);
-                Assert.DoesNotContain(level, controller.Filter.EnabledLevels);
-                ConsoleTestView.Click(window, button);
-                AssertToggle(button, name, true);
-                Assert.Contains(level, controller.Filter.EnabledLevels);
-            }
+            var button = toolbar.FindControl<ToggleButton>("Level" + level)!;
+            var name = level + " · 1";
+            Assert.Equal(name, ToolTip.GetTip(button));
+            AssertToggle(button, name, true);
+            ConsoleTestView.Click(window, button);
+            AssertToggle(button, name, false);
+            Assert.DoesNotContain(level, controller.Filter.EnabledLevels);
+            ConsoleTestView.Click(window, button);
+            AssertToggle(button, name, true);
+            Assert.Contains(level, controller.Filter.EnabledLevels);
             var matches = header.FindControl<ToggleButton>("OnlyMatches")!;
             AssertToggle(matches, "Only matches", true);
             ConsoleTestView.Click(window, matches);

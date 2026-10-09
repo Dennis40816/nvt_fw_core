@@ -25,7 +25,7 @@ public sealed partial class ConsoleToolbar : UserControl
     public ConsoleToolbar()
     {
         InitializeComponent();
-        this.FindControl<Button>("ClearSearch")!.Command = new RelayCommand(() => Controller?.SetSearchText(string.Empty));
+        this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
         SizeChanged += (_, _) => ApplyLayout();
         ApplyLayout();
         var source = this.FindControl<Button>("Sources")!;
@@ -37,13 +37,14 @@ public sealed partial class ConsoleToolbar : UserControl
                 controller.PropertyChanged -= SourceProjectionChanged;
                 controller.PropertyChanged += SourceProjectionChanged;
             }
-            ConsoleMenuBuilder.Sources(menu, Controller);
+            ConsoleMenuBuilder.Sources(menu, Controller, this);
         };
         menu.Closed += (_, _) => UnsubscribeSourceMenu(Controller);
     }
     private void SearchChanged(object? sender, TextChangedEventArgs args)
     {
-        if (sender is TextBox search && Controller is { } controller && search.Text != controller.Filter.SearchText)
+        if (sender is TextBox search && Controller is { } controller && controller.ResetFiltersCommand.CanExecute(null)
+            && search.Text != controller.Filter.SearchText)
             controller.SetSearchText(search.Text);
     }
     /// <inheritdoc />
@@ -66,8 +67,10 @@ public sealed partial class ConsoleToolbar : UserControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == ConsoleDimensions.NarrowBreakpointProperty) ApplyLayout();
         if (change.Property == ControllerProperty)
         {
+            this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
             UnsubscribeSourceMenu(change.OldValue as ConsoleController);
             ClearSourceMenu();
         }
@@ -76,7 +79,7 @@ public sealed partial class ConsoleToolbar : UserControl
     {
         if (args.PropertyName == nameof(ConsoleController.Projection) && Controller is { } controller
             && this.FindControl<Button>("Sources")?.Flyout is MenuFlyout { IsOpen: true } menu)
-            ConsoleMenuBuilder.RefreshSources(menu, controller);
+            ConsoleMenuBuilder.RefreshSources(menu, controller, this);
     }
     private void UnsubscribeSourceMenu(ConsoleController? controller)
     {
@@ -103,7 +106,9 @@ public sealed partial class ConsoleToolbar : UserControl
     }
     private void ApplyLayout()
     {
-        var narrow = Bounds.Width <= 960;
+        // Resource bindings can publish while InitializeComponent is still populating names.
+        if (NarrowSearchRow is null || Dedupe is null) return;
+        var narrow = Bounds.Width <= ConsoleDimensions.GetNarrowBreakpoint(this);
         this.FindControl<Grid>("NarrowSearchRow")!.IsVisible = narrow;
         this.FindControl<ToggleButton>("Dedupe")!.IsVisible = !narrow;
     }

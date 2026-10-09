@@ -14,7 +14,7 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 /// <summary>Verifies console state and view contracts.</summary>
 public sealed class ConsoleControllerTests
 {
-    /// <summary>Level And Source Filters Project Raw Counts Independently Of Search And Dedupe.</summary>
+    /// <summary>Level and source counts remain raw while rows apply literal search and dedupe.</summary>
     [AvaloniaFact]
     public void LevelAndSourceFiltersProjectRawCountsIndependentlyOfSearchAndDedupe()
     {
@@ -45,7 +45,7 @@ public sealed class ConsoleControllerTests
         Assert.Equal(1, controller.Projection.SourceCounts["dxf"]);
     }
 
-    /// <summary>Search Matches Source Ids And Whitespace Restores All Rows.</summary>
+    /// <summary>Search covers source IDs and message continuations; whitespace removes the search condition.</summary>
     [AvaloniaFact]
     public void SearchMatchesSourceIdsAndWhitespaceRestoresAllRows()
     {
@@ -64,25 +64,26 @@ public sealed class ConsoleControllerTests
         ConsoleTestView.Pump();
         Assert.Equal(2, controller.Projection.RowCount);
         Assert.Empty(controller.Filter.SearchText);
-        foreach (var level in Enum.GetValues<LogLevel>()) controller.ToggleLevelCommand.Execute(level);
+        controller.ToggleLevelCommand.Execute(LogLevel.Trace);
+        controller.ToggleLevelCommand.Execute(LogLevel.Debug);
+        controller.ToggleLevelCommand.Execute(LogLevel.Info);
+        controller.ToggleLevelCommand.Execute(LogLevel.Warn);
+        controller.ToggleLevelCommand.Execute(LogLevel.Error);
+        controller.ToggleLevelCommand.Execute(LogLevel.Fatal);
         ConsoleTestView.Pump();
         Assert.True(controller.Projection.IsEmpty);
-        Assert.Contains("no levels", controller.FilterSummary, StringComparison.Ordinal);
+        Assert.Empty(controller.Filter.EnabledLevels);
     }
 
-    /// <summary>Store And Filter Changes In One Ui Turn Publish One Projection.</summary>
+    /// <summary>A burst of store publications and filter intents shares one queued UI refresh.</summary>
     [AvaloniaFact]
     public void StoreAndFilterChangesInOneUiTurnPublishOneProjection()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var publications = 0;
-        controller.PropertyChanged += (_, args) => { if (args.PropertyName == nameof(controller.Projection)) publications++; };
-        for (var index = 0; index < 20; index++)
-        {
-            fixture.Store.Add(LogLevel.Info, "app", "entry " + index);
-            fixture.Fence();
-        }
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), () => publications++);
+        fixture.AddPublishedEntries(20);
         controller.SetSearchText("entry");
         controller.ToggleDedupeCommand.Execute(null);
         Assert.Equal(0, publications);
@@ -91,17 +92,14 @@ public sealed class ConsoleControllerTests
         Assert.Equal(20, controller.Projection.EventCount);
     }
 
-    /// <summary>Producer Notifications Publish Only On Registered Ui Thread.</summary>
+    /// <summary>Store work runs independently while controller publication stays on its registered UI thread.</summary>
     [AvaloniaFact]
     public void ProducerNotificationsPublishOnlyOnRegisteredUiThread()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var publicationThread = 0;
-        controller.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(controller.Projection)) publicationThread = Environment.CurrentManagedThreadId;
-        };
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), () => publicationThread = Environment.CurrentManagedThreadId);
         fixture.Store.Add(LogLevel.Info, "app", "background");
         fixture.Fence();
         Assert.Equal(0, publicationThread);
@@ -114,7 +112,7 @@ public sealed class ConsoleControllerTests
         Assert.IsType<InvalidOperationException>(error);
     }
 
-    /// <summary>Dispose Aborts Pending Work Unsubscribes And Is Safe To Repeat.</summary>
+    /// <summary>Disposal cancels queued refreshes and closes intents without taking ownership of the store.</summary>
     [AvaloniaFact]
     public void DisposeAbortsPendingWorkUnsubscribesAndIsSafeToRepeat()
     {
@@ -134,7 +132,7 @@ public sealed class ConsoleControllerTests
         Assert.Throws<ObjectDisposedException>(() => controller.SetSearchText("closed"));
     }
 
-    /// <summary>Replacement Keeps Old Lease Readable During Notification Then Releases It.</summary>
+    /// <summary>Subscribers can read borrowed old content until replacement notification completes.</summary>
     [AvaloniaFact]
     public void ReplacementKeepsOldLeaseReadableDuringNotificationThenReleasesIt()
     {
@@ -144,16 +142,13 @@ public sealed class ConsoleControllerTests
         fixture.Fence();
         using var controller = fixture.Controller();
         var oldContent = Assert.Single(controller.Projection.Rows).TextContent;
-        controller.PropertyChanged += (_, args) =>
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), () =>
         {
-            if (args.PropertyName == nameof(controller.Projection))
-            {
-                var buffer = new char[4];
-                oldContent.Read(0, buffer);
-                Assert.Equal("text", new string(buffer));
-                Assert.False(content.Disposed);
-            }
-        };
+            var buffer = new char[4];
+            oldContent.Read(0, buffer);
+            Assert.Equal("text", new string(buffer));
+            Assert.False(content.Disposed);
+        });
         fixture.Store.Clear();
         fixture.Fence();
         ConsoleTestView.Pump();
@@ -162,7 +157,7 @@ public sealed class ConsoleControllerTests
         Assert.True(controller.Projection.IsEmpty);
     }
 
-    /// <summary>Disposing With Retirement Queued Releases Both Projections.</summary>
+    /// <summary>Disposal from a replacement callback retires both sets of leased row content.</summary>
     [AvaloniaFact]
     public void DisposingWithRetirementQueuedReleasesBothProjections()
     {
@@ -171,10 +166,7 @@ public sealed class ConsoleControllerTests
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         var controller = fixture.Controller();
-        controller.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(controller.Projection)) controller.Dispose();
-        };
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), controller.Dispose);
         controller.SetSearchText("text");
         ConsoleTestView.Pump();
         fixture.Store.Clear();
@@ -183,7 +175,7 @@ public sealed class ConsoleControllerTests
         controller.Dispose();
     }
 
-    /// <summary>Pause Dedupe Remaps Expansion Selection And Order Then Resume Restores Following.</summary>
+    /// <summary>Dedupe remaps reading identities while paused; resume restores latest-sequence ordering.</summary>
     [AvaloniaFact]
     public void PauseDedupeRemapsExpansionSelectionAndOrderThenResumeRestoresFollowing()
     {
@@ -214,7 +206,7 @@ public sealed class ConsoleControllerTests
         Assert.False(controller.ViewState.IsExpanded);
     }
 
-    /// <summary>Eviction Removes Selection And Clear Advances Generation.</summary>
+    /// <summary>Retained membership removes evicted selection and a reset publishes its new generation.</summary>
     [AvaloniaFact]
     public void EvictionRemovesSelectionAndClearAdvancesGeneration()
     {
@@ -235,7 +227,7 @@ public sealed class ConsoleControllerTests
         Assert.True(controller.Projection.IsEmpty);
     }
 
-    /// <summary>Time Modes Use Injected Template Culture And Zone And Pause Base.</summary>
+    /// <summary>Explicit presentation inputs format screen time and pause freezes its relative base.</summary>
     [AvaloniaFact]
     public void TimeModesUseInjectedTemplateCultureAndZoneAndPauseBase()
     {
@@ -258,7 +250,7 @@ public sealed class ConsoleControllerTests
         Assert.Empty(controller.Projection.Rows[0].TimeText);
     }
 
-    /// <summary>Reset Filters Preserves Reading Time And Export Flags.</summary>
+    /// <summary>Reset restores event predicates while preserving independent reading and export choices.</summary>
     [AvaloniaFact]
     public void ResetFiltersPreservesReadingTimeAndExportFlags()
     {
@@ -295,10 +287,9 @@ public sealed class ConsoleControllerTests
         ILogTextContent? current = null;
         var notifications = new List<string?>();
         var laterSubscriberCalls = 0;
-        controller.PropertyChanged += (_, args) =>
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.ViewState), () =>
         {
-            if (args.PropertyName != nameof(controller.ViewState)) return;
-            notifications.Add(args.PropertyName);
+            notifications.Add(nameof(controller.ViewState));
             current = Assert.Single(controller.Projection.Rows).TextContent;
             controller.Dispose();
             controller.Dispose();
@@ -307,7 +298,7 @@ public sealed class ConsoleControllerTests
             Assert.Equal("text", new string(buffer));
             current.Read(0, buffer);
             Assert.Equal("text", new string(buffer));
-        };
+        });
         controller.SetSearchText("text");
         controller.PropertyChanged += (_, args) =>
         {
@@ -335,16 +326,14 @@ public sealed class ConsoleControllerTests
         using var controller = fixture.Controller();
         var previous = controller.Projection.Rows[0].TextContent;
         var publications = 0;
-        controller.PropertyChanged += (_, args) =>
+        controller.PropertyChanged += ConsoleTestView.OnFirstProperty(nameof(controller.Projection), () => publications++, () =>
         {
-            if (args.PropertyName != nameof(controller.Projection)) return;
-            if (++publications != 1) return;
             controller.ToggleDedupeCommand.Execute(null);
             ConsoleTestView.Pump();
             var buffer = new char[4];
             previous.Read(0, buffer);
             Assert.Equal("text", new string(buffer));
-        };
+        });
         controller.SetSearchText("text");
         ConsoleTestView.Pump();
         Assert.Equal(2, publications);
@@ -362,12 +351,11 @@ public sealed class ConsoleControllerTests
         using var controller = fixture.Controller();
         var previous = controller.Projection;
         var publications = 0;
-        controller.PropertyChanged += (_, args) =>
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), () =>
         {
-            if (args.PropertyName != nameof(controller.Projection)) return;
             publications++;
             Assert.True(fixture.Store.IsCurrent(controller.Projection.Generation));
-        };
+        });
         controller.SetSearchText("old");
         fixture.Store.Clear();
         // The explicit scheduler holds the reset; UI work runs against the last published snapshot.
@@ -413,7 +401,7 @@ public sealed class ConsoleControllerTests
         Assert.Equal(text, controller.Projection.Rows[0].TimeText);
     }
 
-    private sealed class TrackedContent : ILogTextContent
+    internal sealed class TrackedContent : ILogTextContent
     {
         // Dispose runs on the writer; test assertions read via Volatile, writes use Interlocked.
         private int _disposed;
@@ -421,7 +409,14 @@ public sealed class ConsoleControllerTests
         public int Length => 4;
         public int ResidentCharacterCount => 4;
         public long Version => 0;
-        public void Read(int offset, Span<char> destination) => "text".AsSpan(offset, destination.Length).CopyTo(destination);
+        // Failures are enabled by the UI test only after admission and writer publication.
+        private int _throwOnRead;
+        internal bool ThrowOnRead { get => Volatile.Read(ref _throwOnRead) != 0; set => Volatile.Write(ref _throwOnRead, value ? 1 : 0); }
+        public void Read(int offset, Span<char> destination)
+        {
+            if (ThrowOnRead) throw new IOException("Content read failed.");
+            "text".AsSpan(offset, destination.Length).CopyTo(destination);
+        }
         public void Dispose() => Interlocked.Exchange(ref _disposed, 1);
     }
 }

@@ -2,7 +2,9 @@
 
 using System.Collections.Immutable;
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Controls;
 using Avalonia.Data;
 using CommunityToolkit.Mvvm.Input;
@@ -17,21 +19,21 @@ internal static class ConsoleMenuBuilder
         menu.Items.Clear();
     }
 
-    internal static void Sources(MenuFlyout menu, ConsoleController? controller)
+    internal static void Sources(MenuFlyout menu, ConsoleController? controller, StyledElement host)
     {
         Clear(menu);
         if (controller is null) return;
-        menu.Items.Add(new SourceMenuItem(controller, null));
+        menu.Items.Add(new SourceMenuItem(controller, null, host));
         foreach (var source in controller.Projection.Sources)
-            menu.Items.Add(new SourceMenuItem(controller, source.SourceId));
+            menu.Items.Add(new SourceMenuItem(controller, source.SourceId, host));
     }
 
-    internal static void RefreshSources(MenuFlyout menu, ConsoleController controller)
+    internal static void RefreshSources(MenuFlyout menu, ConsoleController controller, StyledElement host)
     {
         // Compare the rendered membership directly with the projection; do not retain a second catalog.
         if (!menu.Items.OfType<SourceMenuItem>().Select(item => item.SourceId).SequenceEqual(
             controller.Projection.Sources.Select(source => (string?)source.SourceId).Prepend(null), StringComparer.Ordinal))
-            Sources(menu, controller);
+            Sources(menu, controller, host);
     }
 
     private sealed class SourceMenuItem : MenuItem
@@ -44,7 +46,7 @@ internal static class ConsoleMenuBuilder
         // Binding subscriptions are mutable only on the UI thread and released with their controller.
         private sealed record SourceLifetime(ConsoleController Controller, List<IDisposable> Bindings);
 
-        internal SourceMenuItem(ConsoleController controller, string? sourceId)
+        internal SourceMenuItem(ConsoleController controller, string? sourceId, StyledElement host)
         {
             _lifetime = new SourceLifetime(controller, []);
             _sourceId = sourceId;
@@ -52,9 +54,13 @@ internal static class ConsoleMenuBuilder
             ToggleType = MenuItemToggleType.CheckBox;
             Command = new RelayCommand(ToggleSource, CanToggleSource);
             var parameter = sourceId is null ? "AllSources" : "Source:" + sourceId;
-            var converter = new ConsoleValueConverter();
-            _lifetime.Bindings.Add(this.Bind(HeaderProperty, new Binding(nameof(ConsoleController.Projection))
-                { Source = controller, Converter = converter, ConverterParameter = parameter }));
+            var converter = new ConsoleValueConverter { ResourceHost = host };
+            _lifetime.Bindings.Add(this.Bind(HeaderProperty, new MultiBinding
+            {
+                Bindings = { new Binding(nameof(ConsoleController.Projection)) { Source = controller },
+                    new DynamicResourceExtension("Nvt.Console.Count"), new DynamicResourceExtension("Nvt.Console.Sources.All") },
+                Converter = converter, ConverterParameter = sourceId is null ? "SourceText:All" : "SourceText:Id:" + sourceId,
+            }));
             _lifetime.Bindings.Add(this.Bind(IsCheckedProperty, new MultiBinding
             {
                 Bindings = { new Binding(nameof(ConsoleController.Filter)) { Source = controller },
