@@ -47,7 +47,7 @@ Each rule has a reason. Read the reason before you ask for an exception.
    - Why: copies drift apart. A fix in one copy does not reach the others.
 
 9. **One test checks one behavior.**
-   - Name it `Method_Scenario_Expected`.
+   - Name it in PascalCase with no underscores, for example `WaitAsyncWatchdogExpiresThrowsTimeout`. Core's CA1707 rule fails the build on an underscore.
    - Use a fixed order: arrange, act, assert.
    - Do not write `if` or loops in a test.
    - Why: a failing test then tells you which behavior broke.
