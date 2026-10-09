@@ -98,6 +98,10 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
+### Fixed
+
+- MessageCenter: `ActivityItems`, `HasActivityItems` and `HasNoActivityItems` share one lazy provider capture and row projection per revision. Filter, debug disclosure, activity/diagnostic signals and language changes invalidate the cache before changed notifications, keeping rows and presence flags coherent while preserving notification order and observer isolation.
+
 ## 0.5.0 - 2026-10-08
 
 No breaking changes since 0.4.0.
