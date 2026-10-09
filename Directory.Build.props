@@ -13,11 +13,9 @@
     <DebugType>embedded</DebugType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <RepoHealthRoot>$(MSBuildThisFileDirectory)</RepoHealthRoot>
   </PropertyGroup>
+
   <Import Project="eng/code-health/projects.props" />
   <Import Project="eng/core-health/Directory.Build.props" />
 </Project>
