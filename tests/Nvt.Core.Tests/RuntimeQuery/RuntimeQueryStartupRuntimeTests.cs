@@ -28,37 +28,34 @@ public sealed class RuntimeQueryStartupRuntimeTests
         RuntimeQueryStartupPhase pass, bool fail)
     {
         var executed = new List<string>();
-        RuntimeQueryCommand Early(string name) => new(name, RuntimeQueryCommandRisk.ReadOnly, _ =>
+        RuntimeQueryCommand Early(string name) => new(name, RuntimeQueryCommandRisk.ReadOnly, (_, _, _) =>
         {
             executed.Add(name);
             return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
         }, RuntimeQueryStartupPhase.BeforeFirstFrame);
         var shared = new RuntimeQueryCommand("window-size", RuntimeQueryCommandRisk.ChangesState,
-            _ => throw new InvalidOperationException("The fallback must not run."),
-            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime)
-        {
-            InvocationHandler = (invocation, _) =>
+            (invocation, _, _) =>
             {
                 Assert.Equal(RuntimeQueryInvocation.Startup, invocation);
                 executed.Add("window-size");
                 return Task.FromResult(fail
                     ? RuntimeQueryResponseEnvelope.Failure("STOP", "Command failed.")
                     : RuntimeQueryResponseEnvelope.Success(null));
-            }
-        };
+            },
+            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime);
         var router = new RuntimeQueryCommandRouter(
         [
             Early("first"), shared, Early("last"),
-            new("after", RuntimeQueryCommandRisk.ReadOnly, _ => throw new InvalidOperationException("Wrong pass."),
+            new("after", RuntimeQueryCommandRisk.ReadOnly, (_, _, _) => throw new InvalidOperationException("Wrong pass."),
                 RuntimeQueryStartupPhase.AfterStartup),
-            new("runtime", RuntimeQueryCommandRisk.ReadOnly, _ => throw new InvalidOperationException("Runtime only."))
+            new("runtime", RuntimeQueryCommandRisk.ReadOnly, (_, _, _) => throw new InvalidOperationException("Runtime only."))
         ], requireConfirmation: false);
         var parsed = router.ParseStartupArguments(["--first", "--after", "--window-size", "--runtime", "--last"]);
         Assert.Empty(parsed.Issues);
         Assert.Equal("--runtime", Assert.Single(parsed.RemainingArguments));
         string[] registrationNames = ["first", "window-size", "last", "after", "runtime"];
         Assert.Equal(registrationNames, router.RegisteredCommands);
-        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, pass);
+        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, pass, TestContext.Current.CancellationToken);
         string[] expected = fail ? ["first", "window-size"] : ["first", "window-size", "last"];
         Assert.Equal(expected, executed);
         Assert.Equal(expected, results.Select(result => result.Call.Command.Name));
@@ -71,7 +68,7 @@ public sealed class RuntimeQueryStartupRuntimeTests
     {
         var executed = new List<string>();
         RuntimeQueryCommand Command(string name, RuntimeQueryStartupPhase phase) => new(name,
-            RuntimeQueryCommandRisk.ReadOnly, _ =>
+            RuntimeQueryCommandRisk.ReadOnly, (_, _, _) =>
             {
                 executed.Add(name);
                 return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
@@ -83,7 +80,7 @@ public sealed class RuntimeQueryStartupRuntimeTests
             Command("last", RuntimeQueryStartupPhase.BeforeFirstFrame)
         ], requireConfirmation: false);
         var parsed = router.ParseStartupArguments(["--last", "--shared", "--first"]);
-        await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+        await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken);
         string[] expected = ["last", "shared", "first"];
         Assert.Equal(expected, executed);
     }
@@ -102,7 +99,11 @@ public sealed class RuntimeQueryStartupRuntimeTests
         var received = new List<(RuntimeQueryInvocation Invocation, IReadOnlyDictionary<string, string>? Args)>();
         var validations = 0;
         var command = new RuntimeQueryCommand("window-size", RuntimeQueryCommandRisk.WritesData,
-            _ => throw new InvalidOperationException("The fallback must not run."),
+            (invocation, args, _) =>
+            {
+                received.Add((invocation, args));
+                return Task.FromResult(RuntimeQueryResponseEnvelope.Success(args!["dimensions"]));
+            },
             RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "dimensions", args =>
             {
                 validations++;
@@ -111,12 +112,7 @@ public sealed class RuntimeQueryStartupRuntimeTests
                 return null;
             })
         {
-            ReceivesConfirmation = receivesConfirmation,
-            InvocationHandler = (invocation, args) =>
-            {
-                received.Add((invocation, args));
-                return Task.FromResult(RuntimeQueryResponseEnvelope.Success(args!["dimensions"]));
-            }
+            ReceivesConfirmation = receivesConfirmation
         };
         var router = new RuntimeQueryCommandRouter([command], guard);
         string[] arguments = equalsForm ? ["--window-size=800,600"] : ["--window-size", "800,600"];
@@ -126,9 +122,9 @@ public sealed class RuntimeQueryStartupRuntimeTests
         Assert.Equal(RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, Assert.Single(parsed.Calls).Phase);
         Assert.Equal(1, validations);
         Assert.Empty(received);
-        var startup = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame));
+        var startup = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken));
         var runtimeArgs = new Dictionary<string, string> { ["dimensions"] = "800,600", ["confirm"] = "true" };
-        var runtime = await router.ExecuteAsync(new("1", " WINDOW-SIZE ", runtimeArgs), "1");
+        var runtime = await router.ExecuteAsync(new("1", " WINDOW-SIZE ", runtimeArgs), "1", TestContext.Current.CancellationToken);
         Assert.Equal(startup.Response, runtime);
         Assert.Equal(new[] { RuntimeQueryInvocation.Startup, RuntimeQueryInvocation.Runtime },
             received.Select(call => call.Invocation));
@@ -150,18 +146,15 @@ public sealed class RuntimeQueryStartupRuntimeTests
     public async Task BothEntriesRejectUnconfirmedWritesBeforeInvokingHandlers(string? confirmation, string code)
     {
         var command = new RuntimeQueryCommand("save", RuntimeQueryCommandRisk.WritesData,
-            _ => throw new InvalidOperationException("The fallback must not run."),
-            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime)
-        {
-            InvocationHandler = (_, _) => throw new InvalidOperationException("The timing-aware handler must not run.")
-        };
+            (_, _, _) => throw new InvalidOperationException("The timing-aware handler must not run."),
+            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime);
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: true);
         var parsed = router.ParseStartupArguments(["--save"]);
         Assert.Equal("--save writes files or changes data. Add --confirm to use it.", Assert.Single(parsed.Issues).Message);
-        var startup = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame));
+        var startup = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken));
         Assert.Equal("CONFIRMATION_REQUIRED", startup.Response.Error!.Code);
         var args = confirmation is null ? null : new Dictionary<string, string> { ["confirm"] = confirmation };
-        Assert.Equal(code, (await router.RouteAsync("save", args)).Error!.Code);
+        Assert.Equal(code, (await router.RouteAsync("save", args, TestContext.Current.CancellationToken)).Error!.Code);
     }
 
     /// <summary>Grammar issues skip validators and validator failures keep their exact message.</summary>
@@ -174,7 +167,7 @@ public sealed class RuntimeQueryStartupRuntimeTests
         var router = new RuntimeQueryCommandRouter(
         [
             new("window-size", RuntimeQueryCommandRisk.ChangesState,
-                _ => throw new InvalidOperationException("Parsing must not invoke handlers."),
+                (_, _, _) => throw new InvalidOperationException("Parsing must not invoke handlers."),
                 RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, "size", _ =>
                 {
                     validations++;
@@ -194,24 +187,21 @@ public sealed class RuntimeQueryStartupRuntimeTests
     [InlineData(RuntimeQueryStartupPhase.BeforeFirstFrame, RuntimeQueryStartupPhase.BeforeFirstFrame, false)]
     [InlineData(RuntimeQueryStartupPhase.AfterStartup, RuntimeQueryStartupPhase.AfterStartup, true)]
     [InlineData(RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime, RuntimeQueryStartupPhase.BeforeFirstFrame, true)]
-    public async Task InvocationHandlerKeepsExistingPhaseBehavior(
+    public async Task HandlerKeepsExistingPhaseBehavior(
         RuntimeQueryStartupPhase phase, RuntimeQueryStartupPhase pass, bool runtimeAllowed)
     {
         var received = new List<RuntimeQueryInvocation>();
         var command = new RuntimeQueryCommand("flag", RuntimeQueryCommandRisk.ReadOnly,
-            _ => throw new InvalidOperationException("The fallback must not run."), phase)
-        {
-            InvocationHandler = (invocation, args) =>
+            (invocation, args, _) =>
             {
                 Assert.Null(args);
                 received.Add(invocation);
                 return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
-            }
-        };
+            }, phase);
         var router = new RuntimeQueryCommandRouter([command], requireConfirmation: true);
         var parsed = router.ParseStartupArguments(["--flag"]);
         Assert.Empty(parsed.Issues);
-        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, pass);
+        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, pass, TestContext.Current.CancellationToken);
         if (phase == RuntimeQueryStartupPhase.None)
         {
             Assert.Empty(results);
@@ -222,7 +212,7 @@ public sealed class RuntimeQueryStartupRuntimeTests
             Assert.True(Assert.Single(results).Response.Ok);
             Assert.Equal(RuntimeQueryInvocation.Startup, Assert.Single(received));
         }
-        var runtime = await router.RouteAsync("flag", null);
+        var runtime = await router.RouteAsync("flag", null, TestContext.Current.CancellationToken);
         Assert.Equal(runtimeAllowed, runtime.Ok);
         if (runtimeAllowed)
         {
@@ -235,14 +225,14 @@ public sealed class RuntimeQueryStartupRuntimeTests
         }
     }
 
-    /// <summary>Commands using the legacy handler also run through both entries with the new phase.</summary>
+    /// <summary>The args-only factory runs the same handler through startup and runtime entries.</summary>
     [Fact]
-    public async Task NewPhaseFallsBackToLegacyHandler()
+    public async Task ArgsOnlyFactoryRunsBothEntries()
     {
         var calls = 0;
         var router = new RuntimeQueryCommandRouter(
         [
-            new("flag", RuntimeQueryCommandRisk.ReadOnly, args =>
+            RuntimeQueryCommand.FromArgs("flag", RuntimeQueryCommandRisk.ReadOnly, (args, _) =>
             {
                 Assert.Null(args);
                 calls++;
@@ -250,38 +240,35 @@ public sealed class RuntimeQueryStartupRuntimeTests
             }, RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime)
         ], requireConfirmation: false);
         var parsed = router.ParseStartupArguments(["--flag"]);
-        Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame)).Response.Ok);
-        Assert.True((await router.RouteAsync("flag", null)).Ok);
+        Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken)).Response.Ok);
+        Assert.True((await router.RouteAsync("flag", null, TestContext.Current.CancellationToken)).Ok);
         Assert.Equal(2, calls);
     }
 
     /// <summary>A pending timing-aware handler blocks later before-first-frame calls.</summary>
     [Fact]
-    public async Task BeforeFirstFramePassAwaitsInvocationHandler()
+    public async Task BeforeFirstFramePassAwaitsHandler()
     {
         var release = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
         var laterCalled = false;
         var shared = new RuntimeQueryCommand("shared", RuntimeQueryCommandRisk.ReadOnly,
-            _ => throw new InvalidOperationException("The fallback must not run."),
-            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime)
-        {
-            InvocationHandler = (invocation, _) =>
+            (invocation, _, _) =>
             {
                 Assert.Equal(RuntimeQueryInvocation.Startup, invocation);
                 return release.Task;
-            }
-        };
+            },
+            RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime);
         var router = new RuntimeQueryCommandRouter(
         [
             shared,
-            new("later", RuntimeQueryCommandRisk.ReadOnly, _ =>
+            new("later", RuntimeQueryCommandRisk.ReadOnly, (_, _, _) =>
             {
                 laterCalled = true;
                 return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
             }, RuntimeQueryStartupPhase.BeforeFirstFrame)
         ], requireConfirmation: false);
         var parsed = router.ParseStartupArguments(["--shared", "--later"]);
-        var execution = router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame);
+        var execution = router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken);
         Assert.False(execution.IsCompleted);
         Assert.False(laterCalled);
         release.SetResult(RuntimeQueryResponseEnvelope.Success(null));

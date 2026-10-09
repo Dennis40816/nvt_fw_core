@@ -36,7 +36,7 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 
-僅使用 BCL、以 net8.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約及命令執行、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
+僅使用 BCL、以 net10.0 為目標的 `Nvt.Core.Processes` 模組擁有外部程序契約及命令執行、有界 UTF-16 診斷、Windows 同步讀取取消及單一程序內啟動閘門。Launcher 使用受控建立，並擁有就緒協定及長期 Job。Launcher.Transport 繼續保有獨立的嚴格 UTF-8 行讀取器。
 
 ## API
 

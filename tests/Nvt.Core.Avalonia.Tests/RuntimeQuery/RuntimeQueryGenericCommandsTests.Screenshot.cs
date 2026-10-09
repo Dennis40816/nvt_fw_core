@@ -42,7 +42,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             GetMainWindow = () => throw new InvalidOperationException("Path checks must precede window lookup."),
             CaptureScreenshot = (_, _) => throw new InvalidOperationException("Path checks must precede capture.")
         };
-        AssertFailure(await Router(options).RouteAsync("screenshot", path is null ? null : Arg("path", path)),
+        AssertFailure(await Router(options).RouteAsync("screenshot", path is null ? null : Arg("path", path), TestContext.Current.CancellationToken),
             "INVALID_ARGUMENTS", "Argument '--path' must be an absolute path ending in '.png'.");
         Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
     }
@@ -64,7 +64,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 ? (_, _) => throw new InvalidOperationException("Existing files must precede capture.")
                 : null
         };
-        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path)),
+        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken),
             "FILE_EXISTS", "The screenshot file already exists.");
         Assert.Equal(original, File.ReadAllBytes(path));
         Assert.Equal(new[] { path }, Directory.GetFiles(workspace.DirectoryPath));
@@ -86,7 +86,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             var content = new Border { Background = Brushes.Red };
             window.Content = content;
             Assert.False(content.IsArrangeValid);
-            var response = await Router(Options(window)).RouteAsync("screenshot", Arg("path", path));
+            var response = await Router(Options(window)).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken);
             Assert.True(content.IsArrangeValid);
             Assert.Equal(new Size(160, 96), content.Bounds.Size);
             using var image = new Bitmap(path);
@@ -121,7 +121,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 ? (_, _) => throw new InvalidOperationException("Existing folders must precede capture.")
                 : null
         };
-        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path)),
+        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken),
             "FILE_EXISTS", "The screenshot file already exists.");
         Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
         Assert.True(Directory.Exists(path));
@@ -142,7 +142,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 ? (_, _) => throw new InvalidOperationException("Folder checks must precede capture.")
                 : null
         };
-        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path)),
+        AssertFailure(await Router(options).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken),
             "INVALID_ARGUMENTS", "The folder for '--path' does not exist.");
         Assert.False(Directory.Exists(Path.GetDirectoryName(path)));
     }
@@ -158,7 +158,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         {
             window.Show();
             window.WindowState = WindowState.Minimized;
-            AssertFailure(await Router(Options(window)).RouteAsync("screenshot", Arg("path", path)),
+            AssertFailure(await Router(Options(window)).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken),
                 "CAPTURE_UNAVAILABLE", "The main window has no visible size to capture.");
             Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
         }
@@ -179,7 +179,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         {
             window.Show();
             window.Content = new RacingCaptureContent(path);
-            AssertFailure(await Router(Options(window)).RouteAsync("screenshot", Arg("path", path)),
+            AssertFailure(await Router(Options(window)).RouteAsync("screenshot", Arg("path", path), TestContext.Current.CancellationToken),
                 "FILE_EXISTS", "The screenshot file already exists.");
             Assert.Equal("racing file", File.ReadAllText(path));
             Assert.Equal(new[] { path }, Directory.GetFiles(workspace.DirectoryPath));
@@ -195,15 +195,16 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     public async Task ScreenshotWithoutMainWindowReturnsFailure()
     {
         using var workspace = new ScreenshotWorkspace();
-        AssertFailure(await Router(Options()).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png"))),
+        AssertFailure(await Router(Options()).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png")), TestContext.Current.CancellationToken),
             "NO_MAIN_WINDOW", "The main window is not available.");
         Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
     }
 
-    /// <summary>A replacement gets the absolute path and None token before any Core layout or window lookup.</summary>
+    /// <summary>A replacement gets the absolute path and invocation token before any Core layout or window lookup.</summary>
     [AvaloniaFact]
     public async Task ScreenshotDelegateOwnsLayoutAndReturnsExactData()
     {
+        using var cancellation = new CancellationTokenSource();
         using var workspace = new ScreenshotWorkspace();
         var path = workspace.PathFor("capture.PNG");
         var suppliedPath = Path.Combine(workspace.DirectoryPath, ".", "capture.PNG");
@@ -221,13 +222,13 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 {
                     calls++;
                     Assert.Equal(path, receivedPath);
-                    Assert.Equal(CancellationToken.None, token);
+                    Assert.Equal(cancellation.Token, token);
                     Assert.False(content.IsArrangeValid);
                     await Task.Yield();
                     return RuntimeQueryScreenshotResult.Success(17, 19, 23);
                 }
             };
-            var response = await Router(options).RouteAsync("screenshot", Arg("path", suppliedPath));
+            var response = await Router(options).RouteAsync("screenshot", Arg("path", suppliedPath), cancellation.Token);
             AssertSuccess(response, JsonSerializer.Serialize(new
             {
                 path, pixelWidth = 17, pixelHeight = 19, fileSize = 23L
@@ -250,7 +251,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         using var workspace = new ScreenshotWorkspace();
         var result = RuntimeQueryScreenshotResult.Failure(code, message);
         var options = Options() with { CaptureScreenshot = (_, _) => Task.FromResult(result) };
-        var response = await Router(options).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png")));
+        var response = await Router(options).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png")), TestContext.Current.CancellationToken);
         AssertFailure(response, code, message);
         Assert.Same(result.Error, response.Error);
         Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
@@ -269,7 +270,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             CaptureScreenshot = (_, _) => asynchronous ? Task.FromException<RuntimeQueryScreenshotResult>(expected) : throw expected
         };
         var actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            Router(options).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png"))));
+            Router(options).RouteAsync("screenshot", Arg("path", workspace.PathFor("capture.png")), TestContext.Current.CancellationToken));
         Assert.Same(expected, actual);
         Assert.Empty(Directory.GetFiles(workspace.DirectoryPath));
     }

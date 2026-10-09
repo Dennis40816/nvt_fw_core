@@ -43,7 +43,8 @@ public sealed record RuntimeQueryGenericCommandOptions(
     /// <summary>Optional capture replacement, called after Core validates the path and checks file existence.</summary>
     /// <remarks>
     /// The delegate owns frame waits, layout, capture and a write that never replaces an existing file.
-    /// Core passes CancellationToken.None and does not lay out the window before calling this delegate.
+    /// Core forwards the command's cancellation token and does not lay out the window before calling this delegate.
+    /// Observe cancellation cooperatively and finish cleanup after committing a file.
     /// Failure codes and messages pass through unchanged. Exceptions escape the handler.
     /// </remarks>
     public Func<string, CancellationToken, Task<RuntimeQueryScreenshotResult>>? CaptureScreenshot { get; init; }

@@ -46,6 +46,22 @@ HEAD 必須包含 `LocalBase`。否則從較舊 base 切出的分支，會把 ba
 本機 base tree 必須等於遠端 parent tree。所有 SHA 必須是 40 個小寫十六進位字元。
 更新 ref 前，產生的 tree 必須等於本機 HEAD tree。既有 ref 只允許非強制前進。
 只有 HTTP 404 允許建立缺少的 ref。`-ExtraParent` 加入第二個 parent。
+
+推送 workflow 檔案：GitHub 要求 `workflows` 權限，才能建立改動 `.github/workflows/` 底下檔案的 tree。
+模組預設不要求這個權限，其他推送完全不變。
+加上 `-IncludeWorkflowsWrite` 與 `-WorkflowsLogPath <檔案>`，才為單次推送要求它。
+
+- 開關預設關閉，每次推送各自決定。
+- 推送的 tree 沒有改動 `.github/workflows/` 底下的檔案時，函式在任何 `gh` 呼叫前拒絕。
+- 每次使用在紀錄檔追加一行：UTC 時間、分支、檔案數、workflow 檔案數。這行不含 token。
+- 只有該次推送的 token 請求，會多傳 `-IncludeWorkflowsWrite` 給 helper。儲存的設定不變，也不做快取。
+- GitHub 沒有把 `workflows` 授予安裝時，helper 會回報，函式只顯示這一句固定訊息：`Installation token lacks the requested workflows permission.` 這時由 owner 到安裝頁接受新權限。
+
+```powershell
+Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
+    -RemoteParent '<REMOTE_PARENT_SHA>' -Branch 'build/example' `
+    -MessageFile .\message.txt -IncludeWorkflowsWrite -WorkflowsLogPath .\workflows-write.log
+```
 已開啟 PR 需要 `-AllowOpenPr`。任何 owner review 都會禁止 push，即使有這個選項。
 
 ```powershell

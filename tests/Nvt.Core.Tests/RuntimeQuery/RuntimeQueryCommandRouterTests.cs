@@ -23,20 +23,20 @@ public sealed class RuntimeQueryCommandRouterTests
             var args = new Dictionary<string, string> { ["CaseKey"] = " unchanged " };
             var expected = RuntimeQueryResponseEnvelope.Success(new object());
             var calls = 0;
-            Task<RuntimeQueryResponseEnvelope> Handler(IReadOnlyDictionary<string, string>? received)
+            Task<RuntimeQueryResponseEnvelope> Handler(RuntimeQueryInvocation invocation, IReadOnlyDictionary<string, string>? received, CancellationToken cancellationToken)
             {
                 calls++;
                 Assert.Same(args, received);
                 return Task.FromResult(expected);
             }
 
-            var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+            var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
             {
-                ["probe"] = Handler,
-                ["ping"] = Handler,
-                [""] = _ => throw new InvalidOperationException("Blank names must not reach handlers.")
+                ["probe"] = (args, token) => Handler(RuntimeQueryInvocation.Runtime, args, token),
+                ["ping"] = (args, token) => Handler(RuntimeQueryInvocation.Runtime, args, token),
+                [""] = (_, cancellationToken) => throw new InvalidOperationException("Blank names must not reach handlers.")
             });
-            var response = await router.RouteAsync(command, args);
+            var response = await router.RouteAsync(command, args, TestContext.Current.CancellationToken);
             if (success)
             {
                 Assert.Same(expected, response);
@@ -63,16 +63,16 @@ public sealed class RuntimeQueryCommandRouterTests
         var request = JsonSerializer.Deserialize<RuntimeQueryRequest>(json, RuntimeQueryProtocol.CompactJsonOptions);
         var expected = RuntimeQueryResponseEnvelope.Success(new object());
         var calls = 0;
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
         {
-            ["probe"] = args =>
+            ["probe"] = (args, cancellationToken) =>
             {
                 calls++;
                 Assert.Same(request!.Args, args);
                 return Task.FromResult(expected);
             }
         });
-        var response = await router.ExecuteAsync(request, expectedVersion!);
+        var response = await router.ExecuteAsync(request, expectedVersion!, TestContext.Current.CancellationToken);
         if (code is null)
         {
             Assert.Same(expected, response);
@@ -90,15 +90,15 @@ public sealed class RuntimeQueryCommandRouterTests
     public async Task RouteAsyncPassesNullArgumentsAndReturnsTheHandlerTaskUnchanged()
     {
         var completion = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
         {
-            ["probe"] = args =>
+            ["probe"] = (args, cancellationToken) =>
             {
                 Assert.Null(args);
                 return completion.Task;
             }
         });
-        var actual = router.RouteAsync("probe", null);
+        var actual = router.RouteAsync("probe", null, TestContext.Current.CancellationToken);
         Assert.Same(completion.Task, actual);
         var response = RuntimeQueryResponseEnvelope.Failure("HANDLER_CODE", "Handler message.");
         completion.SetResult(response);
@@ -109,12 +109,12 @@ public sealed class RuntimeQueryCommandRouterTests
     [Fact]
     public void RegisteredCommandsPreserveOrderAndTextAndRejectMutation()
     {
-        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
         {
-            ["zeta"] = _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
-            ["alpha"] = _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
-            ["Case"] = _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
-            [" padded "] = _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null))
+            ["zeta"] = (_, cancellationToken) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
+            ["alpha"] = (_, cancellationToken) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
+            ["Case"] = (_, cancellationToken) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)),
+            [" padded "] = (_, cancellationToken) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null))
         };
         var router = new RuntimeQueryCommandRouter(handlers);
         Assert.Equal(RegisteredNames, router.RegisteredCommands);
@@ -129,10 +129,10 @@ public sealed class RuntimeQueryCommandRouterTests
     [Fact]
     public async Task EmptyHandlerTableAddsNoCommands()
     {
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>());
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>());
         Assert.Empty(router.RegisteredCommands);
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("UNKNOWN_COMMAND", "Unknown query command 'help'."),
-            await router.RouteAsync("help", null));
+            await router.RouteAsync("help", null, TestContext.Current.CancellationToken));
     }
 
     /// <summary>Lookup uses the comparer and keys of the caller handler table.</summary>
@@ -140,14 +140,14 @@ public sealed class RuntimeQueryCommandRouterTests
     public async Task RouteAsyncUsesTheSuppliedHandlerTableComparerAndKeys()
     {
         var expected = RuntimeQueryResponseEnvelope.Success(null);
-        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
+        var handlers = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(StringComparer.Ordinal)
         {
-            ["PROBE"] = _ => Task.FromResult(expected)
+            ["PROBE"] = (_, cancellationToken) => Task.FromResult(expected)
         };
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("UNKNOWN_COMMAND", "Unknown query command 'PROBE'."),
-            await new RuntimeQueryCommandRouter(handlers).RouteAsync("PROBE", null));
-        var insensitive = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>(handlers, StringComparer.OrdinalIgnoreCase);
-        Assert.Same(expected, await new RuntimeQueryCommandRouter(insensitive).RouteAsync("probe", null));
+            await new RuntimeQueryCommandRouter(handlers).RouteAsync("PROBE", null, TestContext.Current.CancellationToken));
+        var insensitive = new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>(handlers, StringComparer.OrdinalIgnoreCase);
+        Assert.Same(expected, await new RuntimeQueryCommandRouter(insensitive).RouteAsync("probe", null, TestContext.Current.CancellationToken));
     }
 
     /// <summary>A null handler table throws, as in the source.</summary>
@@ -163,9 +163,9 @@ public sealed class RuntimeQueryCommandRouterTests
     public async Task ExecuteAsyncChecksVersionBeforeHandlerArgumentParsing()
     {
         var calls = 0;
-        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, Task<RuntimeQueryResponseEnvelope>>>
+        var router = new RuntimeQueryCommandRouter(new Dictionary<string, Func<IReadOnlyDictionary<string, string>?, CancellationToken, Task<RuntimeQueryResponseEnvelope>>>
         {
-            ["probe"] = args =>
+            ["probe"] = (args, cancellationToken) =>
             {
                 calls++;
                 RuntimeQueryArgumentParser.TryGetIntArg(args, "limit", 1, 2, out _, out var error);
@@ -174,10 +174,10 @@ public sealed class RuntimeQueryCommandRouterTests
         });
         var args = new Dictionary<string, string> { ["limit"] = "invalid" };
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("UNSUPPORTED_VERSION", "Unsupported request version '2'. Expected '1'."),
-            await router.ExecuteAsync(new RuntimeQueryRequest("2", "probe", args), "1"));
+            await router.ExecuteAsync(new RuntimeQueryRequest("2", "probe", args), "1", TestContext.Current.CancellationToken));
         Assert.Equal(0, calls);
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("INVALID_ARGUMENTS", "Argument '--limit' must be an integer."),
-            await router.ExecuteAsync(new RuntimeQueryRequest("1", "probe", args), "1"));
+            await router.ExecuteAsync(new RuntimeQueryRequest("1", "probe", args), "1", TestContext.Current.CancellationToken));
         Assert.Equal(1, calls);
     }
 }

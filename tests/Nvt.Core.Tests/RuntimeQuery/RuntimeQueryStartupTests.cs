@@ -14,11 +14,10 @@ public sealed class RuntimeQueryStartupTests
     public void ExistingRegistrationsKeepStartupDefaults()
     {
         var command = new RuntimeQueryCommand("theme", RuntimeQueryCommandRisk.ChangesState,
-            _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)));
+            (_, _, _) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null)));
         Assert.Equal(RuntimeQueryStartupPhase.None, command.StartupPhase);
         Assert.Null(command.StartupValueKey);
         Assert.Null(command.StartupValidator);
-        Assert.Null(command.InvocationHandler);
     }
 
     /// <summary>Runtime requests check null, version, unknown name, startup-only status, then confirmation.</summary>
@@ -29,16 +28,16 @@ public sealed class RuntimeQueryStartupTests
         var router = new RuntimeQueryCommandRouter(
         [
             new("motion", RuntimeQueryCommandRisk.WritesData,
-                _ => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame),
+                (_, _, _) => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame),
             new("save", RuntimeQueryCommandRisk.WritesData,
-                _ => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.AfterStartup)
+                (_, _, _) => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.AfterStartup)
         ], requireConfirmation: true);
         var request = JsonSerializer.Deserialize<RuntimeQueryRequest>(json, RuntimeQueryProtocol.CompactJsonOptions);
         var expected = RuntimeQueryResponseEnvelope.Failure(code, message);
-        Assert.Equal(expected, await router.ExecuteAsync(request, "1"));
+        Assert.Equal(expected, await router.ExecuteAsync(request, "1", TestContext.Current.CancellationToken));
         if (request?.Version == "1")
         {
-            Assert.Equal(expected, await router.RouteAsync(request.Command, request.Args));
+            Assert.Equal(expected, await router.RouteAsync(request.Command, request.Args, TestContext.Current.CancellationToken));
         }
     }
 
@@ -51,10 +50,10 @@ public sealed class RuntimeQueryStartupTests
             foreach (var guard in new[] { false, true })
             {
                 var router = new RuntimeQueryCommandRouter([new("motion", risk,
-                    _ => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame)], guard);
+                    (_, _, _) => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame)], guard);
                 var args = new Dictionary<string, string> { ["confirm"] = "invalid" };
                 Assert.Equal(RuntimeQueryResponseEnvelope.Failure("STARTUP_ONLY", "Command 'motion' can be used only at startup."),
-                    await router.RouteAsync(" MOTION ", args));
+                    await router.RouteAsync(" MOTION ", args, TestContext.Current.CancellationToken));
             }
         }
     }
@@ -68,7 +67,7 @@ public sealed class RuntimeQueryStartupTests
         {
             var received = new List<IReadOnlyDictionary<string, string>?>();
             var validations = 0;
-            var command = new RuntimeQueryCommand("theme", RuntimeQueryCommandRisk.WritesData, args =>
+            var command = new RuntimeQueryCommand("theme", RuntimeQueryCommandRisk.WritesData, (_, args, _) =>
             {
                 received.Add(args);
                 Assert.True(RuntimeQueryArgumentParser.TryGetStringArg(args, key, out var parsed, out var error));
@@ -86,14 +85,14 @@ public sealed class RuntimeQueryStartupTests
             Assert.Empty(parsed.Issues);
             Assert.Empty(received);
             Assert.Equal(1, validations);
-            var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup);
+            var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup, TestContext.Current.CancellationToken);
             var runtimeArgs = new Dictionary<string, string>(StringComparer.Ordinal) { [key] = value };
             if (guard)
             {
                 runtimeArgs.Add("confirm", "true");
             }
 
-            var runtimeResponse = await router.ExecuteAsync(new RuntimeQueryRequest("1", "theme", runtimeArgs), "1");
+            var runtimeResponse = await router.ExecuteAsync(new RuntimeQueryRequest("1", "theme", runtimeArgs), "1", TestContext.Current.CancellationToken);
             Assert.Equal(2, received.Count);
             Assert.Equal(new[] { new KeyValuePair<string, string>(key, value) }, received[0]);
             Assert.Equal(received[0]!.ToArray(), received[1]!.ToArray());
@@ -107,7 +106,7 @@ public sealed class RuntimeQueryStartupTests
     public async Task BothFlagEntriesReceiveNoArguments()
     {
         var calls = 0;
-        var router = new RuntimeQueryCommandRouter([new("diagnostics", RuntimeQueryCommandRisk.ReadOnly, args =>
+        var router = new RuntimeQueryCommandRouter([new("diagnostics", RuntimeQueryCommandRisk.ReadOnly, (_, args, _) =>
         {
             calls++;
             Assert.Null(args);
@@ -116,8 +115,8 @@ public sealed class RuntimeQueryStartupTests
         var parsed = router.ParseStartupArguments(["--diagnostics", "--confirm"]);
         Assert.Empty(parsed.Issues);
         Assert.Equal(0, calls);
-        Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup)).Response.Ok);
-        Assert.True((await router.RouteAsync("diagnostics", null)).Ok);
+        Assert.True(Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup, TestContext.Current.CancellationToken)).Response.Ok);
+        Assert.True((await router.RouteAsync("diagnostics", null, TestContext.Current.CancellationToken)).Ok);
         Assert.Equal(2, calls);
     }
 
@@ -133,7 +132,7 @@ public sealed class RuntimeQueryStartupTests
             responses[name] = fail && name is "second" or "after-a"
                 ? RuntimeQueryResponseEnvelope.Failure("STOP", "Command failed.")
                 : RuntimeQueryResponseEnvelope.Success(name);
-            return new(name, RuntimeQueryCommandRisk.WritesData, async args =>
+            return new(name, RuntimeQueryCommandRisk.WritesData, async (_, args, _) =>
             {
                 Assert.Null(args);
                 await Task.Yield();
@@ -153,7 +152,7 @@ public sealed class RuntimeQueryStartupTests
         var parsed = router.ParseStartupArguments(["--after-a", "--first", "--after-b", "--second", "--third", "--confirm"]);
         Assert.Empty(parsed.Issues);
         Assert.Empty(executed);
-        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, phase);
+        var results = await router.ExecuteStartupPhaseAsync(parsed.Calls, phase, TestContext.Current.CancellationToken);
         Assert.Equal(expectedNames, executed);
         Assert.Equal(expectedNames, results.Select(result => result.Call.Command.Name));
         foreach (var result in results)
@@ -172,16 +171,16 @@ public sealed class RuntimeQueryStartupTests
         var release = new TaskCompletionSource<RuntimeQueryResponseEnvelope>(TaskCreationOptions.RunContinuationsAsynchronously);
         var router = new RuntimeQueryCommandRouter(
         [
-            new("first", RuntimeQueryCommandRisk.ReadOnly, _ => { executed.Add("first"); return release.Task; },
+            new("first", RuntimeQueryCommandRisk.ReadOnly, (_, _, _) => { executed.Add("first"); return release.Task; },
                 RuntimeQueryStartupPhase.AfterStartup),
-            new("second", RuntimeQueryCommandRisk.ReadOnly, _ =>
+            new("second", RuntimeQueryCommandRisk.ReadOnly, (_, _, _) =>
             {
                 executed.Add("second");
                 return Task.FromResult(RuntimeQueryResponseEnvelope.Success(null));
             }, RuntimeQueryStartupPhase.AfterStartup)
         ], requireConfirmation: false);
         var parsed = router.ParseStartupArguments(arguments);
-        var task = router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup);
+        var task = router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.AfterStartup, TestContext.Current.CancellationToken);
         Assert.False(task.IsCompleted);
         Assert.Equal(pendingNames, executed);
         release.SetResult(RuntimeQueryResponseEnvelope.Success(null));
@@ -194,11 +193,11 @@ public sealed class RuntimeQueryStartupTests
     public async Task PhaseRunRetainsConfirmationGuard()
     {
         var router = new RuntimeQueryCommandRouter([new("save", RuntimeQueryCommandRisk.WritesData,
-            _ => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame)],
+            (_, _, _) => throw new InvalidOperationException("The handler must not run."), RuntimeQueryStartupPhase.BeforeFirstFrame)],
             requireConfirmation: true);
         var parsed = router.ParseStartupArguments(["--save"]);
         Assert.Single(parsed.Issues);
-        var result = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame));
+        var result = Assert.Single(await router.ExecuteStartupPhaseAsync(parsed.Calls, RuntimeQueryStartupPhase.BeforeFirstFrame, TestContext.Current.CancellationToken));
         Assert.Equal(RuntimeQueryResponseEnvelope.Failure("CONFIRMATION_REQUIRED",
             "Command 'save' writes files or changes data. Add --confirm to run it."), result.Response);
     }

@@ -27,7 +27,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         Assert.Equal("page", command);
         var args = Assert.IsType<Dictionary<string, string>>(parameters[3]);
         Assert.Equal(new KeyValuePair<string, string>("name", "true"), Assert.Single(args));
-        AssertFailure(await router.RouteAsync(command, args),
+        AssertFailure(await router.RouteAsync(command, args, TestContext.Current.CancellationToken),
             "UNKNOWN_PAGE", "Unknown page 'true'. Valid pages: zeta, alpha.");
         Assert.Equal("zeta", navigation.CurrentPage);
         Assert.Equal(0, navigation.SwitchCalls);
@@ -65,7 +65,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         var router = Router(options);
         var handler = RuntimeQueryUiThread.Wrap(async (request, version, token) =>
         {
-            var response = await router.ExecuteAsync(request, version);
+            var response = await router.ExecuteAsync(request, version, token);
             responseProduced.SetResult();
             await releaseResponse.Task.WaitAsync(token);
             return response;

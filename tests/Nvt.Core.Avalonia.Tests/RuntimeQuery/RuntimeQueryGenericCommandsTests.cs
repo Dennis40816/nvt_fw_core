@@ -53,11 +53,11 @@ public sealed partial class RuntimeQueryGenericCommandsTests
         Assert.Equal(0, calls);
         registered =
         [
-            new("zeta", RuntimeQueryCommandRisk.WritesData, _ => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null))),
+            new("zeta", RuntimeQueryCommandRisk.WritesData, (_, _, _) => Task.FromResult(RuntimeQueryResponseEnvelope.Success(null))),
             generic[0], generic[1], generic[2]
         ];
         var router = new RuntimeQueryCommandRouter(registered, requireConfirmation: true);
-        AssertSuccess(await router.RouteAsync("help", null),
+        AssertSuccess(await router.RouteAsync("help", null, TestContext.Current.CancellationToken),
             """{"commands":[{"name":"zeta","risk":"WritesData"},{"name":"help","risk":"ReadOnly"},{"name":"ping","risk":"ReadOnly"},{"name":"focus","risk":"ChangesState"}]}""");
         Assert.Equal(1, calls);
     }
@@ -73,7 +73,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
             HelpText = text,
             GetCommands = () => throw new InvalidOperationException("Custom help must not read the command list.")
         };
-        var response = await Router(options).RouteAsync("help", null);
+        var response = await Router(options).RouteAsync("help", null, TestContext.Current.CancellationToken);
         Assert.True(response.Ok);
         Assert.Null(response.Error);
         Assert.Same(text, response.Data);
@@ -83,7 +83,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     [AvaloniaFact]
     public async Task PingReturnsToolIdentityAndProcessId()
     {
-        AssertSuccess(await Router(Options()).RouteAsync("ping", null),
+        AssertSuccess(await Router(Options()).RouteAsync("ping", null, TestContext.Current.CancellationToken),
             $"{{\"toolName\":\"Synthetic tool\",\"version\":\"2.3-test\",\"processId\":{Environment.ProcessId}}}");
     }
 
@@ -105,7 +105,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
                 Assert.Equal(WindowState.Normal, window.WindowState);
                 activations++;
             };
-            AssertSuccess(await Router(Options(window)).RouteAsync("focus", null), """{"focused":true}""");
+            AssertSuccess(await Router(Options(window)).RouteAsync("focus", null, TestContext.Current.CancellationToken), """{"focused":true}""");
             Assert.Equal(WindowState.Normal, window.WindowState);
             Dispatcher.UIThread.RunJobs();
             Assert.True(window.IsActive);
@@ -122,7 +122,7 @@ public sealed partial class RuntimeQueryGenericCommandsTests
     [AvaloniaFact]
     public async Task FocusWithoutMainWindowReturnsFailure()
     {
-        AssertFailure(await Router(Options()).RouteAsync("focus", null),
+        AssertFailure(await Router(Options()).RouteAsync("focus", null, TestContext.Current.CancellationToken),
             "NO_MAIN_WINDOW", "The main window is not available.");
     }
 

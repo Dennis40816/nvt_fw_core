@@ -6,7 +6,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    tags: ['core-v*']
+    tags: ['core-v*', 'core-fonts-v*']
 
 permissions:
   contents: read
@@ -34,7 +34,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: '8.0.x'
       - name: Restore locked dependencies
         run: dotnet restore Nvt.Core.sln --locked-mode
       - name: Build Core
@@ -64,7 +63,6 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-          dotnet-version: '8.0.x'
       - name: Check the tag and pack Core
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,4 +87,58 @@ jobs:
               --notes-file artifacts/packages/SOURCE.md
           if ($LASTEXITCODE -ne 0) {
               throw 'Core release creation failed.'
+          }
+
+  release-fonts:
+    name: Core / release fonts
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/core-fonts-v')
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: core-fonts-release-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Check the tag and pack Fonts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [xml]$properties = Get-Content -LiteralPath 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj' -Raw
+          $version = [string]$properties.Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_NAME -cne "core-fonts-v$version") {
+              throw "The tag must match Fonts package version $version."
+          }
+          ./scripts/pack.ps1 -Package Fonts
+      - name: Verify the Fonts package contents
+        run: |
+          [xml]$properties = Get-Content -LiteralPath 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj' -Raw
+          $version = [string]$properties.Project.PropertyGroup.Version
+          pwsh -File ./scripts/tests/test-pack.ps1 -FontsPackagePath "artifacts/packages/Nvt.Core.Fonts.$version.nupkg"
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Core Fonts package content verification failed.'
+          }
+      - name: Create the Fonts release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+              'artifacts/packages/Nvt.Core.Fonts.*.nupkg' `
+              artifacts/packages/SHA256SUMS `
+              artifacts/packages/SOURCE.md `
+              --repo $env:GITHUB_REPOSITORY `
+              --verify-tag `
+              --title "Core Fonts $env:GITHUB_REF_NAME" `
+              --notes-file artifacts/packages/SOURCE.md
+          if ($LASTEXITCODE -ne 0) {
+              throw 'Core Fonts release creation failed.'
           }
