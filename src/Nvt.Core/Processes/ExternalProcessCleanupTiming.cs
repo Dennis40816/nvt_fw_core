@@ -30,17 +30,28 @@ internal readonly record struct ExternalProcessCleanupTiming(
     /// </remarks>
     internal CleanupSchedule Schedule(long signaledAt)
     {
-        long deadlineTicks = Ticks(Deadline);
-        long reserveTicks = Ticks(ReaderStopReserve);
+        return Schedule(signaledAt, Stopwatch.Frequency);
+    }
+
+    /// <summary>The same schedule in the timestamp unit of an injected <see cref="TimeProvider"/>.</summary>
+    internal CleanupSchedule Schedule(long signaledAt, long timestampFrequency)
+    {
+        long deadlineTicks = Ticks(Deadline, timestampFrequency);
+        long reserveTicks = Ticks(ReaderStopReserve, timestampFrequency);
         return new CleanupSchedule(
-            signaledAt + Ticks(HeldOutputGrace),
+            signaledAt + Ticks(HeldOutputGrace, timestampFrequency),
             signaledAt + deadlineTicks - reserveTicks,
             signaledAt + deadlineTicks);
     }
 
     internal static long Ticks(TimeSpan span)
     {
-        return (long)(span.TotalSeconds * Stopwatch.Frequency);
+        return Ticks(span, Stopwatch.Frequency);
+    }
+
+    internal static long Ticks(TimeSpan span, long timestampFrequency)
+    {
+        return (long)(span.TotalSeconds * timestampFrequency);
     }
 
     internal void Validate()
