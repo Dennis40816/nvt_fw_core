@@ -1,1 +1,2 @@
 tools/repo-checks/csharp/* text eol=lf
+/src/Nvt.Core/Threading/UiEventRunner.cs text eol=lf

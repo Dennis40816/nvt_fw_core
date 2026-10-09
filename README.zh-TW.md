@@ -77,6 +77,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.Startup`：[Startup](docs/core/modules/Startup.zh-TW.md)
 - `Nvt.Core.RuntimeQuery`：[RuntimeQuery](docs/core/modules/RuntimeQuery.zh-TW.md)
 - `Nvt.Core.Files`：[Files](docs/core/modules/Files.zh-TW.md)
+- `Nvt.Core.Threading`：[Threading / UiEventRunner](docs/core/modules/Threading.zh-TW.md)
 - `Nvt.Core.Avalonia.Threading`：[Threading](docs/core/modules/Threading.zh-TW.md)
 - `Nvt.Core.Avalonia.Primitives`：[Primitives](docs/core/modules/Primitives.zh-TW.md)
 - `Nvt.Core.Avalonia.Inputs`：[Inputs](docs/core/modules/Inputs.zh-TW.md)

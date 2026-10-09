@@ -18,6 +18,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.TestProbe", "tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.LinkedProbe", "tests\Nvt.Core.LinkedProbe\Nvt.Core.LinkedProbe.csproj", "{B1E9A784-CE17-4634-934B-D5AD9F632087}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nvt.Core.SourceConsumption.Tests", "tests\Nvt.Core.SourceConsumption.Tests\Nvt.Core.SourceConsumption.Tests.csproj", "{D46B4F79-6B9C-4DB2-8759-1A3B374B0114}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,5 +58,9 @@ Global
 		{B1E9A784-CE17-4634-934B-D5AD9F632087}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1E9A784-CE17-4634-934B-D5AD9F632087}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B1E9A784-CE17-4634-934B-D5AD9F632087}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D46B4F79-6B9C-4DB2-8759-1A3B374B0114}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D46B4F79-6B9C-4DB2-8759-1A3B374B0114}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D46B4F79-6B9C-4DB2-8759-1A3B374B0114}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D46B4F79-6B9C-4DB2-8759-1A3B374B0114}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
