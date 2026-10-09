@@ -98,6 +98,8 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 
+- `Nvt.Core.Fonts` 0.1.1 adds the Inter font license (SIL Open Font License 1.1, version 3.19 text) as `licenses/Inter/LICENSE`. Package 0.1.0 did not carry it. The release tag is `core-fonts-v0.1.1`.
+
 ## 0.5.0 - 2026-10-08
 
 No breaking changes since 0.4.0.
