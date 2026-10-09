@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Collections.Immutable;
-using System.Globalization;
 
 namespace Nvt.Core.LogConsole;
 
@@ -10,20 +9,40 @@ public static class ConsoleProjector
 {
     /// <summary>Computes rows, hits, counts, membership, and paused order without clock or file-system access.</summary>
     public static ConsoleProjection Project(LogSnapshot snapshot, ConsoleFilter filter, ConsoleViewState viewState)
+        => Project(snapshot, filter, viewState, new ConsoleProjectionOptions());
+
+    /// <summary>Computes a projection with an app source registry and explicit time presentation inputs.</summary>
+    public static ConsoleProjection Project(LogSnapshot snapshot, ConsoleFilter filter, ConsoleViewState viewState,
+        ConsoleProjectionOptions options)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(filter);
         ArgumentNullException.ThrowIfNull(viewState);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(options.RelativeTimeTemplate);
+        ArgumentNullException.ThrowIfNull(options.Culture);
+        ArgumentNullException.ThrowIfNull(options.AbsoluteTimeZone);
+        if (options.SourceRegistry.IsDefault) throw new ArgumentException("The registry must be initialized.", nameof(options));
         var pause = viewState.Follow as ConsoleFollow.Paused;
         var currentPause = pause?.Anchor.Generation == snapshot.Generation ? pause : null;
         var timeBase = currentPause?.PausedAt ?? snapshot.CapturedAt;
         var levels = Enum.GetValues<LogLevel>().ToDictionary(level => level, _ => 0);
         var sources = new Dictionary<string, int>(StringComparer.Ordinal);
+        var catalog = ImmutableArray.CreateBuilder<ConsoleSource>();
+        foreach (var source in options.SourceRegistry) ArgumentNullException.ThrowIfNull(source);
+        foreach (var source in options.SourceRegistry.OrderBy(source => source.DisplayOrder))
+        {
+            ArgumentNullException.ThrowIfNull(source.SourceId);
+            ArgumentNullException.ThrowIfNull(source.DisplayName);
+            if (!sources.TryAdd(source.SourceId, 0))
+                throw new ArgumentException("Source IDs must be unique.", nameof(options));
+            catalog.Add(source);
+        }
         var membership = ImmutableDictionary.CreateBuilder<ConsoleRowId, ImmutableArray<long>>();
         foreach (var entry in snapshot.Entries)
         {
             if (MatchesSource(entry.SourceId, filter)) levels[entry.Level]++;
-            sources.TryAdd(entry.SourceId, 0);
+            if (sources.TryAdd(entry.SourceId, 0)) catalog.Add(new ConsoleSource(entry.SourceId, entry.SourceId, int.MaxValue));
             if (filter.EnabledLevels.Contains(entry.Level)) sources[entry.SourceId]++;
             membership[new ConsoleRowId(entry.EntryId)] = [entry.Sequence];
         }
@@ -47,7 +66,8 @@ public static class ConsoleProjector
             var id = filter.Deduplicate ? new ConsoleRowId(last.GroupId, true) : new ConsoleRowId(last.EntryId);
             rows.Add(new ConsoleRow(id, last.Level, last.SourceId, last.TextContent, last.TextContent.Version, last.LinkSpans,
                 entries.Select(e => e.Sequence).ToImmutableArray(), first.Timestamp, last.Timestamp, last.Sequence,
-                hits, FormatTime(last.Timestamp, timeBase, filter.TimeMode)));
+                hits, ConsoleTimeFormatter.Format(last.Timestamp, timeBase, filter.TimeMode,
+                    options.RelativeTimeTemplate, options.Culture, options.AbsoluteTimeZone)));
             if (currentPause is not null)
                 newEvents += entries.Count(e => e.Sequence > currentPause.Anchor.ThroughSequence);
         }
@@ -87,6 +107,7 @@ public static class ConsoleProjector
             Version = snapshot.Version, Generation = snapshot.Generation, LastSequence = snapshot.LastSequence,
             CapturedAt = snapshot.CapturedAt, TimeBase = timeBase, Rows = leased.ToImmutableArray(),
             LevelCounts = levels.ToImmutableDictionary(), SourceCounts = sources.ToImmutableDictionary(StringComparer.Ordinal),
+            Sources = catalog.ToImmutable(),
             RetainedMembership = membership.ToImmutable(), EventCount = snapshot.EventCount,
             NewSincePauseCount = newEvents, EvictedCount = snapshot.EvictedCount, Deduplicate = filter.Deduplicate,
             ResolvedAnchorId = anchor,
@@ -139,12 +160,4 @@ public static class ConsoleProjector
             }
         }
     }
-
-    private static string FormatTime(DateTimeOffset timestamp, DateTimeOffset timeBase, ConsoleTimeMode mode) => mode switch
-    {
-        ConsoleTimeMode.Absolute => timestamp.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
-        ConsoleTimeMode.Relative => (timeBase - timestamp).TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture) + " s ago",
-        ConsoleTimeMode.Hidden => string.Empty,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-    };
 }
