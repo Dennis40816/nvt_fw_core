@@ -179,7 +179,10 @@
         "type": "Project"
       },
       "nvt.core.testsupport": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Nvt.Core": "[0.5.0, )"
+        }
       }
     }
   }

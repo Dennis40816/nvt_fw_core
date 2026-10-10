@@ -12,7 +12,7 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.SourceConsumption.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.Avalonia.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.Fonts.Tests'">
     <HealthLayer>tests</HealthLayer>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe'">
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport.Tests'">
     <HealthLayer>tooling</HealthLayer>
   </PropertyGroup>
   <!-- BEGIN GENERATED HEALTH WARNING IDS -->

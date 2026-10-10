@@ -23,6 +23,8 @@ public partial class MessageCenterViewModel : ObservableObject
     // Mutable session contents are UI-thread-only; visibility and generation have no second owner.
     private readonly MessageCenterSession _session = new();
     private readonly MessageCenterExportWorkflow _exportWorkflow;
+    // The projection (including faults) is lazy and shared for one UI-thread-only activity revision.
+    private Lazy<IReadOnlyList<MessageCenterActivityItem>>? _activityItems;
 
     /// <summary>Creates a presentation with application-owned data, text, operations, and activity recording.</summary>
     /// <param name="provider">Supplies passive counts and admitted activity metadata.</param>
@@ -94,6 +96,10 @@ public partial class MessageCenterViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(DebugActivityActionLabel))]
     public partial bool IsDebugActivityExpanded { get; private set; }
 
+    partial void OnSelectedActivityFilterChanged(MessageActivityFilter value) => _activityItems = null;
+
+    partial void OnIsDebugActivityExpandedChanged(bool value) => _activityItems = null;
+
     /// <summary>Gets whether all disclosed severities are selected.</summary>
     public bool IsImportantActivitySelected => SelectedActivityFilter == MessageActivityFilter.Important;
 
@@ -103,9 +109,11 @@ public partial class MessageCenterViewModel : ObservableObject
     /// <summary>Gets whether errors are selected.</summary>
     public bool IsErrorActivitySelected => SelectedActivityFilter == MessageActivityFilter.Errors;
 
-    /// <summary>Captures, filters, orders, and projects rows through the current host callback.</summary>
-    public IReadOnlyList<MessageCenterActivityItem> ActivityItems => MessageCenterActivityFilter.Apply(
-        _provider.CaptureActivity(), SelectedActivityFilter, IsDebugActivityExpanded);
+    /// <summary>Lazily captures, filters, orders, and projects rows once per activity revision.</summary>
+    public IReadOnlyList<MessageCenterActivityItem> ActivityItems => (_activityItems ??= new(
+        () => MessageCenterActivityFilter.Apply(
+            _provider.CaptureActivity(), SelectedActivityFilter, IsDebugActivityExpanded),
+        LazyThreadSafetyMode.None)).Value;
 
     /// <summary>Gets whether the current projection contains rows.</summary>
     public bool HasActivityItems => ActivityItems.Count > 0;
@@ -218,6 +226,8 @@ public partial class MessageCenterViewModel : ObservableObject
     /// <remarks>Does not advance generation. Notifications are unguarded, preserving failure order.</remarks>
     public void ApplyLanguageChanged()
     {
+        // ProjectItem uses current host text and materializes display strings in each row.
+        _activityItems = null;
         OnPropertyChanged(nameof(Text));
         OnPropertyChanged(nameof(MessageCenterAccessibleName));
         OnPropertyChanged(nameof(SystemStatusAnnouncement));
@@ -235,6 +245,12 @@ public partial class MessageCenterViewModel : ObservableObject
     /// <summary>Notifies each committed activity projection independently, isolating observer faults.</summary>
     public void NotifyActivityChanged()
     {
+        _activityItems = null;
+        NotifyActivityPropertiesChanged();
+    }
+
+    private void NotifyActivityPropertiesChanged()
+    {
         Observe(() => OnPropertyChanged(nameof(ActivityItems)));
         Observe(() => OnPropertyChanged(nameof(HasActivityItems)));
         Observe(() => OnPropertyChanged(nameof(HasNoActivityItems)));
@@ -245,12 +261,14 @@ public partial class MessageCenterViewModel : ObservableObject
     /// <remarks>A derived host view model calls this after its diagnostic refresh commits.</remarks>
     protected void NotifyDiagnosticsChanged()
     {
+        // Diagnostic observers can read activity before its notifications; invalidate only once.
+        _activityItems = null;
         Observe(() => OnPropertyChanged(nameof(ActiveBadgeCount)));
         Observe(() => OnPropertyChanged(nameof(HasActiveDiagnostics)));
         Observe(() => OnPropertyChanged(nameof(HasNoActiveDiagnostics)));
         Observe(() => OnPropertyChanged(nameof(MessageCenterAccessibleName)));
         Observe(() => OnPropertyChanged(nameof(SystemStatusAnnouncement)));
-        Observe(NotifyActivityChanged);
+        Observe(NotifyActivityPropertiesChanged);
     }
 
     private void ReportExportSuccess()

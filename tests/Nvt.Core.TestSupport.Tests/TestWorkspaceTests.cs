@@ -7,6 +7,13 @@ namespace Nvt.Core.TestSupport.Tests;
 /// <summary>Verifies fixture path boundaries and bounded, repeatable cleanup without sleeps.</summary>
 public sealed class TestWorkspaceTests
 {
+    // The workspace under test owns its own disposal in these tests, so construction goes through one helper.
+    // Held in a field so that the owning test class, not each test body, is the owner of the failing workspace.
+    private TestWorkspace? _subject;
+
+    private static TestWorkspace NewWorkspace(string root, Action<string> delete, Action<TimeSpan> waitForRetry, Func<TimeSpan>? retryElapsed = null) =>
+        new(root, delete, waitForRetry, retryElapsed);
+
     /// <summary>Creation owns distinct short directories under the system temp directory.</summary>
     [Fact]
     public void CreateUsesUniqueShortRoots()
@@ -87,7 +94,7 @@ public sealed class TestWorkspaceTests
         {
             Assert.Skip("The temporary directory is the volume root, so no outside path exists.");
         }
-        Assert.Throws<ArgumentException>(() => new TestWorkspace(root, static _ => { }, static _ => { }));
+        Assert.Throws<ArgumentException>(() => NewWorkspace(root, static _ => { }, static _ => { }));
     }
 
     /// <summary>A trailing separator on the internal root does not break path resolution.</summary>
@@ -95,7 +102,7 @@ public sealed class TestWorkspaceTests
     public void TrailingSeparatorOnTheRootIsIgnored()
     {
         using var owner = TestWorkspace.Create();
-        var workspace = new TestWorkspace(owner.RootPath + Path.DirectorySeparatorChar, static _ => { }, static _ => { });
+        using var workspace = NewWorkspace(owner.RootPath + Path.DirectorySeparatorChar, static _ => { }, static _ => { });
         Assert.Equal(owner.RootPath, workspace.RootPath);
         Assert.Equal(Path.Combine(owner.RootPath, "a"), workspace.GetPath("a"));
     }
@@ -108,16 +115,22 @@ public sealed class TestWorkspaceTests
     {
         string temp = Path.TrimEndingDirectorySeparator(Path.GetTempPath());
         string root = trailingSeparator ? temp + Path.DirectorySeparatorChar : temp;
-        Assert.Throws<ArgumentException>(() => new TestWorkspace(root, static _ => { }, static _ => { }));
+        Assert.Throws<ArgumentException>(() => NewWorkspace(root, static _ => { }, static _ => { }));
     }
 
     /// <summary>Public disposal members work directly, without interface casts.</summary>
     [Fact]
-    public async Task DisposalMembersAreCallableDirectly()
+    public void DisposeIsCallableDirectly()
     {
         var first = TestWorkspace.Create();
         first.Dispose();
         Assert.False(Directory.Exists(first.RootPath));
+    }
+
+    /// <summary>Asynchronous disposal works directly, without an interface cast.</summary>
+    [Fact]
+    public async Task DisposeAsyncIsCallableDirectly()
+    {
         var second = TestWorkspace.Create();
         await second.DisposeAsync();
         Assert.False(Directory.Exists(second.RootPath));
@@ -132,7 +145,10 @@ public sealed class TestWorkspaceTests
         var workspace = TestWorkspace.Create();
         string file = workspace.GetPath("nested/fixture.txt");
         Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-        await File.WriteAllTextAsync(file, "synthetic fixture", TestContext.Current.CancellationToken);
+        await using (FileStream stream = File.Create(file))
+        {
+            await stream.WriteAsync("synthetic fixture"u8.ToArray(), TestContext.Current.CancellationToken);
+        }
         if (asynchronous) { await ((IAsyncDisposable)workspace).DisposeAsync(); } else { ((IDisposable)workspace).Dispose(); }
         Assert.False(Directory.Exists(workspace.RootPath));
         ((IDisposable)workspace).Dispose();
@@ -159,7 +175,7 @@ public sealed class TestWorkspaceTests
         using var owner = TestWorkspace.Create();
         int calls = 0;
         var waits = new List<TimeSpan>();
-        var workspace = new TestWorkspace(owner.RootPath, path =>
+        var workspace = NewWorkspace(owner.RootPath, path =>
         {
             Assert.Equal(owner.RootPath, path);
             calls++;
@@ -187,13 +203,14 @@ public sealed class TestWorkspaceTests
         using var owner = TestWorkspace.Create();
         int attempts = 0;
         int waits = 0;
-        var workspace = new TestWorkspace(owner.RootPath, path =>
+        _subject = NewWorkspace(owner.RootPath, path =>
         {
             attempts++;
             if (accessFailure) { throw new UnauthorizedAccessException("synthetic"); }
             throw new IOException("synthetic");
         }, _ => waits++, static () => TimeSpan.Zero);
-        IOException failure = Assert.Throws<IOException>(((IDisposable)workspace).Dispose);
+        TestWorkspace workspace = _subject;
+        IOException failure = Assert.Throws<IOException>(() => workspace.Dispose());
         Assert.Contains(owner.RootPath, failure.Message, StringComparison.Ordinal);
         Assert.NotNull(failure.InnerException);
         Assert.True(Directory.Exists(owner.RootPath));
@@ -213,11 +230,12 @@ public sealed class TestWorkspaceTests
         using var owner = TestWorkspace.Create();
         int attempts = 0;
         TimeSpan elapsed = TimeSpan.Zero;
-        var workspace = new TestWorkspace(owner.RootPath,
+        _subject = NewWorkspace(owner.RootPath,
             _ => { attempts++; throw new IOException("synthetic"); },
             duration => { Assert.Equal(TimeSpan.FromMilliseconds(50), duration); elapsed = TimeSpan.FromMilliseconds(500); },
             () => elapsed);
-        IOException failure = await Assert.ThrowsAsync<IOException>(async () => await ((IAsyncDisposable)workspace).DisposeAsync());
+        TestWorkspace workspace = _subject;
+        IOException failure = await Assert.ThrowsAsync<IOException>(async () => await workspace.DisposeAsync());
         Assert.Contains(owner.RootPath, failure.Message, StringComparison.Ordinal);
         Assert.Equal(1, attempts);
         Assert.True(Directory.Exists(owner.RootPath));

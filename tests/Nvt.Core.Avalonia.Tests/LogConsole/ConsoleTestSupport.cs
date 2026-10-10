@@ -20,6 +20,24 @@ using Xunit;
 
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
+/// <summary>
+/// Blocks the headless UI thread until a task completes, without Task.Wait, Result or GetResult.
+/// The tasks run on the thread pool, never through the dispatcher, so the wait cannot deadlock.
+/// A fault or cancellation is rethrown with its original exception.
+/// </summary>
+internal static class TaskBlock
+{
+    internal static void Wait(Task task)
+    {
+        using var done = new ManualResetEventSlim();
+        _ = task.ContinueWith(static (_, state) => ((ManualResetEventSlim)state!).Set(), done,
+            CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        done.Wait();
+        if (task.IsFaulted) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(task.Exception!.InnerException ?? task.Exception).Throw();
+        if (task.IsCanceled) throw new OperationCanceledException();
+    }
+}
+
 internal sealed class ConsoleTestStore : IDisposable
 {
     // Cross-thread scheduler queue; ConcurrentQueue protects enqueue/dequeue. Tests explicitly run the writer.
@@ -49,16 +67,20 @@ internal sealed class ConsoleTestStore : IDisposable
     }
     internal void Fence()
     {
-        var capture = Store.CaptureLatestAsync(_safety.Token).AsTask();
+        var capture = CaptureAndReleaseAsync(Store, _safety.Token);
         Until(() => capture.IsCompleted);
-        using var snapshot = capture.GetAwaiter().GetResult();
+        TaskBlock.Wait(capture);
+    }
+    private static async Task CaptureAndReleaseAsync(LogStore store, CancellationToken token)
+    {
+        using var snapshot = await store.CaptureLatestAsync(token).ConfigureAwait(false);
     }
     internal void Until(Func<bool> condition)
     {
         while (!condition())
         {
             _safety.Token.ThrowIfCancellationRequested();
-            if (_writer.TryDequeue(out var callback)) Task.Run(callback, _safety.Token).GetAwaiter().GetResult();
+            if (_writer.TryDequeue(out var callback)) TaskBlock.Wait(Task.Run(callback, _safety.Token));
             else SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty || condition(); });
         }
     }
@@ -72,7 +94,7 @@ internal sealed class ConsoleTestStore : IDisposable
         Store.Dispose();
         // Waiting for queue availability must not run the very callback being awaited.
         SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty; });
-        while (_writer.TryDequeue(out var callback)) Task.Run(callback, _safety.Token).GetAwaiter().GetResult();
+        while (_writer.TryDequeue(out var callback)) TaskBlock.Wait(Task.Run(callback, _safety.Token));
         _safety.Dispose();
     }
 }
