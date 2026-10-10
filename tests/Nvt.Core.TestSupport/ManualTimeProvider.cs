@@ -6,7 +6,7 @@ namespace Nvt.Core.TestSupport;
 public sealed class ManualTimeProvider : TimeProvider
 {
     // Guard: _gate protects the timestamp, timer schedules, advancing flag and pending waiters.
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly List<ManualTimer> _timers = [];
     private readonly List<PendingWaiter> _waiters = [];
     private readonly DateTimeOffset _start;
@@ -123,7 +123,8 @@ public sealed class ManualTimeProvider : TimeProvider
             {
                 return Task.CompletedTask;
             }
-            var waiter = new PendingWaiter(count, within);
+            var source = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var waiter = new PendingWaiter(count, within, source);
             _waiters.Add(waiter);
             if (cancellationToken.CanBeCanceled)
             {
@@ -140,7 +141,7 @@ public sealed class ManualTimeProvider : TimeProvider
                 _ = waiter.Source.Task.ContinueWith(static (_, state) => ((CancellationTokenRegistration)state!).Dispose(),
                     registration, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             }
-            return waiter.Source.Task;
+            return source.Task;
         }
     }
 
@@ -172,10 +173,7 @@ public sealed class ManualTimeProvider : TimeProvider
         }
     }
 
-    private sealed record PendingWaiter(int Count, TimeSpan Within)
-    {
-        internal TaskCompletionSource Source { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    }
+    private sealed record PendingWaiter(int Count, TimeSpan Within, TaskCompletionSource Source);
 
     private sealed class ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state) : ITimer
     {

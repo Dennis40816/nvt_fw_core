@@ -12,6 +12,9 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Nvt.Core\Nvt.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="Nvt.Core.TestSupport.Tests" />
     <InternalsVisibleTo Include="Nvt.Core.Tests" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="" />

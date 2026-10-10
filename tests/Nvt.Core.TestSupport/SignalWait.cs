@@ -39,11 +39,24 @@ public sealed class SignalWait
     /// <returns><see langword="true"/> for the call that set it; <see langword="false"/> when it was already set.</returns>
     public bool Set() => _signal.TrySetResult();
 
+    /// <summary>Fails the signal, so every waiter throws the exception. Used by fixtures that know a wait can never end.</summary>
+    internal bool Fail(Exception exception) => _signal.TrySetException(exception);
+
     /// <summary>Waits until the signal is set, the token is canceled, or the watchdog expires.</summary>
     /// <exception cref="TimeoutException">The watchdog expired. The message names the signal.</exception>
     /// <exception cref="OperationCanceledException">The token was canceled.</exception>
-    public Task WaitAsync(CancellationToken cancellationToken = default) =>
-        WaitUnderWatchdogAsync(_signal.Task, _name, _watchdog, _clock, cancellationToken);
+    public async Task WaitAsync(CancellationToken cancellationToken = default)
+    {
+        TaskCompletionSource signal = _signal;
+        try
+        {
+            await signal.Task.WaitAsync(_watchdog, _clock, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TimeoutException exception) when (!signal.Task.IsCompleted)
+        {
+            throw WatchdogExpired(_name, _watchdog, exception);
+        }
+    }
 
     /// <summary>Waits for a task under the watchdog. The task's own failure or cancellation passes through unchanged.</summary>
     /// <param name="task">The task to wait for.</param>
@@ -61,20 +74,19 @@ public sealed class SignalWait
     {
         ArgumentNullException.ThrowIfNull(task);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        await WaitUnderWatchdogAsync(task, name, ValidateWatchdog(watchdog), clock ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
-    }
-
-    private static async Task WaitUnderWatchdogAsync(Task task, string name, TimeSpan watchdog, TimeProvider clock, CancellationToken cancellationToken)
-    {
+        TimeSpan limit = ValidateWatchdog(watchdog);
         try
         {
-            await task.WaitAsync(watchdog, clock, cancellationToken).ConfigureAwait(false);
+            await task.WaitAsync(limit, clock ?? TimeProvider.System, cancellationToken).ConfigureAwait(false);
         }
         catch (TimeoutException exception) when (!task.IsCompleted)
         {
-            throw new TimeoutException($"Watchdog: '{name}' did not complete within {watchdog}.", exception);
+            throw WatchdogExpired(name, limit, exception);
         }
     }
+
+    private static TimeoutException WatchdogExpired(string name, TimeSpan watchdog, TimeoutException inner) =>
+        new($"Watchdog: '{name}' did not complete within {watchdog}.", inner);
 
     private static TimeSpan ValidateWatchdog(TimeSpan? watchdog)
     {

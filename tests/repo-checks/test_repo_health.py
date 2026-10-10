@@ -18,6 +18,15 @@ BASELINE = "eng/code-health/baseline.json"
 class RepoHealthTests(GitRepositoryTests):
     def setUp(self) -> None:
         super().setUp()
+        self.fixture_checker = self.root / "fixture-checker.ps1"
+        source = CHECKER.read_text(encoding="utf-8")
+        source = source.replace("if ($Mode -ne 'Measure') { Initialize-Enforcement $baseline }",
+            "if ($baseline -and @($baseline.findings + $allowed.findings | Where-Object { $_.rule -notin $script:SyntaxRules }).Count) { throw 'HC_NOT_IMPLEMENTED: fixture has no diagnostic provider' }")
+        source = source.replace("else { Measure-Health }", "else { Measure-Syntax }")
+        source = source.replace("                Write-LedgerWarningIds $baseline", "                # fixture warning generator")
+        schema_path = (REPOSITORY / "tools/repo-checks/csharp/schema.json").as_posix()
+        source = source.replace("Join-Path $PSScriptRoot 'csharp/schema.json'", "'" + schema_path + "'")
+        self.fixture_checker.write_text(source, encoding="utf-8")
         self.write("global.json", (REPOSITORY / "global.json").read_text(encoding="utf-8"))
         self.write("src/Fixture/Fixture.csproj",
                    '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
@@ -26,7 +35,7 @@ class RepoHealthTests(GitRepositoryTests):
 
     def run_health(self, mode: str = "Measure", *args: str) -> subprocess.CompletedProcess[str]:
         # Ordinary subprocesses use the current console; no detached window.
-        return subprocess.run(["pwsh", "-NoProfile", "-File", str(CHECKER), "-Mode", mode,
+        return subprocess.run(["pwsh", "-NoProfile", "-File", str(self.fixture_checker), "-Mode", mode,
                                "-Repo", "core", "-Root", str(self.root), *args],
                               env=self.env, capture_output=True, encoding="utf-8", timeout=90)
 
@@ -37,7 +46,7 @@ class RepoHealthTests(GitRepositoryTests):
         return json.loads(result.stdout)
 
     def enroll(self) -> dict:
-        # Enrollment exists only in fixtures. The checker has no enrollment mode.
+        # Syntax fixture enrollment is hand-built; production Enroll requires all providers.
         m = self.measure()
         b = {key: copy.deepcopy(m[key]) for key in
              ("schemaVersion", "measurementVersion", "snapshotCommit", "limits")}

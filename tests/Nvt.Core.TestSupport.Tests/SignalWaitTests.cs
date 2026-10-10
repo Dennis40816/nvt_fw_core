@@ -7,8 +7,8 @@ namespace Nvt.Core.TestSupport.Tests;
 /// <summary>Pins the signal and its watchdog. The watchdog clock is manual, so no test waits in real time.</summary>
 public sealed class SignalWaitTests
 {
-    private static readonly DateTimeOffset Start = new(2026, 10, 10, 0, 0, 0, TimeSpan.Zero);
-    private static readonly TimeSpan Watchdog = TimeSpan.FromSeconds(5);
+    private static readonly DateTimeOffset _start = new(2026, 10, 10, 0, 0, 0, TimeSpan.Zero);
+    private static readonly TimeSpan _watchdog = TimeSpan.FromSeconds(5);
 
     /// <summary>The default watchdog is 30 seconds.</summary>
     [Fact]
@@ -21,7 +21,7 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncSetBeforeWaitCompletes()
     {
-        var signal = new SignalWait("ready", Watchdog, new ManualTimeProvider(Start));
+        var signal = new SignalWait("ready", _watchdog, new ManualTimeProvider(_start));
         Assert.False(signal.IsSet);
 
         Assert.True(signal.Set());
@@ -34,7 +34,7 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncSetAfterWaitStartsCompletes()
     {
-        var signal = new SignalWait("ready", Watchdog, new ManualTimeProvider(Start));
+        var signal = new SignalWait("ready", _watchdog, new ManualTimeProvider(_start));
         Task wait = signal.WaitAsync(TestContext.Current.CancellationToken);
         Assert.False(wait.IsCompleted);
 
@@ -47,7 +47,7 @@ public sealed class SignalWaitTests
     [Fact]
     public void SetReportsOnlyTheFirstCall()
     {
-        var signal = new SignalWait("ready", Watchdog, new ManualTimeProvider(Start));
+        var signal = new SignalWait("ready", _watchdog, new ManualTimeProvider(_start));
 
         Assert.True(signal.Set());
         Assert.False(signal.Set());
@@ -57,13 +57,15 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncWatchdogExpiresThrowsTimeoutNamingTheSignal()
     {
-        var clock = new ManualTimeProvider(Start);
-        var signal = new SignalWait("reader stopped", Watchdog, clock);
+        var clock = new ManualTimeProvider(_start);
+        var signal = new SignalWait("reader stopped", _watchdog, clock);
         Task wait = signal.WaitAsync(TestContext.Current.CancellationToken);
 
-        clock.Advance(Watchdog);
+        clock.Advance(_watchdog);
 
-        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => wait);
+        TimeoutException? caught = null;
+        try { await wait; } catch (TimeoutException thrown) { caught = thrown; }
+        TimeoutException exception = Assert.IsType<TimeoutException>(caught);
         Assert.Contains("'reader stopped'", exception.Message, StringComparison.Ordinal);
     }
 
@@ -71,13 +73,13 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncSetBeforeTheWatchdogDoesNotTimeOut()
     {
-        var clock = new ManualTimeProvider(Start);
-        var signal = new SignalWait("ready", Watchdog, clock);
+        var clock = new ManualTimeProvider(_start);
+        var signal = new SignalWait("ready", _watchdog, clock);
         Task wait = signal.WaitAsync(TestContext.Current.CancellationToken);
 
         _ = signal.Set();
         await wait;
-        clock.Advance(Watchdog + Watchdog);
+        clock.Advance(_watchdog + _watchdog);
 
         Assert.True(wait.IsCompletedSuccessfully);
     }
@@ -86,13 +88,15 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncCanceledThrowsOperationCanceled()
     {
-        var signal = new SignalWait("ready", Watchdog, new ManualTimeProvider(Start));
+        var signal = new SignalWait("ready", _watchdog, new ManualTimeProvider(_start));
         using var cancellation = new CancellationTokenSource();
         Task wait = signal.WaitAsync(cancellation.Token);
 
         await cancellation.CancelAsync();
 
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wait);
+        OperationCanceledException? canceled = null;
+        try { await wait; } catch (OperationCanceledException thrown) { canceled = thrown; }
+        Assert.NotNull(canceled);
     }
 
     /// <summary>The static form passes the watched task's own failure through unchanged.</summary>
@@ -100,11 +104,13 @@ public sealed class SignalWaitTests
     public async Task WaitAsyncStaticTaskFaultPassesThrough()
     {
         var source = new TaskCompletionSource();
-        Task wait = SignalWait.WaitAsync(source.Task, "operation", Watchdog, new ManualTimeProvider(Start), TestContext.Current.CancellationToken);
+        Task wait = SignalWait.WaitAsync(source.Task, "operation", _watchdog, new ManualTimeProvider(_start), TestContext.Current.CancellationToken);
 
         source.SetException(new InvalidOperationException("synthetic"));
 
-        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(() => wait);
+        InvalidOperationException? caught = null;
+        try { await wait; } catch (InvalidOperationException thrown) { caught = thrown; }
+        InvalidOperationException exception = Assert.IsType<InvalidOperationException>(caught);
         Assert.Equal("synthetic", exception.Message);
     }
 
@@ -112,13 +118,15 @@ public sealed class SignalWaitTests
     [Fact]
     public async Task WaitAsyncStaticWatchdogExpiresThrowsTimeoutNamingTheWait()
     {
-        var clock = new ManualTimeProvider(Start);
+        var clock = new ManualTimeProvider(_start);
         var source = new TaskCompletionSource();
-        Task wait = SignalWait.WaitAsync(source.Task, "operation", Watchdog, clock, TestContext.Current.CancellationToken);
+        Task wait = SignalWait.WaitAsync(source.Task, "operation", _watchdog, clock, TestContext.Current.CancellationToken);
 
-        clock.Advance(Watchdog);
+        clock.Advance(_watchdog);
 
-        TimeoutException exception = await Assert.ThrowsAsync<TimeoutException>(() => wait);
+        TimeoutException? caught = null;
+        try { await wait; } catch (TimeoutException thrown) { caught = thrown; }
+        TimeoutException exception = Assert.IsType<TimeoutException>(caught);
         Assert.Contains("'operation'", exception.Message, StringComparison.Ordinal);
     }
 

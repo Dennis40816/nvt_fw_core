@@ -3,7 +3,8 @@
 English | [繁體中文](https://github.com/Dennis40816/nvt_fw_core/blob/main/tests/Nvt.Core.TestSupport/README.zh-TW.md)
 
 A packable net10.0 library for deterministic tests. It inherits the Core version
-from Directory.Build.props and has no dependency on Nvt.Core, xUnit or Avalonia.
+from Directory.Build.props. It depends on Nvt.Core only for `ProcessLaunchGate`, the Core
+process start seam that `ChildProcessFixture` uses. It has no dependency on xUnit or Avalonia.
 Reference this project or package **only from test projects**. Do not create new
 copies of clocks or workspace helpers; extend the shared implementation and its
 tests when another consumer needs behavior.

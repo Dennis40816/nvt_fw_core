@@ -7,11 +7,11 @@ namespace Nvt.Core.TestSupport.Tests;
 /// <summary>Verifies deterministic time, timer lifecycle and framework integrations.</summary>
 public sealed class ManualTimeProviderTests
 {
-    private static readonly DateTimeOffset Start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-    private static readonly TimeSpan Bound = TimeSpan.FromSeconds(10);
+    private static readonly DateTimeOffset _start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    private static readonly TimeSpan _bound = TimeSpan.FromSeconds(10);
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private static TimeSpan Seconds(int value) => TimeSpan.FromSeconds(value);
-    private static Task Bounded(Task task) => task.WaitAsync(Bound, TimeProvider.System, Token);
+    private static Task BoundedAsync(Task task) => task.WaitAsync(_bound, TimeProvider.System, Token);
 
     /// <summary>UTC and monotonic ticks use the supplied instant rather than the machine clock.</summary>
     [Fact]
@@ -20,15 +20,15 @@ public sealed class ManualTimeProviderTests
         var start = new DateTimeOffset(2026, 1, 1, 8, 0, 0, TimeSpan.FromHours(8));
         var time = new ManualTimeProvider(start);
         Assert.Same(TimeZoneInfo.Utc, time.LocalTimeZone);
-        Assert.Equal(Start, time.GetUtcNow());
+        Assert.Equal(_start, time.GetUtcNow());
         Assert.Equal(TimeSpan.Zero, time.GetUtcNow().Offset);
-        Assert.Equal(Start, time.GetLocalNow());
+        Assert.Equal(_start, time.GetLocalNow());
         Assert.Equal(TimeSpan.TicksPerSecond, time.TimestampFrequency);
         long before = time.GetTimestamp();
         Assert.Equal(0, before);
         TimeSpan delta = Seconds(3) + TimeSpan.FromTicks(7);
         time.Advance(delta);
-        Assert.Equal(Start + delta, time.GetUtcNow());
+        Assert.Equal(_start + delta, time.GetUtcNow());
         Assert.Equal(delta.Ticks, time.GetTimestamp());
         Assert.Equal(delta, time.GetElapsedTime(before, time.GetTimestamp()));
         Assert.Equal(delta, time.GetElapsedTime(before));
@@ -41,11 +41,11 @@ public sealed class ManualTimeProviderTests
     [InlineData(-10000000L)]
     public void BackwardAdvanceIsRejected(long ticks)
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         int calls = 0;
         using ITimer timer = time.CreateTimer(_ => calls++, null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
         Assert.Equal("delta", Assert.Throws<ArgumentOutOfRangeException>(() => time.Advance(TimeSpan.FromTicks(ticks))).ParamName);
-        Assert.Equal(Start, time.GetUtcNow());
+        Assert.Equal(_start, time.GetUtcNow());
         Assert.Equal(0, calls);
         time.Advance(TimeSpan.Zero);
         Assert.Equal(1, calls);
@@ -65,7 +65,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void PeriodsAndOneShotsFireInDueAndSchedulingOrder()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var events = new List<(string Name, long Ticks)>();
         using ITimer late = time.CreateTimer(_ => events.Add(("late", time.GetTimestamp())), null, Seconds(5), Timeout.InfiniteTimeSpan);
         using ITimer periodic = time.CreateTimer(_ => events.Add(("periodic", time.GetTimestamp())), null, Seconds(1), Seconds(2));
@@ -77,7 +77,7 @@ public sealed class ManualTimeProviderTests
             ("late", Seconds(5).Ticks), ("periodic", Seconds(5).Ticks), ("periodic", Seconds(7).Ticks),
         ];
         Assert.Equal(expected, events);
-        Assert.Equal(Start + Seconds(7), time.GetUtcNow());
+        Assert.Equal(_start + Seconds(7), time.GetUtcNow());
         time.Advance(Seconds(1));
         Assert.Equal(6, events.Count);
     }
@@ -88,7 +88,7 @@ public sealed class ManualTimeProviderTests
     [InlineData(-1)]
     public void OneShotAndDisabledTimers(int periodMilliseconds)
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         object state = new();
         int calls = 0;
         using ITimer once = time.CreateTimer(value => { Assert.Same(state, value); calls++; }, state,
@@ -105,7 +105,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void ChangeReplacesAndDisablesTheSchedule()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var ticks = new List<long>();
         using ITimer timer = time.CreateTimer(_ => ticks.Add(time.GetTimestamp()), null, Seconds(1), Seconds(1));
         time.Advance(TimeSpan.FromMilliseconds(500));
@@ -126,7 +126,7 @@ public sealed class ManualTimeProviderTests
     [InlineData(true)]
     public async Task DisposalCancelsPendingPeriodsAndIsIdempotent(bool asynchronous)
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         int calls = 0;
         ITimer timer = time.CreateTimer(_ => calls++, null, Seconds(1), Seconds(1));
         if (asynchronous) { await timer.DisposeAsync(); } else { timer.Dispose(); }
@@ -141,7 +141,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void CallbackCanMutateOtherSchedules()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var events = new List<string>();
         using ITimer changed = time.CreateTimer(_ => events.Add("changed"), null, Seconds(2), Timeout.InfiniteTimeSpan);
         using ITimer canceled = time.CreateTimer(_ => events.Add("canceled"), null, Seconds(2), Seconds(1));
@@ -149,7 +149,7 @@ public sealed class ManualTimeProviderTests
         using ITimer first = time.CreateTimer(_ =>
         {
             events.Add("first");
-            Assert.Equal(Start + Seconds(1), time.GetUtcNow());
+            Assert.Equal(_start + Seconds(1), time.GetUtcNow());
             Assert.True(changed.Change(TimeSpan.Zero, Timeout.InfiniteTimeSpan));
             canceled.Dispose();
             created = time.CreateTimer(_ => events.Add("created"), null, TimeSpan.Zero, Timeout.InfiniteTimeSpan);
@@ -167,7 +167,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void PeriodicCallbackCanChangeAndDisposeItself()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var ticks = new List<long>();
         ITimer? timer = null;
         timer = time.CreateTimer(_ =>
@@ -188,36 +188,36 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void CallbackCannotAdvanceRecursively()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using ITimer timer = time.CreateTimer(_ =>
             Assert.Throws<InvalidOperationException>(() => time.Advance(TimeSpan.Zero)),
             null, Seconds(1), Timeout.InfiniteTimeSpan);
         time.Advance(Seconds(3));
-        Assert.Equal(Start + Seconds(3), time.GetUtcNow());
+        Assert.Equal(_start + Seconds(3), time.GetUtcNow());
         time.Advance(Seconds(1));
-        Assert.Equal(Start + Seconds(4), time.GetUtcNow());
+        Assert.Equal(_start + Seconds(4), time.GetUtcNow());
     }
 
     /// <summary>Another thread can read and create timers during a callback; concurrent advances are rejected.</summary>
     [Fact]
     public async Task CallbackDoesNotHoldTheClockLock()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var release = new ManualResetEventSlim();
         using ITimer timer = time.CreateTimer(_ =>
         {
             entered.SetResult();
-            Assert.True(release.Wait(Bound, Token));
+            Assert.True(release.Wait(_bound, Token));
         }, null, Seconds(1), Timeout.InfiniteTimeSpan);
         Task advance = Task.Run(() => time.Advance(Seconds(1)), Token);
         try
         {
-            await Bounded(entered.Task);
+            await BoundedAsync(entered.Task);
             Assert.Throws<InvalidOperationException>(() => time.Advance(TimeSpan.Zero));
-            await Bounded(Task.Run(() =>
+            await BoundedAsync(Task.Run(() =>
             {
-                Assert.Equal(Start + Seconds(1), time.GetUtcNow());
+                Assert.Equal(_start + Seconds(1), time.GetUtcNow());
                 using ITimer other = time.CreateTimer(static _ => { }, null, Seconds(2), Seconds(1));
                 Assert.True(other.Change(Seconds(3), TimeSpan.Zero));
             }, Token));
@@ -225,7 +225,7 @@ public sealed class ManualTimeProviderTests
         finally
         {
             release.Set();
-            await Bounded(advance);
+            await BoundedAsync(advance);
         }
     }
 
@@ -233,7 +233,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public async Task DisposeAsyncWaitsForAnActiveCallback()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var release = new ManualResetEventSlim();
         int calls = 0;
@@ -241,13 +241,13 @@ public sealed class ManualTimeProviderTests
         {
             calls++;
             entered.SetResult();
-            Assert.True(release.Wait(Bound, Token));
+            Assert.True(release.Wait(_bound, Token));
         }, null, Seconds(1), Seconds(1));
         Task advance = Task.Run(() => time.Advance(Seconds(5)), Token);
         Task? disposal = null;
         try
         {
-            await Bounded(entered.Task);
+            await BoundedAsync(entered.Task);
             disposal = timer.DisposeAsync().AsTask();
             Assert.False(disposal.IsCompleted);
             Assert.False(timer.Change(TimeSpan.Zero, Seconds(1)));
@@ -255,9 +255,9 @@ public sealed class ManualTimeProviderTests
         finally
         {
             release.Set();
-            await Bounded(advance);
+            await BoundedAsync(advance);
         }
-        await Bounded(disposal!);
+        await BoundedAsync(disposal!);
         Assert.Equal(1, calls);
     }
 
@@ -265,13 +265,13 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void CallbackFailureStopsAtDueTimeAndAllowsLaterAdvance()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using ITimer timer = time.CreateTimer(_ => throw new IOException("callback"),
             null, Seconds(1), Timeout.InfiniteTimeSpan);
         Assert.Throws<IOException>(() => time.Advance(Seconds(3)));
-        Assert.Equal(Start + Seconds(1), time.GetUtcNow());
+        Assert.Equal(_start + Seconds(1), time.GetUtcNow());
         time.Advance(Seconds(2));
-        Assert.Equal(Start + Seconds(3), time.GetUtcNow());
+        Assert.Equal(_start + Seconds(3), time.GetUtcNow());
     }
 
     /// <summary>Invalid timer durations are rejected without replacing an existing valid schedule.</summary>
@@ -281,7 +281,7 @@ public sealed class ManualTimeProviderTests
     [InlineData(-20000L, 0L, "dueTime")]
     public void InvalidTimerChangeDoesNotMutateSchedule(long dueTicks, long periodTicks, string parameterName)
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         int calls = 0;
         using ITimer timer = time.CreateTimer(_ => calls++, null, Seconds(1), TimeSpan.Zero);
         Assert.Equal(parameterName, Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -296,7 +296,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void NullCallbackIsRejected()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         Assert.Equal("callback", Assert.Throws<ArgumentNullException>(() =>
             time.CreateTimer(null!, null, TimeSpan.Zero, TimeSpan.Zero)).ParamName);
     }
@@ -305,12 +305,12 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public async Task DelayUsesManualTime()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         Task delay = Task.Delay(Seconds(2), time, Token);
         time.Advance(Seconds(1));
         Assert.False(delay.IsCompleted);
         time.Advance(Seconds(1));
-        await Bounded(delay);
+        await BoundedAsync(delay);
         Assert.True(delay.IsCompletedSuccessfully);
     }
 
@@ -318,11 +318,13 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public async Task PendingDelayCanBeCanceled()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Token);
         Task delay = Task.Delay(Seconds(2), time, cancellation.Token);
         await cancellation.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Bounded(delay));
+        OperationCanceledException? canceled = null;
+        try { await BoundedAsync(delay); } catch (OperationCanceledException exception) { canceled = exception; }
+        Assert.NotNull(canceled);
         time.Advance(Seconds(10));
         Assert.True(delay.IsCanceled);
     }
@@ -331,7 +333,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void CancellationTokenSourceUsesManualTimeAndCanBeDisposedWhilePending()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using var source = new CancellationTokenSource(Seconds(2), time);
         using var pending = new CancellationTokenSource(Seconds(3), time);
         time.Advance(Seconds(1));
@@ -347,49 +349,51 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public async Task InternalPendingSignalExcludesDistantTimers()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         Task registered = time.WhenPendingAsync(1, Seconds(2), Token);
         using ITimer far = time.CreateTimer(static _ => { }, null, Seconds(10), TimeSpan.Zero);
         Assert.False(registered.IsCompleted);
         using ITimer near = time.CreateTimer(static _ => { }, null, Seconds(1), TimeSpan.Zero);
-        await Bounded(registered);
+        await BoundedAsync(registered);
     }
 
     /// <summary>Two waiters can be pending together; the second call does not replace the first.</summary>
     [Fact]
     public async Task EveryPendingWaiterIsCompleted()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         Task first = time.WhenPendingAsync(1, Seconds(2), Token);
         Task second = time.WhenPendingAsync(2, Seconds(2), Token);
         using ITimer one = time.CreateTimer(static _ => { }, null, Seconds(1), TimeSpan.Zero);
-        await Bounded(first);
+        await BoundedAsync(first);
         Assert.False(second.IsCompleted);
         using ITimer two = time.CreateTimer(static _ => { }, null, Seconds(2), TimeSpan.Zero);
-        await Bounded(second);
+        await BoundedAsync(second);
     }
 
     /// <summary>A periodic re-arm into the window completes a waiter that no earlier timer could satisfy.</summary>
     [Fact]
     public async Task PeriodicRearmSignalsWaiter()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using ITimer timer = time.CreateTimer(static _ => { }, null, Seconds(3), Seconds(1));
         Task waiter = time.WhenPendingAsync(1, Seconds(1), Token);
         Assert.False(waiter.IsCompleted);
         time.Advance(Seconds(3));
-        await Bounded(waiter);
+        await BoundedAsync(waiter);
     }
 
     /// <summary>A canceled wait for pending timers ends in cancellation without affecting the clock.</summary>
     [Fact]
     public async Task PendingWaitCanBeCanceled()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         using var source = CancellationTokenSource.CreateLinkedTokenSource(Token);
         Task waiter = time.WhenPendingAsync(1, Seconds(1), source.Token);
         await source.CancelAsync();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Bounded(waiter));
+        OperationCanceledException? canceled = null;
+        try { await BoundedAsync(waiter); } catch (OperationCanceledException exception) { canceled = exception; }
+        Assert.NotNull(canceled);
         using ITimer timer = time.CreateTimer(static _ => { }, null, Seconds(1), TimeSpan.Zero);
         time.Advance(Seconds(1));
     }
@@ -398,7 +402,7 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public void PeriodBeyondTimestampRangeFiresOnce()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         int count = 0;
         using ITimer timer = time.CreateTimer(_ => count++, null, Seconds(1), TimeSpan.MaxValue);
         time.Advance(Seconds(10));
@@ -410,19 +414,19 @@ public sealed class ManualTimeProviderTests
     [Fact]
     public async Task CallbackMayDisposeItsOwnTimerAsynchronously()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         ITimer? timer = null;
         ValueTask disposal = default;
         timer = time.CreateTimer(_ => disposal = timer!.DisposeAsync(), null, Seconds(1), Seconds(1));
         time.Advance(Seconds(3));
-        await Bounded(disposal.AsTask());
+        await BoundedAsync(disposal.AsTask());
     }
 
     /// <summary>Preserved from the old clock: a one-shot timer disposed by an earlier callback in the same advance is not invoked.</summary>
     [Fact]
     public void TimerDisposedByEarlierCallbackDoesNotFire()
     {
-        var time = new ManualTimeProvider(Start);
+        var time = new ManualTimeProvider(_start);
         int fired = 0;
         using ITimer victim = time.CreateTimer(_ => fired++, null, Seconds(2), TimeSpan.Zero);
         using ITimer killer = time.CreateTimer(_ => victim.Dispose(), null, Seconds(1), TimeSpan.Zero);

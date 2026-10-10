@@ -1,2 +1,5 @@
 tools/repo-checks/csharp/* text eol=lf
 /src/Nvt.Core/Threading/UiEventRunner.cs text eol=lf
+eng/core-health/* text eol=lf
+eng/core-health.lock.json text eol=lf
+.editorconfig text eol=lf

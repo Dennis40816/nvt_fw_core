@@ -145,7 +145,7 @@ public sealed class ChildProcessFixtureTests
 
     /// <summary>Disposal can be repeated.</summary>
     [Fact]
-    public async Task DisposeIsIdempotent()
+    public void DisposeIsIdempotent()
     {
         RequireWindows();
         ChildProcessFixture fixture = Start(Sleep);
@@ -153,9 +153,23 @@ public sealed class ChildProcessFixtureTests
 
         fixture.Dispose();
         fixture.Dispose();
-        await fixture.DisposeAsync();
 
         // HasExited reports the real exit state that disposal observed, not just that the fixture is disposed.
+        Assert.True(fixture.HasExited);
+        Assert.Equal(processId, fixture.ProcessId);
+    }
+
+    /// <summary>Asynchronous disposal can be repeated.</summary>
+    [Fact]
+    public async Task DisposeAsyncIsIdempotent()
+    {
+        RequireWindows();
+        ChildProcessFixture fixture = Start(Sleep);
+        int processId = fixture.ProcessId;
+
+        await fixture.DisposeAsync();
+        await fixture.DisposeAsync();
+
         Assert.True(fixture.HasExited);
         Assert.Equal(processId, fixture.ProcessId);
     }

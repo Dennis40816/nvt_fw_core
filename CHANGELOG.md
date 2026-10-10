@@ -130,6 +130,8 @@ Tag `core-v0.4.0` on commit `7bd42ce33eea26f3bd2eeacce958aa1cf701ccae` (#118). N
 
 ### Tools
 
+- `tools/repo-checks`: C# health enforcement checks fresh build/SARIF and format fingerprints, policy drift and evaluated project coverage. Core enrollment records existing debt; new occurrences fail and fixes lower the ledger.
+
 - `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
 - `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry, except for the App token request, which runs before gh starts. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain (#116).
 - `tools/nvt-sched`: tasks run under `conhost.exe --headless`, so no terminal window opens. `list`, `status` and the audit read run results from the runner state, because the headless console hides exit codes (#114).

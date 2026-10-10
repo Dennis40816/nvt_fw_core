@@ -137,7 +137,7 @@ public sealed class ConsoleControllerTests
     public void ReplacementKeepsOldLeaseReadableDuringNotificationThenReleasesIt()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();
@@ -162,10 +162,10 @@ public sealed class ConsoleControllerTests
     public void DisposingWithRetirementQueuedReleasesBothProjections()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
-        var controller = fixture.Controller();
+        using var controller = fixture.Controller();
         controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), controller.Dispose);
         controller.SetSearchText("text");
         ConsoleTestView.Pump();
@@ -279,7 +279,7 @@ public sealed class ConsoleControllerTests
     public void DisposeDuringViewStatePublicationStopsNotificationsAndDefersLeaseRelease()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();

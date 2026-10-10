@@ -3,6 +3,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using Nvt.Core.Processes;
 
 namespace Nvt.Core.TestSupport;
 
@@ -21,7 +22,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
     /// <summary>The default limit of captured output characters.</summary>
     public const int DefaultMaxOutputCharacters = 64 * 1024;
 
-    private static readonly TimeSpan DisposeExitWait = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _disposeExitWait = TimeSpan.FromSeconds(10);
 
     private readonly Lock _gate = new();
     private readonly StringBuilder _output = new();
@@ -87,14 +88,16 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
             startInfo.ArgumentList.Add(argument);
         }
 
-        var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
+        Process process = ProcessLaunchGate.Start(startInfo)
+            ?? throw new InvalidOperationException($"The process '{fileName}' did not start.");
         var fixture = new ChildProcessFixture(process, limit, clock ?? TimeProvider.System, maxOutputCharacters);
-        process.OutputDataReceived += (_, e) => fixture.Append(e.Data);
-        process.ErrorDataReceived += (_, e) => fixture.Append(e.Data);
-        process.Exited += (_, _) => _ = Task.Run(fixture.OnExited);
         try
         {
-            _ = process.Start();
+            // Output events begin at BeginOutputReadLine, so the handlers are in place before any data arrives.
+            process.OutputDataReceived += (_, e) => fixture.Append(e.Data);
+            process.ErrorDataReceived += (_, e) => fixture.Append(e.Data);
+            process.Exited += (_, _) => _ = Task.Run(fixture.OnExited);
+            process.EnableRaisingEvents = true;
             fixture._processId = process.Id;
             process.StandardInput.Close();
             process.BeginOutputReadLine();
@@ -192,7 +195,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
             {
                 return Task.FromException(new InvalidOperationException($"The output ended without '{text}'."));
             }
-            waiter = new OutputWaiter(text);
+            waiter = new OutputWaiter(text, new SignalWait($"child output containing '{text}'", _watchdog, _clock));
             _outputWaiters.Add(waiter);
         }
         return WaitForWaiterAsync(waiter, cancellationToken);
@@ -202,7 +205,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
     {
         try
         {
-            await SignalWait.WaitAsync(waiter.Source.Task, $"child output containing '{waiter.Text}'", _watchdog, _clock, cancellationToken).ConfigureAwait(false);
+            await waiter.Signal.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -242,7 +245,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
 
         try
         {
-            _exitedAtDispose = _process.WaitForExit(DisposeExitWait);
+            _exitedAtDispose = _process.WaitForExit(_disposeExitWait);
         }
         catch (InvalidOperationException)
         {
@@ -349,7 +352,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
             }
         }
         // Completion runs continuations asynchronously, so it is safe outside the lock.
-        completed?.ForEach(waiter => waiter.Source.TrySetResult());
+        completed?.ForEach(waiter => waiter.Signal.Set());
     }
 
     private void FailWaiters()
@@ -362,14 +365,14 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         }
         foreach (OutputWaiter waiter in remaining)
         {
-            _ = waiter.Source.TrySetException(new InvalidOperationException($"The output ended without '{waiter.Text}'."));
+            _ = waiter.Signal.Fail(new InvalidOperationException($"The output ended without '{waiter.Text}'."));
         }
     }
 
-    private sealed class OutputWaiter(string text)
+    private sealed class OutputWaiter(string text, SignalWait signal)
     {
         internal string Text { get; } = text;
 
-        internal TaskCompletionSource Source { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal SignalWait Signal { get; } = signal;
     }
 }

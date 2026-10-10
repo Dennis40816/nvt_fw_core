@@ -3,7 +3,8 @@
 [English](README.md) | 繁體中文
 
 這是供確定性測試使用的 net10.0 可封裝程式庫。版本繼承 Directory.Build.props，
-不相依於 Nvt.Core、xUnit 或 Avalonia。**只有測試專案可以參考此專案或套件**。
+只為了 `ChildProcessFixture` 使用的 Core 行程啟動 seam `ProcessLaunchGate` 而相依於 Nvt.Core，
+不相依於 xUnit 或 Avalonia。**只有測試專案可以參考此專案或套件**。
 不得新增時鐘或測試工作目錄的副本；需要新行為時，擴充共用實作及其測試。
 
 ## ManualTimeProvider
