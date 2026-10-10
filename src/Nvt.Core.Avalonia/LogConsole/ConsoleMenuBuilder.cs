@@ -59,13 +59,16 @@ internal static class ConsoleMenuBuilder
             {
                 Bindings = { new Binding(nameof(ConsoleController.Projection)) { Source = controller },
                     new DynamicResourceExtension("Nvt.Console.Count"), new DynamicResourceExtension("Nvt.Console.Sources.All") },
-                Converter = converter, ConverterParameter = sourceId is null ? "SourceText:All" : "SourceText:Id:" + sourceId,
+                Converter = converter,
+                ConverterParameter = sourceId is null ? "SourceText:All" : "SourceText:Id:" + sourceId,
             }));
             _lifetime.Bindings.Add(this.Bind(IsCheckedProperty, new MultiBinding
             {
                 Bindings = { new Binding(nameof(ConsoleController.Filter)) { Source = controller },
                     new Binding(nameof(ConsoleController.Projection)) { Source = controller } },
-                Converter = converter, ConverterParameter = parameter, Mode = BindingMode.OneWay,
+                Converter = converter,
+                ConverterParameter = parameter,
+                Mode = BindingMode.OneWay,
             }));
             _lifetime.Bindings.Add(this.Bind(AutomationProperties.NameProperty, new Binding(nameof(Header)) { Source = this }));
             controller.PropertyChanged += StateChanged;

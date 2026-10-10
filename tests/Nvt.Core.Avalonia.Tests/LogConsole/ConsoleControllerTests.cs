@@ -1,11 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Collections.Immutable;
-using System.ComponentModel;
 using System.Globalization;
 using Avalonia.Headless.XUnit;
-using Avalonia.Threading;
-using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
 
@@ -236,7 +232,8 @@ public sealed class ConsoleControllerTests
         fixture.Fence();
         using var controller = fixture.Controller(new ConsoleProjectionOptions
         {
-            Culture = CultureInfo.GetCultureInfo("fr-FR"), RelativeTimeTemplate = "−{0} s",
+            Culture = CultureInfo.GetCultureInfo("fr-FR"),
+            RelativeTimeTemplate = "−{0} s",
             AbsoluteTimeZone = TimeZoneInfo.CreateCustomTimeZone("display", TimeSpan.FromHours(8), "display", "display"),
         });
         Assert.Equal("19:59:57.700", controller.Projection.Rows[0].TimeText);

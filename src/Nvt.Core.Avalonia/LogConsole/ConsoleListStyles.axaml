@@ -1,0 +1,39 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:console="clr-namespace:Nvt.Core.Avalonia.LogConsole">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleListGeometry.axaml"/>
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml"/>
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml"/>
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/Icons/IconStyles.axaml"/>
+  <Style Selector="console|ConsoleListView">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
+    <Setter Property="ClipToBounds" Value="True"/>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="{TemplateBinding Background}" RowDefinitions="Auto,*">
+          <ScrollViewer Grid.Row="1" Name="PART_ScrollViewer" Classes="viewportBoundScroll"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <console:ConsoleItemsHost Name="PART_ItemsHost"/>
+          </ScrollViewer>
+          <Border Background="{DynamicResource NfcSurfaceSubtleBrush}" IsVisible="{Binding #PART_Retention.IsVisible}">
+            <TextBlock Name="PART_Retention" Margin="{DynamicResource Nvt.Console.List.RetentionMargin}"
+                       Height="{DynamicResource Nvt.Console.List.RetentionHeight}" LineHeight="{DynamicResource Nvt.Console.List.RowHeight}" IsVisible="False" IsHitTestVisible="False"
+                       Foreground="{DynamicResource NfcTextSecondaryBrush}"
+                       FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
+                       FontSize="{DynamicResource Nvt.Font.Caption.Size}" FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"/>
+          </Border>
+          <Button Grid.Row="1" Name="PART_Jump" Classes="actionPrimary" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Margin="{DynamicResource Nvt.Console.List.JumpMargin}" Height="{DynamicResource NfcControlHeight}" IsVisible="False"
+                  FontFamily="{DynamicResource Nvt.Font.Body.Family}"
+                  FontSize="{DynamicResource Nvt.Font.Body.Size}" FontWeight="{DynamicResource Nvt.Font.Body.Weight}"/>
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+</Styles>

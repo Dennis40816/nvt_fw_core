@@ -15,7 +15,7 @@ public sealed class ConsoleDispatcherTests
     public async Task InvokeAsyncThrowingDelegateFaultsReturnedTask()
     {
         var error = new InvalidOperationException("delegate");
-        var task = Dispatcher.UIThread.InvokeAsync((Action)(() => throw error), DispatcherPriority.Background).GetTask();
+        var task = global::Avalonia.Application.Current!.Dispatcher.InvokeAsync((Action)(() => throw error), DispatcherPriority.Background).GetTask();
         ConsoleTestView.Pump();
         Assert.Same(error, await Assert.ThrowsAsync<InvalidOperationException>(() => task.WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken)));
     }
@@ -25,7 +25,7 @@ public sealed class ConsoleDispatcherTests
     public async Task InvokeAsyncThrowingDelegateDoesNotRaiseUnhandledException()
     {
         using var failures = new ConsoleDispatcherExceptionScope();
-        var task = Dispatcher.UIThread.InvokeAsync((Action)(() => throw new InvalidOperationException("delegate")),
+        var task = global::Avalonia.Application.Current!.Dispatcher.InvokeAsync((Action)(() => throw new InvalidOperationException("delegate")),
             DispatcherPriority.Background).GetTask();
         ConsoleTestView.Pump();
         _ = await Record.ExceptionAsync(() => task.WaitAsync(TimeSpan.FromSeconds(60), TestContext.Current.CancellationToken));
@@ -38,7 +38,7 @@ public sealed class ConsoleDispatcherTests
     {
         using var failures = new ConsoleDispatcherExceptionScope();
         var error = new InvalidOperationException("delegate");
-        Dispatcher.UIThread.Post(() => throw error);
+        global::Avalonia.Application.Current!.Dispatcher.Post(() => throw error);
         ConsoleTestView.Pump();
         Assert.Same(error, Assert.Single(failures.Errors));
     }
