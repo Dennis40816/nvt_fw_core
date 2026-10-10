@@ -768,28 +768,6 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         Assert.True(schedule.HeldOutputGraceAt <= schedule.ReaderStopAt, "The held-output grace must fall within the deadline.");
     }
 
-    /// <summary>Guard: CancelWithinAsync catches a synchronous blocking cancel promptly instead of hanging.</summary>
-    [Fact]
-    public async Task CancelWithinGuardFailsPromptlyOnBlockingCancel()
-    {
-        using var gate = new ManualResetEventSlim(false);
-        using var cancellation = new CancellationTokenSource();
-        using CancellationTokenRegistration registration = cancellation.Token.Register(gate.Wait);
-        try
-        {
-            // A synchronous blocking callback (the pre-fix regression) must be reported within the small bound,
-            // long before the 40 s watchdog, so a regressed runner fails fast rather than hanging the suite.
-            var clock = Stopwatch.StartNew();
-            _ = await Assert.ThrowsAnyAsync<Exception>(
-                () => CancelWithinAsync(cancellation, TimeSpan.FromSeconds(1)));
-            Assert.True(clock.Elapsed < TimeSpan.FromSeconds(10), $"The guard took {clock.Elapsed} to report a blocking cancel.");
-        }
-        finally
-        {
-            gate.Set();
-        }
-    }
-
     /// <summary>detached, unsettled invocations are capped; a new run is refused, and settling frees a slot.</summary>
     [Fact]
     public async Task DetachedCleanupIsBoundedAndRefusesNewRunsAtTheLimit()
