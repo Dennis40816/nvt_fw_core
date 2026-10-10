@@ -1727,6 +1727,7 @@ If `ThemeTokens.axaml` is merged at the same root, merge it before calling this 
 The method replaces one rest-fill `ResourceInclude` and preserves unrelated dictionaries, including the shape setting.
 Only absolute `avares://` rest-fill sources are recognized. Resolve relative paths before adding an include. Avalonia does not expose the include's base URI.
 Null resources, undefined enum values, and worker-thread calls throw before resources change.
+The thread check is `AvaloniaObject.VerifyAccess` on the resource dictionary, or on `Application.Current` when the dictionary is not an `AvaloniaObject`. A worker-thread call throws `InvalidOperationException`.
 Attached controls update through dynamic resources without replacing templates.
 None at a narrower resource root hides fills only within that subtree. Theme and shape changes keep the selected rest-fill mode.
 Soft removes that root's override and uses inherited resources; an ancestor's None setting remains inherited.

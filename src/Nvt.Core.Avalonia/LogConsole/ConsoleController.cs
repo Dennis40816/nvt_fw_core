@@ -19,7 +19,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private readonly LogStore _store;
     private readonly Dispatcher _dispatcher;
     // _workGate protects notification scheduling, disposal, and the single pending operation.
-    private readonly object _workGate = new();
+    private readonly Lock _workGate = new();
     private DispatcherOperation? _pending;
     private bool _refreshRequested;
     private bool _disposed;
@@ -58,8 +58,11 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
             var removed = _filter.EnabledLevels.Remove(level);
-            SetFilter(_filter with { EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
-                ? _filter.EnabledLevels.Add(level) : removed });
+            SetFilter(_filter with
+            {
+                EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
+                ? _filter.EnabledLevels.Add(level) : removed
+            });
         });
         ToggleOnlyMatchesCommand = Command(() => SetFilter(_filter with { OnlyMatches = !_filter.OnlyMatches }));
         ToggleDedupeCommand = Command(() => SetFilter(_filter with { Deduplicate = !_filter.Deduplicate }));
@@ -225,13 +228,20 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
             _projection = next;
             _viewState = remapped;
         }
-        catch (Exception error)
+        // A reader supplied by the host can throw any non-fatal type. Keep the last good projection, report the
+        // failure through RefreshError and recover on the next change. Fatal runtime failures are not swallowed.
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
             next?.Dispose();
             if (SetRefreshError(error)) Notify(nameof(RefreshError), notificationErrors);
             Schedule(false);
             RethrowNotificationErrors(notificationErrors);
             return;
+        }
+        catch
+        {
+            next?.Dispose();
+            throw;
         }
         var errorChanged = SetRefreshError(null);
         Notify(nameof(ViewState), notificationErrors);

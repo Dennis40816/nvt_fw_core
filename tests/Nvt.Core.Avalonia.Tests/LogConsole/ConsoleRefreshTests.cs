@@ -2,12 +2,7 @@
 
 
 using System.ComponentModel;
-using Avalonia.Automation;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Threading;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;

@@ -36,7 +36,9 @@ internal sealed class ConsoleTextConverter : IMultiValueConverter
         {
             "Time" => (ConsoleTimeMode)values[0]! switch
             {
-                ConsoleTimeMode.Absolute => Text(1), ConsoleTimeMode.Relative => Text(2), ConsoleTimeMode.Hidden => Text(3),
+                ConsoleTimeMode.Absolute => Text(1),
+                ConsoleTimeMode.Relative => Text(2),
+                ConsoleTimeMode.Hidden => Text(3),
                 _ => AvaloniaProperty.UnsetValue,
             },
             string levelKey when levelKey.StartsWith("Level:", StringComparison.Ordinal) => _formatter.Format("Count", Text(2), culture, Text(1), values[0]),
@@ -55,8 +57,12 @@ internal sealed class ConsoleTextConverter : IMultiValueConverter
         var levels = filter.EnabledLevels.IsEmpty ? Text(4)
             : string.Join(Text(10), filter.EnabledLevels.Order().Select(level => Text(level switch
             {
-                LogLevel.Trace => 12, LogLevel.Debug => 13, LogLevel.Info => 14,
-                LogLevel.Warn => 15, LogLevel.Error => 16, LogLevel.Fatal => 17,
+                LogLevel.Trace => 12,
+                LogLevel.Debug => 13,
+                LogLevel.Info => 14,
+                LogLevel.Warn => 15,
+                LogLevel.Error => 16,
+                LogLevel.Fatal => 17,
                 _ => throw new ArgumentOutOfRangeException(nameof(level)),
             })));
         var sources = filter.SelectedSources.IsEmpty ? Text(5)

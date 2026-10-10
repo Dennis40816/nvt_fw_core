@@ -9,6 +9,7 @@ using Xunit;
 namespace Nvt.Core.Tests.Processes;
 
 /// <summary>Characterizes frozen runner timing, admission, launch inputs, and native output boundaries.</summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerBoundaryTests
 {
     private static readonly string[] LaunchArguments = ["", "two words", "quote\"inside", "trail\\", "工具"];

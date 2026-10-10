@@ -10,7 +10,7 @@ namespace Nvt.Core.Tests.Launcher;
 /// <summary>Guards the Launcher implementation boundary before the public API freeze. The compiler already rejects a public signature that exposes an internal type, so this class pins only the visibility decisions.</summary>
 public sealed class LauncherPublicSurfaceTests
 {
-    private static readonly HashSet<Type> InternalTypes =
+    private static readonly HashSet<Type> _internalTypes =
     [
         typeof(InstalledApplicationCoordinator),
         typeof(InstalledApplicationPresentation),
@@ -23,7 +23,7 @@ public sealed class LauncherPublicSurfaceTests
     [Fact]
     public void ImplementationTypesAreInternalAndActivationPoliciesArePublic()
     {
-        foreach (Type type in InternalTypes.OrderBy(type => type.FullName, StringComparer.Ordinal))
+        foreach (Type type in _internalTypes.OrderBy(type => type.FullName, StringComparer.Ordinal))
         {
             Assert.False(type.IsPublic || type.IsNestedPublic, $"{type.FullName} must be internal.");
         }

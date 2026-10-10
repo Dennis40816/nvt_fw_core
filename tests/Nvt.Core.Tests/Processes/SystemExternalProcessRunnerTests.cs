@@ -10,6 +10,7 @@ using Xunit;
 namespace Nvt.Core.Tests.Processes;
 
 /// <summary>Verifies external process cancellation leaves no child process running.</summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerTests
 {
     /// <summary>Approved external tools never allocate a visible console or use a shell.</summary>

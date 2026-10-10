@@ -134,6 +134,10 @@ public static class UiResourceResolver
             : fallback;
     }
 
+    /// <summary>Gets a string resource for internal controls, or null when it is unavailable.</summary>
+    internal static string? GetString(Control owner, string key) =>
+        TryResolve(owner, key, out var value) && value is string text ? text : null;
+
     private static bool TryResolve(Control owner, string key, out object? value)
     {
         var theme = owner.ActualThemeVariant ?? ThemeVariant.Default;

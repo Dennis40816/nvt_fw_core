@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nvt.Core.Avalonia\Nvt.Core.Avalonia.csproj" />
     <ProjectReference Include="..\..\src\Nvt.Core.Fonts\Nvt.Core.Fonts.csproj" />
+    <ProjectReference Include="..\Nvt.Core.TestSupport\Nvt.Core.TestSupport.csproj" />
     <Compile Include="..\..\src\Nvt.Core.Avalonia\Testing\AvaloniaTestHost.cs"
              Link="Testing\AvaloniaTestHost.cs" />
   </ItemGroup>

@@ -10,8 +10,8 @@ namespace Nvt.Core.Avalonia.LogConsole;
 // UI-thread-only dictionary access. Local views use these defaults only when host lookup has no value.
 internal static class ConsoleResourceText
 {
-    private static readonly ResourceInclude Defaults = new(new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleResources.axaml"))
-        { Source = new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleResources.axaml") };
+    private static readonly ResourceInclude _defaults = new(new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleResources.axaml"))
+    { Source = new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleResources.axaml") };
     internal static object GetValue(string key, StyledElement? host = null)
     {
         var resourceKey = "Nvt.Console." + key;
@@ -24,7 +24,7 @@ internal static class ConsoleResourceText
     private static object GetDefaultValue(string key)
     {
         var resourceKey = "Nvt.Console." + key;
-        if (Defaults.TryGetResource(resourceKey, ThemeVariant.Default, out var value) && value is not null) return value;
+        if (_defaults.TryGetResource(resourceKey, ThemeVariant.Default, out var value) && value is not null) return value;
         throw new KeyNotFoundException(resourceKey);
     }
 }

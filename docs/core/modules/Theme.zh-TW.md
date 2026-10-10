@@ -1726,6 +1726,7 @@ public static void SetRestFill(IResourceDictionary resources, ThemeRestFill fill
 方法替換一個靜止填色 `ResourceInclude`，保留其他字典及形狀設定。
 只辨識絕對 `avares://` 靜止填色來源。加入 include 前，請先解析相對路徑。Avalonia 不公開 include 的基底 URI。
 null 資源、未定義列舉值及背景執行緒呼叫都會在修改資源前擲回例外。
+執行緒檢查是對資源字典呼叫 `AvaloniaObject.VerifyAccess`；字典不是 `AvaloniaObject` 時，改對 `Application.Current` 呼叫。背景執行緒呼叫會擲回 `InvalidOperationException`。
 已附加控制項透過動態資源更新，不替換範本。
 較近資源根節點的 None 設定只隱藏該子樹的填色。切換主題或形狀仍保留所選填色模式。
 Soft 移除該根節點的覆寫並使用繼承資源；祖先的 None 設定仍會繼承。

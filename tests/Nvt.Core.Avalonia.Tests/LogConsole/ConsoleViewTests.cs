@@ -7,9 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using Nvt.Core.Avalonia.LogConsole;
@@ -54,7 +52,7 @@ public sealed class ConsoleViewTests
             });
             using var frame = new RenderTargetBitmap(new PixelSize(width, width <= 960 ? 184 : 144), new Vector(96, 96));
             frame.Render(window);
-            ConsoleTestView.SaveEvidence(frame, $"{(dark ? "dark" : "light")}-{shape.ToString().ToLowerInvariant()}-{width}-header-toolbar-empty.png");
+
         }
         finally { window.Close(); }
     }
@@ -226,8 +224,13 @@ public sealed class ConsoleViewTests
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var calls = 0;
-        var header = new ConsoleHeader { Controller = controller, CopySelectedCommand = new RelayCommand(() => calls++),
-            CopyVisibleCommand = new RelayCommand(() => calls++), SaveLogCommand = new RelayCommand(() => calls++) };
+        var header = new ConsoleHeader
+        {
+            Controller = controller,
+            CopySelectedCommand = new RelayCommand(() => calls++),
+            CopyVisibleCommand = new RelayCommand(() => calls++),
+            SaveLogCommand = new RelayCommand(() => calls++)
+        };
         var window = ConsoleTestView.Create(header, height: 48);
         try
         {
