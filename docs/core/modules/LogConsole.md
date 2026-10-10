@@ -7,7 +7,7 @@
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
 It targets `net8.0`.
 It adds no package.
-The Avalonia control and its commands come in K2.
+The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`.
 
 ## Design and provenance
 
@@ -16,11 +16,11 @@ It does not port a product console.
 The behavior reference is the earlier NFH console and the approved console redesign proposal.
 An NFH measurement included product projection and UI work; the Core performance test measures only projection.
 These workloads do not establish a comparable UI speedup.
-No UI or product logic is included here.
+The non-UI layer includes no UI or product logic.
 
 ## State structure
 
-Inputs live in one `ConsoleFilter` record.
+Event-filter inputs live in one `ConsoleFilter` record.
 It contains levels, sources, literal search, only-matches, dedupe, and time mode.
 An empty source set means all sources.
 An empty level set means no levels.
@@ -59,9 +59,10 @@ Its only time source is the snapshot capture instant or the pause instant.
 It returns content handles, search ranges, counts, and row membership.
 It never copies an entire message into a row string.
 Counts and empty-state values belong only to this output.
-The host must reject background projections when snapshot or filter inputs have changed.
-K2 routes menus and shortcuts through the same commands.
-K1 contains mechanisms and immutable values, not another command or controller implementation.
+The host must reject background projections when snapshot, filter, or presentation inputs have changed.
+The Avalonia controller owns command routing for the header and toolbar.
+The non-UI layer supplies immutable inputs and projection mechanisms.
+List virtualization, row interaction, and keyboard routing are supplied by the list slice of K2.
 
 ## Storage, budgets, and lifetime
 
@@ -217,6 +218,74 @@ The matching event count sums the visible row memberships.
 The row count counts projected rows.
 Multiline text does not create extra events.
 
+## Presentation contracts
+
+These contracts follow Console redesign v3 (#82), **v3 更新**, **由 app 注入 / SourceRegistry**,
+**增量連結解析**, and **去重與篩選的投影**. They add no UI, product type, resource lookup,
+thread-culture read, local-zone lookup, or file-system access. Store admission, ownership,
+rejection, dedupe, and scanner grammar remain unchanged.
+
+### Source registry
+
+The app supplies `ConsoleProjectionOptions.SourceRegistry`, an immutable array of `ConsoleSource` values.
+Each value supplies a stable ordinal `SourceId`, a `DisplayName`, and ascending `DisplayOrder`.
+IDs must be unique; null entries, IDs, or names and an uninitialized array are invalid.
+Equal display orders preserve input order. Empty IDs remain compatible with store IDs.
+`ConsoleProjection.Sources` is the authoritative display order: all declarations first,
+then unknown IDs in their first retained sequence order. Unknown names equal their IDs, and unknown sources use `int.MaxValue` as their display order.
+The dictionary `SourceCounts` is seeded with zero for every declared source and still counts
+raw events after the level filter only. Filtering and search continue to use IDs.
+No count is stored in source metadata, and no display name is copied into every row.
+Replacing the registry changes the next projection, even with the same snapshot version.
+A host must include registry/presentation replacement in its stale-result check.
+
+### Projected links
+
+`ConsoleLinkCache.GetLinks(snapshot, row)` accepts the snapshot used to
+produce the row. The caller passes a `ConsoleRow` directly, with no raw-entry lookup.
+The row's existing projection lease supplies segmented text and structured spans.
+For dedupe, this is the latest retained member, even after the original member is evicted.
+No new text owner or full-message copy is introduced. Entry and group IDs have distinct cache keys.
+The overload shares the raw-entry overload's scanner, index, lock, synchronization, and all three
+retention budgets. Search and source-name changes do not invalidate links.
+Call `Synchronize` for each accepted snapshot, including Clear. Old rows remain readable through
+their leases, but a stale snapshot or representative cannot populate the current cache.
+A representative change invalidates group results even at the same text version because supplied
+spans are not part of the dedupe key. Oversized results are complete but uncached.
+
+### Explicit time presentation
+
+The additive `Project(snapshot, filter, viewState, options)` overload uses one pure
+`ConsoleTimeFormatter.Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone)` path.
+The original overload uses invariant culture, the approved default `Console.Timestamp.Ago`
+template `"{0} s ago"`, and UTC. The app supplies its resolved resource template and explicit
+`CultureInfo`; it must not mutate that culture during a projection.
+Placeholder 0 receives seconds formatted as `"0.0"` in that culture, such as `2.3` or `2,3`.
+The template is formatted only in Relative mode: a malformed template throws `FormatException` from the projection in that mode and is ignored in Absolute and Hidden modes.
+Pause still uses `PausedAt`, independent of later captures or presentation changes.
+Hidden time stays empty. Absolute time keeps invariant `HH:mm:ss.fff`, converted through the
+explicit `TimeZoneInfo`; the app may pass its chosen local zone or UTC. Core never chooses local time.
+Export and copy continue to use the store's UTC occurrence timestamps, independently of screen options.
+
+### First-line metadata
+
+`ConsoleRow.GetFirstLine(maxCharacters = 1024)` delegates to pure `ConsoleFirstLine.Read(content, maxCharacters)`.
+It returns `Text` and `HasMoreContent` on demand, without storing a newline or truncation flag on a row.
+CR, LF, and CRLF end the first line and are excluded from the preview.
+The cap is in UTF-16 characters, allows 0 through 4,096, and never splits a valid surrogate pair.
+At most cap + 1 characters are read, in requests of at most 1,024, and only the bounded prefix becomes a string.
+`HasMoreContent` means the preview omits any original content, including a terminal line break.
+The UI determines additional truncation caused by its available width.
+
+### Assumptions
+
+The design leaves these details open; this module assumes stable input order for equal declared orders,
+first appearance within the retained snapshot for unknown sources (no historical registry in the store),
+a 4,096-character hard preview ceiling, and omitted terminal line breaks as more content.
+The latest retained member remains the group's link representative; replacing it invalidates its
+cache slot to honor differing structured spans. A matching snapshot accompanies row link access
+for the existing live-cache generation and version fence.
+
 ## Links and app interfaces
 
 `ConsoleLinkScanner` is pure.
@@ -263,7 +332,8 @@ Default arrays, null spans or targets, invalid ranges, and overlaps throw Argume
 App-supplied spans replace scanning completely.
 An explicitly empty span array also wins.
 `ConsoleLinkIndex` validates ranges and provides binary hit testing.
-`ConsoleLinkCache` keys results by entry ID and text revision within the accepted snapshot generation and version.
+`ConsoleLinkCache` keys results by discriminated entry/group identity and text revision.
+A group result is also bound to its latest retained representative, so changed app spans cannot reuse a previous representative's result at the same text version.
 Search is not a cache key.
 `Synchronize` is its only semantic invalidation point.
 Call it for every accepted snapshot, including Clear.
@@ -301,12 +371,181 @@ No display truncation or stale formatted-text cache is used.
 For export and copy, including while collapsed, the host awaits `CaptureLatestAsync(cancellationToken)` and projects that frozen snapshot.
 Formatting methods accept an existing projection and do not acquire or refresh store state.
 
+## Avalonia controller and toolbar
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` is the single writer of the immutable
+filter and view-state inputs. Construct it on Core's registered `UiThread`, passing
+an app-owned `LogStore`, an immutable `ConsoleSource` catalog, and optional
+`ConsoleProjectionOptions`. The catalog becomes `Options.SourceRegistry`; time mode
+remains in `Filter.TimeMode`. Template, culture, and absolute time zone are explicit
+inputs. Keep the supplied culture unchanged during use.
+
+The controller subscribes before startup capture and enables store notifications.
+Producer callbacks request one coalesced UI operation. Each refresh captures a leased
+snapshot and calls `ConsoleProjector.Project` once. The controller remaps canonical
+selection and expanded identities, including paused order across dedupe changes,
+then publishes `Projection` through `INotifyPropertyChanged`. Counts are read from
+that projection. A later background-priority dispatcher turn retires the previous
+projection after bindings and layout have consumed its replacement. Owned content
+is bounded to the current projection and one retiring projection. Before publication,
+the refresh validates the snapshot generation with `LogStore.IsCurrent`, so Clear's
+admission fence also rejects UI work queued before its writer reset. Disposal stops
+the active notification sequence and defers lease release until its callbacks return.
+A nested dispatcher pump cannot retire projections borrowed by those callbacks.
+
+The list borrows `Projection` and reports immutable intents through
+`RequestViewState(state)`. It does not dispose that projection or mutate controller
+inputs. `Pause(rowId, textOffset, pixelOffset)` captures the reading anchor and samples
+the injected store clock through a fresh nonblocking snapshot for the pause instant;
+`Resume()` is the jump-to-latest intent. Collapse is a view-state change and preserves
+follow state. The host calls `Dispose()` on page exit; it unsubscribes, aborts queued
+work, and releases both projections. Repeated disposal is safe. The app retains store
+ownership. The controller calls `SetReady(true)` for the whole store during construction;
+`Dispose()` does not restore its previous readiness. This also affects other subscribers.
+The host must account for that persistent store-wide notification state.
+
+Toolbar actions use `ToggleLevelCommand` (a `LogLevel` parameter),
+`ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand` (a
+`ConsoleTimeMode` parameter), `ClearCommand`, and `ResetFiltersCommand`.
+`SetSelectedSources(ids)` selects ordinal IDs; an empty set selects all sources.
+In the source menu, All sources checks every source and includes future sources.
+Clicking a checked source excludes it from the current catalog; subsequent clicks
+toggle explicit membership. The last checked source is disabled, preserving the
+empty-set-means-all contract. All sources restores the unrestricted selection.
+Detach and controller replacement close and clear the source menu, release its
+bindings, and invalidate retained item commands.
+While the source menu is open, projection catalog changes rebuild its items in place
+through the same builder, preserving the open popup. Membership is compared directly
+with the projection; the view keeps no separate source catalog. Missing source IDs
+resolve as unchecked with a zero count, using the ID as the fallback label.
+`SetSearchText(text)` treats whitespace alone as an empty search. Reset restores the
+default filters and dedupe while preserving time presentation and reading state.
+All intents and disposal require the UI thread. Export flags belong to
+`ExportOptions`, with `ToggleExportTimeCommand` and `ToggleExportLevelCommand`.
+
+`ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
+styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
+entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
+Fonts roles and keep the console at least 640 DIP wide. The approved B layout places
+search beside the title at wide widths, with levels and sources in the filter row.
+At 960 DIP and below, search and Only matches move to the second filter row; Display
+contains time and dedupe, and More contains export and clear. Header height is 48 DIP;
+the filter row is 48 DIP wide and 88 DIP narrow. Resting actions have no fill or border;
+level buttons show semantic icons with complete raw counts in Core tooltips. Shared
+icon corrections follow rendering scale and unsubscribe on detach. The empty view
+is visible when `Projection.IsEmpty`. With no retained events (`Projection.EventCount == 0`),
+it shows the no-events message and hides Reset filters. A filtered empty result shows
+a localized filter summary and Reset filters.
+Console action buttons and menu items bind their family, size, and weight directly
+to the Core Body role through local dynamic-resource styles, including Chinese source
+labels. Other controls retain their existing font roles.
+
+The header's `Title` defaults to Console. The app binds `CopySelectedCommand`,
+`CopyVisibleCommand`, and `SaveLogCommand`; the menu supplies the independent Include
+time and Include level options. Header menu bindings follow the header's current
+controller directly, so popup dismissal does not disconnect an executing command.
+Clipboard and file adapters, row navigation, and
+list rendering belong to the host's interaction and list layers.
+
+| Avalonia type | Public members |
+| --- | --- |
+| `ConsoleController` | Constructor `(store, sources, options = null)`, `PropertyChanged`, `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `RefreshError`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`, `SetSelectedSources`, `SetSearchText`, `RequestViewState`, `Pause`, `Resume`, `Dispose`. |
+| `ConsoleHeader` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`, `Title` / `TitleProperty`, `CopySelectedCommand` / `CopySelectedCommandProperty`, `CopyVisibleCommand` / `CopyVisibleCommandProperty`, `SaveLogCommand` / `SaveLogCommandProperty`. |
+| `ConsoleToolbar` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
+| `ConsoleEmptyState` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
+
+
+The constructor validates `RelativeTimeTemplate`, so malformed composite formatting is rejected
+as an `ArgumentException` naming `options`, with the original `FormatException` as its cause.
+A refresh failure keeps the previous projection and publishes the exception through read-only
+`RefreshError`. The next successful accepted refresh clears it. Failed projections release their
+fresh leases. Refresh requests are queued before input notifications, including when an observer
+throws. Search input and clear-search actions stop invoking a disposed controller.
+Notifications raised from `SetFilter` (including search, source, and command inputs) and
+`RequestViewState` propagate subscriber exceptions synchronously to the caller.
+Accepted refreshes update all state before notifying `ViewState`, `Projection`, then a changed
+`RefreshError`. Refresh notifications collect every subscriber exception and complete the sequence
+before posting a preserved rethrow on the UI dispatcher, where it enters the dispatcher's unhandled
+exception path. A single failure is rethrown directly; multiple failures use one `AggregateException`.
+The previous projection retires only after replacement notification is attempted. A throwing failure
+observer leaves the previous projection and later refreshes usable.
+
+### Resource keys
+
+`LogConsole/ConsoleResources.axaml` defines English defaults and structural dimensions and is
+merged by `LogConsoleStyles.axaml`. Controls include the resource-free control styles locally;
+their dynamic resource bindings use the same dictionary only as a fallback for missing keys.
+Hosts can override `Nvt.Console.*` in application, window, or console ancestor resources,
+including at runtime. Malformed host templates fall back to the built-in English template on `FormatException`.
+`MinimumWidth` and `NarrowBreakpoint` are the single shared definitions
+for all console surfaces. Composed heights follow the existing dynamic control and spacing tokens.
+
+Time modes and level labels are mapped through keys. The controller exposes filter data;
+`FilterSummary` is no longer public API. The view derives summary text from resource templates.
+`Count` accepts a label and raw count; `Sources.Selected` and `Dedupe.Count` accept a count.
+`Empty.NoMatches` accepts the derived filter summary. `Filter.Search` accepts the literal query
+and search-mode label; `Filter.Summary` accepts levels, sources, search suffix, and dedupe suffix.
+Keep these composite placeholders valid. `Title` is the default title; an explicit host title wins.
+The separate injected `ConsoleProjectionOptions.RelativeTimeTemplate` continues to format event time.
+
+| Key | English default / DIP value |
+| --- | --- |
+| `Nvt.Console.MinimumWidth` | `640` |
+| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.Title` | `Console` |
+| `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
+| `Nvt.Console.Search.Name` | `Search console` |
+| `Nvt.Console.Search.Clear` | `Clear search` |
+| `Nvt.Console.OnlyMatches` | `Only matches` |
+| `Nvt.Console.Export` | `Export` |
+| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.Display` | `Display` |
+| `Nvt.Console.Display.Name` | `Display console` |
+| `Nvt.Console.More` | `More` |
+| `Nvt.Console.More.Name` | `More console actions` |
+| `Nvt.Console.Time.Name` | `Time display` |
+| `Nvt.Console.Time.Absolute` | `Absolute time` |
+| `Nvt.Console.Time.Relative` | `Relative time` |
+| `Nvt.Console.Time.Hidden` | `Hidden time` |
+| `Nvt.Console.CopySelected` | `Copy selected` |
+| `Nvt.Console.CopyVisible` | `Copy visible rows` |
+| `Nvt.Console.SaveLog` | `Save as .log` |
+| `Nvt.Console.IncludeTime` | `Include time` |
+| `Nvt.Console.IncludeLevel` | `Include level` |
+| `Nvt.Console.Clear` | `Clear console` |
+| `Nvt.Console.Sources.Name` | `Select sources` |
+| `Nvt.Console.Sources.All` | `All sources` |
+| `Nvt.Console.Sources.Selected` | `Sources ({0})` |
+| `Nvt.Console.Dedupe` | `Dedupe` |
+| `Nvt.Console.Dedupe.Count` | `Dedupe ×{0}` |
+| `Nvt.Console.Count` | `{0} · {1}` |
+| `Nvt.Console.Empty.NoEvents` | `No events yet` |
+| `Nvt.Console.Empty.NoMatches` | `No matching events · {0}` |
+| `Nvt.Console.ResetFilters` | `Reset filters` |
+| `Nvt.Console.Filter.NoLevels` | `no levels` |
+| `Nvt.Console.Filter.Search` | `; search ‘{0}’ ({1})` |
+| `Nvt.Console.Filter.MatchesOnly` | `matches only` |
+| `Nvt.Console.Filter.Highlight` | `highlight` |
+| `Nvt.Console.Filter.Dedupe` | `; dedupe` |
+| `Nvt.Console.Filter.Separator` | `, ` |
+| `Nvt.Console.Filter.Summary` | `{0}; {1}{2}{3}` |
+| `Nvt.Console.Level.Trace` | `Trace` |
+| `Nvt.Console.Level.Debug` | `Debug` |
+| `Nvt.Console.Level.Info` | `Info` |
+| `Nvt.Console.Level.Warn` | `Warn` |
+| `Nvt.Console.Level.Error` | `Error` |
+| `Nvt.Console.Level.Fatal` | `Fatal` |
+
 ## Public API
 
 | Type | Public members |
 | --- | --- |
 | `LogLevel` | `Trace`, `Debug`, `Info`, `Warn`, `Error`, `Fatal`. |
 | `ConsoleTimeMode` | `Absolute`, `Relative`, `Hidden`. |
+| `ConsoleSource` | Constructor `(SourceId, DisplayName, DisplayOrder = 0)`, `SourceId`, `DisplayName`, `DisplayOrder`, positional `Deconstruct`: app source metadata without product types. |
+| `ConsoleProjectionOptions` | Parameterless constructor, `SourceRegistry`, `RelativeTimeTemplate`, `Culture`, `AbsoluteTimeZone`: explicit app presentation inputs. |
+| `ConsoleTimeFormatter` | `Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone = null)`: one pure time formatting path. |
+| `ConsoleFirstLine` | Constructor `(Text, HasMoreContent)`, `Text`, `HasMoreContent`, positional `Deconstruct`, `Read(content, maxCharacters = 1024)`: bounded derived preview. |
 | `ConsoleFilter` | `EnabledLevels`, `SelectedSources`, `SearchText`, `OnlyMatches`, `Deduplicate`, `TimeMode`. |
 | `ConsoleRowId` | `Value`, `IsGroup`. |
 | `ILogTextContent` | `Length`, `ResidentCharacterCount`, `Version`, `Read(offset, destination)`, `Dispose()`. |
@@ -321,15 +560,15 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 | `ConsoleViewState` | `Follow`, `ExpandedIds`, `Selection` (`ImmutableHashSet<long>` of raw EntryIds), `IsExpanded`, `Pause(projection, rowId, textOffset, pixelOffset, pausedAt)`, `Resume()`, `Remap(previous, current)`. |
 | `ConsoleSearchArea` | `Message`, `Source`. |
 | `ConsoleSearchHit` | `Area`, `Start`, `Length`. |
-| `ConsoleRow` | `Id`, `Level`, `SourceId`, `TextContent` (`ILogTextContent`), `TextVersion`, `LinkSpans`, `MemberSequences`, `FirstTimestamp`, `Timestamp`, `LastSequence`, `SearchHits`, `TimeText`, `Count`. |
-| `ConsoleProjection` | `Version`, `Generation`, `LastSequence`, `CapturedAt`, `TimeBase`, `Rows`, `LevelCounts`, `SourceCounts`, `RetainedMembership`, `EventCount`, `NewSincePauseCount`, `EvictedCount`, `Deduplicate`, `ResolvedAnchorId`, `RowCount`, `MatchingEventCount`, `DuplicatesMerged`, `IsEmpty`, `Dispose()`. |
-| `ConsoleProjector` | `Project(snapshot, filter, viewState)`. |
+| `ConsoleRow` | `Id`, `Level`, `SourceId`, `TextContent` (`ILogTextContent`), `TextVersion`, `LinkSpans`, `MemberSequences`, `FirstTimestamp`, `Timestamp`, `LastSequence`, `SearchHits`, `TimeText`, `Count`, additive `GetFirstLine(maxCharacters = 1024)` for derived collapsed previews. |
+| `ConsoleProjection` | `Version`, `Generation`, `LastSequence`, `CapturedAt`, `TimeBase`, `Rows`, `LevelCounts`, `SourceCounts`, additive `Sources` for ordered display metadata, `RetainedMembership`, `EventCount`, `NewSincePauseCount`, `EvictedCount`, `Deduplicate`, `ResolvedAnchorId`, `RowCount`, `MatchingEventCount`, `DuplicatesMerged`, `IsEmpty`, `Dispose()`. |
+| `ConsoleProjector` | `Project(snapshot, filter, viewState)`, additive `Project(snapshot, filter, viewState, options)` for app inputs. |
 | `LinkKind` | `Url`, `File`, `Folder`. |
 | `LinkTarget` | `Kind`, `Path`, optional `Line`, optional `Column`. |
 | `ConsoleLinkSpan` | `Start`, `Length`, `Target`. |
 | `ConsoleLinkScanner` | `Scan(text)`. |
 | `ConsoleLinkIndex` | Constructor `(spans, textLength)`, `Spans`, `HitTest(offset)`. |
-| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot)`, `GetLinks(snapshot, entry)`. |
+| `ConsoleLinkCache` | Constructor `(maxEntries = 10000, maxSpans = 65536, maxTargetCharacters = 4194304)`, `Synchronize(snapshot)`, `GetLinks(snapshot, entry)`, additive `GetLinks(snapshot, row)` for projected links without raw-entry reconstruction. |
 | `ConsoleExportOptions` | `IncludeTime = true`, `IncludeLevel = true`. |
 | `ConsoleExportFormatter` | `FormatVisible(projection, options)`, `FormatSelection(projection, selection, options)`, `WriteLogAsync(destination, projection, options, cancellationToken)`. |
 
@@ -342,9 +581,11 @@ Published-state reference counts use Interlocked.
 `ContentOwner._contentGate` protects reference lifetime only.
 Active reads pin the content before invoking app code outside the lock.
 Each snapshot disposes its leases once through `Interlocked`.
-`ConsoleLinkCache._cacheGate` protects its cache and revision stamp.
+`ConsoleLinkCache._cacheGate` protects its cache and one immutable state containing the live entry/group revisions and revision stamp; synchronization replaces this state together.
 All other model state is immutable.
-Hosts own view-state replacement and command access on one thread.
+The Avalonia controller replaces filter and view-state inputs and owns command access on
+Core's registered UI thread. Hosts and the list submit immutable view-state intents
+through `RequestViewState`; they do not replace the controller's state directly.
 
 The time API is BCL `TimeProvider`.
 Tests reuse Core's `Time.DelegateTimeProvider`.
@@ -372,6 +613,8 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-UI virtualization, pointer coordinates, keyboard commands, accessibility, and visual evidence belong to K2.
+The Avalonia header, toolbar, empty-state accessibility, and their visual evidence are implemented.
+UI virtualization, row pointer interaction, row accessibility, and keyboard routing remain
+with the list slice of K2; clipboard and file adapters remain app-owned.
 Host adoption remains separate.
 Path policy, opening, clipboard, and spill-store integration remain app responsibilities.

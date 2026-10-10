@@ -4,6 +4,8 @@
 執行環境需要 PowerShell 7.4 以上、GitHub CLI，以及 owner 安裝的 token helper。合併證明需要 Git 2.38 以上。
 離線測試需要 Windows 與 Pester 3.4.0。
 
+[templates/review-template.md](templates/review-template.md) 是獨立、唯讀的審查提示，使用佔位值 `{WORKTREE}`、`{BASE}`、`{HEAD}`、`{REPORT}`、`{TESTLOG}`。
+
 ## 設定與載入
 
 Owner 在所有儲存庫之外建立 `~/.nvt/gh-app/<owner>-<repo>.json`。
@@ -71,7 +73,8 @@ Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
 ```
 
 `New-GhAppPullRequest` 從檔案載入描述並建立 PR，然後讀回作者。
-作者不等於 `botLogin` 時，它會傳回含完整 PR URL 的錯誤。PR 保持開啟。
+作者不等於 `botLogin` 時，它會傳回含完整 PR URL 的錯誤。PR 預設保持開啟。
+加上 `-CloseOnWrongAuthor` 時，作者不符會先透過 App 關閉 PR，再拋出錯誤。
 `-Base` 預設為 `main`。`-Draft` 建立草稿。Head 與 base 都必須是設定儲存庫中的分支。
 
 ```powershell
@@ -86,6 +89,8 @@ Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt
 ```
 
 `Add-GhAppComment` 使用檔案內容新增 PR 或 issue 留言。
+
+`-IncludeIssuesWrite` 為單次 issue 留言要求 `issues: write`，預設關閉，每次呼叫各自選用。每次使用前都必須取得 owner 同意，並以 `-IssuesLogPath` 指定儲存庫外的紀錄檔；每次使用會在發送前追加一行 UTC 紀錄。目標是 PR 時會拒絕，因為 PR 留言不需要此權限。
 
 ```powershell
 Add-GhAppComment -Number 7 -BodyFile .\comment.txt

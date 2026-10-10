@@ -221,6 +221,31 @@ def accept_policy(queue: Path) -> str:
     return policy
 
 
+DEFAULT_PROJECT_PREFIX = "Project"
+
+
+def project_prefix(queue: Path) -> str:
+    """Name prefix of the .NET projects that Prebuild builds, e.g. NvtFwCombiner for NvtFwCombiner.Desktop.
+
+    Same rule as accept_policy: read one literal setting, never source queue.env in the helper.
+    """
+    try:
+        text = (queue / "queue.env").read_text(encoding="utf-8-sig")
+    except FileNotFoundError:
+        return DEFAULT_PROJECT_PREFIX
+    prefix = DEFAULT_PROJECT_PREFIX
+    for line in text.splitlines():
+        if re.match(r"\s*(?:export\s+)?PROJECT_PREFIX\s*=", line):
+            try:
+                parts = shlex.split(line.split("=", 1)[1], comments=True)
+            except ValueError:
+                raise ValueError("PROJECT_PREFIX must be a plain project name") from None
+            if len(parts) > 1 or (parts and parts[0] and not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.]{0,79}", parts[0])):
+                raise ValueError("PROJECT_PREFIX must be a plain project name")
+            prefix = parts[0] if parts and parts[0] else DEFAULT_PROJECT_PREFIX
+    return prefix
+
+
 def extra_argv(args: list, forms: list) -> list | None:
     candidate = args[:]
     # Legacy Python script spelling is accepted, but never executes without isolation.
@@ -321,14 +346,14 @@ def validate(brief: dict, templates: list = (), policy: str = "enforce") -> list
     return argv
 
 
-def prebuild_commands(brief: dict, policy: str = "enforce") -> list:
+def prebuild_commands(brief: dict, policy: str = "enforce", prefix: str = DEFAULT_PROJECT_PREFIX) -> list:
     commands = []
     for name in brief.get("Prebuild", "").split():
         valid = re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", name)
         if not valid and policy == "enforce":
             raise ValueError("Prebuild requires plain project names without paths or options")
-        project = ("src/Project.Desktop/Project.Desktop.csproj" if name == "Desktop" else
-                   f"tests/Project.{name}.Tests/Project.{name}.Tests.csproj")
+        project = (f"src/{prefix}.Desktop/{prefix}.Desktop.csproj" if name == "Desktop" else
+                   f"tests/{prefix}.{name}.Tests/{prefix}.{name}.Tests.csproj")
         args = ["dotnet", "build", project, "-c", "Release", "-v", "q", "-nologo",
                 "-p:UseSharedCompilation=false", "-nodeReuse:false"]
         # Old bin splits project names, then quotes the expanded project path.
@@ -629,9 +654,10 @@ def run_accept(brief: dict, prefix: Path, base: str = "", templates: list = (),
 
 
 def run_prebuild(brief: dict, prefix: Path, templates: list = (),
-                 policy: str = "enforce", brief_path: Path | None = None) -> int:
+                 policy: str = "enforce", brief_path: Path | None = None,
+                 project: str = DEFAULT_PROJECT_PREFIX) -> int:
     validate(brief, templates, policy)
-    commands = prebuild_commands(brief, policy)
+    commands = prebuild_commands(brief, policy, project)
     if not commands:
         return 0
     log = Path(f"{prefix}-prebuild.log")
@@ -779,7 +805,8 @@ def main() -> None:
                                     accept_templates(brief_path.parent.parent), accept_policy(brief_path.parent.parent), brief_path))
     elif cmd == "run-prebuild":
         raise SystemExit(run_prebuild(brief, Path(sys.argv[3]), accept_templates(brief_path.parent.parent),
-                                      accept_policy(brief_path.parent.parent), brief_path))
+                                      accept_policy(brief_path.parent.parent), brief_path,
+                                      project_prefix(brief_path.parent.parent)))
     elif cmd == "prompt":
         sys.stdout.reconfigure(encoding="utf-8")
         sys.stdout.write(prompt(brief, sys.argv[3], sys.argv[4], sys.argv[5]))

@@ -34,7 +34,8 @@ The package ID is `Nvt.Core.Fonts`. Its independent SemVer starts at `0.1.0`.
 `Nvt.Core.Fonts.csproj` defines its version, independently of Core.
 Release tags use `core-fonts-v<version>`; the initial tag is `core-fonts-v0.1.0`.
 A Release contains one nupkg, `SHA256SUMS`, and `SOURCE.md`.
-The package carries embedded fonts, the Core license, README, existing font licenses, and the Material Symbols NOTICE.
+The package carries embedded fonts, the Core license, README, the license of each font family (Inter, Cascadia Mono, Noto Sans TC, Material Symbols), and the Material Symbols NOTICE.
+Version `0.1.1` adds the Inter license file. `0.1.0` did not carry it.
 Its only direct dependencies are `Avalonia` and `Avalonia.Fonts.Inter`.
 See the [release procedure](../releasing.md) and [package download guide](../../../tools/core-packages/README.md).
 
@@ -95,6 +96,7 @@ Inter remains in the pinned `Avalonia.Fonts.Inter` dependency. Core does not cop
 That package contains static Thin, Light, Regular, Medium, SemiBold, and Bold files.
 The roles use its Regular and SemiBold files.
 The [Inter font license](https://github.com/rsms/inter/blob/v3.19/LICENSE.txt) is SIL Open Font License 1.1.
+The package ships its unchanged text as [`licenses/Inter/LICENSE`](../../../src/Nvt.Core.Fonts/licenses/Inter/LICENSE). The embedded Inter fonts of `Avalonia.Fonts.Inter` are version 3.019 (copyright 2020).
 The Avalonia package metadata declares MIT for the package code.
 
 All paths in the following table start at `src/Nvt.Core.Fonts/`.
@@ -122,15 +124,15 @@ The Inter SemiBold file reports `Inter SemiBold` as its legacy family name. The 
 
 ## Tool adoption
 
-1. Pin `core-fonts-v0.1.0`, `Nvt.Core.Fonts.0.1.0.nupkg`, and the Release's SHA-256 in the tool's manifest.
-2. Download and verify the Release package before restore. Pin `Nvt.Core.Fonts` to `0.1.0` and update lock files.
+1. Pin `core-fonts-v0.1.1`, `Nvt.Core.Fonts.0.1.1.nupkg`, and the Release's SHA-256 in the tool's manifest.
+2. Download and verify the Release package before restore. Pin `Nvt.Core.Fonts` to `0.1.1` and update lock files.
 3. Merge `FontRoles.axaml` into the application's resources.
 4. Call `WithNvtCoreFonts()` on the application's builder.
 5. Apply each role's family, size, and weight in the tool's own styles.
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.1" />
 </ItemGroup>
 ```
 
@@ -210,7 +212,7 @@ This task does not claim visual equivalence for that future change.
 
 Ship the complete [`licenses`](../../../src/Nvt.Core.Fonts/licenses) folder with the tool.
 List all four fonts in the tool's third-party notices.
-Keep the Inter font license and the Avalonia dependency notices with the distribution.
+The Inter font license ships in `licenses/Inter/LICENSE`. Keep the Avalonia dependency notices with the distribution.
 Cascadia Mono and Noto Sans TC use SIL Open Font License 1.1 and remain unmodified.
 Material Symbols uses Apache License 2.0.
 Its [`NOTICE`](../../../src/Nvt.Core.Fonts/licenses/MaterialSymbolsOutlined/NOTICE) records the static-instance modification.

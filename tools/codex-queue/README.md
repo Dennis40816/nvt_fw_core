@@ -41,6 +41,7 @@ Replace all angle-bracket placeholders with reviewed paths before running. Use G
 | `MIN_FREE_GB` | Default `215`; minimum free-space floor in GiB. |
 | `TASK_RESERVE_GB` | Default `20`; positive integer GiB estimate per running, cleanup-pending and new task. |
 | `ACCEPT_POLICY` | Default `warn`; `enforce` requires exact trusted Accept templates. Evidence and Scope/risk checks remain mandatory in either mode. |
+| `PROJECT_PREFIX` | Default `Project`; name prefix of the .NET projects that `Prebuild:` builds, for example `NvtFwCombiner` for `src/NvtFwCombiner.Desktop/NvtFwCombiner.Desktop.csproj`. Must be a plain project name (letters, digits, `_`, `.`). |
 | `EXTRA_ADD_DIRS` | Legacy setting; worker ignores shared directories and grants only the task's temporary directory. |
 
 The worker sets `QUEUE_BUILD_NOTES` to `<QUEUE>/build-notes.md`; direct `q.py prompt` callers may set that environment variable to an optional notes file. The wrapper sets no-bytecode/no-pytest-cache and existing telemetry/language environment settings; they are not caller configuration.

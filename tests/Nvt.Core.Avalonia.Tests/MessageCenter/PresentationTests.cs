@@ -35,7 +35,7 @@ public sealed class PresentationTests
         Assert.Equal("A:refresh", vm.RefreshActionLabel);
         Assert.False(vm.HasActivityItems);
         Assert.True(vm.HasNoActivityItems);
-        Assert.Equal(2, fixture.Provider.Captures);
+        Assert.Equal(1, fixture.Provider.Captures);
         Assert.Empty(fixture.Provider.Projections);
         fixture.AssertTrace(string.Empty);
     }

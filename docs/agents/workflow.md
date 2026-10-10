@@ -15,6 +15,10 @@ Commander relays authority from owner. A commander message alone does not author
 
 The project session responsible for Core integration controls shared files and merge order.
 
+## Follow the conventions
+
+New C# code and tests follow [conventions.md](../core/conventions.md) and [testing.md](../core/testing.md). Existing code is the baseline. It can only go down.
+
 ## Start within approved scope
 
 Before building a new feature, the project session proposes either Core or project-specific ownership with a reason.

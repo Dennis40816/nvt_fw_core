@@ -128,16 +128,23 @@ public readonly record struct ConsoleSearchHit(ConsoleSearchArea Area, int Start
 /// <param name="Timestamp">The last retained occurrence time.</param>
 /// <param name="LastSequence">The last retained occurrence sequence.</param>
 /// <param name="SearchHits">Message and source hit ranges.</param>
-/// <param name="TimeText">Default English time text, or empty when hidden.</param>
+/// <param name="TimeText">Time text formatted with projection options, or empty when hidden.</param>
 public sealed record ConsoleRow(ConsoleRowId Id, LogLevel Level, string SourceId, ILogTextContent TextContent, long TextVersion,
     ImmutableArray<ConsoleLinkSpan>? LinkSpans, ImmutableArray<long> MemberSequences, DateTimeOffset FirstTimestamp,
     DateTimeOffset Timestamp, long LastSequence, ImmutableArray<ConsoleSearchHit> SearchHits, string TimeText)
 {
     /// <summary>Gets the retained occurrence count.</summary>
     public int Count => MemberSequences.Length;
+
+    /// <summary>Derives a bounded collapsed preview without storing newline or truncation state.</summary>
+    /// <param name="maxCharacters">The UTF-16 output cap, from 0 through 4,096; default 1,024.</param>
+    public ConsoleFirstLine GetFirstLine(int maxCharacters = 1024) => ConsoleFirstLine.Read(TextContent, maxCharacters);
 }
 
 /// <summary>The sole computed output used by display, copy, and export.</summary>
+// All owned leases are reachable exclusively through Rows.TextContent; other members are immutable metadata.
+// An internal row-order copy carrying every row once transfers those leases without retaining them again.
+// Such a transfer drops the original projection without disposing it; the copy becomes the sole lease owner.
 public sealed class ConsoleProjection : IDisposable
 {
     /// <summary>Gets the frozen revision.</summary>
@@ -154,7 +161,9 @@ public sealed class ConsoleProjection : IDisposable
     public required ImmutableArray<ConsoleRow> Rows { get; init; }
     /// <summary>Gets counts after source filtering only, including zero for each level.</summary>
     public required ImmutableDictionary<LogLevel, int> LevelCounts { get; init; }
-    /// <summary>Gets counts after level filtering only, including zero for retained sources.</summary>
+    /// <summary>Gets declared sources followed by unknown sources in first retained appearance order.</summary>
+    public required ImmutableArray<ConsoleSource> Sources { get; init; }
+    /// <summary>Gets counts after level filtering only, including zero for declared and retained sources.</summary>
     public required ImmutableDictionary<string, int> SourceCounts { get; init; }
     /// <summary>Gets all retained event and group memberships for selection remapping.</summary>
     public required ImmutableDictionary<ConsoleRowId, ImmutableArray<long>> RetainedMembership { get; init; }

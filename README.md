@@ -77,6 +77,7 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.Startup`: [Startup](docs/core/modules/Startup.md)
 - `Nvt.Core.RuntimeQuery`: [RuntimeQuery](docs/core/modules/RuntimeQuery.md)
 - `Nvt.Core.Files`: [Files](docs/core/modules/Files.md)
+- `Nvt.Core.Threading`: [Threading / UiEventRunner](docs/core/modules/Threading.md)
 - `Nvt.Core.Avalonia.Threading`: [Threading](docs/core/modules/Threading.md)
 - `Nvt.Core.Avalonia.Primitives`: [Primitives](docs/core/modules/Primitives.md)
 - `Nvt.Core.Avalonia.Inputs`: [Inputs](docs/core/modules/Inputs.md)

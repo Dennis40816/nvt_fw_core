@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -22,7 +23,9 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     private static readonly string[] ExitArguments = ["--mode", "exit"];
     private static readonly TimeSpan Watchdog = TimeSpan.FromSeconds(40);
     private static readonly TimeSpan SchedulingMargin = TimeSpan.FromSeconds(4);
-    private static readonly TimeSpan CancelReturnBound = TimeSpan.FromSeconds(1);
+    // Cancel() must return, not block on the termination it requests. A blocking callback waits for the 60 s helper,
+    // so 10 s separates the regression from a loaded CI machine without comparing a short real-time budget.
+    private static readonly TimeSpan CancelReturnBound = TimeSpan.FromSeconds(10);
     private static readonly ExternalProcessCleanupTiming Fast = new(
         TimeSpan.FromMilliseconds(1500),
         TimeSpan.FromMilliseconds(300),
@@ -46,7 +49,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         using var cancellation = new CancellationTokenSource();
         try
         {
-            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.Root, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
+            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
 
             var clock = Stopwatch.StartNew();
@@ -86,7 +89,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         try
         {
             ExternalProcessResult result = await runner.RunAsync(
-                    QuietWait(workspace.Root, TimeSpan.FromMilliseconds(300)),
+                    QuietWait(workspace.RootPath, TimeSpan.FromMilliseconds(300)),
                     TestToken)
                 .AsTask()
                 .WaitAsync(Watchdog, TestToken);
@@ -123,7 +126,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         try
         {
             ExternalProcessResult result = await runner.RunAsync(
-                    QuietWait(workspace.Root, TimeSpan.FromMilliseconds(300)),
+                    QuietWait(workspace.RootPath, TimeSpan.FromMilliseconds(300)),
                     TestToken)
                 .AsTask()
                 .WaitAsync(Watchdog, TestToken);
@@ -153,7 +156,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         using var cancellation = new CancellationTokenSource();
         try
         {
-            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.Root, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
+            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
 
             // CancelWithinAsync throws if Cancel() blocks or faults; a refused termination must do neither.
@@ -182,7 +185,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         try
         {
             ExternalProcessResult result = await runner.RunAsync(
-                    QuietWait(workspace.Root, TimeSpan.FromMilliseconds(300)),
+                    QuietWait(workspace.RootPath, TimeSpan.FromMilliseconds(300)),
                     TestToken)
                 .AsTask()
                 .WaitAsync(Watchdog, TestToken);
@@ -215,7 +218,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, phases);
 
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(
-                QuietWait(workspace.Root, TimeSpan.FromMilliseconds(300)),
+                QuietWait(workspace.RootPath, TimeSpan.FromMilliseconds(300)),
                 cancellation.Token)
             .AsTask()
             .WaitAsync(Watchdog, TestToken));
@@ -238,7 +241,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, phases);
 
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(
-                QuickExit(workspace.Root),
+                QuickExit(workspace.RootPath),
                 cancellation.Token)
             .AsTask()
             .WaitAsync(Watchdog, TestToken));
@@ -260,7 +263,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         phases.When(ExternalProcessRunnerPhase.Returning, () => cancelFailure = Record.Exception(cancellation.Cancel));
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, phases);
 
-        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), cancellation.Token)
+        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), cancellation.Token)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
 
@@ -283,7 +286,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         var stuck = new TaskCompletionSource<BoundedProcessOutput>(TaskCreationOptions.RunContinuationsAsynchronously);
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, phases, FirstReader(_ => stuck.Task));
 
-        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
 
@@ -310,7 +313,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         using var workspace = TestWorkspace.Create();
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, new PhaseRecorder(), FirstReader(_ => Task.FromException<BoundedProcessOutput>(new IOException("read failed"))));
 
-        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
 
@@ -334,7 +337,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             Fast, KillTree, phases,
             FirstReader(stop => ExternalProcessRunnerSeams.Production.Drain(null!, stop)), capacity);
 
-        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
             .AsTask().WaitAsync(Watchdog, TestToken);
 
         Assert.Equal(0, result.ExitCode);
@@ -360,7 +363,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         SystemExternalProcessRunner runner = CreateRunner(Fast, KillTree, phases, FirstReader(_ => Task.FromException<BoundedProcessOutput>(new IOException("read failed"))));
 
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(
-                QuietWait(workspace.Root, TimeSpan.FromSeconds(60)),
+                QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)),
                 cancellation.Token)
             .AsTask()
             .WaitAsync(Watchdog, TestToken));
@@ -396,7 +399,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         try
         {
             Task<ExternalProcessResult> run = runner.RunAsync(
-                    QuietWait(workspace.Root, TimeSpan.FromSeconds(60)),
+                    QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)),
                     cancellation.Token)
                 .AsTask();
             if (cancel)
@@ -427,12 +430,12 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("held.pid");
+        string marker = workspace.GetPath("held.pid");
         var phases = new PhaseRecorder();
         SystemExternalProcessRunner runner = CreateRunner(ExternalProcessCleanupTiming.Default, KillTree, phases);
 
         ExternalProcessResult result = await runner.RunAsync(
-                ProbeTree(workspace.Root, "tree-root-exit", marker, TimeSpan.FromSeconds(HelperLifetimeSeconds * 2)),
+                ProbeTree(workspace.RootPath, "tree-root-exit", marker, TimeSpan.FromSeconds(HelperLifetimeSeconds * 2)),
                 TestToken)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
@@ -455,7 +458,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("held.pid");
+        string marker = workspace.GetPath("held.pid");
         using var cancellation = new CancellationTokenSource();
         var phases = new PhaseRecorder();
         TimeSpan cancelReturned = TimeSpan.MaxValue;
@@ -468,7 +471,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         SystemExternalProcessRunner runner = CreateRunner(ExternalProcessCleanupTiming.Default, KillTree, phases);
 
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => runner.RunAsync(
-                ProbeTree(workspace.Root, "tree-root-exit", marker, TimeSpan.FromSeconds(HelperLifetimeSeconds * 2)),
+                ProbeTree(workspace.RootPath, "tree-root-exit", marker, TimeSpan.FromSeconds(HelperLifetimeSeconds * 2)),
                 cancellation.Token)
             .AsTask()
             .WaitAsync(Watchdog, TestToken));
@@ -488,41 +491,49 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string pingPidFile = workspace.PathFor("orphan.pid");
+        string pingPidFile = workspace.GetPath("orphan.pid");
         string orphanReady = pingPidFile + ".ready";
         string innerPidFile = pingPidFile + ".middle";
         // The chain is root -> middle -> leaf. The shared probe passes both redirected streams down,
         // records the leaf and middle identities, and signals ready only after the middle has exited.
         // The pipe-holder is therefore live with an exited direct parent before timeout termination.
-        var phases = new PhaseRecorder();
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
+        var phases = new PhaseRecorder(time);
         TimeSpan timeout = TimeSpan.FromSeconds(3);
-        SystemExternalProcessRunner runner = CreateRunner(ExternalProcessCleanupTiming.Default, KillTree, phases);
+        ExternalProcessCleanupTiming timing = ExternalProcessCleanupTiming.Default;
+        SystemExternalProcessRunner runner = CreateRunner(timing, KillTree, phases, time: time);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestToken);
         int pingPid = 0;
-        var clock = Stopwatch.StartNew();
         // The orphan and outer outlive the run by design, so they must not keep the disposable workspace open.
-        Task<ExternalProcessResult> run = runner.RunAsync(ProbeTree(Path.GetTempPath(), "orphan-chain-root", pingPidFile, timeout), TestToken).AsTask();
+        Task<ExternalProcessResult> run = runner.RunAsync(ProbeTree(Path.GetTempPath(), "orphan-chain-root", pingPidFile, timeout), cancellation.Token).AsTask();
         try
         {
-            await WaitForFileAsync(orphanReady, run);
             pingPid = await ReadPidAsync(pingPidFile, run);
+            await WaitForFileAsync(orphanReady, run);
             int innerPid = await ReadPidAsync(innerPidFile, run);
 
             // Real parent-exited handshake: the pipe-holder is up, and its direct parent (inner) has actually
             // exited, and both facts are confirmed before the timeout that starts termination.
             await SpinUntilAsync(() => HasExited(innerPid), Watchdog);
             Assert.False(HasExited(pingPid), "The pipe-holding orphan exited before termination could be exercised.");
-            Assert.True(clock.Elapsed < timeout, $"The parent-exited handshake ({clock.Elapsed}) did not precede the timeout ({timeout}).");
+            Assert.False(phases.HasReached(ExternalProcessRunnerPhase.TimeoutSignaled), "Timeout preceded the parent-exited handshake.");
+
+            // Startup is bounded by the watchdog, but only this signal-ordered clock advance can time out the run.
+            await time.WhenPendingAsync(1, timeout, TestToken).WaitAsync(Watchdog, TestToken);
+            time.Advance(timeout);
+            await AdvanceToReaderStopAsync(time, timing, phases);
 
             ExternalProcessResult result = await run.WaitAsync(Watchdog, TestToken);
 
             Assert.True(result.TimedOut);
             Assert.Equal(ExternalProcessCleanup.OutputStreamHeldOpen, result.Cleanup);
             TimeSpan cleanup = phases.Between(ExternalProcessRunnerPhase.TimeoutSignaled, ExternalProcessRunnerPhase.Returning);
-            Assert.True(cleanup < ExternalProcessCleanupTiming.Default.Deadline + SchedulingMargin, $"Cleanup took {cleanup}.");
+            Assert.True(cleanup < timing.Deadline, $"Cleanup took {cleanup} of virtual time.");
         }
         finally
         {
             KillById(pingPid);
+            await FinishClockedRunAsync(run, time, timing, phases, cancellation);
         }
     }
 
@@ -536,22 +547,43 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string pingPidFile = workspace.PathFor("stopped-orphan.pid");
+        string pingPidFile = workspace.GetPath("stopped-orphan.pid");
         string orphanReady = pingPidFile + ".ready";
         string innerPidFile = pingPidFile + ".middle";
-        var phases = new PhaseRecorder();
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
+        var phases = new PhaseRecorder(time);
         var capacity = new ExternalProcessCapacity(1);
+        var captured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var readers = new List<Task<BoundedProcessOutput>>();
+        const string expected = "before-reader-stop\r\n";
+        Task<BoundedProcessOutput> DrainAsync(TextReader reader, CancellationToken stop)
+        {
+            Task<BoundedProcessOutput> drain = readers.Count == 0
+                ? DrainWithCaptureSignalAsync(reader, expected, captured, stop)
+                : ExternalProcessRunnerSeams.Production.Drain(reader, stop);
+            readers.Add(drain);
+            return drain;
+        }
+
+        ExternalProcessCleanupTiming timing = ExternalProcessCleanupTiming.Default;
         SystemExternalProcessRunner runner = CreateRunner(
-            ExternalProcessCleanupTiming.Default, KillTree, phases, budget: capacity);
+            timing, KillTree, phases, DrainAsync, capacity, time);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestToken);
         int pingPid = 0;
         Task<ExternalProcessResult> run = runner.RunAsync(
-            ProbeTree(Path.GetTempPath(), "orphan-chain-exit", pingPidFile, TimeSpan.FromSeconds(60), "before-reader-stop"), TestToken).AsTask();
+            ProbeTree(Path.GetTempPath(), "orphan-chain-exit", pingPidFile, TimeSpan.FromSeconds(60), "before-reader-stop"), cancellation.Token).AsTask();
         try
         {
-            await WaitForFileAsync(orphanReady, run);
             pingPid = await ReadPidAsync(pingPidFile, run);
+            await WaitForFileAsync(orphanReady, run);
             int innerPid = await ReadPidAsync(innerPidFile, run);
             await SpinUntilAsync(() => HasExited(innerPid), Watchdog);
+
+            // A writer's ready file does not prove the drain has captured its output. The next read does.
+            await captured.Task.WaitAsync(Watchdog, TestToken);
+            await AdvanceToReaderStopAsync(time, timing, phases);
+            // Keep the clock inside the stop reserve until the production drains have actually returned.
+            _ = await Task.WhenAll(readers).WaitAsync(Watchdog, TestToken);
             ExternalProcessResult result = await run.WaitAsync(Watchdog, TestToken);
 
             Assert.False(HasExited(pingPid), "The real orphan must still hold the pipes when the run returns.");
@@ -567,8 +599,73 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         finally
         {
             KillById(pingPid);
+            await FinishClockedRunAsync(run, time, timing, phases, cancellation);
+        }
+    }
+
+    private static async Task AdvanceToReaderStopAsync(
+        ManualTimeProvider time, ExternalProcessCleanupTiming timing, PhaseRecorder phases)
+    {
+        // A phase hook runs before the cleanup timer is registered. Wait for the timer before moving time.
+        await time.WhenPendingAsync(1, timing.Deadline, TestToken).WaitAsync(Watchdog, TestToken);
+        time.Advance(timing.Deadline - timing.ReaderStopReserve);
+        _ = await phases.Reached(ExternalProcessRunnerPhase.ReaderStopRequested).WaitAsync(Watchdog, TestToken);
+    }
+
+    private static async Task FinishClockedRunAsync(
+        Task<ExternalProcessResult> run, ManualTimeProvider time, ExternalProcessCleanupTiming timing,
+        PhaseRecorder phases, CancellationTokenSource cancellation)
+    {
+        if (!run.IsCompleted)
+        {
+            cancellation.Cancel();
+            _ = await Task.WhenAny(run, phases.Reached(ExternalProcessRunnerPhase.TerminationStarted)).WaitAsync(Watchdog, TestToken);
+            if (!run.IsCompleted)
+            {
+                _ = await Task.WhenAny(run, time.WhenPendingAsync(1, timing.Deadline, TestToken)).WaitAsync(Watchdog, TestToken);
+                time.Advance(timing.Deadline);
+            }
+        }
+
+        try
+        {
             _ = await run.WaitAsync(Watchdog, TestToken);
-            _ = await phases.Reached(ExternalProcessRunnerPhase.ResourcesReleased).WaitAsync(Watchdog, TestToken);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // Emergency teardown after a failed setup/assertion still joins the invocation's custody.
+        }
+
+        _ = await phases.Reached(ExternalProcessRunnerPhase.ResourcesReleased).WaitAsync(Watchdog, TestToken);
+    }
+
+    private static async Task<BoundedProcessOutput> DrainWithCaptureSignalAsync(
+        TextReader reader, string expected, TaskCompletionSource captured, CancellationToken stop)
+    {
+        using var observed = new CaptureSignalReader(reader, expected, captured);
+        return await ExternalProcessRunnerSeams.Production.Drain(observed, stop).ConfigureAwait(false);
+    }
+
+    /// <summary>Signals on the read after the expected text, once the production drain has retained that text.</summary>
+    private sealed class CaptureSignalReader(TextReader reader, string expected, TaskCompletionSource captured) : TextReader
+    {
+        // Only the dedicated production reader thread accesses these fields.
+        private string _tail = string.Empty;
+        private bool _matched;
+
+        /// <inheritdoc/>
+        public override int Read(char[] buffer, int index, int count)
+        {
+            if (_matched)
+            {
+                _ = captured.TrySetResult();
+            }
+
+            int read = reader.Read(buffer, index, count);
+            string text = string.Concat(_tail, new string(buffer, index, read));
+            _matched |= text.Contains(expected, StringComparison.Ordinal);
+            _tail = text.Length <= expected.Length ? text : text[^expected.Length..];
+            return read;
         }
     }
 
@@ -625,7 +722,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("descendant.txt");
+        string marker = workspace.GetPath("descendant.txt");
         int descendant = 0;
         try
         {
@@ -709,7 +806,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         using var cancellation = new CancellationTokenSource();
         try
         {
-            Task<ExternalProcessResult> first = runner.RunAsync(QuietWait(workspace.Root, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
+            Task<ExternalProcessResult> first = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
             _ = await CancelWithinAsync(cancellation, CancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first.WaitAsync(Watchdog, TestToken));
@@ -718,7 +815,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
 
             // The budget is full, so a new run is refused before any process starts.
             ExternalProcessCleanupCapacityException refused = await Assert.ThrowsAsync<ExternalProcessCleanupCapacityException>(
-                () => runner.RunAsync(QuickExit(workspace.Root), TestToken).AsTask());
+                () => runner.RunAsync(QuickExit(workspace.RootPath), TestToken).AsTask());
             Assert.Equal(1, refused.Limit);
             Assert.Equal(1, refused.InUseInvocations);
 
@@ -727,7 +824,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             termination.Open();
             _ = await phases.Reached(ExternalProcessRunnerPhase.ResourcesReleased).WaitAsync(Watchdog, TestToken);
             Assert.Equal(0, budget.InUse);
-            ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+            ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
                 .AsTask()
                 .WaitAsync(Watchdog, TestToken);
             Assert.Equal(0, result.ExitCode);
@@ -803,7 +900,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
                         {
                             startLine.SignalAndWait(TestToken);
                             return new SystemExternalProcessRunner(seams)
-                                .RunAsync(QuickExit(workspace.Root), TestToken)
+                                .RunAsync(QuickExit(workspace.RootPath), TestToken)
                                 .AsTask();
                         },
                         TestToken,
@@ -936,7 +1033,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             DisposeResource = disposal.Dispose,
         });
 
-        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+        ExternalProcessResult result = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
 
@@ -947,7 +1044,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         Assert.Equal(0, capacity.InUse);
 
         // The returned slot is usable: with a limit of one, a further run is accepted.
-        ExternalProcessResult next = await runner.RunAsync(QuickExit(workspace.Root), TestToken)
+        ExternalProcessResult next = await runner.RunAsync(QuickExit(workspace.RootPath), TestToken)
             .AsTask()
             .WaitAsync(Watchdog, TestToken);
         Assert.Equal(0, next.ExitCode);
@@ -981,7 +1078,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         using var cancellation = new CancellationTokenSource();
         try
         {
-            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.Root, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
+            Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
             _ = await CancelWithinAsync(cancellation, CancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(Watchdog, TestToken));
@@ -1040,7 +1137,8 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         Action<Process> terminateTree,
         PhaseRecorder phases,
         Func<TextReader, CancellationToken, Task<BoundedProcessOutput>>? drain = null,
-        ExternalProcessCapacity? budget = null)
+        ExternalProcessCapacity? budget = null,
+        TimeProvider? time = null)
     {
         return new SystemExternalProcessRunner(ExternalProcessRunnerSeams.Production with
         {
@@ -1050,6 +1148,10 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             Observe = phases.Record,
             // Each test gets its own budget so detached work never bleeds across tests or into production's.
             Capacity = budget ?? new ExternalProcessCapacity(int.MaxValue),
+            Time = time ?? ExternalProcessRunnerSeams.Production.Time,
+            ScheduleTermination = time is null
+                ? ExternalProcessRunnerSeams.Production.ScheduleTermination
+                : static termination => Task.FromResult(termination()),
         });
     }
 
@@ -1060,14 +1162,36 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     /// </summary>
     private static async Task<TimeSpan> CancelWithinAsync(CancellationTokenSource cancellation, TimeSpan bound)
     {
-        var clock = Stopwatch.StartNew();
-        Task cancel = Task.Run(cancellation.Cancel);
-        using var boundStop = new CancellationTokenSource();
-        Task first = await Task.WhenAny(cancel, Task.Delay(bound, boundStop.Token));
-        boundStop.Cancel();
-        Assert.True(ReferenceEquals(first, cancel) && cancel.IsCompleted, $"Cancel() did not return within {bound}.");
-        await cancel; // Observe a fault; a signal-only Cancel() never throws.
-        return clock.Elapsed;
+        // A dedicated thread keeps a starved thread pool from delaying the call the bound is meant to measure.
+        var returned = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            var clock = Stopwatch.StartNew();
+            try
+            {
+                cancellation.Cancel();
+                returned.SetResult(clock.Elapsed);
+            }
+            catch (Exception exception)
+            {
+                returned.SetException(exception);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Cancel under test",
+        };
+        thread.Start();
+        try
+        {
+            // A signal-only Cancel() never throws; a fault surfaces here.
+            return await returned.Task.WaitAsync(bound, TestToken);
+        }
+        catch (TimeoutException)
+        {
+            Assert.Fail($"Cancel() did not return within {bound}.");
+            throw;
+        }
     }
 
     /// <summary>Replaces only standard output; standard error uses the production drain.</summary>
@@ -1142,8 +1266,9 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     }
 
     /// <summary>Records the first time each runner phase occurs and runs optional synchronous hooks.</summary>
-    private sealed class PhaseRecorder
+    private sealed class PhaseRecorder(TimeProvider? time = null)
     {
+        private readonly TimeProvider _time = time ?? TimeProvider.System;
         // Guard: ConcurrentDictionary and each TaskCompletionSource provide atomic access.
         private readonly ConcurrentDictionary<ExternalProcessRunnerPhase, TaskCompletionSource<long>> _reached = new();
         // Guard: ConcurrentDictionary; a hook is consumed atomically before phase publication.
@@ -1161,7 +1286,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
                 hook();
             }
 
-            _ = Get(phase).TrySetResult(Stopwatch.GetTimestamp());
+            _ = Get(phase).TrySetResult(_time.GetTimestamp());
         }
 
         internal Task<long> Reached(ExternalProcessRunnerPhase phase)
@@ -1178,7 +1303,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         {
             Assert.True(HasReached(from), $"Phase {from} was not reached.");
             Assert.True(HasReached(to), $"Phase {to} was not reached.");
-            return Stopwatch.GetElapsedTime(Get(from).Task.Result, Get(to).Task.Result);
+            return _time.GetElapsedTime(Get(from).Task.Result, Get(to).Task.Result);
         }
 
         private TaskCompletionSource<long> Get(ExternalProcessRunnerPhase phase)

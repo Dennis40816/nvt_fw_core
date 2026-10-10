@@ -34,7 +34,8 @@
 版本定義於 `Nvt.Core.Fonts.csproj`，不隨 Core 版本變動。
 發行標籤使用 `core-fonts-v<version>`；首版為 `core-fonts-v0.1.0`。
 Release 包含單一 nupkg、`SHA256SUMS` 與 `SOURCE.md`。
-套件保留內嵌字型、Core 授權、README，以及現有字型授權與 Material Symbols NOTICE。
+套件保留內嵌字型、Core 授權、README、各字型家族的授權（Inter、Cascadia Mono、Noto Sans TC、Material Symbols）與 Material Symbols NOTICE。
+`0.1.1` 版加入 Inter 授權檔，`0.1.0` 版沒有。
 直接相依套件只有 `Avalonia` 與 `Avalonia.Fonts.Inter`。
 詳見 [發行程序](../releasing.md) 與 [套件下載指南](../../../tools/core-packages/README.zh-TW.md)。
 
@@ -95,6 +96,7 @@ Inter 留在固定版本的 `Avalonia.Fonts.Inter` 相依套件內，Core 不複
 該套件包含靜態 Thin、Light、Regular、Medium、SemiBold 與 Bold 檔案。
 角色使用其中的 Regular 與 SemiBold。
 [Inter 字型授權](https://github.com/rsms/inter/blob/v3.19/LICENSE.txt) 為 SIL Open Font License 1.1。
+套件隨附其未修改的全文 [`licenses/Inter/LICENSE`](../../../src/Nvt.Core.Fonts/licenses/Inter/LICENSE)。`Avalonia.Fonts.Inter` 內嵌的 Inter 字型為 3.019 版（著作權 2020）。
 Avalonia 套件中繼資料將套件程式碼授權列為 MIT。
 
 下表的所有路徑皆相對於 `src/Nvt.Core.Fonts/`。
@@ -122,15 +124,15 @@ Inter SemiBold 檔案回報的舊式家族名稱為 `Inter SemiBold`，要求的
 
 ## 工具採用方式
 
-1. 在工具 manifest 固定 `core-fonts-v0.1.0`、`Nvt.Core.Fonts.0.1.0.nupkg` 與 Release 的 SHA-256。
-2. 在還原前下載並驗證 Release 套件，將 `Nvt.Core.Fonts` 參考固定為 `0.1.0`，並更新鎖定檔。
+1. 在工具 manifest 固定 `core-fonts-v0.1.1`、`Nvt.Core.Fonts.0.1.1.nupkg` 與 Release 的 SHA-256。
+2. 在還原前下載並驗證 Release 套件，將 `Nvt.Core.Fonts` 參考固定為 `0.1.1`，並更新鎖定檔。
 3. 將 `FontRoles.axaml` 合併至應用程式資源。
 4. 在應用程式 builder 呼叫 `WithNvtCoreFonts()`。
 5. 在工具自己的樣式內，一起套用角色的家族、大小與字重。
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
+  <PackageReference Include="Nvt.Core.Fonts" Version="0.1.1" />
 </ItemGroup>
 ```
 
@@ -210,7 +212,7 @@ NFC 也需執行 `AvaloniaApplicationResourceTests`、`StartupFocusTests`、`Nav
 
 工具必須隨附完整的 [`licenses`](../../../src/Nvt.Core.Fonts/licenses) 資料夾。
 工具的第三方聲明必須列出四個字型家族。
-發行內容也須保留 Inter 字型授權與 Avalonia 相依套件聲明。
+Inter 字型授權隨套件附於 `licenses/Inter/LICENSE`。發行內容也須保留 Avalonia 相依套件聲明。
 Cascadia Mono 與 Noto Sans TC 使用 SIL Open Font License 1.1，檔案未修改。
 Material Symbols 使用 Apache License 2.0。
 其 [`NOTICE`](../../../src/Nvt.Core.Fonts/licenses/MaterialSymbolsOutlined/NOTICE) 記錄靜態實例修改方式。

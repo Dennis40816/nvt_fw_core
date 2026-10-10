@@ -6,7 +6,7 @@
 
 `Nvt.Core.LogConsole` 提供 NFC、NFH、NFU 共用的非 UI console 模型。
 目標框架是 `net8.0`，沒有新增套件。
-Avalonia 控制項與共用 commands 會在 K2 實作。
+控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。
 
 ## 設計與來源
 
@@ -14,11 +14,11 @@ Avalonia 控制項與共用 commands 會在 K2 實作。
 行為參考是先前的 NFH console 與已核准的 console redesign proposal。
 NFH 量測包含產品投影與 UI 工作；不同 workload 不能作為直接的 UI 效能比較。
 此模組的效能測試只量測純投影，不能直接證明 UI 改善。
-本次沒有 UI 或產品邏輯。
+非 UI 資料層沒有 UI 或產品邏輯。
 
 ## 狀態結構
 
-輸入集中在 `ConsoleFilter` record，包含等級、來源、字面搜尋、只看符合、去重與時間模式。
+事件篩選輸入集中在 `ConsoleFilter` record，包含等級、來源、字面搜尋、只看符合、去重與時間模式。
 空來源集合代表所有來源，空等級集合代表不顯示任何等級，空搜尋代表沒有搜尋條件。
 來源 ID 使用 ordinal identity，搜尋使用 ordinal 不分大小寫比較。
 
@@ -46,9 +46,9 @@ ExpandedIds 使用穩定 row ID。
 完整內容 handles、搜尋 ranges、counts 與 memberships 都在 `ConsoleProjection` 中。
 投影不將完整訊息複製成列字串。
 Counts 與空狀態不另外存成 state。
-宿主接受背景投影前，須確認快照與篩選輸入仍相同。
-K2 會讓選單與快捷鍵走相同 commands。
-K1 提供機制與不可變值，不另建一套 controller。
+宿主接受背景投影前，須確認快照、篩選與 presentation 輸入仍相同。
+Avalonia 控制器統一管理標題與工具列的 command 路由。
+非 UI 層提供不可變輸入與投影機制；列表虛擬化、列互動與鍵盤路由由 K2 的列表切片提供。
 
 ## 保留預算與生命週期
 
@@ -178,6 +178,75 @@ OnlyMatches 關閉時所有符合來源與等級的列仍保留高亮。
 EventCount 是快照的未篩選保留事件數，MatchingEventCount 是可見列的成員總數。
 RowCount 是投影列數，多行訊息不增加事件數。
 
+## 呈現契約
+
+遵循 Console redesign v3 (#82) 的「v3 更新」、「由 app 注入／SourceRegistry」、
+「增量連結解析」與「去重與篩選的投影」。沒有 UI、產品型別、resource lookup、
+thread culture 讀取、本地時區查詢或檔案系統存取。Store admission、ownership、rejection、
+dedupe 與 scanner grammar 維持不變。
+
+### App 注入契約
+
+App 以 `ConsoleProjectionOptions.SourceRegistry` 注入 immutable `ConsoleSource` 陣列。
+每筆包含穩定 ordinal `SourceId`、`DisplayName` 與遞增 `DisplayOrder`。
+ID 必須唯一；null entry、ID、name 或未初始化陣列皆無效。空 ID 與既有 store 相容。
+相同 order 保留 registry 輸入順序。`ConsoleProjection.Sources` 是顯示順序的唯一輸出：
+先列所有宣告來源，再依保留事件首次出現的 Sequence 列未知來源，未知來源以 ID 為名稱，display order 為 `int.MaxValue`。
+`SourceCounts` 為每個宣告來源先填零，仍只套 level filter 並計 raw events。
+篩選與搜尋繼續使用 ID，不將 count 存入來源 metadata，也不在每列重複存 name。
+即使 snapshot version 相同，替換 registry 也會改變下一次 projection。
+宿主的 stale-result check 必須納入 presentation／registry 輸入替換。
+
+新增 `Project(snapshot, filter, viewState, options)`，原有三參數入口仍使用 invariant culture、
+核准的 `Console.Timestamp.Ago` 預設 template `"{0} s ago"` 與 UTC。
+App 傳入已解析的 template 與明確 `CultureInfo`，projection 期間不得修改 culture。
+純函式 `ConsoleTimeFormatter.Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone)`
+是唯一時間格式計算路徑。Placeholder 0 接收依 culture 以 `"0.0"` 格式化的秒數，例如 `2.3` 或 `2,3`。範本只在 Relative 模式格式化：格式錯誤的範本在該模式下由投影拋出 `FormatException`，Absolute 與 Hidden 模式則忽略。
+暫停仍以 `PausedAt` 為基準，後續 capture 或 presentation 變更不會推進相對時間。
+Hidden 維持空字串；absolute 維持 invariant `HH:mm:ss.fff`，以明確 `TimeZoneInfo` 轉換。
+App 可傳自己選擇的本地時區或 UTC；Core 不自行取得本地時區。
+Copy 與 stream export 維持 store 的 UTC occurrence timestamp，不受畫面選項影響。
+
+### 投影列連結
+
+新增 `ConsoleLinkCache.GetLinks(snapshot, row)`，snapshot 是產生該列的版本。
+Caller 直接傳 `ConsoleRow`，不需尋找 raw entry。掃描使用 projection 既有 lease 的 segmented text 與 spans。
+去重列代表內容來自最新保留成員，原始成員被 ring 淘汰後仍可使用；沒有新 owner 或全文複本。
+Entry／group ID 在 cache key 分開，兩個 overload 共用 scanner、index、lock、Synchronize 與三個 retention budgets。
+Search 或來源改名不會失效。每次接受 snapshot 都要呼叫 `Synchronize`，包含 Clear。
+舊列仍可透過 lease 掃描自己的內容，但 stale snapshot 或 representative 不可填入目前 cache。
+Representative 改變時，即使 text version 相同也失效，因為 supplied spans 不在 dedupe key 中。
+超出 cache 額度仍完整回傳結果，但不快取。
+
+### 首行 metadata
+
+`ConsoleRow.GetFirstLine(maxCharacters = 1024)` 呼叫純函式 `ConsoleFirstLine.Read(content, maxCharacters)`。
+按需回傳 `Text` 與 `HasMoreContent`，不在列上儲存 newline 或 truncation flag。
+CR、LF、CRLF 都結束首行且不進入 preview。Cap 使用 UTF-16 字元，允許 0 至 4,096，
+不切開合法 surrogate pair。最多讀 cap + 1 字元，單次最多 1,024，只有有界 prefix 建立字串。
+`HasMoreContent` 表示 preview 省略任何原始內容，包含結尾換行。
+因畫面寬度造成的截斷仍由 UI 計算。
+
+### 假設
+
+設計未指定的細節採以下假設：宣告 order 相同時依輸入順序；未知來源的「首次出現」限於
+retained snapshot，不在 store 新存歷史 registry；preview hard cap 為 4,096；被省略的結尾換行
+也算 more content。群組維持最新保留成員為 representative，更換時失效以尊重不同 structured spans。
+Row link access 伴隨對應 snapshot，使用既有 live-cache generation／version fence。
+
+### 新公開成員與原因
+
+| 型別 | 新公開成員與原因 |
+| --- | --- |
+| `ConsoleSource` | Constructor `(SourceId, DisplayName, DisplayOrder = 0)`、`SourceId`、`DisplayName`、`DisplayOrder`、positional `Deconstruct`：app 來源 metadata，不依賴產品型別。 |
+| `ConsoleProjectionOptions` | 無參數 constructor、`SourceRegistry`、`RelativeTimeTemplate`、`Culture`、`AbsoluteTimeZone`：明確的 app presentation 輸入。 |
+| `ConsoleProjection` | `Sources`：來源顯示名稱與順序的單一輸出。 |
+| `ConsoleProjector` | `Project(snapshot, filter, viewState, options)` overload：注入 registry 與時間呈現。 |
+| `ConsoleLinkCache` | `GetLinks(snapshot, row)` overload：由投影列直接取 bounded cached links。 |
+| `ConsoleTimeFormatter` | `Format(timestamp, timeBase, mode, relativeTimeTemplate, culture, absoluteTimeZone = null)`：唯一純時間格式計算路徑。 |
+| `ConsoleFirstLine` | Constructor `(Text, HasMoreContent)`、`Text`、`HasMoreContent`、positional `Deconstruct`、`Read(content, maxCharacters = 1024)`：有界 derived preview。 |
+| `ConsoleRow` | `GetFirstLine(maxCharacters = 1024)`：不儲存旗標的按需首行入口。 |
+
 ## 連結與 app 注入
 
 `ConsoleLinkScanner` 是純函式，優先找 URL，再找引號與未加引號的路徑。
@@ -218,7 +287,8 @@ Structured span 驗證在起點已排序時以線性時間比較相鄰區間；�
 
 App spans 完全取代推導，明確的空 spans 也同樣優先。
 `ConsoleLinkIndex` 驗證 ranges 並提供 binary hit test。
-`ConsoleLinkCache` 在接受的 snapshot generation 與 version 內，以 EntryId 與 text revision 作為 key，不含搜尋。
+`ConsoleLinkCache` key 包含可區分的 EntryId／GroupId 與 text revision，不含搜尋。
+群組結果另外綁定最新保留的 representative，避免同文字版本、不同 app spans 的成員誤用舊結果。
 `Synchronize` 是唯一語意失效點，每次接受快照都要呼叫，包含 Clear。
 舊快照不能重新填入 live cache。
 掃描在 cache 鎖外執行，發布前再次驗證 snapshot generation、version、live membership 與 text revision。
@@ -244,6 +314,149 @@ IncludeTime 與 IncludeLevel 預設開啟，彼此獨立。
 匯出與複製前，即使 console 已收合，宿主仍須 await `CaptureLatestAsync(cancellationToken)`，再投影該固定版本。
 Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 
+## Avalonia 控制器與工具列
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` 是不可變篩選條件與檢視狀態的唯一寫入者。
+在 Core 已註冊的 `UiThread` 建立，傳入 app 擁有的 `LogStore`、不可變的
+`ConsoleSource` 目錄及選用的 `ConsoleProjectionOptions`。目錄放在
+`Options.SourceRegistry`；時間模式仍由 `Filter.TimeMode` 保存。時間模板、文化設定與
+絕對時間的時區都明確注入，使用期間不可修改傳入的文化設定。
+
+控制器先訂閱再擷取啟動快照，並啟用 store 通知。任意執行緒的通知合併成一個待執行的
+UI 工作；每次更新擷取有 lease 的快照，只呼叫一次 `ConsoleProjector.Project`。
+重映射原始事件選取、展開身分及去重切換時的暫停順序，再透過 `INotifyPropertyChanged`
+發布 `Projection`。所有統計直接取自投影。下一個 Background 優先序的 dispatcher 回合，
+在 binding 與排版採用新投影後釋放舊投影；持有內容以目前投影與一個待釋放投影為上限。
+發布前以 `LogStore.IsCurrent` 驗證快照 generation，因此 Clear 的 admission fence 也會拒絕
+writer reset 尚未發布時已排隊的 UI 更新。Dispose 立即停止目前的通知序列，等執行中的
+callback 返回後才釋放 lease；callback 內重入 dispatcher 也不會提早釋放借用的投影。
+
+列表借用 `Projection`，透過 `RequestViewState(state)` 回報不可變的意圖，不直接修改
+控制器輸入，也不 Dispose 借用的投影。`Pause(rowId, textOffset, pixelOffset)` 保存閱讀
+錨點，並透過新的非阻塞快照讀取 store 注入的時鐘，明確保存 Pause 當下的時間；
+`Resume()` 就是跳至最新的意圖。收合只改檢視狀態，保留跟隨模式。宿主離開頁面時
+呼叫 `Dispose()`，解除訂閱、取消排隊工作並釋放兩份投影；重複呼叫安全。Store 仍由 app
+擁有。控制器在建構時對整個 store 呼叫 `SetReady(true)`；`Dispose()` 不會還原先前
+的就緒狀態，其他訂閱者也會受到影響。宿主須納入這個持續生效的 store 通知狀態。
+
+工具列使用 `ToggleLevelCommand`（`LogLevel` 參數）、`ToggleOnlyMatchesCommand`、
+`ToggleDedupeCommand`、`SetTimeModeCommand`（`ConsoleTimeMode` 參數）、`ClearCommand`
+及 `ResetFiltersCommand`。`SetSelectedSources(ids)` 以 ordinal ID 選取，空集合代表所有
+來源。來源選單的 All sources 會勾選每個來源，也包含未來新增的來源。點擊已勾選來源，
+會從目前目錄排除該來源；後續點擊切換明確選取集合的成員。最後一個勾選來源不可取消，
+以保留空集合代表所有來源的既有契約；All sources 恢復不限來源的狀態。Detach 或替換
+Controller 時關閉並清空來源選單，釋放 binding，讓保留的舊項目 command 失效。
+來源選單開啟期間，投影目錄變更會透過同一個 builder 原地重建項目，保持 popup 開啟。
+View 直接以項目和投影比較來源成員，不另存來源目錄。不存在的來源 ID 顯示未勾選與零筆，
+名稱以 ID 作為 fallback。
+`SetSearchText(text)` 將純空白視為沒有搜尋條件。重設恢復預設篩選與去重，保留時間
+呈現及閱讀狀態。所有意圖與 Dispose 都必須在 UI 執行緒執行。匯出旗標由 `ExportOptions`
+保存，使用 `ToggleExportTimeCommand` 與 `ToggleExportLevelCommand` 切換。
+
+`ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
+取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。核准的 B
+配置在寬版把搜尋放在標題旁，等級與來源放在篩選列。960 DIP 以下含邊界時，搜尋與
+Only matches 移到篩選區第二行；Display 收納時間與去重，More 收納匯出與清除。標題高
+48 DIP；篩選區寬版高 48 DIP、窄版高 88 DIP。休止動作沒有底色或外框，等級按鈕使用
+語意圖示，Core tooltip 顯示完整原始筆數。共用圖示校正依渲染尺度更新，detach 時解除
+訂閱。只有 `Projection.IsEmpty` 時顯示空狀態。若 `Projection.EventCount == 0`，使用尚無事件
+的文案並隱藏 Reset filters；篩選後沒有符合項目時，顯示本地化篩選摘要與 Reset filters。
+Console 動作按鈕與選單項目以區域 DynamicResource 樣式，直接將字型 family、size、weight
+綁定 Core Body role，包含中文來源名稱；其他控制項保留既有字型角色。
+
+標題的 `Title` 預設為 Console。App 綁定 `CopySelectedCommand`、`CopyVisibleCommand`、
+`SaveLogCommand`；選單提供獨立的 Include time 與 Include level。標題選單的 binding
+直接跟隨標題的目前 Controller，避免 popup 關閉時中斷正在執行的 command。
+Clipboard、檔案 adapter、
+列導覽與列表渲染由宿主的互動與列表層負責。
+
+| Avalonia 型別 | 公開成員 |
+| --- | --- |
+| `ConsoleController` | 建構子 `(store, sources, options = null)`、`PropertyChanged`、`Filter`、`ViewState`、`Options`、`Projection`、`ExportOptions`、`RefreshError`、`ToggleLevelCommand`、`ToggleOnlyMatchesCommand`、`ToggleDedupeCommand`、`SetTimeModeCommand`、`ClearCommand`、`ResetFiltersCommand`、`ToggleExportTimeCommand`、`ToggleExportLevelCommand`、`SetSelectedSources`、`SetSearchText`、`RequestViewState`、`Pause`、`Resume`、`Dispose`。 |
+| `ConsoleHeader` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`、`Title` / `TitleProperty`、`CopySelectedCommand` / `CopySelectedCommandProperty`、`CopyVisibleCommand` / `CopyVisibleCommandProperty`、`SaveLogCommand` / `SaveLogCommandProperty`。 |
+| `ConsoleToolbar` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
+| `ConsoleEmptyState` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
+
+
+建構子會驗證 `RelativeTimeTemplate`，格式錯誤時以指向 `options` 的 `ArgumentException`
+拒絕輸入，並保留原本的 `FormatException` 作為原因。更新失敗時保留先前投影，透過唯讀
+`RefreshError` 發布例外；下一次成功接受的更新會清除此值。失敗的投影會釋放新取得的
+lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍會更新。
+控制器 Dispose 後，搜尋輸入與清除搜尋動作不再呼叫控制器。
+由 `SetFilter`（包含搜尋、來源與 command 輸入）及 `RequestViewState` 發出的通知，
+會將訂閱者例外同步傳回呼叫者。
+成功接受的更新先完成所有狀態變更，再依序通知 `ViewState`、`Projection`，以及有變更的
+`RefreshError`。更新通知會收集每個訂閱者的例外並完成整個通知序列，再將保留堆疊的重新
+拋出動作排入 UI dispatcher，進入 dispatcher 的未處理例外路徑。單一例外直接重新拋出；
+多個例外合併成一個 `AggregateException`。只有嘗試替換通知後才會釋放舊投影。
+失敗通知的 observer 丟出例外時，先前投影仍保留，後續更新也仍可執行。
+
+### 資源 keys
+
+`LogConsole/ConsoleResources.axaml` 定義英文預設值與結構尺寸，合併於
+`LogConsoleStyles.axaml`。控制項在區域載入不含預設資源的控制樣式；動態資源 binding
+僅在宿主未提供 key 時，才使用同一份字典的預設值。宿主可在 application、window 或
+console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換。
+宿主範本發生 `FormatException` 時，會改用內建英文範本。
+`MinimumWidth` 與 `NarrowBreakpoint` 是所有 console 區塊共用的唯一定義；
+組合高度會跟隨既有控制高度與 spacing 的動態 tokens。
+
+時間模式與等級標籤透過 keys 對應。控制器只提供篩選資料，`FilterSummary` 不再是公開 API；
+檢視從資源模板推導摘要。`Count` 接受標籤與原始筆數，`Sources.Selected` 與 `Dedupe.Count`
+接受筆數，`Empty.NoMatches` 接受篩選摘要。`Filter.Search` 接受搜尋原文與搜尋模式標籤，
+`Filter.Summary` 接受等級、來源、搜尋後綴與去重後綴；請保留有效的 composite placeholders。
+`Title` 是預設標題，宿主明確指定的標題優先。獨立注入的
+`ConsoleProjectionOptions.RelativeTimeTemplate` 仍負責格式化事件時間。
+
+| Key | 英文預設值／DIP 尺寸 |
+| --- | --- |
+| `Nvt.Console.MinimumWidth` | `640` |
+| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.Title` | `Console` |
+| `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
+| `Nvt.Console.Search.Name` | `Search console` |
+| `Nvt.Console.Search.Clear` | `Clear search` |
+| `Nvt.Console.OnlyMatches` | `Only matches` |
+| `Nvt.Console.Export` | `Export` |
+| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.Display` | `Display` |
+| `Nvt.Console.Display.Name` | `Display console` |
+| `Nvt.Console.More` | `More` |
+| `Nvt.Console.More.Name` | `More console actions` |
+| `Nvt.Console.Time.Name` | `Time display` |
+| `Nvt.Console.Time.Absolute` | `Absolute time` |
+| `Nvt.Console.Time.Relative` | `Relative time` |
+| `Nvt.Console.Time.Hidden` | `Hidden time` |
+| `Nvt.Console.CopySelected` | `Copy selected` |
+| `Nvt.Console.CopyVisible` | `Copy visible rows` |
+| `Nvt.Console.SaveLog` | `Save as .log` |
+| `Nvt.Console.IncludeTime` | `Include time` |
+| `Nvt.Console.IncludeLevel` | `Include level` |
+| `Nvt.Console.Clear` | `Clear console` |
+| `Nvt.Console.Sources.Name` | `Select sources` |
+| `Nvt.Console.Sources.All` | `All sources` |
+| `Nvt.Console.Sources.Selected` | `Sources ({0})` |
+| `Nvt.Console.Dedupe` | `Dedupe` |
+| `Nvt.Console.Dedupe.Count` | `Dedupe ×{0}` |
+| `Nvt.Console.Count` | `{0} · {1}` |
+| `Nvt.Console.Empty.NoEvents` | `No events yet` |
+| `Nvt.Console.Empty.NoMatches` | `No matching events · {0}` |
+| `Nvt.Console.ResetFilters` | `Reset filters` |
+| `Nvt.Console.Filter.NoLevels` | `no levels` |
+| `Nvt.Console.Filter.Search` | `; search ‘{0}’ ({1})` |
+| `Nvt.Console.Filter.MatchesOnly` | `matches only` |
+| `Nvt.Console.Filter.Highlight` | `highlight` |
+| `Nvt.Console.Filter.Dedupe` | `; dedupe` |
+| `Nvt.Console.Filter.Separator` | `, ` |
+| `Nvt.Console.Filter.Summary` | `{0}; {1}{2}{3}` |
+| `Nvt.Console.Level.Trace` | `Trace` |
+| `Nvt.Console.Level.Debug` | `Debug` |
+| `Nvt.Console.Level.Info` | `Info` |
+| `Nvt.Console.Level.Warn` | `Warn` |
+| `Nvt.Console.Level.Error` | `Error` |
+| `Nvt.Console.Level.Fatal` | `Fatal` |
+
 ## 公開 API
 
 完整 type 與 member 表見 [英文 Public API](LogConsole.md#public-api)。
@@ -261,8 +474,9 @@ Ring、group index、history、version、EvictedCount 與 notification cursor �
 Writer 排程使用一個 interlocked flag，published state 的 reference count 也使用 Interlocked。
 `ContentOwner._contentGate` 只保護 reference lifetime，active read 先 pin 再於鎖外呼叫 app。
 快照以 Interlocked 確保只釋放一次，投影的每個 lease 也只釋放一次。
-`ConsoleLinkCache._cacheGate` 保護 cache 與 revision stamp，其他 model state 不可變。
-宿主在單一執行緒替換 view state 並處理 commands。
+`ConsoleLinkCache._cacheGate` 保護 cache，以及包含 live entry／group revisions 和 revision stamp 的單一 immutable state；同步時整體替換。其他 model state 不可變。
+Avalonia 控制器在 Core 已註冊的 UI 執行緒替換篩選與 view state，並管理 commands。
+宿主與列表透過 `RequestViewState` 提交不可變意圖，不直接替換控制器狀態。
 
 Clock 使用 BCL `TimeProvider`，測試重用 Core 的 `Time.DelegateTimeProvider`。
 實作 baseline 的 Lifecycle 只有 CoalescedRefresh 與 UndoService，沒有可重用的 generation helper。
@@ -284,5 +498,7 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
+Avalonia 標題、工具列與空狀態的 accessibility 及視覺證據已實作。
+UI virtualization、列的 pointer 互動、列 accessibility 與鍵盤路由由 K2 的列表切片負責；
+clipboard 與檔案 adapter 仍由 app 擁有。
 宿主採用是另外的變更，路徑政策、開啟、clipboard 與 spill-store 整合仍屬於 app。

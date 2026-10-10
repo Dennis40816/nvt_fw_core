@@ -11,10 +11,9 @@ public sealed class ConsoleLinkCache
     private readonly int _maxEntries;
     private readonly int _maxSpans;
     private readonly long _maxTargetCharacters;
-    // _cacheGate protects the cache, live revisions, and the revision stamp.
-    private readonly Dictionary<long, CachedLinks> _cache = [];
-    private ImmutableDictionary<long, long> _liveVersions = ImmutableDictionary<long, long>.Empty;
-    private CacheRevision? _revision;
+    // _cacheGate protects the cache and its atomic live-revision state.
+    private readonly Dictionary<ConsoleRowId, CachedLinks> _cache = [];
+    private CacheState? _state;
 
     /// <summary>Creates an independently bounded cache. Oversized results are returned without caching.</summary>
     public ConsoleLinkCache(int maxEntries = 10_000, int maxSpans = 65_536, long maxTargetCharacters = 4 * 1024 * 1024)
@@ -40,32 +39,50 @@ public sealed class ConsoleLinkCache
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(entry);
-        var textVersion = entry.TextContent.Version;
-        var textLength = entry.TextContent.Length;
+        return GetLinksCore(snapshot, new ConsoleRowId(entry.EntryId), entry.EntryId, entry.Generation,
+            entry.TextContent.Version, entry.TextContent, entry.LinkSpans);
+    }
+
+    /// <summary>Gets bounded, cached links directly from a projected entry or dedupe row's leased content.</summary>
+    /// <remarks>Use the snapshot that produced the row. Group scans use the latest retained representative,
+    /// never look up an evicted original member, and share all cache budgets with raw-entry scans.</remarks>
+    public ConsoleLinkIndex GetLinks(LogSnapshot snapshot, ConsoleRow row)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(row);
+        // A row always belongs to the snapshot that produced it, so the generation check is true by construction.
+        // The text version and representative checks still reject a stale row.
+        return GetLinksCore(snapshot, row.Id, row.LastSequence, snapshot.Generation,
+            row.TextVersion, row.TextContent, row.LinkSpans);
+    }
+
+    private ConsoleLinkIndex GetLinksCore(LogSnapshot snapshot, ConsoleRowId id, long representativeId,
+        long generation, long textVersion, ILogTextContent content, ImmutableArray<ConsoleLinkSpan>? suppliedSpans)
+    {
+        var textLength = content.Length;
         var requested = new CacheRevision(snapshot.Version, snapshot.Generation);
+        var text = new LiveText(textVersion, representativeId);
+        bool IsCurrent() => _state is { } state && state.Revision == requested && generation == snapshot.Generation
+            && state.LiveVersions.TryGetValue(id, out var live) && live == text;
         lock (_cacheGate)
         {
             SynchronizeCore(snapshot);
-            var current = _revision == requested
-                && _liveVersions.TryGetValue(entry.EntryId, out var version) && version == textVersion
-                && entry.Generation == snapshot.Generation;
-            if (current && _cache.TryGetValue(entry.EntryId, out var cached)) return cached.Index;
+            if (IsCurrent() && _cache.TryGetValue(id, out var cached)) return cached.Index;
         }
-        var spans = entry.LinkSpans ?? ConsoleLinkScanner.Scan(entry.TextContent);
+        // Both public entry points use the same segmented scanner and publication path.
+        var spans = suppliedSpans ?? ConsoleLinkScanner.Scan(content);
         var index = new ConsoleLinkIndex(spans, textLength);
         var characters = spans.Sum(span => (long)span.Target.Path.Length);
         lock (_cacheGate)
         {
-            var current = _revision == requested
-                && _liveVersions.TryGetValue(entry.EntryId, out var version) && version == textVersion
-                && entry.Generation == snapshot.Generation;
-            if (current && _cache.TryGetValue(entry.EntryId, out var cached)) return cached.Index;
+            var current = IsCurrent();
+            if (current && _cache.TryGetValue(id, out var cached)) return cached.Index;
             if (current && spans.Length <= _maxSpans && characters <= _maxTargetCharacters)
             {
                 while (_cache.Count >= _maxEntries || _cache.Values.Sum(c => (long)c.Index.Spans.Length) + spans.Length > _maxSpans
                     || _cache.Values.Sum(c => c.Index.Spans.Sum(span => (long)span.Target.Path.Length)) + characters > _maxTargetCharacters)
                     _cache.Remove(_cache.First().Key);
-                _cache[entry.EntryId] = new CachedLinks(textVersion, index);
+                _cache[id] = new CachedLinks(text, index);
             }
             return index;
         }
@@ -73,17 +90,28 @@ public sealed class ConsoleLinkCache
 
     private void SynchronizeCore(LogSnapshot snapshot)
     {
-        if (_revision is { } prior && snapshot.Version < prior.Version) return;
+        var prior = _state?.Revision;
+        if (prior is not null && snapshot.Version < prior.Version) return;
         var next = new CacheRevision(snapshot.Version, snapshot.Generation);
-        if (next == _revision) return;
-        if (_revision?.Generation != snapshot.Generation) _cache.Clear();
-        _liveVersions = snapshot.Entries.ToImmutableDictionary(e => e.EntryId, e => e.TextContent.Version);
+        if (next == prior) return;
+        if (prior?.Generation != snapshot.Generation) _cache.Clear();
+        var live = ImmutableDictionary.CreateBuilder<ConsoleRowId, LiveText>();
+        foreach (var entry in snapshot.Entries)
+        {
+            var text = new LiveText(entry.TextContent.Version, entry.EntryId);
+            live[new ConsoleRowId(entry.EntryId)] = text;
+            // Sequence order makes the last retained member the group's representative, as in projection.
+            live[new ConsoleRowId(entry.GroupId, true)] = text;
+        }
+        var versions = live.ToImmutable();
         foreach (var pair in _cache.ToArray())
-            if (!_liveVersions.TryGetValue(pair.Key, out var version) || pair.Value.TextVersion != version) _cache.Remove(pair.Key);
-        _revision = next;
+            if (!versions.TryGetValue(pair.Key, out var version) || pair.Value.Text != version) _cache.Remove(pair.Key);
+        _state = new CacheState(next, versions);
     }
 
+    private sealed record CacheState(CacheRevision Revision, ImmutableDictionary<ConsoleRowId, LiveText> LiveVersions);
     private sealed record CacheRevision(long Version, long Generation);
-    private sealed record CachedLinks(long TextVersion, ConsoleLinkIndex Index);
+    private readonly record struct LiveText(long Version, long RepresentativeId);
+    private sealed record CachedLinks(LiveText Text, ConsoleLinkIndex Index);
 }
 
