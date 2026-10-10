@@ -53,14 +53,39 @@ Files、Startup、Progress，以及 StartupTraceTests、ThrottledProgressTests
 內部的時鐘副本留待發布後遷移。
 Launcher 傳輸測試內部的 LinkedProbeWorkspace 是另一份工作區副本，同樣留待遷移。
 
+## SignalWait
+
+SignalWait 是供測試設定與等待的一次性訊號，取代以 Task.Delay 與 Thread.Sleep
+等待結果的做法。Set 第一次呼叫回傳 true，之後回傳 false；等待者在其他執行緒
+繼續，不會在 Set 內執行。WaitAsync 等待訊號、取消權杖或看門狗。
+
+看門狗只用來避免卡死，必須是有限的正數（預設 30 秒，DefaultWatchdog），絕不
+決定測試結果。到期時 WaitAsync 擲出 TimeoutException，訊息會寫出訊號名稱；
+權杖取消仍是 OperationCanceledException。看門狗時鐘預設為 TimeProvider.System，
+測試可改傳其他時鐘，例如 ManualTimeProvider，不必實際等待就能驗證到期。
+靜態的 WaitAsync(Task, name, ...) 為任何工作加上同樣的看門狗，工作本身的失敗
+原樣傳出。
+
+## ChildProcessFixture
+
+ChildProcessFixture.Start 不經 shell 啟動可執行檔。標準輸出與標準錯誤依到達
+順序合併擷取，最多到字元上限（預設 64 KiB，OutputTruncated 表示輸出被截斷）。
+標準輸入會立即關閉。子行程未自行結束時，看門狗（預設 60 秒）會結束整個行程
+樹；之後 WaitForExitAsync 擲出 TimeoutException，WatchdogExpired 為 true。
+WaitForOutputAsync 等待輸出包含指定文字，輸出結束仍無該文字則失敗。KillTree
+依要求結束行程樹。Dispose 與 DisposeAsync 會結束整個行程樹，有限度等待根行程
+結束並釋放控制代碼，可重複呼叫。子行程若一直存活，會占住檔案並讓下一個測試
+隨機失敗，所以每個子行程都應經由此 fixture 啟動。行程樹結束只能涵蓋父行程仍
+存活的子孫；比父行程活得更久的子孫無法觸及。
+
 ## 基準與刻意差異
 
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的
 `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` 與
 `tests/Nvt.Core.Tests/Processes/TestWorkspace.cs`。這兩個檔案在提交
-d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與本變更的父提交
+d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與共用支援變更的父提交
 f90900bbb04f84e590aa77dc47b6e04b7a77d9c6 完全相同。可用
-`git show <commit>:<path>` 比對。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
+`git show <commit>:<path>` 比對。`SignalWait` 與 `ChildProcessFixture` 是新增的，不取代任何既有程式，所以沒有要比對的來源行為。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
 
 時鐘：
 
