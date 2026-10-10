@@ -1,0 +1,746 @@
+#nullable enable
+Nvt.Core.Csv.CsvQuoting
+Nvt.Core.Files.BoundedFileReader
+Nvt.Core.Files.BoundedReadResult
+Nvt.Core.Files.BoundedReadResult.BoundedReadResult() -> void
+Nvt.Core.Files.BoundedReadResult.BoundedReadResult(long Length, byte[]? Sha256, byte[]? Bytes) -> void
+Nvt.Core.Files.BoundedReadResult.Bytes.get -> byte[]?
+Nvt.Core.Files.BoundedReadResult.Bytes.init -> void
+Nvt.Core.Files.BoundedReadResult.Length.get -> long
+Nvt.Core.Files.BoundedReadResult.Length.init -> void
+Nvt.Core.Files.BoundedReadResult.Sha256.get -> byte[]?
+Nvt.Core.Files.BoundedReadResult.Sha256.init -> void
+Nvt.Core.Files.FileCaptureMode
+Nvt.Core.Files.FileCaptureMode.CaptureBytes = 1 -> Nvt.Core.Files.FileCaptureMode
+Nvt.Core.Files.FileCaptureMode.IdentityOnly = 0 -> Nvt.Core.Files.FileCaptureMode
+Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangeKind.Growth = 2 -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangeKind.PositionChanged = 4 -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangeKind.ShortRead = 1 -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangeKind.Shrinkage = 3 -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangeKind.Unspecified = 0 -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangedDuringReadException
+Nvt.Core.Files.FileChangedDuringReadException.ChangeKind.get -> Nvt.Core.Files.FileChangeKind
+Nvt.Core.Files.FileChangedDuringReadException.FileChangedDuringReadException(Nvt.Core.Files.FileChangeKind changeKind = Nvt.Core.Files.FileChangeKind.Unspecified) -> void
+Nvt.Core.Files.FileSizeLimitExceededException
+Nvt.Core.Files.FileSizeLimitExceededException.FileSizeLimitExceededException(long observedBytes, long maximumBytes) -> void
+Nvt.Core.Files.FileSizeLimitExceededException.FileSizeLimitExceededException(long observedBytes, long maximumBytes, bool isCaptureStorageLimit) -> void
+Nvt.Core.Files.FileSizeLimitExceededException.IsCaptureStorageLimit.get -> bool
+Nvt.Core.Files.FileSizeLimitExceededException.MaximumBytes.get -> long
+Nvt.Core.Files.FileSizeLimitExceededException.ObservedBytes.get -> long
+Nvt.Core.Files.RegularFileGuard
+Nvt.Core.Files.RootedPathGuard
+Nvt.Core.IO.AtomicOutput
+Nvt.Core.Lifecycle.CoalescedRefresh
+Nvt.Core.Lifecycle.CoalescedRefresh.CoalescedRefresh(System.Action<System.Action!>! schedule, System.Action! refresh) -> void
+Nvt.Core.Lifecycle.CoalescedRefresh.Request() -> void
+Nvt.Core.Lifecycle.CoalescedRefresh.Reset() -> void
+Nvt.Core.Lifecycle.UndoAction
+Nvt.Core.Lifecycle.UndoAction.Description.get -> string!
+Nvt.Core.Lifecycle.UndoAction.Description.init -> void
+Nvt.Core.Lifecycle.UndoAction.Undo.get -> System.Action!
+Nvt.Core.Lifecycle.UndoAction.Undo.init -> void
+Nvt.Core.Lifecycle.UndoAction.UndoAction(string! Description, System.Action! Undo) -> void
+Nvt.Core.Lifecycle.UndoService
+Nvt.Core.Lifecycle.UndoService.CanUndo.get -> bool
+Nvt.Core.Lifecycle.UndoService.Push(System.Action! undo, string! description) -> void
+Nvt.Core.Lifecycle.UndoService.TryPop(out Nvt.Core.Lifecycle.UndoAction? action) -> bool
+Nvt.Core.Lifecycle.UndoService.UndoService() -> void
+Nvt.Core.Locale.CommonLanguage
+Nvt.Core.Locale.CommonLanguage.English = 0 -> Nvt.Core.Locale.CommonLanguage
+Nvt.Core.Locale.CommonLanguage.TraditionalChinese = 1 -> Nvt.Core.Locale.CommonLanguage
+Nvt.Core.Locale.CommonTextResources
+Nvt.Core.Locale.CommonTextResources.AllItemsLoadedLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.BackLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.CancelLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.CloseLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.ContinueLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.DarkThemeLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.EnglishLanguageLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.ExitLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.FormatLoadMore(int next, int remaining) -> string!
+Nvt.Core.Locale.CommonTextResources.FormatPagedStatus(int visible, int total) -> string!
+Nvt.Core.Locale.CommonTextResources.FormatWindowStatus(int first, int last, int total) -> string!
+Nvt.Core.Locale.CommonTextResources.HomeLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.Language.get -> Nvt.Core.Locale.CommonLanguage
+Nvt.Core.Locale.CommonTextResources.LanguageLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.LightThemeLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.NextPageLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.NoItemsLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.OpenLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.PreferencesLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.PreviousPageLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.ReducedMotionDescription.get -> string!
+Nvt.Core.Locale.CommonTextResources.ReducedMotionLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.RetryLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.StayOnPageLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.SystemThemeLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.ThemeLabel.get -> string!
+Nvt.Core.Locale.CommonTextResources.TraditionalChineseLanguageLabel.get -> string!
+Nvt.Core.LogConsole.ConsoleExportFormatter
+Nvt.Core.LogConsole.ConsoleExportOptions
+Nvt.Core.LogConsole.ConsoleExportOptions.ConsoleExportOptions(bool IncludeTime = true, bool IncludeLevel = true) -> void
+Nvt.Core.LogConsole.ConsoleExportOptions.IncludeLevel.get -> bool
+Nvt.Core.LogConsole.ConsoleExportOptions.IncludeLevel.init -> void
+Nvt.Core.LogConsole.ConsoleExportOptions.IncludeTime.get -> bool
+Nvt.Core.LogConsole.ConsoleExportOptions.IncludeTime.init -> void
+Nvt.Core.LogConsole.ConsoleFilter
+Nvt.Core.LogConsole.ConsoleFilter.Deduplicate.get -> bool
+Nvt.Core.LogConsole.ConsoleFilter.Deduplicate.init -> void
+Nvt.Core.LogConsole.ConsoleFilter.EnabledLevels.get -> System.Collections.Immutable.ImmutableHashSet<Nvt.Core.LogConsole.LogLevel>!
+Nvt.Core.LogConsole.ConsoleFilter.EnabledLevels.init -> void
+Nvt.Core.LogConsole.ConsoleFilter.OnlyMatches.get -> bool
+Nvt.Core.LogConsole.ConsoleFilter.OnlyMatches.init -> void
+Nvt.Core.LogConsole.ConsoleFilter.SearchText.get -> string!
+Nvt.Core.LogConsole.ConsoleFilter.SearchText.init -> void
+Nvt.Core.LogConsole.ConsoleFilter.SelectedSources.get -> System.Collections.Immutable.ImmutableHashSet<string!>!
+Nvt.Core.LogConsole.ConsoleFilter.SelectedSources.init -> void
+Nvt.Core.LogConsole.ConsoleFilter.TimeMode.get -> Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.LogConsole.ConsoleFilter.TimeMode.init -> void
+Nvt.Core.LogConsole.ConsoleFirstLine
+Nvt.Core.LogConsole.ConsoleFirstLine.ConsoleFirstLine() -> void
+Nvt.Core.LogConsole.ConsoleFirstLine.ConsoleFirstLine(string! Text, bool HasMoreContent) -> void
+Nvt.Core.LogConsole.ConsoleFirstLine.HasMoreContent.get -> bool
+Nvt.Core.LogConsole.ConsoleFirstLine.HasMoreContent.init -> void
+Nvt.Core.LogConsole.ConsoleFirstLine.Text.get -> string!
+Nvt.Core.LogConsole.ConsoleFirstLine.Text.init -> void
+Nvt.Core.LogConsole.ConsoleFollow
+Nvt.Core.LogConsole.ConsoleFollow.Following
+Nvt.Core.LogConsole.ConsoleFollow.Following.Following() -> void
+Nvt.Core.LogConsole.ConsoleFollow.Paused
+Nvt.Core.LogConsole.ConsoleFollow.Paused.Anchor.get -> Nvt.Core.LogConsole.ConsoleReadingAnchor!
+Nvt.Core.LogConsole.ConsoleFollow.Paused.Paused(Nvt.Core.LogConsole.ConsoleReadingAnchor! Anchor, System.DateTimeOffset PausedAt) -> void
+Nvt.Core.LogConsole.ConsoleFollow.Paused.PausedAt.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.ConsoleLinkCache
+Nvt.Core.LogConsole.ConsoleLinkCache.ConsoleLinkCache(int maxEntries = 10000, int maxSpans = 65536, long maxTargetCharacters = 4194304) -> void
+Nvt.Core.LogConsole.ConsoleLinkCache.GetLinks(Nvt.Core.LogConsole.LogSnapshot! snapshot, Nvt.Core.LogConsole.ConsoleRow! row) -> Nvt.Core.LogConsole.ConsoleLinkIndex!
+Nvt.Core.LogConsole.ConsoleLinkCache.GetLinks(Nvt.Core.LogConsole.LogSnapshot! snapshot, Nvt.Core.LogConsole.LogEntry! entry) -> Nvt.Core.LogConsole.ConsoleLinkIndex!
+Nvt.Core.LogConsole.ConsoleLinkCache.Synchronize(Nvt.Core.LogConsole.LogSnapshot! snapshot) -> void
+Nvt.Core.LogConsole.ConsoleLinkIndex
+Nvt.Core.LogConsole.ConsoleLinkIndex.ConsoleLinkIndex(System.Collections.Generic.IEnumerable<Nvt.Core.LogConsole.ConsoleLinkSpan!>! spans, int textLength) -> void
+Nvt.Core.LogConsole.ConsoleLinkIndex.HitTest(int offset) -> Nvt.Core.LogConsole.ConsoleLinkSpan?
+Nvt.Core.LogConsole.ConsoleLinkIndex.Spans.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>
+Nvt.Core.LogConsole.ConsoleLinkScanner
+Nvt.Core.LogConsole.ConsoleLinkSpan
+Nvt.Core.LogConsole.ConsoleLinkSpan.ConsoleLinkSpan(int Start, int Length, Nvt.Core.LogConsole.LinkTarget! Target) -> void
+Nvt.Core.LogConsole.ConsoleLinkSpan.Length.get -> int
+Nvt.Core.LogConsole.ConsoleLinkSpan.Length.init -> void
+Nvt.Core.LogConsole.ConsoleLinkSpan.Start.get -> int
+Nvt.Core.LogConsole.ConsoleLinkSpan.Start.init -> void
+Nvt.Core.LogConsole.ConsoleLinkSpan.Target.get -> Nvt.Core.LogConsole.LinkTarget!
+Nvt.Core.LogConsole.ConsoleLinkSpan.Target.init -> void
+Nvt.Core.LogConsole.ConsoleProjection
+Nvt.Core.LogConsole.ConsoleProjection.CapturedAt.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.ConsoleProjection.CapturedAt.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.ConsoleProjection() -> void
+Nvt.Core.LogConsole.ConsoleProjection.Deduplicate.get -> bool
+Nvt.Core.LogConsole.ConsoleProjection.Deduplicate.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.Dispose() -> void
+Nvt.Core.LogConsole.ConsoleProjection.DuplicatesMerged.get -> int
+Nvt.Core.LogConsole.ConsoleProjection.EventCount.get -> int
+Nvt.Core.LogConsole.ConsoleProjection.EventCount.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.EvictedCount.get -> long
+Nvt.Core.LogConsole.ConsoleProjection.EvictedCount.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.Generation.get -> long
+Nvt.Core.LogConsole.ConsoleProjection.Generation.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.IsEmpty.get -> bool
+Nvt.Core.LogConsole.ConsoleProjection.LastSequence.get -> long
+Nvt.Core.LogConsole.ConsoleProjection.LastSequence.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.LevelCounts.get -> System.Collections.Immutable.ImmutableDictionary<Nvt.Core.LogConsole.LogLevel, int>!
+Nvt.Core.LogConsole.ConsoleProjection.LevelCounts.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.MatchingEventCount.get -> int
+Nvt.Core.LogConsole.ConsoleProjection.NewSincePauseCount.get -> int
+Nvt.Core.LogConsole.ConsoleProjection.NewSincePauseCount.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.ResolvedAnchorId.get -> Nvt.Core.LogConsole.ConsoleRowId?
+Nvt.Core.LogConsole.ConsoleProjection.ResolvedAnchorId.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.RetainedMembership.get -> System.Collections.Immutable.ImmutableDictionary<Nvt.Core.LogConsole.ConsoleRowId, System.Collections.Immutable.ImmutableArray<long>>!
+Nvt.Core.LogConsole.ConsoleProjection.RetainedMembership.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.RowCount.get -> int
+Nvt.Core.LogConsole.ConsoleProjection.Rows.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleRow!>
+Nvt.Core.LogConsole.ConsoleProjection.Rows.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.SourceCounts.get -> System.Collections.Immutable.ImmutableDictionary<string!, int>!
+Nvt.Core.LogConsole.ConsoleProjection.SourceCounts.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.Sources.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSource!>
+Nvt.Core.LogConsole.ConsoleProjection.Sources.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.TimeBase.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.ConsoleProjection.TimeBase.init -> void
+Nvt.Core.LogConsole.ConsoleProjection.Version.get -> long
+Nvt.Core.LogConsole.ConsoleProjection.Version.init -> void
+Nvt.Core.LogConsole.ConsoleProjectionOptions
+Nvt.Core.LogConsole.ConsoleProjectionOptions.AbsoluteTimeZone.get -> System.TimeZoneInfo!
+Nvt.Core.LogConsole.ConsoleProjectionOptions.AbsoluteTimeZone.init -> void
+Nvt.Core.LogConsole.ConsoleProjectionOptions.Culture.get -> System.Globalization.CultureInfo!
+Nvt.Core.LogConsole.ConsoleProjectionOptions.Culture.init -> void
+Nvt.Core.LogConsole.ConsoleProjectionOptions.RelativeTimeTemplate.get -> string!
+Nvt.Core.LogConsole.ConsoleProjectionOptions.RelativeTimeTemplate.init -> void
+Nvt.Core.LogConsole.ConsoleProjectionOptions.SourceRegistry.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSource!>
+Nvt.Core.LogConsole.ConsoleProjectionOptions.SourceRegistry.init -> void
+Nvt.Core.LogConsole.ConsoleProjector
+Nvt.Core.LogConsole.ConsoleReadingAnchor
+Nvt.Core.LogConsole.ConsoleReadingAnchor.ConsoleReadingAnchor(Nvt.Core.LogConsole.ConsoleRowId? RowId, long Sequence, int TextOffset, double PixelOffset, long Generation, long ThroughSequence, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleRowId> RowOrder) -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.Generation.get -> long
+Nvt.Core.LogConsole.ConsoleReadingAnchor.Generation.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.PixelOffset.get -> double
+Nvt.Core.LogConsole.ConsoleReadingAnchor.PixelOffset.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.RowId.get -> Nvt.Core.LogConsole.ConsoleRowId?
+Nvt.Core.LogConsole.ConsoleReadingAnchor.RowId.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.RowOrder.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleRowId>
+Nvt.Core.LogConsole.ConsoleReadingAnchor.RowOrder.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.Sequence.get -> long
+Nvt.Core.LogConsole.ConsoleReadingAnchor.Sequence.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.TextOffset.get -> int
+Nvt.Core.LogConsole.ConsoleReadingAnchor.TextOffset.init -> void
+Nvt.Core.LogConsole.ConsoleReadingAnchor.ThroughSequence.get -> long
+Nvt.Core.LogConsole.ConsoleReadingAnchor.ThroughSequence.init -> void
+Nvt.Core.LogConsole.ConsoleRow
+Nvt.Core.LogConsole.ConsoleRow.ConsoleRow(Nvt.Core.LogConsole.ConsoleRowId Id, Nvt.Core.LogConsole.LogLevel Level, string! SourceId, Nvt.Core.LogConsole.ILogTextContent! TextContent, long TextVersion, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>? LinkSpans, System.Collections.Immutable.ImmutableArray<long> MemberSequences, System.DateTimeOffset FirstTimestamp, System.DateTimeOffset Timestamp, long LastSequence, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSearchHit> SearchHits, string! TimeText) -> void
+Nvt.Core.LogConsole.ConsoleRow.Count.get -> int
+Nvt.Core.LogConsole.ConsoleRow.FirstTimestamp.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.ConsoleRow.FirstTimestamp.init -> void
+Nvt.Core.LogConsole.ConsoleRow.GetFirstLine(int maxCharacters = 1024) -> Nvt.Core.LogConsole.ConsoleFirstLine
+Nvt.Core.LogConsole.ConsoleRow.Id.get -> Nvt.Core.LogConsole.ConsoleRowId
+Nvt.Core.LogConsole.ConsoleRow.Id.init -> void
+Nvt.Core.LogConsole.ConsoleRow.LastSequence.get -> long
+Nvt.Core.LogConsole.ConsoleRow.LastSequence.init -> void
+Nvt.Core.LogConsole.ConsoleRow.Level.get -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.ConsoleRow.Level.init -> void
+Nvt.Core.LogConsole.ConsoleRow.LinkSpans.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>?
+Nvt.Core.LogConsole.ConsoleRow.LinkSpans.init -> void
+Nvt.Core.LogConsole.ConsoleRow.MemberSequences.get -> System.Collections.Immutable.ImmutableArray<long>
+Nvt.Core.LogConsole.ConsoleRow.MemberSequences.init -> void
+Nvt.Core.LogConsole.ConsoleRow.SearchHits.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSearchHit>
+Nvt.Core.LogConsole.ConsoleRow.SearchHits.init -> void
+Nvt.Core.LogConsole.ConsoleRow.SourceId.get -> string!
+Nvt.Core.LogConsole.ConsoleRow.SourceId.init -> void
+Nvt.Core.LogConsole.ConsoleRow.TextContent.get -> Nvt.Core.LogConsole.ILogTextContent!
+Nvt.Core.LogConsole.ConsoleRow.TextContent.init -> void
+Nvt.Core.LogConsole.ConsoleRow.TextVersion.get -> long
+Nvt.Core.LogConsole.ConsoleRow.TextVersion.init -> void
+Nvt.Core.LogConsole.ConsoleRow.TimeText.get -> string!
+Nvt.Core.LogConsole.ConsoleRow.TimeText.init -> void
+Nvt.Core.LogConsole.ConsoleRow.Timestamp.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.ConsoleRow.Timestamp.init -> void
+Nvt.Core.LogConsole.ConsoleRowId
+Nvt.Core.LogConsole.ConsoleRowId.ConsoleRowId() -> void
+Nvt.Core.LogConsole.ConsoleRowId.ConsoleRowId(long Value, bool IsGroup = false) -> void
+Nvt.Core.LogConsole.ConsoleRowId.IsGroup.get -> bool
+Nvt.Core.LogConsole.ConsoleRowId.IsGroup.init -> void
+Nvt.Core.LogConsole.ConsoleRowId.Value.get -> long
+Nvt.Core.LogConsole.ConsoleRowId.Value.init -> void
+Nvt.Core.LogConsole.ConsoleSearchArea
+Nvt.Core.LogConsole.ConsoleSearchArea.Message = 0 -> Nvt.Core.LogConsole.ConsoleSearchArea
+Nvt.Core.LogConsole.ConsoleSearchArea.Source = 1 -> Nvt.Core.LogConsole.ConsoleSearchArea
+Nvt.Core.LogConsole.ConsoleSearchHit
+Nvt.Core.LogConsole.ConsoleSearchHit.Area.get -> Nvt.Core.LogConsole.ConsoleSearchArea
+Nvt.Core.LogConsole.ConsoleSearchHit.Area.init -> void
+Nvt.Core.LogConsole.ConsoleSearchHit.ConsoleSearchHit() -> void
+Nvt.Core.LogConsole.ConsoleSearchHit.ConsoleSearchHit(Nvt.Core.LogConsole.ConsoleSearchArea Area, int Start, int Length) -> void
+Nvt.Core.LogConsole.ConsoleSearchHit.Length.get -> int
+Nvt.Core.LogConsole.ConsoleSearchHit.Length.init -> void
+Nvt.Core.LogConsole.ConsoleSearchHit.Start.get -> int
+Nvt.Core.LogConsole.ConsoleSearchHit.Start.init -> void
+Nvt.Core.LogConsole.ConsoleSource
+Nvt.Core.LogConsole.ConsoleSource.ConsoleSource(string! SourceId, string! DisplayName, int DisplayOrder = 0) -> void
+Nvt.Core.LogConsole.ConsoleSource.DisplayName.get -> string!
+Nvt.Core.LogConsole.ConsoleSource.DisplayName.init -> void
+Nvt.Core.LogConsole.ConsoleSource.DisplayOrder.get -> int
+Nvt.Core.LogConsole.ConsoleSource.DisplayOrder.init -> void
+Nvt.Core.LogConsole.ConsoleSource.SourceId.get -> string!
+Nvt.Core.LogConsole.ConsoleSource.SourceId.init -> void
+Nvt.Core.LogConsole.ConsoleTimeFormatter
+Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.LogConsole.ConsoleTimeMode.Absolute = 0 -> Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.LogConsole.ConsoleTimeMode.Hidden = 2 -> Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.LogConsole.ConsoleTimeMode.Relative = 1 -> Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.LogConsole.ConsoleViewState
+Nvt.Core.LogConsole.ConsoleViewState.ExpandedIds.get -> System.Collections.Immutable.ImmutableHashSet<Nvt.Core.LogConsole.ConsoleRowId>!
+Nvt.Core.LogConsole.ConsoleViewState.ExpandedIds.init -> void
+Nvt.Core.LogConsole.ConsoleViewState.Follow.get -> Nvt.Core.LogConsole.ConsoleFollow!
+Nvt.Core.LogConsole.ConsoleViewState.Follow.init -> void
+Nvt.Core.LogConsole.ConsoleViewState.IsExpanded.get -> bool
+Nvt.Core.LogConsole.ConsoleViewState.IsExpanded.init -> void
+Nvt.Core.LogConsole.ConsoleViewState.Pause(Nvt.Core.LogConsole.ConsoleProjection! projection, Nvt.Core.LogConsole.ConsoleRowId? rowId = null, int textOffset = 0, double pixelOffset = 0, System.DateTimeOffset? pausedAt = null) -> Nvt.Core.LogConsole.ConsoleViewState!
+Nvt.Core.LogConsole.ConsoleViewState.Remap(Nvt.Core.LogConsole.ConsoleProjection! previous, Nvt.Core.LogConsole.ConsoleProjection! current) -> Nvt.Core.LogConsole.ConsoleViewState!
+Nvt.Core.LogConsole.ConsoleViewState.Resume() -> Nvt.Core.LogConsole.ConsoleViewState!
+Nvt.Core.LogConsole.ConsoleViewState.Selection.get -> System.Collections.Immutable.ImmutableHashSet<long>!
+Nvt.Core.LogConsole.ConsoleViewState.Selection.init -> void
+Nvt.Core.LogConsole.ILogTextContent
+Nvt.Core.LogConsole.ILogTextContent.Length.get -> int
+Nvt.Core.LogConsole.ILogTextContent.Read(int offset, System.Span<char> destination) -> void
+Nvt.Core.LogConsole.ILogTextContent.ResidentCharacterCount.get -> int
+Nvt.Core.LogConsole.ILogTextContent.Version.get -> long
+Nvt.Core.LogConsole.InMemoryLogTextContent
+Nvt.Core.LogConsole.InMemoryLogTextContent.Dispose() -> void
+Nvt.Core.LogConsole.InMemoryLogTextContent.InMemoryLogTextContent(string! text, long version = 0) -> void
+Nvt.Core.LogConsole.InMemoryLogTextContent.Length.get -> int
+Nvt.Core.LogConsole.InMemoryLogTextContent.Read(int offset, System.Span<char> destination) -> void
+Nvt.Core.LogConsole.InMemoryLogTextContent.ResidentCharacterCount.get -> int
+Nvt.Core.LogConsole.InMemoryLogTextContent.Version.get -> long
+Nvt.Core.LogConsole.LinkKind
+Nvt.Core.LogConsole.LinkKind.File = 1 -> Nvt.Core.LogConsole.LinkKind
+Nvt.Core.LogConsole.LinkKind.Folder = 2 -> Nvt.Core.LogConsole.LinkKind
+Nvt.Core.LogConsole.LinkKind.Url = 0 -> Nvt.Core.LogConsole.LinkKind
+Nvt.Core.LogConsole.LinkTarget
+Nvt.Core.LogConsole.LinkTarget.Column.get -> int?
+Nvt.Core.LogConsole.LinkTarget.Column.init -> void
+Nvt.Core.LogConsole.LinkTarget.Kind.get -> Nvt.Core.LogConsole.LinkKind
+Nvt.Core.LogConsole.LinkTarget.Kind.init -> void
+Nvt.Core.LogConsole.LinkTarget.Line.get -> int?
+Nvt.Core.LogConsole.LinkTarget.Line.init -> void
+Nvt.Core.LogConsole.LinkTarget.LinkTarget(Nvt.Core.LogConsole.LinkKind Kind, string! Path, int? Line = null, int? Column = null) -> void
+Nvt.Core.LogConsole.LinkTarget.Path.get -> string!
+Nvt.Core.LogConsole.LinkTarget.Path.init -> void
+Nvt.Core.LogConsole.LogChangeSet
+Nvt.Core.LogConsole.LogChangeSet.AddedEntries.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.LogEntry!>
+Nvt.Core.LogConsole.LogChangeSet.Dispose() -> void
+Nvt.Core.LogConsole.LogChangeSet.FromVersion.get -> long
+Nvt.Core.LogConsole.LogChangeSet.Generation.get -> long
+Nvt.Core.LogConsole.LogChangeSet.RemovedEntryIds.get -> System.Collections.Immutable.ImmutableArray<long>
+Nvt.Core.LogConsole.LogChangeSet.RequiresReset.get -> bool
+Nvt.Core.LogConsole.LogChangeSet.Snapshot.get -> Nvt.Core.LogConsole.LogSnapshot!
+Nvt.Core.LogConsole.LogChangeSet.Version.get -> long
+Nvt.Core.LogConsole.LogEntry
+Nvt.Core.LogConsole.LogEntry.EntryId.get -> long
+Nvt.Core.LogConsole.LogEntry.EntryId.init -> void
+Nvt.Core.LogConsole.LogEntry.Generation.get -> long
+Nvt.Core.LogConsole.LogEntry.Generation.init -> void
+Nvt.Core.LogConsole.LogEntry.GroupId.get -> long
+Nvt.Core.LogConsole.LogEntry.GroupId.init -> void
+Nvt.Core.LogConsole.LogEntry.Level.get -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogEntry.Level.init -> void
+Nvt.Core.LogConsole.LogEntry.LinkSpans.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>?
+Nvt.Core.LogConsole.LogEntry.LinkSpans.init -> void
+Nvt.Core.LogConsole.LogEntry.LogEntry(long EntryId, long Generation, long Sequence, System.DateTimeOffset Timestamp, Nvt.Core.LogConsole.LogLevel Level, string! SourceId, Nvt.Core.LogConsole.ILogTextContent! TextContent, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>? LinkSpans, long GroupId) -> void
+Nvt.Core.LogConsole.LogEntry.Sequence.get -> long
+Nvt.Core.LogConsole.LogEntry.Sequence.init -> void
+Nvt.Core.LogConsole.LogEntry.SourceId.get -> string!
+Nvt.Core.LogConsole.LogEntry.SourceId.init -> void
+Nvt.Core.LogConsole.LogEntry.TextContent.get -> Nvt.Core.LogConsole.ILogTextContent!
+Nvt.Core.LogConsole.LogEntry.TextContent.init -> void
+Nvt.Core.LogConsole.LogEntry.Timestamp.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.LogEntry.Timestamp.init -> void
+Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Debug = 1 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Error = 4 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Fatal = 5 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Info = 2 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Trace = 0 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogLevel.Warn = 3 -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogSnapshot
+Nvt.Core.LogConsole.LogSnapshot.CapturedAt.get -> System.DateTimeOffset
+Nvt.Core.LogConsole.LogSnapshot.Dispose() -> void
+Nvt.Core.LogConsole.LogSnapshot.Entries.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.LogEntry!>
+Nvt.Core.LogConsole.LogSnapshot.EventCount.get -> int
+Nvt.Core.LogConsole.LogSnapshot.EvictedCount.get -> long
+Nvt.Core.LogConsole.LogSnapshot.FirstRetainedSequence.get -> long?
+Nvt.Core.LogConsole.LogSnapshot.Generation.get -> long
+Nvt.Core.LogConsole.LogSnapshot.LastRetainedSequence.get -> long?
+Nvt.Core.LogConsole.LogSnapshot.LastSequence.get -> long
+Nvt.Core.LogConsole.LogSnapshot.Version.get -> long
+Nvt.Core.LogConsole.LogStore
+Nvt.Core.LogConsole.LogStore.Add(Nvt.Core.LogConsole.LogLevel level, string! sourceId, string! message, System.DateTimeOffset? timestamp = null) -> long
+Nvt.Core.LogConsole.LogStore.Add(Nvt.Core.LogConsole.LogWrite! write) -> long
+Nvt.Core.LogConsole.LogStore.AddBatch(long generation, System.Collections.Generic.IEnumerable<Nvt.Core.LogConsole.LogWrite!>! writes) -> bool
+Nvt.Core.LogConsole.LogStore.CaptureLatestAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<Nvt.Core.LogConsole.LogSnapshot!>
+Nvt.Core.LogConsole.LogStore.CaptureSnapshot() -> Nvt.Core.LogConsole.LogSnapshot!
+Nvt.Core.LogConsole.LogStore.Changed -> System.EventHandler<Nvt.Core.LogConsole.LogChangeSet!>!
+Nvt.Core.LogConsole.LogStore.Clear() -> void
+Nvt.Core.LogConsole.LogStore.Dispose() -> void
+Nvt.Core.LogConsole.LogStore.Generation.get -> long
+Nvt.Core.LogConsole.LogStore.GetChangesSince(long version) -> Nvt.Core.LogConsole.LogChangeSet!
+Nvt.Core.LogConsole.LogStore.IsCurrent(long generation) -> bool
+Nvt.Core.LogConsole.LogStore.IsCurrent(long generation, long entryId, long textVersion) -> bool
+Nvt.Core.LogConsole.LogStore.LogStore(int maxEntries = 10000, long maxCharacters = 4194304, long maxPendingCharacters = 262144, System.TimeProvider? clock = null, System.Action<System.Action!>? schedule = null) -> void
+Nvt.Core.LogConsole.LogStore.RejectedCount.get -> long
+Nvt.Core.LogConsole.LogStore.SetReady(bool ready) -> void
+Nvt.Core.LogConsole.LogWrite
+Nvt.Core.LogConsole.LogWrite.Level.get -> Nvt.Core.LogConsole.LogLevel
+Nvt.Core.LogConsole.LogWrite.Level.init -> void
+Nvt.Core.LogConsole.LogWrite.LinkSpans.get -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>?
+Nvt.Core.LogConsole.LogWrite.LinkSpans.init -> void
+Nvt.Core.LogConsole.LogWrite.LogWrite(Nvt.Core.LogConsole.LogLevel Level, string! SourceId, Nvt.Core.LogConsole.ILogTextContent! TextContent, System.DateTimeOffset? Timestamp = null, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>? LinkSpans = null) -> void
+Nvt.Core.LogConsole.LogWrite.SourceId.get -> string!
+Nvt.Core.LogConsole.LogWrite.SourceId.init -> void
+Nvt.Core.LogConsole.LogWrite.TextContent.get -> Nvt.Core.LogConsole.ILogTextContent!
+Nvt.Core.LogConsole.LogWrite.TextContent.init -> void
+Nvt.Core.LogConsole.LogWrite.Timestamp.get -> System.DateTimeOffset?
+Nvt.Core.LogConsole.LogWrite.Timestamp.init -> void
+Nvt.Core.MessageCenter.IMessageCenterProvider
+Nvt.Core.MessageCenter.IMessageCenterProvider.ActiveDiagnosticCount.get -> int
+Nvt.Core.MessageCenter.IMessageCenterProvider.ActivityCount.get -> int
+Nvt.Core.MessageCenter.IMessageCenterProvider.CaptureActivity() -> System.Collections.Generic.IReadOnlyList<Nvt.Core.MessageCenter.MessageCenterActivity!>!
+Nvt.Core.MessageCenter.MessageActivityFilter
+Nvt.Core.MessageCenter.MessageActivityFilter.Errors = 2 -> Nvt.Core.MessageCenter.MessageActivityFilter
+Nvt.Core.MessageCenter.MessageActivityFilter.Important = 0 -> Nvt.Core.MessageCenter.MessageActivityFilter
+Nvt.Core.MessageCenter.MessageActivityFilter.Warnings = 1 -> Nvt.Core.MessageCenter.MessageActivityFilter
+Nvt.Core.MessageCenter.MessageActivityImportance
+Nvt.Core.MessageCenter.MessageActivityImportance.Debug = 1 -> Nvt.Core.MessageCenter.MessageActivityImportance
+Nvt.Core.MessageCenter.MessageActivityImportance.Important = 0 -> Nvt.Core.MessageCenter.MessageActivityImportance
+Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageActivitySeverity.Error = 3 -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageActivitySeverity.Information = 0 -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageActivitySeverity.Success = 1 -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageActivitySeverity.Warning = 2 -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageCenterActivity
+Nvt.Core.MessageCenter.MessageCenterActivity.Importance.get -> Nvt.Core.MessageCenter.MessageActivityImportance
+Nvt.Core.MessageCenter.MessageCenterActivity.Importance.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivity.MessageCenterActivity(long Sequence, Nvt.Core.MessageCenter.MessageActivityImportance Importance, Nvt.Core.MessageCenter.MessageActivitySeverity Severity, System.Func<Nvt.Core.MessageCenter.MessageCenterActivityItem!>! ProjectItem) -> void
+Nvt.Core.MessageCenter.MessageCenterActivity.ProjectItem.get -> System.Func<Nvt.Core.MessageCenter.MessageCenterActivityItem!>!
+Nvt.Core.MessageCenter.MessageCenterActivity.ProjectItem.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivity.Sequence.get -> long
+Nvt.Core.MessageCenter.MessageCenterActivity.Sequence.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivity.Severity.get -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageCenterActivity.Severity.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityFilter
+Nvt.Core.MessageCenter.MessageCenterActivityItem
+Nvt.Core.MessageCenter.MessageCenterActivityItem.AccessibleText.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Category.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Category.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Detail.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Detail.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.IsError.get -> bool
+Nvt.Core.MessageCenter.MessageCenterActivityItem.IsInformation.get -> bool
+Nvt.Core.MessageCenter.MessageCenterActivityItem.IsSuccess.get -> bool
+Nvt.Core.MessageCenter.MessageCenterActivityItem.IsWarning.get -> bool
+Nvt.Core.MessageCenter.MessageCenterActivityItem.MessageCenterActivityItem(string! Time, string! Title, string! Detail, string! Category, string! Status, Nvt.Core.MessageCenter.MessageActivitySeverity Severity) -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Severity.get -> Nvt.Core.MessageCenter.MessageActivitySeverity
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Severity.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Status.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Status.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Time.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Time.init -> void
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Title.get -> string!
+Nvt.Core.MessageCenter.MessageCenterActivityItem.Title.init -> void
+Nvt.Core.MessageCenter.MessageCenterExportWorkflow
+Nvt.Core.MessageCenter.MessageCenterExportWorkflow.ExportAsync(string! destinationPath, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Nvt.Core.MessageCenter.MessageCenterExportWorkflow.ExportWithPickerAsync(System.Func<System.Threading.Tasks.Task<string?>!>! pickPathAsync, System.Func<bool>! isViewContextCurrent) -> System.Threading.Tasks.Task!
+Nvt.Core.MessageCenter.MessageCenterExportWorkflow.MessageCenterExportWorkflow(Nvt.Core.MessageCenter.MessageCenterSession! session, System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! export, System.Action! succeeded, System.Action! failed) -> void
+Nvt.Core.MessageCenter.MessageCenterRefreshCoordinator
+Nvt.Core.MessageCenter.MessageCenterRefreshCoordinator.MessageCenterRefreshCoordinator(System.Func<bool, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! refresh) -> void
+Nvt.Core.MessageCenter.MessageCenterRefreshCoordinator.RefreshAfterCurrentAsync(bool reloadSources, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Nvt.Core.MessageCenter.MessageCenterRefreshCoordinator.RefreshAsync(bool reloadSources, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Nvt.Core.MessageCenter.MessageCenterSession
+Nvt.Core.MessageCenter.MessageCenterSession.Close(System.Action? beforeClose = null) -> void
+Nvt.Core.MessageCenter.MessageCenterSession.ExportContextGeneration.get -> long
+Nvt.Core.MessageCenter.MessageCenterSession.IsActivitySelected.get -> bool
+Nvt.Core.MessageCenter.MessageCenterSession.IsExportContextCurrent(long generation) -> bool
+Nvt.Core.MessageCenter.MessageCenterSession.IsOpen.get -> bool
+Nvt.Core.MessageCenter.MessageCenterSession.MessageCenterSession() -> void
+Nvt.Core.MessageCenter.MessageCenterSession.Open(System.Action? beforeOpen = null) -> void
+Nvt.Core.MessageCenter.MessageCenterSession.SelectActivity(bool selected, System.Action? beforeSelect = null) -> void
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.CompleteAsync() -> System.Threading.Tasks.Task!
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.IsCurrentGeneration(long generation) -> bool
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.LastFailure.get -> System.Exception?
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.LatestSnapshotPersistenceCoordinator(System.Func<TSnapshot, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! saveAsync, System.Func<TSnapshot, TSnapshot>! capture, System.Action<System.Exception?, long>? saveCompleted = null) -> void
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.Queue(TSnapshot snapshot) -> void
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.Reopen() -> void
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.TryRetry() -> bool
+Nvt.Core.Persistence.LatestSnapshotPersistenceCoordinator<TSnapshot>.WaitForIdleAsync() -> System.Threading.Tasks.Task!
+Nvt.Core.Persistence.LocalJsonDocument
+Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessCleanup.Complete = 0 -> Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessCleanup.OutputReadFailed = 3 -> Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessCleanup.OutputStreamHeldOpen = 2 -> Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessCleanup.TerminationUnconfirmed = 1 -> Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessCleanupCapacityException
+Nvt.Core.Processes.ExternalProcessCleanupCapacityException.ExternalProcessCleanupCapacityException(int inUseInvocations, int limit) -> void
+Nvt.Core.Processes.ExternalProcessCleanupCapacityException.InUseInvocations.get -> int
+Nvt.Core.Processes.ExternalProcessCleanupCapacityException.Limit.get -> int
+Nvt.Core.Processes.ExternalProcessResult
+Nvt.Core.Processes.ExternalProcessResult.Cleanup.get -> Nvt.Core.Processes.ExternalProcessCleanup
+Nvt.Core.Processes.ExternalProcessResult.Cleanup.init -> void
+Nvt.Core.Processes.ExternalProcessResult.ExitCode.get -> int
+Nvt.Core.Processes.ExternalProcessResult.ExitCode.init -> void
+Nvt.Core.Processes.ExternalProcessResult.ExternalProcessResult(int ExitCode, bool TimedOut, string! StandardOutput, string! StandardError) -> void
+Nvt.Core.Processes.ExternalProcessResult.StandardError.get -> string!
+Nvt.Core.Processes.ExternalProcessResult.StandardError.init -> void
+Nvt.Core.Processes.ExternalProcessResult.StandardOutput.get -> string!
+Nvt.Core.Processes.ExternalProcessResult.StandardOutput.init -> void
+Nvt.Core.Processes.ExternalProcessResult.TimedOut.get -> bool
+Nvt.Core.Processes.ExternalProcessResult.TimedOut.init -> void
+Nvt.Core.Processes.ExternalProcessStartFailedException
+Nvt.Core.Processes.ExternalProcessStartFailedException.ExternalProcessStartFailedException(System.Exception! startException) -> void
+Nvt.Core.Processes.ExternalProcessStartInfo
+Nvt.Core.Processes.ExternalProcessStartInfo.Arguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.Processes.ExternalProcessStartInfo.ExecutablePath.get -> string!
+Nvt.Core.Processes.ExternalProcessStartInfo.ExternalProcessStartInfo(string! executablePath, string! workingDirectory, System.Collections.Generic.IEnumerable<string!>! arguments, System.TimeSpan timeout) -> void
+Nvt.Core.Processes.ExternalProcessStartInfo.Timeout.get -> System.TimeSpan
+Nvt.Core.Processes.ExternalProcessStartInfo.WorkingDirectory.get -> string!
+Nvt.Core.Processes.IExternalProcessRunner
+Nvt.Core.Processes.IExternalProcessRunner.RunAsync(Nvt.Core.Processes.ExternalProcessStartInfo! startInfo, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Processes.ExternalProcessResult!>
+Nvt.Core.Processes.ProcessInheritedHandle
+Nvt.Core.Processes.ProcessInheritedHandle.EnvironmentVariable.get -> string?
+Nvt.Core.Processes.ProcessInheritedHandle.Handle.get -> nint
+Nvt.Core.Processes.ProcessInheritedHandle.ProcessInheritedHandle() -> void
+Nvt.Core.Processes.ProcessInheritedHandle.ProcessInheritedHandle(string! environmentVariable, nint handle) -> void
+Nvt.Core.Processes.ProcessLaunchGate
+Nvt.Core.Processes.SystemExternalProcessRunner
+Nvt.Core.Processes.SystemExternalProcessRunner.RunAsync(Nvt.Core.Processes.ExternalProcessStartInfo! startInfo, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Processes.ExternalProcessResult!>
+Nvt.Core.Processes.SystemExternalProcessRunner.SystemExternalProcessRunner() -> void
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>.BackgroundJobHandle(long JobId, System.Threading.Tasks.Task<Nvt.Core.Progress.BackgroundJobSnapshot<TProgress!, TResult!>!>! Completion) -> void
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>.Completion.get -> System.Threading.Tasks.Task<Nvt.Core.Progress.BackgroundJobSnapshot<TProgress!, TResult!>!>!
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>.Completion.init -> void
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>.JobId.get -> long
+Nvt.Core.Progress.BackgroundJobHandle<TProgress, TResult>.JobId.init -> void
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>.BackgroundJobService() -> void
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>.Cancel() -> bool
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>.IsActive.get -> bool
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>.Snapshot.get -> Nvt.Core.Progress.BackgroundJobSnapshot<TProgress!, TResult!>!
+Nvt.Core.Progress.BackgroundJobService<TProgress, TResult>.Start(System.Func<System.Threading.CancellationToken, System.IProgress<TProgress!>!, System.Threading.Tasks.Task<TResult!>!>! operation, TProgress? initialProgress = null, System.IProgress<Nvt.Core.Progress.BackgroundJobSnapshot<TProgress!, TResult!>!>? observer = null) -> Nvt.Core.Progress.BackgroundJobHandle<TProgress!, TResult!>!
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.BackgroundJobSnapshot(long JobId, Nvt.Core.Progress.BackgroundJobStatus Status, TProgress? Progress = null, TResult? Result = null, System.Exception? Error = null) -> void
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Error.get -> System.Exception?
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Error.init -> void
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.IsActive.get -> bool
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.JobId.get -> long
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.JobId.init -> void
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Progress.get -> TProgress?
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Progress.init -> void
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Result.get -> TResult?
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Result.init -> void
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Status.get -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobSnapshot<TProgress, TResult>.Status.init -> void
+Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Cancelled = 4 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Cancelling = 2 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Failed = 5 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Idle = 0 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Running = 1 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.BackgroundJobStatus.Succeeded = 3 -> Nvt.Core.Progress.BackgroundJobStatus
+Nvt.Core.Progress.LoadingScopeCoordinator
+Nvt.Core.Progress.LoadingScopeCoordinator.Begin(System.Action<bool>! setVisible) -> void
+Nvt.Core.Progress.LoadingScopeCoordinator.EndAsync(System.Action<bool>! setVisible) -> System.Threading.Tasks.Task!
+Nvt.Core.Progress.LoadingScopeCoordinator.LoadingScopeCoordinator(System.Func<System.Threading.Tasks.Task!>! yieldFrameAsync, System.TimeSpan minimumVisibleDuration, System.TimeProvider? timeProvider = null) -> void
+Nvt.Core.Progress.LoadingScopeCoordinator.RunAsync(System.Func<System.Threading.Tasks.Task!>! action, System.Action<bool>! setVisible) -> System.Threading.Tasks.Task!
+Nvt.Core.Progress.ProgressUpdate
+Nvt.Core.Progress.ProgressUpdate.Fraction.get -> double?
+Nvt.Core.Progress.ProgressUpdate.Fraction.init -> void
+Nvt.Core.Progress.ProgressUpdate.IsIndeterminate.get -> bool
+Nvt.Core.Progress.ProgressUpdate.ProgressUpdate() -> void
+Nvt.Core.Progress.ProgressUpdate.ProgressUpdate(double? Fraction, string? StepText) -> void
+Nvt.Core.Progress.ProgressUpdate.StepText.get -> string?
+Nvt.Core.Progress.ProgressUpdate.StepText.init -> void
+Nvt.Core.Progress.ThrottledProgress<T>
+Nvt.Core.Progress.ThrottledProgress<T>.Report(T value) -> void
+Nvt.Core.Progress.ThrottledProgress<T>.ThrottledProgress(System.IProgress<T>! target, System.TimeSpan minimumInterval, System.Func<T, bool>! bypass, System.TimeProvider? timeProvider = null) -> void
+Nvt.Core.ReportList.FactoryReadOnlyList<T>
+Nvt.Core.ReportList.FactoryReadOnlyList<T>.Count.get -> int
+Nvt.Core.ReportList.FactoryReadOnlyList<T>.FactoryReadOnlyList(int count, System.Func<int, T>! factory) -> void
+Nvt.Core.ReportList.FactoryReadOnlyList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<T>!
+Nvt.Core.ReportList.FactoryReadOnlyList<T>.this[int index].get -> T
+Nvt.Core.ReportList.IndexedReadOnlyList<T>
+Nvt.Core.ReportList.IndexedReadOnlyList<T>.Count.get -> int
+Nvt.Core.ReportList.IndexedReadOnlyList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<T!>!
+Nvt.Core.ReportList.IndexedReadOnlyList<T>.IndexedReadOnlyList(System.Collections.Generic.IReadOnlyList<T!>! source, System.Collections.Generic.IReadOnlyList<int>! indices) -> void
+Nvt.Core.ReportList.IndexedReadOnlyList<T>.this[int index].get -> T!
+Nvt.Core.ReportList.MemoizedIndexedReadOnlyList<T>
+Nvt.Core.ReportList.MemoizedIndexedReadOnlyList<T>.Count.get -> int
+Nvt.Core.ReportList.MemoizedIndexedReadOnlyList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<T!>!
+Nvt.Core.ReportList.MemoizedIndexedReadOnlyList<T>.MemoizedIndexedReadOnlyList(int count, System.Func<int, T!>! factory) -> void
+Nvt.Core.ReportList.MemoizedIndexedReadOnlyList<T>.this[int index].get -> T!
+Nvt.Core.ReportList.ResettableObservableCollection<T>
+Nvt.Core.ReportList.ResettableObservableCollection<T>.ReplaceAll(System.Collections.Generic.IEnumerable<T>! items) -> void
+Nvt.Core.ReportList.ResettableObservableCollection<T>.ResettableObservableCollection() -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Handler.get -> System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryInvocation, System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Handler.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Name.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Name.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.ReceivesConfirmation.get -> bool
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.ReceivesConfirmation.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Risk.get -> Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.Risk.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.RuntimeQueryCommand(string! Name, Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk Risk, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryInvocation, System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>! Handler, Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase StartupPhase = Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.None, string? StartupValueKey = null, System.Func<System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope?>? StartupValidator = null) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupPhase.get -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupPhase.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupValidator.get -> System.Func<System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope?>?
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupValidator.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupValueKey.get -> string?
+Nvt.Core.RuntimeQuery.RuntimeQueryCommand.StartupValueKey.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandLine
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk.ChangesState = 1 -> Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk.ReadOnly = 0 -> Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk.WritesData = 2 -> Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.ExecuteAsync(Nvt.Core.RuntimeQuery.RuntimeQueryRequest? request, string! expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.ExecuteStartupPhaseAsync(System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall!>! calls, Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase phase, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult!>!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.ParseStartupArguments(System.Collections.Generic.IReadOnlyList<string!>! arguments) -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.RegisteredCommands.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.RouteAsync(string? commandText, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.RuntimeQueryCommandRouter(System.Collections.Generic.IReadOnlyDictionary<string!, System.Func<System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>!>! handlers) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryCommandRouter.RuntimeQueryCommandRouter(System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryCommand!>! commands, bool requireConfirmation) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.ConnectionFailed = 2 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.HandlerFailed = 4 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.PipeCreationFailed = 7 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.RequestFailed = 3 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.ShutdownFailed = 5 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.ShutdownTimedOut = 6 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.Started = 0 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic.Stopped = 1 -> Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic
+Nvt.Core.RuntimeQuery.RuntimeQueryError
+Nvt.Core.RuntimeQuery.RuntimeQueryError.Code.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryError.Code.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryError.Message.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryError.Message.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryError.RuntimeQueryError(string! Code, string! Message) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.ClientError = 9 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.ClientTimeout = 7 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.ConnectionTimeout = 6 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.DispatcherUnavailable = 10 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.EmptyRequest = 1 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.EmptyResponse = 4 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.HandlerError = 3 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.InvalidJson = 2 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.InvalidResponse = 5 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.IoError = 8 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.RequestTimeout = 0 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryFailure.ServerNotFound = 11 -> Nvt.Core.RuntimeQuery.RuntimeQueryFailure
+Nvt.Core.RuntimeQuery.RuntimeQueryInvocation
+Nvt.Core.RuntimeQuery.RuntimeQueryInvocation.Runtime = 1 -> Nvt.Core.RuntimeQuery.RuntimeQueryInvocation
+Nvt.Core.RuntimeQuery.RuntimeQueryInvocation.Startup = 0 -> Nvt.Core.RuntimeQuery.RuntimeQueryInvocation
+Nvt.Core.RuntimeQuery.RuntimeQueryIpcClient
+Nvt.Core.RuntimeQuery.RuntimeQueryIpcServer
+Nvt.Core.RuntimeQuery.RuntimeQueryIpcServer.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Nvt.Core.RuntimeQuery.RuntimeQueryIpcServer.RuntimeQueryIpcServer(string! pipeName, string! protocolVersion, int requestReadTimeoutMs, int shutdownTimeoutMs, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryFailure, string?, Nvt.Core.RuntimeQuery.RuntimeQueryError!>! error, System.Action<Nvt.Core.RuntimeQuery.RuntimeQueryDiagnostic, System.Exception?>? diagnostic, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryRequest?, string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>! handler) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryIpcServer.Start() -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryProtocol
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Args.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Args.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Command.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Command.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.RuntimeQueryRequest(string! Version, string! Command, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Args) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Version.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryRequest.Version.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Data.get -> object?
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Data.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Error.get -> Nvt.Core.RuntimeQuery.RuntimeQueryError?
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Error.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Ok.get -> bool
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Ok.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.RuntimeQueryResponseEnvelope(bool Ok, object? Data, Nvt.Core.RuntimeQuery.RuntimeQueryError? Error) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.Args.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.Args.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.Command.get -> Nvt.Core.RuntimeQuery.RuntimeQueryCommand!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.Command.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.Phase.get -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall.RuntimeQueryStartupCall(Nvt.Core.RuntimeQuery.RuntimeQueryCommand! Command, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Args) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult.Call.get -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult.Call.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult.Response.get -> Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult.Response.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupCallResult.RuntimeQueryStartupCallResult(Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall! Call, Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope! Response) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue.Message.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue.Message.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue.Option.get -> string!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue.Option.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue.RuntimeQueryStartupIssue(string! Option, string! Message) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.Calls.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.Calls.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.Issues.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.Issues.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.RemainingArguments.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.RemainingArguments.init -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupParseResult.RuntimeQueryStartupParseResult(System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupCall!>! Calls, System.Collections.Generic.IReadOnlyList<string!>! RemainingArguments, System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryStartupIssue!>! Issues) -> void
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.AfterStartup = 2 -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.BeforeFirstFrame = 1 -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.BeforeFirstFrameAndRuntime = 3 -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.None = 0 -> Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase
+Nvt.Core.RuntimeQuery.RuntimeQueryWindowPipes
+Nvt.Core.Shell.NavigationHistory<TPage>
+Nvt.Core.Shell.NavigationHistory<TPage>.BackTarget.get -> TPage
+Nvt.Core.Shell.NavigationHistory<TPage>.CanGoBack.get -> bool
+Nvt.Core.Shell.NavigationHistory<TPage>.CompleteNavigation(TPage target, bool isBack, System.Action? afterActivation = null) -> void
+Nvt.Core.Shell.NavigationHistory<TPage>.NavigationHistory(TPage home, System.Func<TPage>! selectedPage, System.Action<TPage>! activate, System.Action! stateChanged) -> void
+Nvt.Core.SourceFileNavigation.SourceFileNavigator
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Application.get -> string!
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Application.init -> void
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Error.get -> string?
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Error.init -> void
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.ExactLine.get -> bool
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.ExactLine.init -> void
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Opened.get -> bool
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.Opened.init -> void
+Nvt.Core.SourceFileNavigation.SourceFileOpenResult.SourceFileOpenResult(bool Opened, bool ExactLine, string! Application, string? Error = null) -> void
+Nvt.Core.Startup.StartupTrace
+Nvt.Core.Startup.StartupTrace.Complete(string! finalStage, string! schemaVersion, System.Action<System.Text.Json.Utf8JsonWriter!>? writeHostSections = null) -> bool
+Nvt.Core.Startup.StartupTrace.ElapsedSinceManagedEntry.get -> System.TimeSpan?
+Nvt.Core.Startup.StartupTrace.IsEnabled.get -> bool
+Nvt.Core.Startup.StartupTrace.Mark(string! stage) -> void
+Nvt.Core.Threading.UiEventRunner
+Nvt.Core.Threading.UiEventRunner.Run(string! operation, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! action, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
+Nvt.Core.Threading.UiEventRunner.RunAsync(string! operation, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! action, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Nvt.Core.Threading.UiEventRunner.UiEventRunner(System.Action<string!, System.Exception!>! report, System.Action<string!, System.Exception!>! fallbackReport) -> void
+Nvt.Core.Time.DelegateTimeProvider
+Nvt.Core.Time.DelegateTimeProvider.DelegateTimeProvider(System.Func<System.DateTimeOffset>! utcNow) -> void
+Nvt.Core.Time.DelegateTimeProvider.DelegateTimeProvider(System.Func<System.DateTimeOffset>! utcNow, System.Func<long>! timestamp, long timestampFrequency) -> void
+override Nvt.Core.Time.DelegateTimeProvider.GetTimestamp() -> long
+override Nvt.Core.Time.DelegateTimeProvider.GetUtcNow() -> System.DateTimeOffset
+override Nvt.Core.Time.DelegateTimeProvider.TimestampFrequency.get -> long
+static Nvt.Core.Csv.CsvQuoting.Quote(string! value) -> string!
+static Nvt.Core.Files.BoundedFileReader.ReadAndHashAsync(System.IO.Stream! stream, long observedLength, Nvt.Core.Files.FileCaptureMode mode, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Files.BoundedReadResult>
+static Nvt.Core.Files.BoundedFileReader.ReadFileAsync(string! path, System.Collections.Generic.IReadOnlyList<string!>? allowedRoots, long maximumBytes, Nvt.Core.Files.FileCaptureMode mode, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Files.BoundedReadResult>
+static Nvt.Core.Files.RegularFileGuard.RequireOpenHandle(Microsoft.Win32.SafeHandles.SafeFileHandle! handle, string! displayPath) -> void
+static Nvt.Core.Files.RegularFileGuard.RequirePath(string! path) -> void
+static Nvt.Core.Files.RootedPathGuard.IsUnderRoot(string! fullPath, string! root) -> bool
+static Nvt.Core.Files.RootedPathGuard.ResolveExistingFileUnderRoots(string! path, System.Collections.Generic.IReadOnlyList<string!>! allowedRoots) -> string!
+static Nvt.Core.Files.RootedPathGuard.ResolveExistingRelativeFileUnderRoot(string! relativePath, string! rootDirectory) -> string!
+static Nvt.Core.Files.RootedPathGuard.ResolveExistingRoot(string! rootDirectory) -> string!
+static Nvt.Core.Files.RootedPathGuard.ResolveFileNameUnderRoot(string! fileName, string! rootDirectory) -> string!
+static Nvt.Core.Files.RootedPathGuard.ResolveFileUnderRoots(string! path, System.Collections.Generic.IReadOnlyList<string!>! allowedRoots, bool mustExist) -> string!
+static Nvt.Core.Files.RootedPathGuard.ResolveRoot(string! rootDirectory) -> string!
+static Nvt.Core.IO.AtomicOutput.WriteAsync(string! path, System.Func<System.IO.Stream!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! write, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Nvt.Core.IO.AtomicOutput.WriteBytesAsync(string! path, System.ReadOnlyMemory<byte> bytes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Nvt.Core.Locale.CommonTextResources.For(Nvt.Core.Locale.CommonLanguage language) -> Nvt.Core.Locale.CommonTextResources!
+static Nvt.Core.LogConsole.ConsoleExportFormatter.FormatSelection(Nvt.Core.LogConsole.ConsoleProjection! projection, System.Collections.Immutable.ImmutableHashSet<long>! selection, Nvt.Core.LogConsole.ConsoleExportOptions? options = null) -> string!
+static Nvt.Core.LogConsole.ConsoleExportFormatter.FormatVisible(Nvt.Core.LogConsole.ConsoleProjection! projection, Nvt.Core.LogConsole.ConsoleExportOptions? options = null) -> string!
+static Nvt.Core.LogConsole.ConsoleExportFormatter.WriteLogAsync(System.IO.Stream! destination, Nvt.Core.LogConsole.ConsoleProjection! projection, Nvt.Core.LogConsole.ConsoleExportOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Nvt.Core.LogConsole.ConsoleFirstLine.Read(Nvt.Core.LogConsole.ILogTextContent! content, int maxCharacters = 1024) -> Nvt.Core.LogConsole.ConsoleFirstLine
+static Nvt.Core.LogConsole.ConsoleLinkScanner.Scan(string! text) -> System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleLinkSpan!>
+static Nvt.Core.LogConsole.ConsoleProjector.Project(Nvt.Core.LogConsole.LogSnapshot! snapshot, Nvt.Core.LogConsole.ConsoleFilter! filter, Nvt.Core.LogConsole.ConsoleViewState! viewState) -> Nvt.Core.LogConsole.ConsoleProjection!
+static Nvt.Core.LogConsole.ConsoleProjector.Project(Nvt.Core.LogConsole.LogSnapshot! snapshot, Nvt.Core.LogConsole.ConsoleFilter! filter, Nvt.Core.LogConsole.ConsoleViewState! viewState, Nvt.Core.LogConsole.ConsoleProjectionOptions! options) -> Nvt.Core.LogConsole.ConsoleProjection!
+static Nvt.Core.LogConsole.ConsoleTimeFormatter.Format(System.DateTimeOffset timestamp, System.DateTimeOffset timeBase, Nvt.Core.LogConsole.ConsoleTimeMode mode, string! relativeTimeTemplate, System.Globalization.CultureInfo! culture, System.TimeZoneInfo? absoluteTimeZone = null) -> string!
+static Nvt.Core.MessageCenter.MessageCenterActivityFilter.Apply(System.Collections.Generic.IEnumerable<Nvt.Core.MessageCenter.MessageCenterActivity!>! activities, Nvt.Core.MessageCenter.MessageActivityFilter filter, bool includeDebug) -> System.Collections.Generic.IReadOnlyList<Nvt.Core.MessageCenter.MessageCenterActivityItem!>!
+static Nvt.Core.Persistence.LocalJsonDocument.CreateOptions() -> System.Text.Json.JsonSerializerOptions!
+static Nvt.Core.Persistence.LocalJsonDocument.DeserializeAsync<T>(System.IO.Stream! stream, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<T?>
+static Nvt.Core.Persistence.LocalJsonDocument.GetPath(string! localStateDirectory, string! fileName) -> string!
+static Nvt.Core.Processes.ProcessInheritedHandle.Parse(string! environmentVariable, string! handle) -> Nvt.Core.Processes.ProcessInheritedHandle
+static Nvt.Core.Processes.ProcessLaunchGate.Start(System.Diagnostics.ProcessStartInfo! startInfo) -> System.Diagnostics.Process?
+static Nvt.Core.Processes.ProcessLaunchGate.StartContained(System.Diagnostics.ProcessStartInfo! startInfo, System.Collections.Generic.IReadOnlyList<Nvt.Core.Processes.ProcessInheritedHandle>! inheritedHandles) -> System.Diagnostics.Process?
+static Nvt.Core.Processes.ProcessLaunchGate.StartContained(System.Diagnostics.ProcessStartInfo! startInfo, System.Collections.Generic.IReadOnlyList<Nvt.Core.Processes.ProcessInheritedHandle>! inheritedHandles, System.Func<bool>! validateImmediatelyBeforeStart) -> System.Diagnostics.Process?
+static Nvt.Core.Processes.ProcessLaunchGate.TryClearInheritance(nint handle) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser.TryGetBoolArg(System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, string! key, out bool value, out Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope? error) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser.TryGetDoubleArg(System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, string! key, double min, double max, out double value, out Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope? error) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser.TryGetIntArg(System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, string! key, int min, int max, out int value, out Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope? error) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser.TryGetIntListArg(System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, string! key, int min, int max, out System.Collections.Generic.List<int>! values, out Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope? error) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryArgumentParser.TryGetStringArg(System.Collections.Generic.IReadOnlyDictionary<string!, string!>? args, string! key, out string! value, out Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope? error) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryCommand.FromArgs(string! name, Nvt.Core.RuntimeQuery.RuntimeQueryCommandRisk risk, System.Func<System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>! handler, Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase startupPhase = Nvt.Core.RuntimeQuery.RuntimeQueryStartupPhase.None, string? startupValueKey = null, System.Func<System.Collections.Generic.IReadOnlyDictionary<string!, string!>?, Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope?>? startupValidator = null) -> Nvt.Core.RuntimeQuery.RuntimeQueryCommand!
+static Nvt.Core.RuntimeQuery.RuntimeQueryCommandLine.TryHandlePerWindowQueryCommand(string![]! args, string! baseName, string! protocolVersion, System.Collections.Generic.IReadOnlyList<string!>! supportedCommands, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryFailure, string?, Nvt.Core.RuntimeQuery.RuntimeQueryError!>! error, System.IO.TextWriter! output, out int exitCode) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryCommandLine.TryHandleQueryCommand(string![]! args, string! pipeName, string! protocolVersion, System.Collections.Generic.IReadOnlyList<string!>! supportedCommands, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryFailure, string?, Nvt.Core.RuntimeQuery.RuntimeQueryError!>! error, System.IO.TextWriter! output, out int exitCode) -> bool
+static Nvt.Core.RuntimeQuery.RuntimeQueryIpcClient.SendRequest(string! pipeName, Nvt.Core.RuntimeQuery.RuntimeQueryRequest! request, int timeoutMs, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryFailure, string?, Nvt.Core.RuntimeQuery.RuntimeQueryError!>! error) -> Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!
+static Nvt.Core.RuntimeQuery.RuntimeQueryProtocol.CompactJsonOptions.get -> System.Text.Json.JsonSerializerOptions!
+static Nvt.Core.RuntimeQuery.RuntimeQueryProtocol.CreateCompactJsonOptions() -> System.Text.Json.JsonSerializerOptions!
+static Nvt.Core.RuntimeQuery.RuntimeQueryProtocol.CreatePrettyJsonOptions() -> System.Text.Json.JsonSerializerOptions!
+static Nvt.Core.RuntimeQuery.RuntimeQueryProtocol.PrettyJsonOptions.get -> System.Text.Json.JsonSerializerOptions!
+static Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Failure(string! code, string! message) -> Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!
+static Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope.Success(object? data) -> Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!
+static Nvt.Core.RuntimeQuery.RuntimeQueryWindowPipes.BuildName(string! baseName, int processId) -> string!
+static Nvt.Core.SourceFileNavigation.SourceFileNavigator.OpenDefault(string! path) -> Nvt.Core.SourceFileNavigation.SourceFileOpenResult!
+static Nvt.Core.SourceFileNavigation.SourceFileNavigator.TryStart(string! executable, System.Collections.Generic.IReadOnlyList<string!>! arguments, out string? error) -> bool
+static Nvt.Core.Startup.StartupTrace.Create(string? outputPath, System.TimeProvider? timeProvider = null, System.Func<long>? allocatedBytesProvider = null, bool measureWithoutOutput = false) -> Nvt.Core.Startup.StartupTrace!
+static Nvt.Core.Startup.StartupTrace.Disabled.get -> Nvt.Core.Startup.StartupTrace!
+static Nvt.Core.Startup.StartupTrace.StartFromEnvironment(string! outputPathEnvironmentVariable) -> Nvt.Core.Startup.StartupTrace!
