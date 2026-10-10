@@ -48,6 +48,7 @@ public sealed class ConsoleListView : TemplatedControl
     public void JumpToLatest() => Request(ViewState.Resume());
 
     internal ConsoleReadingAnchor? PendingReadingAnchor => _session?.ReadingAnchor;
+    internal bool UserScrollPending => _session?.UserScrollPending == true;
 
     internal void ScrollProgrammatically(Action scroll)
     {
@@ -93,10 +94,10 @@ public sealed class ConsoleListView : TemplatedControl
             var previous = change.GetOldValue<ConsoleViewState>();
             var current = change.GetNewValue<ConsoleViewState>();
             _session?.Apply(ReferenceEquals(previous.Follow, current.Follow)
-                || _session.IsRequestedAnchor(current.Follow));
+                || _session.AcceptRequestedAnchor(current.Follow));
         }
         else if (change.Property == ProjectionProperty || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty)
-            _session?.Apply(true, retireRequests: false);
+            _session?.Apply(true);
     }
 
     private void AttachSession()
@@ -109,7 +110,7 @@ public sealed class ConsoleListView : TemplatedControl
 
     private void Request(ConsoleViewState state)
     {
-        if (_session?.DeferRequest(state) == true) return;
+        _session?.CancelDeferredScroll();
         _session?.RecordRequest(state);
         ViewStateRequested?.Invoke(this, state);
     }
@@ -126,6 +127,7 @@ public sealed class ConsoleListView : TemplatedControl
     // UI-thread-only attachment state. Queued work captures a weak Session, never a view or projection lease.
     private sealed class Session : IDisposable
     {
+        private const int RequestedAnchorLimit = 32;
         private readonly ConsoleListView _view;
         private readonly Parts _parts;
         private readonly CancellationTokenSource _lifetime = new();
@@ -134,8 +136,10 @@ public sealed class ConsoleListView : TemplatedControl
         private int _suppress;
         private Vector _lastObservedOffset;
         private readonly List<ConsoleReadingAnchor> _requestedAnchors = [];
-        private DeferredRequest? _deferredRequest;
+        // Pending user intent only; capture both coordinates and caller state when delivered.
+        private DeferredScroll? _deferredScroll;
         internal ConsoleReadingAnchor? ReadingAnchor => _restore;
+        internal bool UserScrollPending => _deferredScroll is not null;
 
         internal void ScrollProgrammatically(Action scroll)
         {
@@ -163,18 +167,41 @@ public sealed class ConsoleListView : TemplatedControl
 
         internal void RecordRequest(ConsoleViewState state)
         {
-            if (state.Follow is ConsoleFollow.Paused paused) _requestedAnchors.Add(paused.Anchor);
+            if (state.Follow is not ConsoleFollow.Paused paused) return;
+            if (_requestedAnchors.Count == RequestedAnchorLimit) _requestedAnchors.RemoveAt(0);
+            _requestedAnchors.Add(paused.Anchor);
         }
 
-        internal bool IsRequestedAnchor(ConsoleFollow follow) => follow is ConsoleFollow.Paused paused
-            && _requestedAnchors.Any(requested => requested with { RowOrder = paused.Anchor.RowOrder } == paused.Anchor
-                && requested.RowOrder.SequenceEqual(paused.Anchor.RowOrder));
-
-        internal bool DeferRequest(ConsoleViewState state)
+        internal bool AcceptRequestedAnchor(ConsoleFollow follow)
         {
-            if (_deferredRequest is { } pending)
+            // ImmutableArray equality compares backing-array identity before inspecting copied orders.
+            var index = follow is ConsoleFollow.Paused paused
+                ? _requestedAnchors.FindIndex(requested => requested with { RowOrder = paused.Anchor.RowOrder } == paused.Anchor
+                    && (requested.RowOrder == paused.Anchor.RowOrder
+                        || !requested.RowOrder.IsDefault && !paused.Anchor.RowOrder.IsDefault
+                            && requested.RowOrder.SequenceEqual(paused.Anchor.RowOrder)))
+                : -1;
+            if (index < 0)
             {
-                _deferredRequest = pending with { State = state };
+                _requestedAnchors.Clear();
+                CancelDeferredScroll();
+                return false;
+            }
+            _requestedAnchors.RemoveRange(0, index + 1);
+            return true;
+        }
+
+        internal void CancelDeferredScroll()
+        {
+            _deferredScroll?.Operation.Abort();
+            _deferredScroll = null;
+        }
+
+        private bool DeferScroll(ScrollIntent intent)
+        {
+            if (_deferredScroll is { } pending)
+            {
+                _deferredScroll = pending with { Intent = intent };
                 return true;
             }
             if (!_parts.Host.IsMeasuring) return false;
@@ -182,13 +209,29 @@ public sealed class ConsoleListView : TemplatedControl
             UiThread.TryGetRunningDispatcher(out var dispatcher);
             var operation = (dispatcher ?? Dispatcher.UIThread).InvokeAsync(() =>
             {
-                if (!weak.TryGetTarget(out var session) || session._lifetime.IsCancellationRequested) return;
-                var request = session._deferredRequest;
-                session._deferredRequest = null;
-                if (request is not null) session._view.Request(request.State);
+                if (!weak.TryGetTarget(out var session) || session._lifetime.IsCancellationRequested
+                    || session._deferredScroll is not { } request) return;
+                // Finish pending projection/reflow restoration before capturing the screen.
+                session._parts.Host.UpdateLayout();
+                session.Restore();
+                if (session._deferredScroll is not { } current || current.Operation != request.Operation) return;
+                session._pending?.Abort();
+                session._pending = null;
+                session._deferredScroll = null;
+                session.RequestScrollState(current.Intent);
             }, DispatcherPriority.Loaded);
-            _deferredRequest = new(state, operation);
+            _deferredScroll = new(intent, operation);
             return true;
+        }
+
+        private void RequestScrollState(ScrollIntent intent)
+        {
+            if (_view.Projection is null) return;
+            if (intent == ScrollIntent.Resume)
+            {
+                if (_view.ViewState.Follow is ConsoleFollow.Paused || _requestedAnchors.Count != 0) _view.JumpToLatest();
+            }
+            else if (!_view.Projection.Rows.IsEmpty) _view.Request(CaptureReadingState());
         }
 
         internal ConsoleViewState CaptureReadingState()
@@ -200,7 +243,9 @@ public sealed class ConsoleListView : TemplatedControl
             var anchor = _restore ?? _parts.Host.CaptureAnchor();
             if (state.Follow is ConsoleFollow.Paused)
                 return anchor is { } current ? WithReadingAnchor(state, current) : state;
-            return state.Pause(projection, anchor?.RowId, anchor?.TextOffset ?? 0, anchor?.PixelOffset ?? 0);
+            return anchor is { } reading
+                ? state with { Follow = new ConsoleFollow.Paused(reading, projection.CapturedAt) }
+                : state.Pause(projection);
         }
 
         private static ConsoleViewState WithReadingAnchor(ConsoleViewState state, ConsoleReadingAnchor current)
@@ -215,16 +260,16 @@ public sealed class ConsoleListView : TemplatedControl
         }
 
         /// <param name="preservePosition">True keeps the live reading position instead of the pause anchor.</param>
-        /// <param name="retireRequests">False for input changes that are not a view state: requests the host has not accepted yet stay valid.</param>
-        internal void Apply(bool preservePosition = false, bool retireRequests = true)
+        internal void Apply(bool preservePosition = false)
         {
             if (_lifetime.IsCancellationRequested) return;
             _suppress++;
             try
             {
-                _restore = _view.ViewState.Follow is ConsoleFollow.Paused paused
-                    ? preservePosition ? ((ConsoleFollow.Paused)CaptureReadingState().Follow).Anchor : paused.Anchor : null;
-                if (retireRequests) _requestedAnchors.Clear();
+                _restore = preservePosition && UserScrollPending && _view.Projection is not null
+                    ? ((ConsoleFollow.Paused)CaptureReadingState().Follow).Anchor
+                    : _view.ViewState.Follow is ConsoleFollow.Paused paused
+                        ? preservePosition ? ((ConsoleFollow.Paused)CaptureReadingState().Follow).Anchor : paused.Anchor : null;
                 _parts.Host.Synchronize(_view);
                 _parts.Jump.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused;
                 _parts.Retention.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused
@@ -269,7 +314,7 @@ public sealed class ConsoleListView : TemplatedControl
             _suppress++;
             try
             {
-                if (_view.ViewState.Follow is ConsoleFollow.Following)
+                if (_view.ViewState.Follow is ConsoleFollow.Following && !UserScrollPending)
                 {
                     // Only a projection/state application follows; ordinary user scrolling is never undone.
                     if (_pending is not null) _parts.Host.ScrollToEnd();
@@ -279,7 +324,7 @@ public sealed class ConsoleListView : TemplatedControl
                     var restored = _parts.Host.RestoreAnchor(anchor, _view.Projection?.ResolvedAnchorId);
                     _restore = null;
                     if (restored is { } current && current.RowId != anchor.RowId
-                        && _view.ViewState.Follow is ConsoleFollow.Paused)
+                        && !UserScrollPending && _view.ViewState.Follow is ConsoleFollow.Paused)
                         _view.Request(WithReadingAnchor(_view.ViewState, current));
                 }
             }
@@ -294,13 +339,15 @@ public sealed class ConsoleListView : TemplatedControl
             var changed = offset != _lastObservedOffset;
             _lastObservedOffset = offset;
             if (_suppress != 0 || !changed || _view.Projection is null) return;
-            if (_parts.Host.AtEnd && _view.ViewState.Follow is ConsoleFollow.Paused)
-                _view.JumpToLatest();
-            else if (!_parts.Host.AtEnd)
+            _restore = null;
+            _parts.Host.PreserveUserScrollDuringMeasure();
+            if (_parts.Host.AtEnd && _view.ViewState.Follow is ConsoleFollow.Following && _requestedAnchors.Count == 0)
             {
-                _restore = null;
-                _view.Request(CaptureReadingState());
+                CancelDeferredScroll();
+                return;
             }
+            var intent = _parts.Host.AtEnd ? ScrollIntent.Resume : ScrollIntent.Pause;
+            if (!DeferScroll(intent)) RequestScrollState(intent);
         }
 
         private void Jump(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e) => _view.JumpToLatest();
@@ -312,8 +359,7 @@ public sealed class ConsoleListView : TemplatedControl
             _lifetime.Cancel();
             _pending?.Abort();
             _pending = null;
-            _deferredRequest?.Operation.Abort();
-            _deferredRequest = null;
+            CancelDeferredScroll();
             _requestedAnchors.Clear();
             _parts.Host.ScrollInvalidated -= Scrolled;
             _parts.Jump.Click -= Jump;
@@ -324,6 +370,7 @@ public sealed class ConsoleListView : TemplatedControl
             _lifetime.Dispose();
         }
 
-        private sealed record DeferredRequest(ConsoleViewState State, DispatcherOperation Operation);
+        private enum ScrollIntent { Pause, Resume }
+        private sealed record DeferredScroll(ScrollIntent Intent, DispatcherOperation Operation);
     }
 }

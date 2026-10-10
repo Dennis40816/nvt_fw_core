@@ -106,6 +106,37 @@ public sealed partial class ConsoleListViewTests
         finally { window.Close(); }
     });
 
+    /// <summary>Empty and whitespace overrides use the English label.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public Task BlankTextOverrideUsesEnglishDefault(string text) => Run(() =>
+    {
+        using var projection = Many(100);
+        var view = new ConsoleListView { Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var window = Window(view);
+        try
+        {
+            view.Resources["Nvt.Console.List.Level.Info"] = text;
+            Flush(window);
+            Assert.Equal("Info", DisplayedListText(view, "Level.Info"));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>An unknown level uses its key suffix without failing row measurement.</summary>
+    [Fact]
+    public Task UnknownLevelUsesKeySuffix() => Run(() =>
+    {
+        using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i, level: (LogLevel)17)));
+        var view = new ConsoleListView { Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var window = Window(view);
+        try { Assert.Equal("17", DisplayedListText(view, "Level.17")); }
+        finally { window.Close(); }
+    });
+
     /// <summary>One eviction selects the singular host resource instead of the plural format.</summary>
     [Fact]
     public Task SingleEvictionUsesHostSingularRetentionText() => Run(() =>

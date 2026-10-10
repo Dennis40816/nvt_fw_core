@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Diagnostics;
+using Nvt.Core.TestSupport;
 
 namespace Nvt.Core.Tests.Processes;
 
@@ -29,10 +30,18 @@ internal static class ProcessProbe
         return startInfo;
     }
 
+    internal static string Write(TestWorkspace workspace, string relativePath, byte[] bytes)
+    {
+        string path = workspace.GetPath(relativePath);
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
     internal static string CopyAndRename(TestWorkspace workspace, string name)
     {
         string source = Path.GetDirectoryName(Executable)!;
-        string target = workspace.PathFor("complete probe");
+        string target = workspace.GetPath("complete probe");
         _ = Directory.CreateDirectory(target);
         foreach (string directory in Directory.GetDirectories(source, "*", SearchOption.AllDirectories))
         {

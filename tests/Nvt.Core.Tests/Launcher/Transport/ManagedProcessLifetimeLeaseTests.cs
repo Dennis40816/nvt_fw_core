@@ -7,6 +7,7 @@ using System.Text;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -25,7 +26,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         using ManagedProcessLifetimeLease first = Acquire(state);
         Assert.Equal(ManagedProcessLifetimeLeaseAcquisitionOutcome.Busy,
             ManagedProcessLifetimeLease.Acquire(Protocol, state, ManagedProcessLifetimeKind.Application, out var second));
@@ -46,7 +47,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         using ManagedProcessLifetimeLease application = Acquire(state);
         using ManagedProcessLifetimeLease launcher = ManagedProcessLifetimeLease.TryAcquire(
             Protocol, state, ManagedProcessLifetimeKind.Launcher)!;
@@ -65,8 +66,8 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.txt");
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        string marker = workspace.GetPath("child.txt");
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         using Process root = StartTree(lifetime, marker, "tree-root-wait");
         int childId = 0;
         try
@@ -75,7 +76,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
             Assert.True(IsRunning(root.Id));
             Assert.True(IsRunning(childId));
             Assert.Equal(ManagedProcessLifetimeStatus.Active, ManagedProcessLifetimeLease.GetStatus(
-                Protocol, workspace.PathFor("state.json"), ManagedProcessLifetimeKind.Application));
+                Protocol, workspace.GetPath("state.json"), ManagedProcessLifetimeKind.Application));
             using Process child = Process.GetProcessById(childId);
             Assert.True(lifetime.TerminateTreeAndConfirmEmpty(TimeSpan.FromSeconds(5)));
             await root.WaitForExitAsync(TestContext.Current.CancellationToken);
@@ -91,8 +92,8 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.txt");
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        string marker = workspace.GetPath("child.txt");
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         using Process root = StartTree(lifetime, marker, "tree-root-exit");
         int childId = 0;
         try
@@ -118,7 +119,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         ArgumentOutOfRangeException exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
             lifetime.TerminateTreeAndConfirmEmpty(TimeSpan.FromTicks(ticks)));
         Assert.Equal("timeout", exception.ParamName);
@@ -130,7 +131,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         Assert.Null(Record.Exception(() =>
         {
             _ = lifetime.TerminateTreeAndConfirmEmpty(TimeSpan.FromTicks(1));
@@ -143,9 +144,9 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         using var ambient = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
-        string marker = workspace.PathFor("started.txt");
+        string marker = workspace.GetPath("started.txt");
         ProcessStartInfo info = ProcessProbe.Create("ambient-pipe");
         info.Environment["CORE_TEST_PROBE_MARKER"] = marker;
         info.Environment["CORE_TEST_PROBE_AMBIENT_HANDLE"] = ambient.GetClientHandleAsString();
@@ -169,7 +170,7 @@ public sealed class ManagedProcessLifetimeLeaseTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("state.json"));
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("state.json"));
         using var allowed = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         using var cross = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         ProcessStartInfo info = ProcessProbe.Create("contained-isolation");

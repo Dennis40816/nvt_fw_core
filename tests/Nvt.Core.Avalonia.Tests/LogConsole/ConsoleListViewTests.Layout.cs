@@ -5,7 +5,6 @@ using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
 
-
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
 public sealed partial class ConsoleListViewTests

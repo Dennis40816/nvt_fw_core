@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Collections;
+using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -33,7 +34,13 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     private Size _viewport;
     private Vector _offset;
     private int _measureDepth;
+    // A user position under the current height index, retained only through the outer measure pass.
+    private (int Index, double Inset)? _measureReadingPosition;
     internal bool IsMeasuring => _measureDepth != 0;
+    internal void PreserveUserScrollDuringMeasure()
+    {
+        if (IsMeasuring) _measureReadingPosition = CaptureReadingPosition();
+    }
     internal RowSource ItemsSource { get; } = new();
     internal event Action<ConsoleRowId>? ToggleRequested;
 
@@ -42,6 +49,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     public bool CanVerticallyScroll { get; set; }
     public bool IsLogicalScrollEnabled => true;
     private double RowHeight => UiResourceResolver.GetDouble(this, "Nvt.Console.List.RowHeight");
+    private bool PreservesReadingPosition => _view?.ViewState.Follow is ConsoleFollow.Paused
+        || _view?.UserScrollPending == true;
     public Size ScrollSize => new(0, RowHeight);
     public Size PageScrollSize => new(0, Math.Max(RowHeight, Viewport.Height - RowHeight));
     public Size Extent => new(Viewport.Width, _tops[^1]);
@@ -117,7 +126,10 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         Dispatcher.UIThread.VerifyAccess();
         _measureDepth++;
         try { return MeasureViewport(availableSize); }
-        finally { _measureDepth--; }
+        finally
+        {
+            if (--_measureDepth == 0) _measureReadingPosition = null;
+        }
     }
 
     private Size MeasureViewport(Size availableSize)
@@ -129,8 +141,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var wasAtEnd = AtEnd;
         var readingPosition = CaptureReadingPosition();
         var widthChanged = _viewport.Width != viewport.Width;
-        var reading = widthChanged && _view?.ViewState.Follow is ConsoleFollow.Paused
-            ? _view.PendingReadingAnchor ?? CaptureAnchor() : null;
+        var reading = widthChanged && PreservesReadingPosition
+            ? _view?.PendingReadingAnchor ?? CaptureAnchor() : null;
         var viewportChanged = _viewport != viewport;
         _viewport = viewport;
         if (widthChanged)
@@ -173,14 +185,18 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
             foreach (var id in _realized.Keys.Where(id => !needed.Contains(id)).ToArray()) Recycle(id);
             while (_pool.Count > Math.Max(2, _realized.Count)) _pool.Pop();
             if (!changed) break;
+            readingPosition = _measureReadingPosition ?? readingPosition;
             RebuildHeights();
-            if (_view.ViewState.Follow is not ConsoleFollow.Following)
+            if (_measureReadingPosition is not null || PreservesReadingPosition)
                 RestoreReadingPosition(readingPosition);
             else if (wasAtEnd) ScrollToEnd();
             NotifyGeometryChanged();
         }
-        if (reading is not null) RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
-        else if (wasAtEnd && _view.ViewState.Follow is ConsoleFollow.Following) ScrollToEnd();
+        if (_measureReadingPosition is null)
+        {
+            if (reading is not null) RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
+            else if (wasAtEnd && !PreservesReadingPosition) ScrollToEnd();
+        }
         return viewport;
     }
 
@@ -209,7 +225,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var readingPosition = CaptureReadingPosition();
         _heights.Clear();
         RebuildHeights();
-        if (_view.ViewState.Follow is not ConsoleFollow.Following) RestoreReadingPosition(readingPosition);
+        if (PreservesReadingPosition) RestoreReadingPosition(readingPosition);
         else if (wasAtEnd) ScrollToEnd();
         InvalidateMeasure();
         NotifyGeometryChanged();
@@ -252,7 +268,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var row = ItemsSource[index];
         var pixel = Offset.Y - _tops[index];
         var text = _realized.TryGetValue(row.Id, out var container) ? container.TextOffsetAt(pixel) : 0;
-        return new(row.Id, row.LastSequence, text, pixel, projection.Generation, projection.LastSequence, []);
+        return new(row.Id, row.LastSequence, text, pixel, projection.Generation, projection.LastSequence,
+            projection.Rows.Select(item => item.Id).ToImmutableArray());
     }
 
     internal ConsoleReadingAnchor? RestoreAnchor(ConsoleReadingAnchor anchor, ConsoleRowId? successor)
@@ -261,6 +278,19 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var index = -1;
         for (var i = 0; i < ItemsSource.Count; i++) if (ItemsSource[i].Id == anchor.RowId) { index = i; break; }
         var same = index >= 0;
+        if (!same && successor is null && _view?.UserScrollPending == true
+            && anchor.RowId is { } requested && ItemsSource.Projection is { } projection)
+        {
+            // Following projections have no resolved anchor; use the live reading snapshot.
+            var surviving = projection.Rows.Select(row => row.Id).ToHashSet();
+            var order = anchor.RowOrder.IsDefault ? ImmutableArray<ConsoleRowId>.Empty : anchor.RowOrder;
+            var anchorIndex = order.IndexOf(requested);
+            successor = order.Skip(anchorIndex + 1).Where(surviving.Contains)
+                .Select(id => (ConsoleRowId?)id).FirstOrDefault()
+                ?? projection.Rows.Where(row => row.LastSequence >= anchor.Sequence)
+                    .MinBy(row => row.LastSequence)?.Id
+                ?? projection.Rows.LastOrDefault()?.Id;
+        }
         if (!same && successor is { } id)
             for (var i = 0; i < ItemsSource.Count; i++) if (ItemsSource[i].Id == id) { index = i; break; }
         if (index < 0) return null;

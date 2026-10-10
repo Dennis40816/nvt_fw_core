@@ -7,7 +7,7 @@
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
 It targets `net8.0`.
 It adds no package.
-The Avalonia list is described under [List view](#list-view); host commands own projection and state.
+The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`. The Avalonia list is described under [List view](#list-view); host commands own projection and state.
 
 ## Design and provenance
 
@@ -16,7 +16,7 @@ It does not port a product console.
 The behavior reference is the earlier NFH console and the approved console redesign proposal.
 An NFH measurement included product projection and UI work; the Core performance test measures only projection.
 These workloads do not establish a comparable UI speedup.
-The data layer includes no UI or product logic.
+The non-UI layer includes no UI or product logic.
 
 ## State structure
 
@@ -60,8 +60,9 @@ It returns content handles, search ranges, counts, and row membership.
 It never copies an entire message into a row string.
 Counts and empty-state values belong only to this output.
 The host must reject background projections when snapshot, filter, or presentation inputs have changed.
-K2 routes menus and shortcuts through the same commands.
-K1 contains mechanisms and immutable values, not another command or controller implementation.
+The Avalonia controller owns command routing for the header and toolbar.
+The non-UI layer supplies immutable inputs and projection mechanisms.
+List virtualization, row interaction, and keyboard routing are supplied by the list slice of K2.
 
 ## Storage, budgets, and lifetime
 
@@ -370,6 +371,171 @@ No display truncation or stale formatted-text cache is used.
 For export and copy, including while collapsed, the host awaits `CaptureLatestAsync(cancellationToken)` and projects that frozen snapshot.
 Formatting methods accept an existing projection and do not acquire or refresh store state.
 
+## Avalonia controller and toolbar
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` is the single writer of the immutable
+filter and view-state inputs. Construct it on Core's registered `UiThread`, passing
+an app-owned `LogStore`, an immutable `ConsoleSource` catalog, and optional
+`ConsoleProjectionOptions`. The catalog becomes `Options.SourceRegistry`; time mode
+remains in `Filter.TimeMode`. Template, culture, and absolute time zone are explicit
+inputs. Keep the supplied culture unchanged during use.
+
+The controller subscribes before startup capture and enables store notifications.
+Producer callbacks request one coalesced UI operation. Each refresh captures a leased
+snapshot and calls `ConsoleProjector.Project` once. The controller remaps canonical
+selection and expanded identities, including paused order across dedupe changes,
+then publishes `Projection` through `INotifyPropertyChanged`. Counts are read from
+that projection. A later background-priority dispatcher turn retires the previous
+projection after bindings and layout have consumed its replacement. Owned content
+is bounded to the current projection and one retiring projection. Before publication,
+the refresh validates the snapshot generation with `LogStore.IsCurrent`, so Clear's
+admission fence also rejects UI work queued before its writer reset. Disposal stops
+the active notification sequence and defers lease release until its callbacks return.
+A nested dispatcher pump cannot retire projections borrowed by those callbacks.
+
+The list borrows `Projection` and reports immutable intents through
+`RequestViewState(state)`. It does not dispose that projection or mutate controller
+inputs. `Pause(rowId, textOffset, pixelOffset)` captures the reading anchor and samples
+the injected store clock through a fresh nonblocking snapshot for the pause instant;
+`Resume()` is the jump-to-latest intent. Collapse is a view-state change and preserves
+follow state. The host calls `Dispose()` on page exit; it unsubscribes, aborts queued
+work, and releases both projections. Repeated disposal is safe. The app retains store
+ownership. The controller calls `SetReady(true)` for the whole store during construction;
+`Dispose()` does not restore its previous readiness. This also affects other subscribers.
+The host must account for that persistent store-wide notification state.
+
+Toolbar actions use `ToggleLevelCommand` (a `LogLevel` parameter),
+`ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand` (a
+`ConsoleTimeMode` parameter), `ClearCommand`, and `ResetFiltersCommand`.
+`SetSelectedSources(ids)` selects ordinal IDs; an empty set selects all sources.
+In the source menu, All sources checks every source and includes future sources.
+Clicking a checked source excludes it from the current catalog; subsequent clicks
+toggle explicit membership. The last checked source is disabled, preserving the
+empty-set-means-all contract. All sources restores the unrestricted selection.
+Detach and controller replacement close and clear the source menu, release its
+bindings, and invalidate retained item commands.
+While the source menu is open, projection catalog changes rebuild its items in place
+through the same builder, preserving the open popup. Membership is compared directly
+with the projection; the view keeps no separate source catalog. Missing source IDs
+resolve as unchecked with a zero count, using the ID as the fallback label.
+`SetSearchText(text)` treats whitespace alone as an empty search. Reset restores the
+default filters and dedupe while preserving time presentation and reading state.
+All intents and disposal require the UI thread. Export flags belong to
+`ExportOptions`, with `ToggleExportTimeCommand` and `ToggleExportLevelCommand`.
+
+`ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
+styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
+entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
+Fonts roles and keep the console at least 640 DIP wide. The approved B layout places
+search beside the title at wide widths, with levels and sources in the filter row.
+At 960 DIP and below, search and Only matches move to the second filter row; Display
+contains time and dedupe, and More contains export and clear. Header height is 48 DIP;
+the filter row is 48 DIP wide and 88 DIP narrow. Resting actions have no fill or border;
+level buttons show semantic icons with complete raw counts in Core tooltips. Shared
+icon corrections follow rendering scale and unsubscribe on detach. The empty view
+is visible when `Projection.IsEmpty`. With no retained events (`Projection.EventCount == 0`),
+it shows the no-events message and hides Reset filters. A filtered empty result shows
+a localized filter summary and Reset filters.
+Console action buttons and menu items bind their family, size, and weight directly
+to the Core Body role through local dynamic-resource styles, including Chinese source
+labels. Other controls retain their existing font roles.
+
+The header's `Title` defaults to Console. The app binds `CopySelectedCommand`,
+`CopyVisibleCommand`, and `SaveLogCommand`; the menu supplies the independent Include
+time and Include level options. Header menu bindings follow the header's current
+controller directly, so popup dismissal does not disconnect an executing command.
+Clipboard and file adapters, row navigation, and
+list rendering belong to the host's interaction and list layers.
+
+| Avalonia type | Public members |
+| --- | --- |
+| `ConsoleController` | Constructor `(store, sources, options = null)`, `PropertyChanged`, `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `RefreshError`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`, `SetSelectedSources`, `SetSearchText`, `RequestViewState`, `Pause`, `Resume`, `Dispose`. |
+| `ConsoleHeader` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`, `Title` / `TitleProperty`, `CopySelectedCommand` / `CopySelectedCommandProperty`, `CopyVisibleCommand` / `CopyVisibleCommandProperty`, `SaveLogCommand` / `SaveLogCommandProperty`. |
+| `ConsoleToolbar` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
+| `ConsoleEmptyState` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
+
+
+The constructor validates `RelativeTimeTemplate`, so malformed composite formatting is rejected
+as an `ArgumentException` naming `options`, with the original `FormatException` as its cause.
+A refresh failure keeps the previous projection and publishes the exception through read-only
+`RefreshError`. The next successful accepted refresh clears it. Failed projections release their
+fresh leases. Refresh requests are queued before input notifications, including when an observer
+throws. Search input and clear-search actions stop invoking a disposed controller.
+Notifications raised from `SetFilter` (including search, source, and command inputs) and
+`RequestViewState` propagate subscriber exceptions synchronously to the caller.
+Accepted refreshes update all state before notifying `ViewState`, `Projection`, then a changed
+`RefreshError`. Refresh notifications collect every subscriber exception and complete the sequence
+before posting a preserved rethrow on the UI dispatcher, where it enters the dispatcher's unhandled
+exception path. A single failure is rethrown directly; multiple failures use one `AggregateException`.
+The previous projection retires only after replacement notification is attempted. A throwing failure
+observer leaves the previous projection and later refreshes usable.
+
+### Resource keys
+
+`LogConsole/ConsoleResources.axaml` defines English defaults and structural dimensions and is
+merged by `LogConsoleStyles.axaml`. Controls include the resource-free control styles locally;
+their dynamic resource bindings use the same dictionary only as a fallback for missing keys.
+Hosts can override `Nvt.Console.*` in application, window, or console ancestor resources,
+including at runtime. Malformed host templates fall back to the built-in English template on `FormatException`.
+`MinimumWidth` and `NarrowBreakpoint` are the single shared definitions
+for all console surfaces. Composed heights follow the existing dynamic control and spacing tokens.
+
+Time modes and level labels are mapped through keys. The controller exposes filter data;
+`FilterSummary` is no longer public API. The view derives summary text from resource templates.
+`Count` accepts a label and raw count; `Sources.Selected` and `Dedupe.Count` accept a count.
+`Empty.NoMatches` accepts the derived filter summary. `Filter.Search` accepts the literal query
+and search-mode label; `Filter.Summary` accepts levels, sources, search suffix, and dedupe suffix.
+Keep these composite placeholders valid. `Title` is the default title; an explicit host title wins.
+The separate injected `ConsoleProjectionOptions.RelativeTimeTemplate` continues to format event time.
+
+| Key | English default / DIP value |
+| --- | --- |
+| `Nvt.Console.MinimumWidth` | `640` |
+| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.Title` | `Console` |
+| `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
+| `Nvt.Console.Search.Name` | `Search console` |
+| `Nvt.Console.Search.Clear` | `Clear search` |
+| `Nvt.Console.OnlyMatches` | `Only matches` |
+| `Nvt.Console.Export` | `Export` |
+| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.Display` | `Display` |
+| `Nvt.Console.Display.Name` | `Display console` |
+| `Nvt.Console.More` | `More` |
+| `Nvt.Console.More.Name` | `More console actions` |
+| `Nvt.Console.Time.Name` | `Time display` |
+| `Nvt.Console.Time.Absolute` | `Absolute time` |
+| `Nvt.Console.Time.Relative` | `Relative time` |
+| `Nvt.Console.Time.Hidden` | `Hidden time` |
+| `Nvt.Console.CopySelected` | `Copy selected` |
+| `Nvt.Console.CopyVisible` | `Copy visible rows` |
+| `Nvt.Console.SaveLog` | `Save as .log` |
+| `Nvt.Console.IncludeTime` | `Include time` |
+| `Nvt.Console.IncludeLevel` | `Include level` |
+| `Nvt.Console.Clear` | `Clear console` |
+| `Nvt.Console.Sources.Name` | `Select sources` |
+| `Nvt.Console.Sources.All` | `All sources` |
+| `Nvt.Console.Sources.Selected` | `Sources ({0})` |
+| `Nvt.Console.Dedupe` | `Dedupe` |
+| `Nvt.Console.Dedupe.Count` | `Dedupe ×{0}` |
+| `Nvt.Console.Count` | `{0} · {1}` |
+| `Nvt.Console.Empty.NoEvents` | `No events yet` |
+| `Nvt.Console.Empty.NoMatches` | `No matching events · {0}` |
+| `Nvt.Console.ResetFilters` | `Reset filters` |
+| `Nvt.Console.Filter.NoLevels` | `no levels` |
+| `Nvt.Console.Filter.Search` | `; search ‘{0}’ ({1})` |
+| `Nvt.Console.Filter.MatchesOnly` | `matches only` |
+| `Nvt.Console.Filter.Highlight` | `highlight` |
+| `Nvt.Console.Filter.Dedupe` | `; dedupe` |
+| `Nvt.Console.Filter.Separator` | `, ` |
+| `Nvt.Console.Filter.Summary` | `{0}; {1}{2}{3}` |
+| `Nvt.Console.Level.Trace` | `Trace` |
+| `Nvt.Console.Level.Debug` | `Debug` |
+| `Nvt.Console.Level.Info` | `Info` |
+| `Nvt.Console.Level.Warn` | `Warn` |
+| `Nvt.Console.Level.Error` | `Error` |
+| `Nvt.Console.Level.Fatal` | `Fatal` |
+
 ## Public API
 
 | Type | Public members |
@@ -417,7 +583,9 @@ Active reads pin the content before invoking app code outside the lock.
 Each snapshot disposes its leases once through `Interlocked`.
 `ConsoleLinkCache._cacheGate` protects its cache and one immutable state containing the live entry/group revisions and revision stamp; synchronization replaces this state together.
 All other model state is immutable.
-Hosts own view-state replacement and command access on one thread.
+The Avalonia controller replaces filter and view-state inputs and owns command access on
+Core's registered UI thread. Hosts and the list submit immutable view-state intents
+through `RequestViewState`; they do not replace the controller's state directly.
 
 The time API is BCL `TimeProvider`.
 Tests reuse Core's `Time.DelegateTimeProvider`.
@@ -445,7 +613,9 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-Header/toolbar composition, link and selection pointer interaction, console keyboard commands, and host accessibility and visual verification remain for companion controls and later UI slices.
+The Avalonia header, toolbar, empty-state accessibility, their visual evidence and the list view are implemented.
+Link and selection pointer interaction, console keyboard commands, and host accessibility and visual
+verification of the whole console remain for later UI slices; clipboard and file adapters remain app-owned.
 Host adoption remains separate.
 Path policy, opening, clipboard, and spill-store integration remain app responsibilities.
 
@@ -490,7 +660,7 @@ Override these keys on the list or a resource ancestor to localize it. Jump and 
 eviction selects its singular key; zero and other counts select the plural key. Resource changes refresh the text.
 Every listed text key falls back to its built-in English default when missing, non-string, blank or a malformed
 composite format, including an unavailable argument. Text overrides never throw from measure or resource handlers.
-Level labels take no format arguments; escape literal braces as `{{` and `}}`.
+Unknown level keys fall back to their suffix. Level labels take no format arguments; escape literal braces as `{{` and `}}`.
 
 | Resource key | English default |
 |---|---|
@@ -530,16 +700,26 @@ Capture loss clears the gesture; release, cancellation and detach release its ca
 While paused, a changed user scroll offset away from the end requests updated reading coordinates without
 changing the pause time, generation, sequence boundary or frozen row order. Repeated notifications for the same
 offset, viewport changes, resource invalidation and the list's own height corrections do not request state.
-Requests originating during measure are posted after the pass, coalescing to one pending request with the latest anchor.
-Unrelated state changes that reuse the same Follow
-instance preserve the live reading position, even when the caller still holds an earlier anchor.
-Accepting any anchor requested since the last application also preserves live coordinates, including deferred
-in-order acceptance of multiple scroll requests; replacing Follow
-with a different anchor restores the caller's explicit position. Reattachment uses the accepted anchor.
+Only scroll-origin requests are deferred during measure. They coalesce as pending user intent; after the pass,
+the request captures the current screen position and caller-owned state. Pending reading survives projection
+updates, height corrections and width reflow; viewport clamping does not change the user's pause/resume intent.
+Delivery finishes layout and restoration, then retires outstanding restore work before publishing the request,
+so delayed host acceptance cannot let an earlier queued restore undo the published reading position.
+A later toggle or `JumpToLatest()`
+cancels that pending scroll request and is delivered immediately. Height corrections and width reflow preserve
+a user scroll received during the pass instead of restoring its start-of-pass position.
+Unrelated state changes that reuse the same Follow instance preserve the live reading position,
+even when the caller still holds an earlier anchor. Issued anchors have bounded recent history.
+Accepting an anchor still in that history preserves live coordinates and retires only the accepted prefix,
+so later queued requests can be accepted in order without replaying old positions.
+A different Follow outside that history clears it, cancels pending scroll intent and restores the caller's explicit position.
+Reattachment uses the accepted anchor.
 While paused, projection application saves the current anchor and restores it after layout;
 coalesced replacements and width changes reuse the pending anchor until restoration completes or a user scroll replaces it.
 Programmatic scroll calls use nested suppression, and queued work still permits user scroll-away pause requests.
-Width changes remap the text offset after reflow. An evicted anchor uses `ResolvedAnchorId` and reports the successor;
+Width changes remap the text offset after reflow. An evicted anchor uses `ResolvedAnchorId` and reports the successor.
+If the projection supplies none while Following and a scroll is pending, the live anchor retains its sequence and row order to resolve
+the first surviving successor, falling back to sequence and then the last retained row;
 a retention notice displays `EvictedCount`.
 The bottom-right jump button displays `NewSincePauseCount`.
 Reaching the end, activating the button, or calling `JumpToLatest()` requests Resume.

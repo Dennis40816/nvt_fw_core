@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
@@ -13,6 +14,367 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
 public sealed partial class ConsoleListViewTests
 {
+    /// <summary>A restore queued behind delivery cannot undo Pause while host acceptance is delayed.</summary>
+    [Fact]
+    public Task DeferredPauseConsumesRestoreQueuedByHostExpansion() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i, "first\nsecond\nthird\nfourth"))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            var inputCount = 0;
+            content.OnRead = () =>
+            {
+                Assert.True(IsHostMeasuring(view));
+                inputCount++;
+                Scroll(view).Offset = new(0, 805);
+            };
+            view.ViewState = view.ViewState with { ExpandedIds = [new(1)] };
+            Dispatcher.UIThread.Post(() =>
+            {
+                Assert.Equal(1, inputCount);
+                Assert.Empty(requests);
+                view.ViewState = view.ViewState with { ExpandedIds = [new(1), new(40)] };
+            }, DispatcherPriority.Loaded);
+            Flush(window);
+            var request = Assert.Single(requests);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(request.Follow);
+            Assert.IsType<ConsoleFollow.Following>(view.ViewState.Follow);
+            Assert.Equal(925, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(41), FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.PixelOffset, -Host(view).Children
+                .Single(row => RowIdentity(row) == paused.Anchor.RowId).Bounds.Y);
+            view.ViewState = request;
+            Flush(window);
+            Assert.Equal(925, Scroll(view).Offset.Y);
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>A following projection resolves an evicted pending position without a supplied successor.</summary>
+    [Fact]
+    public async Task DeferredFollowingScrollResolvesNearestSurvivingSuccessorWithRealProjector()
+    {
+        using var safety = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var store = new LogStore(maxEntries: 100);
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        Assert.Equal(1, store.Add(new LogWrite(LogLevel.Info, "test", content)));
+        Assert.True(store.AddBatch(store.Generation, Enumerable.Range(2, 99)
+            .Select(i => new LogWrite(LogLevel.Info, "test", new InMemoryLogTextContent($"Message {i}")))));
+        using var snapshot = await store.CaptureLatestAsync(safety.Token);
+        using var projection = ConsoleProjector.Project(snapshot, new(), new());
+        await Run(() =>
+        {
+            var view = new ConsoleListView { Projection = projection };
+            var window = Window(view);
+            try
+            {
+                Scroll(view).Offset = new(0, 0);
+                var requests = new List<ConsoleViewState>();
+                view.ViewStateRequested += (_, state) => requests.Add(state);
+                BeginDeferredMeasureScroll(view, content, paused: false);
+                Assert.Empty(requests);
+                Assert.True(store.AddBatch(store.Generation, Enumerable.Range(101, 60)
+                    .Select(i => new LogWrite(LogLevel.Info, "test", new InMemoryLogTextContent($"Message {i}")))));
+                using var evicted = store.CaptureLatestAsync(safety.Token).AsTask().GetAwaiter().GetResult();
+                using var replacement = ConsoleProjector.Project(evicted, new(), view.ViewState);
+                Assert.Equal(60, replacement.EvictedCount);
+                Assert.Null(replacement.ResolvedAnchorId);
+                view.Projection = replacement;
+                Flush(window);
+                var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+                Assert.IsType<ConsoleFollow.Following>(view.ViewState.Follow);
+                Assert.Equal(0, Scroll(view).Offset.Y);
+                Assert.Equal(new ConsoleRowId(61), FirstVisibleRow(view));
+                Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    /// <summary>An explicit host resume supersedes scroll intent that has not been delivered.</summary>
+    [Fact]
+    public Task HostResumeReplacesDeferredScrollRequest() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content);
+            view.ViewState = view.ViewState.Resume();
+            Flush(window);
+            Assert.Empty(requests);
+            Assert.Equal(Scroll(view).Extent.Height - Scroll(view).Viewport.Height, Scroll(view).Offset.Y);
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Explicit host positioning consumes pending intent instead of requesting another pause.</summary>
+    [Fact]
+    public Task HostExplicitAnchorReplacesDeferredScrollRequest() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content);
+            view.ViewState = view.ViewState.Pause(projection, new(61), pixelOffset: 5);
+            Flush(window);
+            Assert.Empty(requests);
+            Assert.Equal(1265, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(61), FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Following input cannot replace a pending user's row during projection trimming.</summary>
+    [Fact]
+    public Task DeferredFollowingScrollPreservesPositionAcrossProjectionReplacement() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        using var trimmed = Many(80, 21);
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content, paused: false);
+            view.Projection = trimmed;
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+            Assert.Equal(405, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(41), FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Host expansion preserves pending reading before the host has accepted Pause.</summary>
+    [Fact]
+    public Task DeferredFollowingScrollPreservesPositionAcrossHostExpansion() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i, "first\nsecond\nthird\nfourth"))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content, paused: false);
+            view.ViewState = view.ViewState with { ExpandedIds = [new(1), new(40)] };
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+            Assert.Equal(925, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(41), FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Resource rebuilding preserves pending reading while the caller still says Following.</summary>
+    [Fact]
+    public Task DeferredFollowingScrollPreservesPositionAcrossResourceInvalidation() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content, paused: false);
+            view.Resources["Nvt.Console.List.RowHeight"] = 21d;
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+            Assert.Equal(845, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(41), FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Geometry reaching the end cannot turn pending scroll-away intent into Resume.</summary>
+    [Fact]
+    public Task DeferredScrollViewportGrowthDoesNotRequestResume() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content);
+            window.Height = 1500;
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+            Assert.Equal(Scroll(view).Extent.Height - Scroll(view).Viewport.Height, Scroll(view).Offset.Y);
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Eviction remapping cannot bypass pending scroll delivery and resume following work.</summary>
+    [Fact]
+    public Task DeferredFollowingScrollEvictionRequestsVisibleSuccessor() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        using var trimmed = Project(Enumerable.Range(61, 40).Select(i => Row(i)), successor: new(61));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content, paused: false);
+            view.Projection = trimmed;
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(Assert.Single(requests).Follow);
+            Assert.Equal(0, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(61), FirstVisibleRow(view));
+            Assert.Equal(paused.Anchor.RowId, FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>A derived eviction remap cannot replace the user's queued Resume.</summary>
+    [Fact]
+    public Task DeferredResumeSurvivesProjectionEviction() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        using var trimmed = Project(Enumerable.Range(91, 10).Select(i => Row(i)), successor: new(91));
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content);
+            Scroll(view).Offset = new(0, Scroll(view).Extent.Height);
+            view.Projection = trimmed;
+            Flush(window);
+            Assert.IsType<ConsoleFollow.Following>(Assert.Single(requests).Follow);
+            Assert.Equal(0, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(91), FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>An empty screen supplies no reading row for a pending Pause request.</summary>
+    [Fact]
+    public Task DeferredPauseIsDiscardedWhenProjectionBecomesEmpty() => Run(() =>
+    {
+        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
+            .Prepend(Row(1) with { TextContent = content }));
+        using var empty = Project([]);
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            Scroll(view).Offset = new(0, 0);
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            BeginDeferredMeasureScroll(view, content);
+            view.Projection = empty;
+            Flush(window);
+            Assert.Empty(requests);
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>Returning to the end supersedes an already-issued pause even before the host accepts it.</summary>
+    [Fact]
+    public Task ScrollToEndSupersedesUnacceptedPauseRequest() => Run(() =>
+    {
+        using var projection = Many(100);
+        var view = new ConsoleListView { Projection = projection };
+        var window = Window(view);
+        try
+        {
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            Scroll(view).Offset = new(0, 405);
+            Flush(window);
+            Scroll(view).Offset = new(0, Scroll(view).Extent.Height);
+            Flush(window);
+            Assert.Equal(2, requests.Count);
+            Assert.IsType<ConsoleFollow.Following>(requests[1].Follow);
+            view.ViewState = requests[0];
+            Flush(window);
+            view.ViewState = requests[1];
+            Flush(window);
+            Assert.IsType<ConsoleFollow.Following>(view.ViewState.Follow);
+            Assert.Equal(Scroll(view).Extent.Height - Scroll(view).Viewport.Height, Scroll(view).Offset.Y);
+        }
+        finally { window.Close(); }
+    });
+
+    /// <summary>An uninitialized external row order is an explicit restore, not a comparer failure.</summary>
+    [Fact]
+    public Task UninitializedRowOrderRestoresExplicitPosition() => Run(() =>
+    {
+        using var projection = Many(100);
+        var view = new ConsoleListView { Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var window = Window(view);
+        try
+        {
+            var requests = new List<ConsoleViewState>();
+            view.ViewStateRequested += (_, state) => requests.Add(state);
+            Scroll(view).Offset = new(0, 405);
+            Flush(window);
+            Scroll(view).Offset = new(0, 805);
+            Flush(window);
+            var paused = Assert.IsType<ConsoleFollow.Paused>(requests[0].Follow);
+            view.ViewState = requests[0] with { Follow = new ConsoleFollow.Paused(
+                paused.Anchor with { RowOrder = default }, paused.PausedAt) };
+            Flush(window);
+            Assert.Equal(405, Scroll(view).Offset.Y);
+            Assert.Equal(new ConsoleRowId(21), FirstVisibleRow(view));
+        }
+        finally { window.Close(); }
+    });
+
     private static void Click(Window window, Control target)
     {
         var point = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;

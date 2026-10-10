@@ -14,7 +14,8 @@ internal static class ConsoleListText
 
     internal static string Format(ConsoleListView view, string key, params object[] arguments)
     {
-        var fallback = (string)Defaults[key]!;
+        var fallback = Defaults.TryGetValue(key, out var value) && value is string builtIn
+            ? builtIn : key[(key.LastIndexOf('.') + 1)..];
         var text = UiResourceResolver.GetString(view, key);
         if (string.IsNullOrWhiteSpace(text)) text = fallback;
         try { return string.Format(view.TimeOptions.Culture, text, arguments); }
