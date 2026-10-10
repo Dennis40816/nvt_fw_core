@@ -16,6 +16,7 @@ namespace Nvt.Core.Tests.Processes;
 /// from before the triggering call (including <c>Cancel()</c> itself). Helpers live 30 s, far past each bound, so a
 /// pass cannot come from a helper ending on its own.
 /// </summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerLifetimeTests
 {
     private const int HelperLifetimeSeconds = 30;

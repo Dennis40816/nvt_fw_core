@@ -11,6 +11,7 @@ namespace Nvt.Core.Tests.Processes;
 /// events. Every cleanup wait uses a manual clock and the termination work item runs inline, so the result does not
 /// depend on how fast the machine or the thread pool is.
 /// </summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
 {
     private static readonly string[] ExitArguments = ["--mode", "exit"];
