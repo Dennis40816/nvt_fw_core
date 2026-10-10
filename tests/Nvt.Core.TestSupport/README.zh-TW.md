@@ -83,9 +83,9 @@ WaitForOutputAsync 等待輸出包含指定文字，輸出結束仍無該文字�
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的
 `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` 與
 `tests/Nvt.Core.Tests/Processes/TestWorkspace.cs`。這兩個檔案在提交
-d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與本變更的父提交
+d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與共用支援變更的父提交
 f90900bbb04f84e590aa77dc47b6e04b7a77d9c6 完全相同。可用
-`git show <commit>:<path>` 比對。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
+`git show <commit>:<path>` 比對。`SignalWait` 與 `ChildProcessFixture` 是新增的，不取代任何既有程式，所以沒有要比對的來源行為。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
 
 時鐘：
 

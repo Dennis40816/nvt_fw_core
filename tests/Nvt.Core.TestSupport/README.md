@@ -98,8 +98,9 @@ The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
 `tests/Nvt.Core.Tests/Processes/TestWorkspace.cs` of repository
 Dennis40816/nvt_fw_core (branch `main`, the PR #147 clock). The two files are
 identical at commit d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 and at the parent
-of this change, f90900bbb04f84e590aa77dc47b6e04b7a77d9c6. Compare with
-`git show <commit>:<path>`. These behaviors differ on purpose, and the migrated
+of the shared-support change, f90900bbb04f84e590aa77dc47b6e04b7a77d9c6. Compare with
+`git show <commit>:<path>`. `SignalWait` and `ChildProcessFixture` are new. They replace no
+existing code, so they have no source behavior to match. These behaviors differ on purpose, and the migrated
 Core tests do not depend on the old ones:
 
 Clock:

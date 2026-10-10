@@ -149,12 +149,15 @@ public sealed class ChildProcessFixtureTests
     {
         RequireWindows();
         ChildProcessFixture fixture = Start(Sleep);
+        int processId = fixture.ProcessId;
 
         fixture.Dispose();
         fixture.Dispose();
         await fixture.DisposeAsync();
 
+        // HasExited reports the real exit state that disposal observed, not just that the fixture is disposed.
         Assert.True(fixture.HasExited);
+        Assert.Equal(processId, fixture.ProcessId);
     }
 
     /// <summary>Invalid arguments are rejected before a process starts.</summary>

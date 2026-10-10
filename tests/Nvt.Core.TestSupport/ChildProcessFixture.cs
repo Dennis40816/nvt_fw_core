@@ -6,11 +6,12 @@ using System.Text;
 
 namespace Nvt.Core.TestSupport;
 
-/// <summary>Runs a child process for a test: it caps the captured output, has a watchdog, and ends the whole process tree on disposal.</summary>
+/// <summary>Runs a child process for a test: it caps the captured output, has a watchdog, and ends the process tree that is still reachable from the root on disposal.</summary>
 /// <remarks>
 /// A child that stays alive holds files open and makes the next test fail at random. The fixture prevents that.
 /// The watchdog only prevents a hang; it is never an assertion. Standard output and standard error are captured
-/// together, in arrival order, up to a character limit. Standard input is closed at once.
+/// together, in arrival order, up to a character limit. Standard input is closed at once. A descendant that outlives
+/// its parent is not reachable. After disposal, <see cref="WaitForExitAsync"/> throws <see cref="ObjectDisposedException"/>.
 /// </remarks>
 public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
 {
@@ -30,6 +31,8 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
     private readonly TimeProvider _clock;
     private readonly int _maxOutputCharacters;
     private ITimer? _watchdogTimer;
+    private int _processId;
+    private bool _exitedAtDispose;
     private bool _truncated;
     private bool _watchdogExpired;
     private bool _outputEnded;
@@ -92,6 +95,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         try
         {
             _ = process.Start();
+            fixture._processId = process.Id;
             process.StandardInput.Close();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
@@ -106,8 +110,8 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         return fixture;
     }
 
-    /// <summary>Gets the process id.</summary>
-    public int ProcessId => _process.Id;
+    /// <summary>Gets the process id. It stays available after disposal.</summary>
+    public int ProcessId => _processId;
 
     /// <summary>Gets whether the root process has exited.</summary>
     public bool HasExited
@@ -116,7 +120,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         {
             lock (_gate)
             {
-                return _disposed || _process.HasExited;
+                return _disposed ? _exitedAtDispose : _process.HasExited;
             }
         }
     }
@@ -191,7 +195,22 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
             waiter = new OutputWaiter(text);
             _outputWaiters.Add(waiter);
         }
-        return SignalWait.WaitAsync(waiter.Source.Task, $"child output containing '{text}'", _watchdog, _clock, cancellationToken);
+        return WaitForWaiterAsync(waiter, cancellationToken);
+    }
+
+    private async Task WaitForWaiterAsync(OutputWaiter waiter, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await SignalWait.WaitAsync(waiter.Source.Task, $"child output containing '{waiter.Text}'", _watchdog, _clock, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _ = _outputWaiters.Remove(waiter);
+            }
+        }
     }
 
     /// <summary>Ends the root process and every descendant that is still reachable from it.</summary>
@@ -207,7 +226,7 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         }
     }
 
-    /// <summary>Ends the process tree, waits a bounded time for the root to exit, and releases the process handle.</summary>
+    /// <summary>Ends the process tree that is still reachable from the root, waits a bounded time for the root to exit, and releases the process handle.</summary>
     public void Dispose()
     {
         lock (_gate)
@@ -223,14 +242,17 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
 
         try
         {
-            _ = _process.WaitForExit(DisposeExitWait);
+            _exitedAtDispose = _process.WaitForExit(DisposeExitWait);
         }
         catch (InvalidOperationException)
         {
             // The process never started.
         }
-        _process.Dispose();
-        FailWaiters();
+        finally
+        {
+            _process.Dispose();
+            FailWaiters();
+        }
     }
 
     /// <summary>Performs the same bounded cleanup as <see cref="Dispose"/>.</summary>
@@ -257,6 +279,10 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         catch (Win32Exception)
         {
             // The process is already ending.
+        }
+        catch (AggregateException)
+        {
+            // Some processes of the tree could not be ended. Disposal still releases the handle.
         }
     }
 
@@ -340,8 +366,10 @@ public sealed class ChildProcessFixture : IDisposable, IAsyncDisposable
         }
     }
 
-    private sealed record OutputWaiter(string Text)
+    private sealed class OutputWaiter(string text)
     {
+        internal string Text { get; } = text;
+
         internal TaskCompletionSource Source { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 }
