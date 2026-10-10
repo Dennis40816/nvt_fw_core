@@ -98,6 +98,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 - Threading: `UiEventRunner` observes UI event operation failures on the calling context, handles operation-token cancellation, and contains primary and fallback reporter failures. NFC can compile the canonical source as internal with `NVT_CORE_SOURCE_CONSUMPTION` and verify its LF-byte SHA-256 using `tools/source-consumption/manifest.json`.
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 - Added the public API inventory for the non-Launcher `Nvt.Core` namespaces (`PublicAPI.Unshipped.txt`, 745 entries) and the consumer table in `docs/core/api-inventory.md`. The analyzer gate follows in a later change.
+- `Nvt.Core.Fonts` 0.1.1 adds the Inter font license (SIL Open Font License 1.1, version 3.19 text) as `licenses/Inter/LICENSE`. Package 0.1.0 did not carry it. The release tag is `core-fonts-v0.1.1`.
 
 ### Fixed
 
