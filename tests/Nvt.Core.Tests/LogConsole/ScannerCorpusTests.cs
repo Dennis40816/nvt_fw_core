@@ -7,6 +7,7 @@ using Xunit;
 namespace Nvt.Core.Tests.LogConsole;
 
 /// <summary>Path components remain whole at every storage and scanner read boundary.</summary>
+[Collection(ScannerParallelIsolation.Name)]
 public sealed class ScannerCorpusTests(ITestOutputHelper output)
 {
     /// <summary>Leading dots belong to the path, including filename-only location targets.</summary>
@@ -66,7 +67,7 @@ public sealed class ScannerCorpusTests(ITestOutputHelper output)
         var options = new ParallelOptions
         {
             CancellationToken = TestContext.Current.CancellationToken,
-            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
         };
         _ = Parallel.ForEach(corpus, options, item =>
         {

@@ -7,6 +7,7 @@ using Xunit;
 namespace Nvt.Core.Tests.LogConsole;
 
 /// <summary>Constructed text parts supply an independent oracle for quote boundaries and recovery.</summary>
+[Collection(ScannerParallelIsolation.Name)]
 public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
 {
     /// <summary>Every generated line preserves exactly its constructed targets through both scanner entry points.</summary>
@@ -24,7 +25,7 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
         var options = new ParallelOptions
         {
             CancellationToken = TestContext.Current.CancellationToken,
-            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
         };
         _ = Parallel.ForEach(cases, options, item =>
         {
