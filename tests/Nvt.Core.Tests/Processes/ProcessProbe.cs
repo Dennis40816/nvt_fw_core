@@ -34,7 +34,7 @@ internal static class ProcessProbe
     {
         string path = workspace.GetPath(relativePath);
         _ = Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllBytes(path, bytes);
+        TestFiles.WriteAllBytes(path, bytes);
         return path;
     }
 

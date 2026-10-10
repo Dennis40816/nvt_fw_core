@@ -37,7 +37,7 @@ public sealed class AnonymousPipeManagedLauncherProcessTests
         await Task.Delay(500, TestContext.Current.CancellationToken);
         Assert.Equal(LauncherProcessStartOutcome.Ready, result.Outcome);
         Assert.Equal(new[] { "--managed-root", Path.GetFullPath(workspace.RootPath), "--state-path", Path.GetFullPath(statePath) },
-            await File.ReadAllLinesAsync(arguments, TestContext.Current.CancellationToken));
+            await TestFiles.ReadLinesAsync(arguments, TestContext.Current.CancellationToken));
         Assert.Equal(new ManagedVersionAdmission(TransportFixture.Version, "fixture-admission", new string('a', 64)),
             result.ReadyAdmission);
     }

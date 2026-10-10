@@ -38,8 +38,8 @@ public sealed class StableLauncherHandoffTests
         using var workspace = TestWorkspace.Create();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.Cancel();
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await Create(workspace.RootPath, workspace.GetPath("state.json")).TryStartLauncherAsync(cancellation.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Create(workspace.RootPath, workspace.GetPath("state.json")).TryStartLauncherAsync(cancellation.Token).AsTask());
     }
 
     /// <summary>Legacy restart fails closed without an exact inherited Bootstrap identity.</summary>
@@ -60,8 +60,8 @@ public sealed class StableLauncherHandoffTests
         using var lease = Lease(workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.Cancel();
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await Create(workspace.RootPath, workspace.GetPath("state.json")).StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Create(workspace.RootPath, workspace.GetPath("state.json")).StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token).AsTask());
         Assert.Equal(1, lease.DisposeCount);
     }
 
@@ -97,8 +97,8 @@ public sealed class StableLauncherHandoffTests
         using var lease = Lease(workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var handoff = Create(workspace.RootPath, workspace.GetPath("state.json"), afterExecutableAcquired: cancellation.Cancel);
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await handoff.StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            handoff.StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token).AsTask());
         Assert.Equal(1, lease.DisposeCount);
     }
 
@@ -453,11 +453,11 @@ public sealed class StableLauncherHandoffTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        var lease = Lease(workspace.RootPath);
+        using var lease = Lease(workspace.RootPath);
         string statePath = workspace.GetPath("state.json");
         var handoff = Create(workspace.RootPath, statePath, maximumIdentityCharacters: 1);
-        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await handoff.StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken));
+        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handoff.StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken).AsTask());
         Assert.Equal("identity", exception.ParamName);
         Assert.StartsWith("Inherited Bootstrap identity is oversized.", exception.Message, StringComparison.Ordinal);
         Assert.Equal(1, lease.DisposeCount);
