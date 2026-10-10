@@ -21,7 +21,11 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
         Assert.Equal(cases.Length, cases.Select(item => item.Text).Distinct(StringComparer.Ordinal).Count());
         var comparisons = 0L;
         output.WriteLine($"{cases.Length} generated texts; {2 * cases.Sum(item => item.Text.Length + 1)} oracle comparisons.");
-        var options = new ParallelOptions { CancellationToken = TestContext.Current.CancellationToken };
+        var options = new ParallelOptions
+        {
+            CancellationToken = TestContext.Current.CancellationToken,
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+        };
         _ = Parallel.ForEach(cases, options, item =>
         {
             for (var split = 0; split <= item.Text.Length; split++)

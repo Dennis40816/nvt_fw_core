@@ -104,6 +104,12 @@ UntilComplete 以事件阻塞、重新擲回原始例外（不是 AggregateExcep
 OperationCanceledException，並且不使用呼叫端的同步內容。工作必須在其他執行緒執行；需要被阻塞
 執行緒才能繼續的工作永遠不會完成。
 
+## TestFiles
+
+File.ReadAll* 與 File.WriteAll* 這類捷徑在所有專案都被禁用。測試需要單純的 fixture 檔案時，
+使用 TestFiles.WriteAllBytes 與 TestFiles.ReadLinesAsync，兩者都經由串流。
+只能用在 TestWorkspace 內的路徑。
+
 ## 基準與刻意差異
 
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的

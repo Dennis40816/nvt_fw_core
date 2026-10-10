@@ -28,12 +28,21 @@ internal static class ConsoleProjectionTransfer
                 ?? rows.LastOrDefault()?.Id;
         return new ConsoleProjection
         {
-            Version = projection.Version, Generation = projection.Generation, LastSequence = projection.LastSequence,
-            CapturedAt = projection.CapturedAt, TimeBase = projection.TimeBase, Rows = rows,
-            LevelCounts = projection.LevelCounts, Sources = projection.Sources, SourceCounts = projection.SourceCounts,
-            RetainedMembership = projection.RetainedMembership, EventCount = projection.EventCount,
-            NewSincePauseCount = projection.NewSincePauseCount, EvictedCount = projection.EvictedCount,
-            Deduplicate = projection.Deduplicate, ResolvedAnchorId = resolved,
+            Version = projection.Version,
+            Generation = projection.Generation,
+            LastSequence = projection.LastSequence,
+            CapturedAt = projection.CapturedAt,
+            TimeBase = projection.TimeBase,
+            Rows = rows,
+            LevelCounts = projection.LevelCounts,
+            Sources = projection.Sources,
+            SourceCounts = projection.SourceCounts,
+            RetainedMembership = projection.RetainedMembership,
+            EventCount = projection.EventCount,
+            NewSincePauseCount = projection.NewSincePauseCount,
+            EvictedCount = projection.EvictedCount,
+            Deduplicate = projection.Deduplicate,
+            ResolvedAnchorId = resolved,
         };
     }
 }

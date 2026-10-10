@@ -30,7 +30,16 @@ internal sealed class ManagedStartDeadline
     {
         _time = timeProvider;
         _expiry = CreateExpiry(readyDeadline, timeProvider);
-        _deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, testDeadlineSignal, _expiry.Token);
+        try
+        {
+            _deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, testDeadlineSignal, _expiry.Token);
+        }
+        catch
+        {
+            // A disposed caller token source makes the link fail. The expiry timer must not outlive the failed constructor.
+            _expiry.Dispose();
+            throw;
+        }
     }
 
     internal CancellationToken Token => _deadline.Token;

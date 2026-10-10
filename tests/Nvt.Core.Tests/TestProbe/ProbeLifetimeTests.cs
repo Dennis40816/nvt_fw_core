@@ -1,7 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-#pragma warning disable CS1591 // Test fixtures are not part of the library API.
-
 using System.Diagnostics;
 using System.Globalization;
 using Xunit;

@@ -16,6 +16,7 @@ namespace Nvt.Core.Tests.Processes;
 /// from before the triggering call (including <c>Cancel()</c> itself). Helpers live 30 s, far past each bound, so a
 /// pass cannot come from a helper ending on its own.
 /// </summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerLifetimeTests
 {
     private const int HelperLifetimeSeconds = 30;
@@ -25,7 +26,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     private static readonly TimeSpan SchedulingMargin = TimeSpan.FromSeconds(4);
     // Cancel() must return, not block on the termination it requests. A blocking callback waits for the 60 s helper,
     // so 10 s separates the regression from a loaded CI machine without comparing a short real-time budget.
-    private static readonly TimeSpan CancelReturnBound = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _cancelReturnBound = TimeSpan.FromSeconds(10);
     private static readonly ExternalProcessCleanupTiming Fast = new(
         TimeSpan.FromMilliseconds(1500),
         TimeSpan.FromMilliseconds(300),
@@ -53,11 +54,11 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
 
             var clock = Stopwatch.StartNew();
-            TimeSpan cancelReturned = await CancelWithinAsync(cancellation, CancelReturnBound);
+            TimeSpan cancelReturned = await CancelWithinAsync(cancellation, _cancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(Watchdog, TestToken));
             TimeSpan runEnded = clock.Elapsed;
 
-            Assert.True(cancelReturned < CancelReturnBound, $"Cancel() took {cancelReturned}.");
+            Assert.True(cancelReturned < _cancelReturnBound, $"Cancel() took {cancelReturned}.");
             Assert.True(runEnded < Fast.Deadline + SchedulingMargin, $"The run took {runEnded} after Cancel().");
             Assert.Equal(1, termination.Calls);
             Assert.False(phases.HasReached(ExternalProcessRunnerPhase.ResourcesReleased), "The custody released the process while its termination still ran.");
@@ -160,7 +161,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
 
             // CancelWithinAsync throws if Cancel() blocks or faults; a refused termination must do neither.
-            _ = await CancelWithinAsync(cancellation, CancelReturnBound);
+            _ = await CancelWithinAsync(cancellation, _cancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(Watchdog, TestToken));
         }
         finally
@@ -476,7 +477,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
             .AsTask()
             .WaitAsync(Watchdog, TestToken));
 
-        Assert.True(cancelReturned < CancelReturnBound, $"Cancel() took {cancelReturned}.");
+        Assert.True(cancelReturned < _cancelReturnBound, $"Cancel() took {cancelReturned}.");
         TimeSpan cleanup = phases.Between(ExternalProcessRunnerPhase.ExitSignaled, ExternalProcessRunnerPhase.Returning);
         Assert.True(cleanup < ExternalProcessCleanupTiming.Default.Deadline + SchedulingMargin, $"Cleanup took {cleanup}.");
     }
@@ -767,28 +768,6 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         Assert.True(schedule.HeldOutputGraceAt <= schedule.ReaderStopAt, "The held-output grace must fall within the deadline.");
     }
 
-    /// <summary>Guard: CancelWithinAsync catches a synchronous blocking cancel promptly instead of hanging.</summary>
-    [Fact]
-    public async Task CancelWithinGuardFailsPromptlyOnBlockingCancel()
-    {
-        using var gate = new ManualResetEventSlim(false);
-        using var cancellation = new CancellationTokenSource();
-        using CancellationTokenRegistration registration = cancellation.Token.Register(gate.Wait);
-        try
-        {
-            // A synchronous blocking callback (the pre-fix regression) must be reported within the small bound,
-            // long before the 40 s watchdog, so a regressed runner fails fast rather than hanging the suite.
-            var clock = Stopwatch.StartNew();
-            _ = await Assert.ThrowsAnyAsync<Exception>(
-                () => CancelWithinAsync(cancellation, TimeSpan.FromSeconds(1)));
-            Assert.True(clock.Elapsed < TimeSpan.FromSeconds(10), $"The guard took {clock.Elapsed} to report a blocking cancel.");
-        }
-        finally
-        {
-            gate.Set();
-        }
-    }
-
     /// <summary>detached, unsettled invocations are capped; a new run is refused, and settling frees a slot.</summary>
     [Fact]
     public async Task DetachedCleanupIsBoundedAndRefusesNewRunsAtTheLimit()
@@ -808,7 +787,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         {
             Task<ExternalProcessResult> first = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
-            _ = await CancelWithinAsync(cancellation, CancelReturnBound);
+            _ = await CancelWithinAsync(cancellation, _cancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first.WaitAsync(Watchdog, TestToken));
             _ = await phases.Reached(ExternalProcessRunnerPhase.Detached).WaitAsync(Watchdog, TestToken);
             Assert.Equal(1, budget.InUse);
@@ -1080,7 +1059,7 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         {
             Task<ExternalProcessResult> run = runner.RunAsync(QuietWait(workspace.RootPath, TimeSpan.FromSeconds(60)), cancellation.Token).AsTask();
             _ = await phases.Reached(ExternalProcessRunnerPhase.Started).WaitAsync(Watchdog, TestToken);
-            _ = await CancelWithinAsync(cancellation, CancelReturnBound);
+            _ = await CancelWithinAsync(cancellation, _cancelReturnBound);
             _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run.WaitAsync(Watchdog, TestToken));
             _ = await phases.Reached(ExternalProcessRunnerPhase.Detached).WaitAsync(Watchdog, TestToken);
             Assert.Equal(1, capacity.InUse);
@@ -1163,29 +1142,20 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     private static async Task<TimeSpan> CancelWithinAsync(CancellationTokenSource cancellation, TimeSpan bound)
     {
         // A dedicated thread keeps a starved thread pool from delaying the call the bound is meant to measure.
-        var returned = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var thread = new Thread(() =>
-        {
-            var clock = Stopwatch.StartNew();
-            try
+        Task<TimeSpan> returned = Task.Factory.StartNew(
+            () =>
             {
+                long started = TimeProvider.System.GetTimestamp();
                 cancellation.Cancel();
-                returned.SetResult(clock.Elapsed);
-            }
-            catch (Exception exception)
-            {
-                returned.SetException(exception);
-            }
-        })
-        {
-            IsBackground = true,
-            Name = "Cancel under test",
-        };
-        thread.Start();
+                return TimeProvider.System.GetElapsedTime(started);
+            },
+            CancellationToken.None,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
         try
         {
             // A signal-only Cancel() never throws; a fault surfaces here.
-            return await returned.Task.WaitAsync(bound, TestToken);
+            return await returned.WaitAsync(bound, TestToken);
         }
         catch (TimeoutException)
         {

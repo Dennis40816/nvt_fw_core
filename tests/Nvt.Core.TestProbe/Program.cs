@@ -103,20 +103,33 @@ namespace Nvt.Core.TestProbe
 
         // A waiting mode ends when the release file appears, or after wait-ms (30 seconds by default). The test sets
         // CORE_TEST_PROBE_RELEASE_PATH, which a descendant process inherits, and creates the file when it is done.
-        internal static async Task WaitAsync(ProbeInputs inputs)
+        internal static Task WaitAsync(ProbeInputs inputs)
         {
             var limit = TimeSpan.FromMilliseconds(inputs.Integer("wait-ms", DefaultWaitMilliseconds, minimum: 1));
             string? release = inputs.Optional("release-path");
+            using var released = new ManualResetEvent(initialState: false);
             if (release is null)
             {
-                await Task.Delay(limit);
-                return;
+                _ = released.WaitOne(limit);
+                return Task.CompletedTask;
             }
-            long deadline = Environment.TickCount64 + (long)limit.TotalMilliseconds;
-            while (!File.Exists(release) && Environment.TickCount64 < deadline)
+            string fullPath = Path.GetFullPath(release);
+            string directory = Path.GetDirectoryName(fullPath) ?? throw new ProbeInputException("Invalid input: release-path");
+            using var watcher = new FileSystemWatcher(directory, Path.GetFileName(fullPath))
             {
-                await Task.Delay(HandshakePollMilliseconds);
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+            };
+            watcher.Created += (_, _) => released.Set();
+            watcher.Changed += (_, _) => released.Set();
+            watcher.Renamed += (_, _) => released.Set();
+            watcher.EnableRaisingEvents = true;
+            // The file may exist before the watcher starts. Check after the watcher is on, so no event is lost.
+            if (File.Exists(fullPath))
+            {
+                released.Set();
             }
+            _ = released.WaitOne(limit);
+            return Task.CompletedTask;
         }
 
         internal static void RequireWindows()

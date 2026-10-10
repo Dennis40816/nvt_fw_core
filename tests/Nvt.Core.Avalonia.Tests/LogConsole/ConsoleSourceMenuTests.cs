@@ -52,13 +52,16 @@ public sealed class ConsoleSourceMenuTests
             {
                 Bindings = { new Binding(nameof(ConsoleController.Projection)) { Source = controller },
                     new DynamicResourceExtension("Nvt.Console.Count"), new DynamicResourceExtension("Nvt.Console.Sources.All") },
-                Converter = converter, ConverterParameter = "SourceText:Id:transient",
+                Converter = converter,
+                ConverterParameter = "SourceText:Id:transient",
             });
             using var checkedBinding = retained.Bind(MenuItem.IsCheckedProperty, new MultiBinding
             {
                 Bindings = { new Binding(nameof(ConsoleController.Filter)) { Source = controller },
                     new Binding(nameof(ConsoleController.Projection)) { Source = controller } },
-                Converter = converter, ConverterParameter = "Source:transient", Mode = BindingMode.OneWay,
+                Converter = converter,
+                ConverterParameter = "Source:transient",
+                Mode = BindingMode.OneWay,
             });
             ConsoleTestView.Pump(window);
             Assert.True(retained.IsChecked);

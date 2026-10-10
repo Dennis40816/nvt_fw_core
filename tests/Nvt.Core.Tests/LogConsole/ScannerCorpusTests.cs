@@ -63,7 +63,11 @@ public sealed class ScannerCorpusTests(ITestOutputHelper output)
         var scans = 0;
         var threeWaySplits = 0;
         // The lines are independent and the scanner has no shared state, so the lines run in parallel.
-        var options = new ParallelOptions { CancellationToken = TestContext.Current.CancellationToken };
+        var options = new ParallelOptions
+        {
+            CancellationToken = TestContext.Current.CancellationToken,
+            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+        };
         _ = Parallel.ForEach(corpus, options, item =>
         {
             _ = Interlocked.Add(ref scans, VerifyEverySplit(item));

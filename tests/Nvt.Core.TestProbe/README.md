@@ -16,7 +16,7 @@ It runs from any folder under any executable name.
 | `invalid-utf8` | READY inputs | Writes bytes `C3 28 0A`. Holds the pipe open for 200 milliseconds. | 0 |
 | `oversized` | READY inputs; optional `oversize-chars` | Writes the specified number of `X` characters and a literal newline. Holds the pipe open for 200 milliseconds. | 0 |
 | `ready-tree-root` | READY inputs, `tree-marker` | Writes its identifier to `.root`. Starts a pipe-holding child with a `.child` marker. Writes READY after the handshake. | 0 or 25 |
-| `silent-wait` | None | Writes nothing. Waits 30 seconds. | 0 |
+| `silent-wait` | Optional `release-path`, `wait-ms` | Writes nothing. Waits until the release file exists, or until `wait-ms` (30 seconds by default). | 0 |
 | `exit` | Optional `exit-code` | Writes nothing. Exits immediately. | Requested code |
 | `tree-grandchild` | `tree-marker` | Writes its process identifier. Waits 30 seconds. | 0 |
 | `tree-root-exit` | `tree-marker`; optional `stdout-text`, `exit-code` | Writes the optional output line. Starts a pipe-holding child. Exits after its marker appears. | Requested code or 25 |
@@ -34,6 +34,7 @@ Every input has two forms:
 - Environment: `CORE_TEST_PROBE_<NAME>`, with uppercase letters and underscores instead of hyphens.
 
 Arguments override environment values.
+A waiting mode that supports `release-path` ends when that file exists. Its `wait-ms` input is the upper limit, 30 seconds by default.
 The probe removes recognized input pairs from the payload arguments.
 All other arguments remain in their original order, including empty arguments.
 The probe requires `mode` and has no default mode.
