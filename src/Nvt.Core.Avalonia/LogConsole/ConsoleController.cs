@@ -22,12 +22,21 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private readonly Lock _workGate = new();
     private DispatcherOperation? _pending;
     private bool _refreshRequested;
+    private bool _refreshRetryAvailable;
     private bool _disposed;
+    // _workGate protects the one command state version, including cross-thread store notifications.
+    private long _stateVersion;
+    internal long CommandStateVersion { get { lock (_workGate) return _stateVersion; } }
     // All presentation fields and retired leases are UI-thread-only.
+    private int _commandProjectionCaptures;
+    internal int CommandProjectionCaptures => _commandProjectionCaptures;
     private ConsoleFilter _filter = new();
     private ConsoleViewState _viewState = new();
-    private ConsoleProjection _projection;
-    private ConsoleProjection? _retired;
+    private ProjectionLease _current = null!;
+    private ConsoleProjection _projection => _current.Projection;
+    private ProjectionLease? _retired;
+    private ConsoleLinkCache? _linkCache = new(maxEntries: 512, maxSpans: 4096, maxTargetCharacters: 131072);
+    internal object? LinkCacheIdentity => _linkCache;
     private ConsoleExportOptions _exportOptions = new();
     private Exception? _refreshError;
     // UI-thread-only nesting; Dispose defers lease release until all active callbacks return.
@@ -42,6 +51,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
             throw new InvalidOperationException("Create the console on the registered Core UI thread.");
         _dispatcher = dispatcher!;
         _store = store;
+        ValidateSources(sources, options);
         Options = (options ?? new()) with { SourceRegistry = sources };
         ArgumentNullException.ThrowIfNull(Options.RelativeTimeTemplate);
         ArgumentNullException.ThrowIfNull(Options.Culture);
@@ -54,32 +64,19 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             throw new ArgumentException("RelativeTimeTemplate must be a valid composite format with placeholder 0.", nameof(options), error);
         }
-        ToggleLevelCommand = Command<LogLevel>(level =>
-        {
-            if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
-            var removed = _filter.EnabledLevels.Remove(level);
-            SetFilter(_filter with
-            {
-                EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
-                ? _filter.EnabledLevels.Add(level) : removed
-            });
-        });
-        ToggleOnlyMatchesCommand = Command(() => SetFilter(_filter with { OnlyMatches = !_filter.OnlyMatches }));
-        ToggleDedupeCommand = Command(() => SetFilter(_filter with { Deduplicate = !_filter.Deduplicate }));
-        SetTimeModeCommand = Command<ConsoleTimeMode>(mode =>
-        {
-            if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
-            SetFilter(_filter with { TimeMode = mode });
-        });
-        ClearCommand = Command(_store.Clear);
-        ResetFiltersCommand = Command(() => SetFilter(new ConsoleFilter { TimeMode = _filter.TimeMode }));
-        ToggleExportTimeCommand = Command(() => SetExportOptions(_exportOptions with { IncludeTime = !_exportOptions.IncludeTime }));
-        ToggleExportLevelCommand = Command(() => SetExportOptions(_exportOptions with { IncludeLevel = !_exportOptions.IncludeLevel }));
+        InitializeCommands();
+        RowCommands = new(this, notifications => PublishNotifications(notifications));
         _store.Changed += StoreChanged;
         try
         {
-            using var snapshot = _store.CaptureSnapshot();
-            _projection = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
+            LogSnapshot? snapshot = _store.CaptureSnapshot();
+            try
+            {
+                _current = new(ConsoleProjector.Project(snapshot, _filter, _viewState, Options), snapshot);
+                _linkCache.Synchronize(snapshot);
+                snapshot = null; // Ownership moved into the paired lease.
+            }
+            finally { snapshot?.Dispose(); }
             _store.SetReady(true);
         }
         catch
@@ -88,7 +85,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
             DispatcherOperation? pending;
             lock (_workGate) { _disposed = true; pending = _pending; _pending = null; }
             pending?.Abort();
-            _projection?.Dispose();
+            _current?.Dispose();
             throw;
         }
     }
@@ -105,24 +102,31 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     public ConsoleProjection Projection => _projection;
     /// <summary>Gets the independent export flags used by app adapters.</summary>
     public ConsoleExportOptions ExportOptions => _exportOptions;
+    /// <summary>Gets the app-owned, nonblocking link adapter. Configure before binding the list.</summary>
+    public IConsoleLinkOpener? LinkOpener { get; init; }
+    /// <summary>Gets the app-owned, nonblocking clipboard adapter. Configure before binding the list.</summary>
+    public IConsoleClipboard? Clipboard { get; init; }
+    /// <summary>Copies visible selected rows through Clipboard, bounded to 65,536 UTF-16 characters.</summary>
+    public ICommand CopySelectionCommand => RowCommands.CopySelection;
+    internal ConsoleRowCommands RowCommands { get; }
     /// <summary>Gets the most recent refresh failure; the next successful refresh clears it.</summary>
     public Exception? RefreshError => _refreshError;
     /// <summary>Toggles one level, including levels with zero events.</summary>
-    public ICommand ToggleLevelCommand { get; }
+    public ICommand ToggleLevelCommand { get; private set; } = null!;
     /// <summary>Toggles search filtering while preserving highlights.</summary>
-    public ICommand ToggleOnlyMatchesCommand { get; }
+    public ICommand ToggleOnlyMatchesCommand { get; private set; } = null!;
     /// <summary>Toggles grouping of duplicate events.</summary>
-    public ICommand ToggleDedupeCommand { get; }
+    public ICommand ToggleDedupeCommand { get; private set; } = null!;
     /// <summary>Selects an Absolute, Relative, or Hidden time mode.</summary>
-    public ICommand SetTimeModeCommand { get; }
+    public ICommand SetTimeModeCommand { get; private set; } = null!;
     /// <summary>Clears the app-owned store through its generation fence.</summary>
-    public ICommand ClearCommand { get; }
+    public ICommand ClearCommand { get; private set; } = null!;
     /// <summary>Resets filtering and dedupe, retaining time presentation and reading state.</summary>
-    public ICommand ResetFiltersCommand { get; }
+    public ICommand ResetFiltersCommand { get; private set; } = null!;
     /// <summary>Toggles inclusion of UTC timestamps in export.</summary>
-    public ICommand ToggleExportTimeCommand { get; }
+    public ICommand ToggleExportTimeCommand { get; private set; } = null!;
     /// <summary>Toggles inclusion of levels in export.</summary>
-    public ICommand ToggleExportLevelCommand { get; }
+    public ICommand ToggleExportLevelCommand { get; private set; } = null!;
 
     /// <summary>Selects ordinal source IDs. An empty set selects all sources.</summary>
     public void SetSelectedSources(IEnumerable<string> sources)
@@ -145,9 +149,12 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         VerifyActive();
         ArgumentNullException.ThrowIfNull(state);
         if (_viewState == state) return;
+        var selectionChanged = !ReferenceEquals(_viewState.Selection, state.Selection);
         _viewState = state;
+        InvalidateCommandState();
         Schedule(true);
         Notify(nameof(ViewState));
+        if (selectionChanged) ((IRelayCommand)CopySelectionCommand).NotifyCanExecuteChanged();
     }
 
     /// <summary>Captures a pause at the current projection without changing selection or expansion.</summary>
@@ -165,6 +172,89 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         RequestViewState(_viewState.Resume());
     }
 
+    internal void FilterByLevel(LogLevel level) => SetFilter(_filter with { EnabledLevels = [level] });
+
+    private static void ValidateSources(ImmutableArray<ConsoleSource> sources, ConsoleProjectionOptions? options)
+    {
+        if (sources.IsDefault) throw new ArgumentException("Sources must be initialized.", nameof(sources));
+        if (options is { SourceRegistry.IsDefault: true }) throw new ArgumentException("SourceRegistry must be initialized.", nameof(options));
+        if (options is { SourceRegistry.IsEmpty: false } && !sources.SequenceEqual(options.SourceRegistry))
+            throw new ArgumentException("Sources and SourceRegistry must agree when both are supplied.", nameof(options));
+    }
+
+    private void InitializeCommands()
+    {
+        ToggleLevelCommand = Command<LogLevel>(level =>
+        {
+            if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
+            var removed = _filter.EnabledLevels.Remove(level);
+            SetFilter(_filter with
+            {
+                EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
+                ? _filter.EnabledLevels.Add(level) : removed
+            });
+        });
+        ToggleOnlyMatchesCommand = Command(() => SetFilter(_filter with { OnlyMatches = !_filter.OnlyMatches }));
+        ToggleDedupeCommand = Command(() => SetFilter(_filter with { Deduplicate = !_filter.Deduplicate }));
+        SetTimeModeCommand = Command<ConsoleTimeMode>(mode =>
+        {
+            if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+            SetFilter(_filter with { TimeMode = mode });
+        });
+        ClearCommand = Command(() => { InvalidateCommandState(); _store.Clear(); });
+        ResetFiltersCommand = Command(() => SetFilter(new ConsoleFilter { TimeMode = _filter.TimeMode }));
+        ToggleExportTimeCommand = Command(() => SetExportOptions(_exportOptions with { IncludeTime = !_exportOptions.IncludeTime }));
+        ToggleExportLevelCommand = Command(() => SetExportOptions(_exportOptions with { IncludeLevel = !_exportOptions.IncludeLevel }));
+    }
+
+    internal ConsoleLinkIndex GetLinks(ConsoleRow row) => _linkCache!.GetLinks(_current.Snapshot, row);
+
+    internal ConsoleLinkIndex GetCommandLinks(ConsoleRow row)
+    {
+        using var snapshot = _store.CaptureSnapshot();
+        return _linkCache!.GetLinks(snapshot, row);
+    }
+
+    internal ConsoleProjection? CaptureCommandProjection()
+    {
+        _dispatcher.VerifyAccess();
+        if (!IsActive()) return null;
+        var version = CommandStateVersion;
+        _commandProjectionCaptures++;
+        using var snapshot = _store.CaptureSnapshot();
+        var projection = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
+        if (IsCommandStateCurrent(version, projection)) return projection;
+        projection.Dispose();
+        return null;
+    }
+
+    internal bool IsCommandStateCurrent(long version, ConsoleProjection projection)
+    {
+        lock (_workGate)
+            if (_disposed || _stateVersion != version) return false;
+        // Snapshot capture performs no content reads. History can publish before Changed reaches us.
+        LogSnapshot snapshot;
+        try { snapshot = _store.CaptureSnapshot(); }
+        catch (ObjectDisposedException error) when (error.ObjectName == typeof(LogStore).FullName)
+        {
+            // App-owned store shutdown during acquisition cancels validation.
+            return false;
+        }
+        using (snapshot)
+        {
+            lock (_workGate)
+                return !_disposed && _stateVersion == version && snapshot.Version == projection.Version
+                    && snapshot.Generation == projection.Generation && _store.IsCurrent(projection.Generation);
+        }
+    }
+
+    private void InvalidateCommandState() { lock (_workGate) _stateVersion++; }
+
+    private sealed record ProjectionLease(ConsoleProjection Projection, LogSnapshot Snapshot) : IDisposable
+    {
+        public void Dispose() { Projection.Dispose(); Snapshot.Dispose(); }
+    }
+
     private RelayCommand Command(Action execute) => new(() => { VerifyActive(); execute(); }, IsActive);
     private RelayCommand<T> Command<T>(Action<T> execute) where T : struct
         => new(value => { VerifyActive(); execute(value); }, _ => IsActive());
@@ -178,21 +268,32 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     {
         if (_filter == filter) return;
         _filter = filter;
+        InvalidateCommandState();
         Schedule(true);
         Notify(nameof(Filter));
     }
     private void SetExportOptions(ConsoleExportOptions options)
     {
         _exportOptions = options;
+        InvalidateCommandState();
         Notify(nameof(ExportOptions));
     }
-    private void StoreChanged(object? sender, LogChangeSet changes) => Schedule(true);
-    private void Schedule(bool refresh)
+    private void StoreChanged(object? sender, LogChangeSet changes)
+    {
+        InvalidateCommandState();
+        Schedule(true);
+    }
+    private void Schedule(bool refresh, bool retry = false)
     {
         lock (_workGate)
         {
-            if (_disposed) return;
-            _refreshRequested |= refresh;
+            if (_disposed || retry && !_refreshRetryAvailable) return;
+            if (refresh)
+            {
+                _refreshRequested = true;
+                // One automatic retry per explicit refresh request; cleanup posts cannot replenish it.
+                _refreshRetryAvailable = !retry;
+            }
             _pending ??= _dispatcher.InvokeAsync(Drain, DispatcherPriority.Background);
         }
     }
@@ -213,37 +314,43 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         _retired = null;
         if (!refresh) return;
         ConsoleProjection? next = null;
+        LogSnapshot? snapshot = null;
         List<Exception> notificationErrors = [];
         try
         {
-            using var snapshot = _store.CaptureSnapshot();
+            var version = CommandStateVersion;
+            snapshot = _store.CaptureSnapshot();
             next = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
-            if (!IsActive()) { next.Dispose(); return; }
+            if (!IsCommandStateCurrent(version, next))
+            {
+                Schedule(true, retry: true);
+                return;
+            }
             var remapped = _viewState.Remap(_projection, next);
             if (_viewState.Follow is ConsoleFollow.Paused && _projection.Deduplicate != next.Deduplicate)
                 next = ConsoleProjectionTransfer.WithPausedOrder(next, remapped);
             // Clear advances admission generation before the writer publishes its reset.
-            if (!IsActive() || !_store.IsCurrent(snapshot.Generation)) { next.Dispose(); return; }
-            _retired = _projection;
-            _projection = next;
+            if (!IsActive() || !_store.IsCurrent(snapshot.Generation)) return;
+            _linkCache!.Synchronize(snapshot);
+            _retired = _current;
+            _current = new(next, snapshot);
+            next = null;
+            snapshot = null; // Adopt the producing snapshot and projection atomically.
             _viewState = remapped;
+            InvalidateCommandState();
         }
         // A reader supplied by the host can throw any non-fatal type. Keep the last good projection, report the
         // failure through RefreshError and recover on the next change. Fatal runtime failures are not swallowed.
         catch (Exception error) when (error is not OutOfMemoryException)
         {
-            next?.Dispose();
             if (SetRefreshError(error)) Notify(nameof(RefreshError), notificationErrors);
             Schedule(false);
             RethrowNotificationErrors(notificationErrors);
             return;
         }
-        catch
-        {
-            next?.Dispose();
-            throw;
-        }
+        finally { next?.Dispose(); snapshot?.Dispose(); }
         var errorChanged = SetRefreshError(null);
+        ((ConsoleCopySelectionCommand)CopySelectionCommand).Notify(notifications => PublishNotifications(notifications, notificationErrors));
         Notify(nameof(ViewState), notificationErrors);
         Notify(nameof(Projection), notificationErrors);
         if (errorChanged) Notify(nameof(RefreshError), notificationErrors);
@@ -266,18 +373,26 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private void Notify(string name, List<Exception>? notificationErrors = null)
     {
         if (!IsActive()) return;
+        var args = new PropertyChangedEventArgs(name);
+        PublishNotifications((PropertyChanged?.GetInvocationList().Cast<PropertyChangedEventHandler>() ?? [])
+            .Select(handler => (Action)(() => handler(this, args))), notificationErrors, IsActive, notificationErrors is not null);
+    }
+
+    private void PublishNotifications(IEnumerable<Action> notifications, List<Exception>? notificationErrors = null,
+        Func<bool>? continuePublishing = null, bool isolateErrors = true)
+    {
+        var errors = notificationErrors ?? [];
         _notificationDepth++;
         try
         {
-            var args = new PropertyChangedEventArgs(name);
-            foreach (PropertyChangedEventHandler handler in PropertyChanged?.GetInvocationList() ?? [])
+            foreach (var notification in notifications)
             {
-                if (!IsActive()) break;
-                try { handler(this, args); }
-                catch (Exception error) when (notificationErrors is not null)
+                if (continuePublishing?.Invoke() == false) break;
+                try { notification(); }
+                catch (Exception error) when (isolateErrors && error is not OutOfMemoryException)
                 {
-                    // Finish every refresh observer, then report all failures together on the dispatcher.
-                    notificationErrors.Add(error);
+                    // Finish independent observers, then report every non-fatal failure through the dispatcher.
+                    errors.Add(error);
                 }
             }
         }
@@ -289,13 +404,14 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
                 else ReleaseProjections();
             }
         }
+        if (notificationErrors is null) RethrowNotificationErrors(errors);
     }
 
     private void ReleaseProjections()
     {
         _retired?.Dispose();
         _retired = null;
-        _projection.Dispose();
+        _current.Dispose();
     }
 
     /// <summary>Unsubscribes, aborts queued work, and releases both owned projections. Safe to repeat.</summary>
@@ -307,15 +423,18 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             if (_disposed) return;
             _disposed = true;
+            _stateVersion++;
             pending = _pending;
             _pending = null;
             _refreshRequested = false;
         }
         _store.Changed -= StoreChanged;
         pending?.Abort();
+        _linkCache = null;
+        RowCommands.Release();
         if (_notificationDepth == 0) ReleaseProjections();
         foreach (var command in new[] { ToggleLevelCommand, ToggleOnlyMatchesCommand, ToggleDedupeCommand,
-            SetTimeModeCommand, ClearCommand, ResetFiltersCommand, ToggleExportTimeCommand, ToggleExportLevelCommand })
+            SetTimeModeCommand, ClearCommand, ResetFiltersCommand, ToggleExportTimeCommand, ToggleExportLevelCommand, CopySelectionCommand })
             ((IRelayCommand)command).NotifyCanExecuteChanged();
     }
 }

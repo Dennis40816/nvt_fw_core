@@ -11,7 +11,9 @@
   <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ScrollStyles.axaml"/>
   <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml"/>
   <StyleInclude Source="avares://Nvt.Core.Avalonia/Icons/IconStyles.axaml"/>
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleControlStyles.axaml"/>
   <Style Selector="console|ConsoleListView">
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
     <Setter Property="ClipToBounds" Value="True"/>
     <Setter Property="Template">
@@ -34,6 +36,18 @@
                   FontSize="{DynamicResource Nvt.Font.Body.Size}" FontWeight="{DynamicResource Nvt.Font.Body.Weight}"/>
         </Grid>
       </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="console|ConsoleRowPresenter">
+    <Setter Property="FocusAdorner" Value="{x:Null}"/>
+  </Style>
+  <Style Selector="console|ConsoleRowPresenter:focus-visible">
+    <Setter Property="FocusAdorner">
+      <Template>
+        <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+                Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
+                CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
+      </Template>
     </Setter>
   </Style>
 </Styles>
