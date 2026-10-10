@@ -95,6 +95,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- Added the public API inventory for the Launcher contracts, persistence and activation namespaces (`PublicAPI.Unshipped.txt`, 477 entries). Enforcement follows in the last inventory step.
 - `Nvt.Core.TestSupport` gains `TestFiles`: `WriteAllBytes` and `ReadLinesAsync` for plain fixture files, through streams, because the `File.ReadAll*` and `File.WriteAll*` shortcuts are banned.
 - `Nvt.Core.TestSupport` gains `TaskBlock`: the one way to block on a task in a test hook that cannot await. It rethrows the original fault and does not use the caller's synchronization context.
 - `Nvt.Core.TestSupport` gains `RelativePerf`: performance thresholds that follow the machine (a calibration unit, a scale ratio, an allocation count) with a warm-up and a median of at least seven samples. Testing rule 3 and convention T1 now ask for such a test on hot paths and forbid absolute wall-clock limits.

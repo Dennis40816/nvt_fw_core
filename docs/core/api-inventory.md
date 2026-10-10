@@ -2,7 +2,7 @@
 
 Core 0.9.0 keeps a reviewed list of every public `Nvt.Core` API in `src/Nvt.Core/PublicAPI.Unshipped.txt`. The 0.9.0 release step moves the approved entries to `PublicAPI.Shipped.txt`. The analyzer gate (RS0016/RS0017 as errors) follows in the last inventory slice, so a missing entry does not fail the build yet.
 
-This page covers the namespaces that are not `Nvt.Core.Launcher*`. The Launcher entries follow in two slices, and `Nvt.Core.Avalonia`, `Nvt.Core.Fonts` and the TestSupport project in the last slice.
+This page covers the namespaces that are not `Nvt.Core.Launcher*` and the Launcher contracts, persistence and activation namespaces. The coordination, transport and repository namespaces of the Launcher follow in the next slice, and `Nvt.Core.Avalonia`, `Nvt.Core.Fonts` and the TestSupport project in the last slice.
 
 ## How the entries were produced
 
@@ -11,6 +11,8 @@ This page covers the namespaces that are not `Nvt.Core.Launcher*`. The Launcher 
 3. Keep the entries whose declaring symbol is outside `Nvt.Core.Launcher` (745), sort them with ordinal comparison, and write LF line endings.
 4. Rebuild with the analyzer: no RS0016 remains outside Launcher, and RS0017 is absent.
 5. Remove the temporary project and lock changes. Nothing else in the repository changes.
+
+The Launcher contracts, persistence and activation slice (477 entries) was produced the same way, with one change. The build writes a SARIF log (`-p:ErrorLog=...%2Cversion=2.1`), and the `APIName` property of every RS0016 result is the exact entry text, including modifiers such as `static` and `const`. The analyzer reports one undeclared symbol for each declaration, so a record with a primary constructor needs a second pass. The slice was repeated until the build reported no RS0016 for these namespaces. Then RS0017 was absent, and 381 RS0016 results remained, all in `Nvt.Core.Launcher.Coordination`, `Transport` and `Repository`.
 
 ## Namespaces
 
@@ -21,6 +23,9 @@ Types and entries count the public API of the namespace. Consumers count source 
 | `Nvt.Core.Csv` | 1 | 2 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
 | `Nvt.Core.Files` | 8 | 41 | 14 Core files (Launcher, Processes) | none found | keep |
 | `Nvt.Core.IO` | 1 | 3 | 2 Core files | NFH (2 files) | keep |
+| `Nvt.Core.Launcher.Activation` | 37 | 227 | 24 Core files (Coordination, Transport, Repository), other tests (1) | none found (NFC adopts the Launcher host in a later slice) | review: policy, decision and result types may not all need to be public once the Launcher host is adopted |
+| `Nvt.Core.Launcher.Contracts` | 24 | 222 | 48 Core files (every Launcher namespace), other tests (5) | none found (NFC adopts the Launcher host in a later slice) | keep: the identity, admission and result types that every Launcher namespace shares |
+| `Nvt.Core.Launcher.Persistence` | 6 | 28 | 17 Core files (Coordination, Transport, Repository), other tests (1) | none found (NFC adopts the Launcher host in a later slice) | keep: the state store contracts and the file-system store |
 | `Nvt.Core.Lifecycle` | 3 | 15 | Core tests only | NFH (5 files) | keep |
 | `Nvt.Core.Locale` | 2 | 32 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
 | `Nvt.Core.LogConsole` | 31 | 296 | Core tests only | none yet (NFH Console slices land in 0.9.1) | review: largest surface without a consumer today |
@@ -35,9 +40,9 @@ Types and entries count the public API of the namespace. Consumers count source 
 | `Nvt.Core.Startup` | 1 | 8 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
 | `Nvt.Core.Threading` | 1 | 4 | other tests (1) | none found (NFH uses `Nvt.Core.Avalonia.Threading`) | review |
 | `Nvt.Core.Time` | 1 | 6 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
-| **Total** | **104** | **745** | | | |
+| **Total** | **171** | **1,222** | | | |
 
-`Nvt.Core.Files.Windows` has no public API.
+`Nvt.Core.Files.Windows`, `Nvt.Core.Launcher.Verification` and `Nvt.Core.Launcher.Windows` have no public API.
 
 ## How to read the verdicts
 
