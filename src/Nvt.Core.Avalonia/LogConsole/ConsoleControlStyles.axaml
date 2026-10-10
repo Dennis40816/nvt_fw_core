@@ -43,9 +43,9 @@
           <Border x:Name="LevelFeedback" Background="{DynamicResource NfcSelectionSurfaceBrush}" Opacity="0"
                   CornerRadius="{TemplateBinding CornerRadius}"/>
           <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-          <Border x:Name="LevelFocus" Margin="{Binding Source={StaticResource NfcSpace4}, Converter={StaticResource ConsoleLayout}, ConverterParameter=Focus}" IsVisible="False" IsHitTestVisible="False"
+          <Border x:Name="LevelFocus" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"><Border.Margin><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Focus"><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Border.Margin></Border>
         </Grid>
       </ControlTemplate>
     </Setter>
@@ -85,7 +85,7 @@
     <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
     <Setter Property="MinWidth" Value="0"/>
-    <Setter Property="Padding"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Search"><Binding Source="{StaticResource NfcSpace12}"/><Binding Source="{StaticResource NfcSpace4}"/><Binding Source="{StaticResource NfcControlHeight}"/></MultiBinding></Setter>
+    <Setter Property="Padding"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Search"><DynamicResource ResourceKey="NfcSpace12"/><DynamicResource ResourceKey="NfcSpace4"/><DynamicResource ResourceKey="NfcControlHeight"/></MultiBinding></Setter>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
     <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Focus.RingThickness}"/>
@@ -118,9 +118,9 @@
               </ScrollViewer>
             </Panel>
           </Border>
-          <Border x:Name="SearchFocus" Margin="{Binding Source={StaticResource NfcSpace4}, Converter={StaticResource ConsoleLayout}, ConverterParameter=Focus}" IsVisible="False" IsHitTestVisible="False"
+          <Border x:Name="SearchFocus" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
+                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"><Border.Margin><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Focus"><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Border.Margin></Border>
         </Grid>
       </ControlTemplate>
     </Setter>

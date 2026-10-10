@@ -425,7 +425,7 @@ All intents and disposal require the UI thread. Export flags belong to
 
 `ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
 styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
-entry points; the controls also include it locally. Hosts load Core theme tokens and
+entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
 Fonts roles and keep the console at least 640 DIP wide. The approved B layout places
 search beside the title at wide widths, with levels and sources in the filter row.
 At 960 DIP and below, search and Only matches move to the second filter row; Display
@@ -461,11 +461,14 @@ A refresh failure keeps the previous projection and publishes the exception thro
 `RefreshError`. The next successful accepted refresh clears it. Failed projections release their
 fresh leases. Refresh requests are queued before input notifications, including when an observer
 throws. Search input and clear-search actions stop invoking a disposed controller.
+Notifications raised from `SetFilter` (including search, source, and command inputs) and
+`RequestViewState` propagate subscriber exceptions synchronously to the caller.
 Accepted refreshes update all state before notifying `ViewState`, `Projection`, then a changed
-`RefreshError`. A throwing observer still allows later publication notifications and retirement
-scheduling to run; its exception propagates. The previous projection retires only after replacement
-notification is attempted. A throwing failure observer leaves the previous projection and later
-refreshes usable.
+`RefreshError`. Refresh notifications collect every subscriber exception and complete the sequence
+before posting a preserved rethrow on the UI dispatcher, where it enters the dispatcher's unhandled
+exception path. A single failure is rethrown directly; multiple failures use one `AggregateException`.
+The previous projection retires only after replacement notification is attempted. A throwing failure
+observer leaves the previous projection and later refreshes usable.
 
 ### Resource keys
 
@@ -473,7 +476,8 @@ refreshes usable.
 merged by `LogConsoleStyles.axaml`. Controls include the resource-free control styles locally;
 their dynamic resource bindings use the same dictionary only as a fallback for missing keys.
 Hosts can override `Nvt.Console.*` in application, window, or console ancestor resources,
-including at runtime. `MinimumWidth` and `NarrowBreakpoint` are the single shared definitions
+including at runtime. Malformed host templates fall back to the built-in English template on `FormatException`.
+`MinimumWidth` and `NarrowBreakpoint` are the single shared definitions
 for all console surfaces. Composed heights follow the existing dynamic control and spacing tokens.
 
 Time modes and level labels are mapped through keys. The controller exposes filter data;

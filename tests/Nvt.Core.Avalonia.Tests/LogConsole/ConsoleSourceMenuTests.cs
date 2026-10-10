@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Data.Converters;
 using Avalonia.Headless.XUnit;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
@@ -45,16 +46,19 @@ public sealed class ConsoleSourceMenuTests
         try
         {
             using var log = new ConsoleBindingLogScope();
-            var converter = Assert.IsAssignableFrom<IValueConverter>(toolbar.Resources["ConsoleValue"]);
-            var checkedConverter = Assert.IsAssignableFrom<IMultiValueConverter>(converter);
+            var converter = Assert.IsAssignableFrom<IMultiValueConverter>(toolbar.Resources["ConsoleValue"]);
             var retained = new MenuItem();
-            using var headerBinding = retained.Bind(MenuItem.HeaderProperty, new Binding(nameof(ConsoleController.Projection))
-                { Source = controller, Converter = converter, ConverterParameter = "Source:transient" });
+            using var headerBinding = retained.Bind(MenuItem.HeaderProperty, new MultiBinding
+            {
+                Bindings = { new Binding(nameof(ConsoleController.Projection)) { Source = controller },
+                    new DynamicResourceExtension("Nvt.Console.Count"), new DynamicResourceExtension("Nvt.Console.Sources.All") },
+                Converter = converter, ConverterParameter = "SourceText:Id:transient",
+            });
             using var checkedBinding = retained.Bind(MenuItem.IsCheckedProperty, new MultiBinding
             {
                 Bindings = { new Binding(nameof(ConsoleController.Filter)) { Source = controller },
                     new Binding(nameof(ConsoleController.Projection)) { Source = controller } },
-                Converter = checkedConverter, ConverterParameter = "Source:transient", Mode = BindingMode.OneWay,
+                Converter = converter, ConverterParameter = "Source:transient", Mode = BindingMode.OneWay,
             });
             ConsoleTestView.Pump(window);
             Assert.True(retained.IsChecked);
@@ -64,7 +68,7 @@ public sealed class ConsoleSourceMenuTests
             ConsoleTestView.Pump(window);
             Assert.False(retained.IsChecked);
             Assert.Equal("transient · 0", retained.Header);
-            Assert.Equal(false, checkedConverter.Convert([controller.Filter, controller.Projection], typeof(bool), "Source:transient", CultureInfo.InvariantCulture));
+            Assert.Equal(false, converter.Convert([controller.Filter, controller.Projection], typeof(bool), "Source:transient", CultureInfo.InvariantCulture));
             Assert.True(!log.Errors.Any(), string.Join(Environment.NewLine, log.Errors));
         }
         finally { window.Close(); }

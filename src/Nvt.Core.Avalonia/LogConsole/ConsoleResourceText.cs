@@ -17,8 +17,14 @@ internal static class ConsoleResourceText
         var resourceKey = "Nvt.Console." + key;
         if (host?.TryFindResource(resourceKey, out var value) == true && value is not null) return value;
         if (Application.Current?.TryFindResource(resourceKey, out value) == true && value is not null) return value;
-        if (Defaults.TryGetResource(resourceKey, ThemeVariant.Default, out value) && value is not null) return value;
-        throw new KeyNotFoundException(resourceKey);
+        return GetDefaultValue(key);
     }
     internal static string Get(string key, StyledElement? host = null) => (string)GetValue(key, host);
+    internal static string GetDefault(string key) => (string)GetDefaultValue(key);
+    private static object GetDefaultValue(string key)
+    {
+        var resourceKey = "Nvt.Console." + key;
+        if (Defaults.TryGetResource(resourceKey, ThemeVariant.Default, out var value) && value is not null) return value;
+        throw new KeyNotFoundException(resourceKey);
+    }
 }

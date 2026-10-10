@@ -16,7 +16,7 @@ public sealed partial class ConsoleHeader : UserControl
     /// <summary>Gets or sets the controller. The host owns its lifetime.</summary>
     public ConsoleController? Controller { get => GetValue(ControllerProperty); set => SetValue(ControllerProperty, value); }
     /// <summary>Defines the title text.</summary>
-    public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<ConsoleHeader, string>(nameof(Title), ConsoleResourceText.Get("Title"));
+    public static readonly StyledProperty<string> TitleProperty = AvaloniaProperty.Register<ConsoleHeader, string>(nameof(Title), "Console");
     /// <summary>Gets or sets the title.</summary>
     public string Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     /// <summary>Defines the app command to copy selected rows.</summary>

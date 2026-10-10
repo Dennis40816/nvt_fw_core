@@ -355,7 +355,7 @@ View 直接以項目和投影比較來源成員，不另存來源目錄。不存
 
 `ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
 取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
-也會區域載入。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。核准的 B
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。核准的 B
 配置在寬版把搜尋放在標題旁，等級與來源放在篩選列。960 DIP 以下含邊界時，搜尋與
 Only matches 移到篩選區第二行；Display 收納時間與去重，More 收納匯出與清除。標題高
 48 DIP；篩選區寬版高 48 DIP、窄版高 88 DIP。休止動作沒有底色或外框，等級按鈕使用
@@ -384,10 +384,13 @@ Clipboard、檔案 adapter、
 `RefreshError` 發布例外；下一次成功接受的更新會清除此值。失敗的投影會釋放新取得的
 lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍會更新。
 控制器 Dispose 後，搜尋輸入與清除搜尋動作不再呼叫控制器。
+由 `SetFilter`（包含搜尋、來源與 command 輸入）及 `RequestViewState` 發出的通知，
+會將訂閱者例外同步傳回呼叫者。
 成功接受的更新先完成所有狀態變更，再依序通知 `ViewState`、`Projection`，以及有變更的
-`RefreshError`。Observer 丟出例外時，仍會嘗試後續發布通知並排定舊投影釋放，例外則繼續
-傳播。只有嘗試替換通知後才會釋放舊投影。失敗通知的 observer 丟出例外時，先前投影仍保留，
-後續更新也仍可執行。
+`RefreshError`。更新通知會收集每個訂閱者的例外並完成整個通知序列，再將保留堆疊的重新
+拋出動作排入 UI dispatcher，進入 dispatcher 的未處理例外路徑。單一例外直接重新拋出；
+多個例外合併成一個 `AggregateException`。只有嘗試替換通知後才會釋放舊投影。
+失敗通知的 observer 丟出例外時，先前投影仍保留，後續更新也仍可執行。
 
 ### 資源 keys
 
@@ -395,6 +398,7 @@ lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍�
 `LogConsoleStyles.axaml`。控制項在區域載入不含預設資源的控制樣式；動態資源 binding
 僅在宿主未提供 key 時，才使用同一份字典的預設值。宿主可在 application、window 或
 console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換。
+宿主範本發生 `FormatException` 時，會改用內建英文範本。
 `MinimumWidth` 與 `NarrowBreakpoint` 是所有 console 區塊共用的唯一定義；
 組合高度會跟隨既有控制高度與 spacing 的動態 tokens。
 

@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-#pragma warning disable CA1707 // Owner-required Method_Scenario_Expected test names.
 
 using System.ComponentModel;
 using Avalonia.Automation;
@@ -19,14 +18,13 @@ public sealed class ConsoleResourceTests
 {
     /// <summary>One resource change moves both search rows together without duplication.</summary>
     [AvaloniaFact]
-    public void Layout_HostChangesBreakpoint_MovesBothSearchRowsTogether()
+    public void LayoutHostChangesBreakpointMovesBothSearchRowsTogether()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
         var header = (ConsoleHeader)surface.Children[0];
         var toolbar = (ConsoleToolbar)surface.Children[1];
-        var empty = (ConsoleEmptyState)surface.Children[2];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
@@ -46,7 +44,7 @@ public sealed class ConsoleResourceTests
 
     /// <summary>Host strings replace both responsive rows and empty surface copy.</summary>
     [AvaloniaFact]
-    public void Resources_HostOverridesKeys_UpdatesHeaderToolbarAndEmptyState()
+    public void ResourcesHostOverridesKeysUpdatesHeaderToolbarAndEmptyState()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -73,14 +71,13 @@ public sealed class ConsoleResourceTests
 
     /// <summary>A height token change resizes both outer rows including the narrow second row.</summary>
     [AvaloniaFact]
-    public void Layout_ControlHeightChanges_ResizesHeaderAndToolbar()
+    public void LayoutControlHeightChangesResizesHeaderAndToolbar()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
         var header = (ConsoleHeader)surface.Children[0];
         var toolbar = (ConsoleToolbar)surface.Children[1];
-        var empty = (ConsoleEmptyState)surface.Children[2];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
@@ -100,14 +97,12 @@ public sealed class ConsoleResourceTests
     [InlineData(ConsoleTimeMode.Absolute, "Absolute time")]
     [InlineData(ConsoleTimeMode.Relative, "Relative time")]
     [InlineData(ConsoleTimeMode.Hidden, "Hidden time")]
-    public void TimeButton_SelectedMode_ShowsResourceLabel(ConsoleTimeMode mode, string expected)
+    public void TimeButtonSelectedModeShowsResourceLabel(ConsoleTimeMode mode, string expected)
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
         var header = (ConsoleHeader)surface.Children[0];
-        var toolbar = (ConsoleToolbar)surface.Children[1];
-        var empty = (ConsoleEmptyState)surface.Children[2];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
@@ -121,13 +116,11 @@ public sealed class ConsoleResourceTests
 
     /// <summary>An empty store has its own copy and no reset action.</summary>
     [AvaloniaFact]
-    public void EmptyState_NoStoredEvents_ShowsNoEventsAndHidesReset()
+    public void EmptyStateNoStoredEventsShowsNoEventsAndHidesReset()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
-        var header = (ConsoleHeader)surface.Children[0];
-        var toolbar = (ConsoleToolbar)surface.Children[1];
         var empty = (ConsoleEmptyState)surface.Children[2];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
@@ -140,13 +133,11 @@ public sealed class ConsoleResourceTests
 
     /// <summary>A filtered empty result explains its filter and offers reset.</summary>
     [AvaloniaFact]
-    public void EmptyState_FilteredEvents_ShowsSummaryAndReset()
+    public void EmptyStateFilteredEventsShowsSummaryAndReset()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
-        var header = (ConsoleHeader)surface.Children[0];
-        var toolbar = (ConsoleToolbar)surface.Children[1];
         var empty = (ConsoleEmptyState)surface.Children[2];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
@@ -165,7 +156,7 @@ public sealed class ConsoleResourceTests
     [AvaloniaTheory]
     [InlineData(1200, 0)]
     [InlineData(640, 1)]
-    public void SearchText_ControllerDisposed_IgnoresInputAndDisablesClear(int width, int row)
+    public void SearchTextControllerDisposedIgnoresInputAndDisablesClear(int width, int row)
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -191,7 +182,7 @@ public sealed class ConsoleResourceTests
 
     /// <summary>Popup labels follow host templates while the source menu stays open.</summary>
     [AvaloniaFact]
-    public void Sources_HostOverridesTemplates_UpdatesOpenMenu()
+    public void SourcesHostOverridesTemplatesUpdatesOpenMenu()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -217,7 +208,7 @@ public sealed class ConsoleResourceTests
 
     /// <summary>One minimum width resource applies to each console surface.</summary>
     [AvaloniaFact]
-    public void Layout_HostChangesMinimumWidth_UpdatesAllSurfaces()
+    public void LayoutHostChangesMinimumWidthUpdatesAllSurfaces()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();

@@ -2,6 +2,7 @@
 
 using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Runtime.ExceptionServices;
 using System.Windows.Input;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
@@ -44,7 +45,11 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         Options = (options ?? new()) with { SourceRegistry = sources };
         ArgumentNullException.ThrowIfNull(Options.RelativeTimeTemplate);
         ArgumentNullException.ThrowIfNull(Options.Culture);
-        try { _ = string.Format(Options.Culture, Options.RelativeTimeTemplate, 0.0); }
+        try
+        {
+            _ = ConsoleTimeFormatter.Format(default, default, ConsoleTimeMode.Relative,
+                Options.RelativeTimeTemplate, Options.Culture);
+        }
         catch (FormatException error)
         {
             throw new ArgumentException("RelativeTimeTemplate must be a valid composite format with placeholder 0.", nameof(options), error);
@@ -205,6 +210,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         _retired = null;
         if (!refresh) return;
         ConsoleProjection? next = null;
+        List<Exception> notificationErrors = [];
         try
         {
             using var snapshot = _store.CaptureSnapshot();
@@ -222,27 +228,24 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         catch (Exception error)
         {
             next?.Dispose();
-            try
-            {
-                if (SetRefreshError(error)) Notify(nameof(RefreshError));
-            }
-            finally { Schedule(false); }
+            if (SetRefreshError(error)) Notify(nameof(RefreshError), notificationErrors);
+            Schedule(false);
+            RethrowNotificationErrors(notificationErrors);
             return;
         }
         var errorChanged = SetRefreshError(null);
-        try { Notify(nameof(ViewState)); }
-        finally
-        {
-            try { Notify(nameof(Projection)); }
-            finally
-            {
-                try
-                {
-                    if (errorChanged) Notify(nameof(RefreshError));
-                }
-                finally { Schedule(false); }
-            }
-        }
+        Notify(nameof(ViewState), notificationErrors);
+        Notify(nameof(Projection), notificationErrors);
+        if (errorChanged) Notify(nameof(RefreshError), notificationErrors);
+        Schedule(false);
+        RethrowNotificationErrors(notificationErrors);
+    }
+    private void RethrowNotificationErrors(List<Exception> errors)
+    {
+        if (errors.Count == 0) return;
+        var failure = ExceptionDispatchInfo.Capture(errors.Count == 1 ? errors[0] : new AggregateException(errors));
+        // InvokeAsync stores exceptions in its task; Post enters the dispatcher's unhandled path.
+        _dispatcher.Post(failure.Throw);
     }
     private bool SetRefreshError(Exception? error)
     {
@@ -250,7 +253,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         _refreshError = error;
         return true;
     }
-    private void Notify(string name)
+    private void Notify(string name, List<Exception>? notificationErrors = null)
     {
         if (!IsActive()) return;
         _notificationDepth++;
@@ -260,7 +263,12 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
             foreach (PropertyChangedEventHandler handler in PropertyChanged?.GetInvocationList() ?? [])
             {
                 if (!IsActive()) break;
-                handler(this, args);
+                try { handler(this, args); }
+                catch (Exception error) when (notificationErrors is not null)
+                {
+                    // Finish every refresh observer, then report all failures together on the dispatcher.
+                    notificationErrors.Add(error);
+                }
             }
         }
         finally

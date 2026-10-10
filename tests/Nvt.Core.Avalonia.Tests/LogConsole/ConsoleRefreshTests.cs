@@ -1,9 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-#pragma warning disable CA1707 // Owner-required Method_Scenario_Expected test names.
 
 using System.ComponentModel;
-using System.Reflection;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -21,7 +19,7 @@ public sealed class ConsoleRefreshTests
 {
     /// <summary>Invalid relative formatting is rejected before any event or mode switch.</summary>
     [AvaloniaFact]
-    public void Constructor_MalformedRelativeTemplate_RejectsOptions()
+    public void ConstructorMalformedRelativeTemplateRejectsOptions()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -34,7 +32,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>A failed reader leaves borrowed output readable and the next valid refresh clears its error.</summary>
     [AvaloniaFact]
-    public void Drain_SearchReaderFailure_PreservesProjectionAndRecovers()
+    public void DrainSearchReaderFailurePreservesProjectionAndRecovers()
     {
         using var fixture = new ConsoleTestStore();
         var previousContent = new ConsoleControllerTests.TrackedContent();
@@ -69,7 +67,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>A failure after projection construction releases the fresh row leases.</summary>
     [AvaloniaFact]
-    public void Drain_RemapFailure_DisposesFreshLeases()
+    public void DrainRemapFailureDisposesFreshLeases()
     {
         using var fixture = new ConsoleTestStore();
         var content = new ConsoleControllerTests.TrackedContent();
@@ -92,7 +90,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>A throwing error observer cannot prevent replacement notification or retire displayed output early.</summary>
     [AvaloniaFact]
-    public async Task Drain_ThrowingRefreshErrorSubscriberOnRecovery_AnnouncesReplacementBeforeRetirement()
+    public void DrainThrowingRefreshErrorSubscriberOnRecoveryAnnouncesReplacementBeforeRetirement()
     {
         using var fixture = new ConsoleTestStore();
         fixture.Store.Add(LogLevel.Info, "app", "text");
@@ -120,10 +118,9 @@ public sealed class ConsoleRefreshTests
         var observerError = new InvalidOperationException("observer");
         controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.RefreshError),
             () => throw observerError);
-        var pendingRefresh = PendingRefresh(controller);
+        using var failures = new ConsoleDispatcherExceptionScope();
         ConsoleTestView.Pump();
-        Assert.True(pendingRefresh.IsCompleted);
-        Assert.Same(observerError, await Assert.ThrowsAsync<InvalidOperationException>(() => pendingRefresh));
+        Assert.Same(observerError, Assert.Single(failures.Errors));
         Assert.Equal([nameof(ConsoleController.ViewState), nameof(ConsoleController.Projection),
             nameof(ConsoleController.RefreshError)], notifications);
         Assert.Same(controller.Projection, displayed);
@@ -135,7 +132,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>A throwing failure observer leaves the previous output owned and fresh leases released for recovery.</summary>
     [AvaloniaFact]
-    public async Task Drain_ThrowingRefreshErrorSubscriberOnFailure_PreservesProjectionAndRecovers()
+    public void DrainThrowingRefreshErrorSubscriberOnFailurePreservesProjectionAndRecovers()
     {
         using var fixture = new ConsoleTestStore();
         var previousContent = new ConsoleControllerTests.TrackedContent();
@@ -152,10 +149,9 @@ public sealed class ConsoleRefreshTests
         PropertyChangedEventHandler observer = ConsoleTestView.OnProperty(nameof(ConsoleController.RefreshError),
             () => throw observerError);
         controller.PropertyChanged += observer;
-        var pendingRefresh = PendingRefresh(controller);
+        using var failures = new ConsoleDispatcherExceptionScope();
         ConsoleTestView.Pump();
-        Assert.True(pendingRefresh.IsCompleted);
-        Assert.Same(observerError, await Assert.ThrowsAsync<InvalidOperationException>(() => pendingRefresh));
+        Assert.Same(observerError, Assert.Single(failures.Errors));
         Assert.Same(previous, controller.Projection);
         Assert.IsType<ArgumentNullException>(controller.RefreshError);
         Assert.True(controller.ResetFiltersCommand.CanExecute(null));
@@ -175,7 +171,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>Throwing filter observers cannot prevent the already requested refresh.</summary>
     [AvaloniaFact]
-    public void SetSearchText_ThrowingFilterSubscriber_RefreshesProjection()
+    public void SetSearchTextThrowingFilterSubscriberRefreshesProjection()
     {
         using var fixture = new ConsoleTestStore();
         fixture.Store.Add(LogLevel.Info, "app", "visible");
@@ -190,7 +186,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>View state refresh is queued before invoking observers.</summary>
     [AvaloniaFact]
-    public void RequestViewState_ThrowingSubscriber_RefreshesProjection()
+    public void RequestViewStateThrowingSubscriberRefreshesProjection()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -206,7 +202,7 @@ public sealed class ConsoleRefreshTests
 
     /// <summary>Paused row reordering carries every lease to the copy that Clear later retires.</summary>
     [AvaloniaFact]
-    public void Clear_PausedDedupeChange_ReleasesTransferredContent()
+    public void ClearPausedDedupeChangeReleasesTransferredContent()
     {
         using var fixture = new ConsoleTestStore();
         var content = new ConsoleControllerTests.TrackedContent();
@@ -225,8 +221,73 @@ public sealed class ConsoleRefreshTests
         Assert.True(content.Disposed);
     }
 
-    // InvokeAsync faults its operation task; observing it needs no production API or blocking wait.
-    private static Task PendingRefresh(ConsoleController controller)
-        => ((DispatcherOperation)typeof(ConsoleController)
-            .GetField("_pending", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(controller)!).GetTask();
+    /// <summary>All subscribers of the same refresh notification contribute to one visible failure.</summary>
+    [AvaloniaFact]
+    public void DrainTwoThrowingSubscribersReportsBothFailuresOnce()
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        using var failures = new ConsoleDispatcherExceptionScope();
+        var first = new InvalidOperationException("first observer");
+        var second = new IOException("second observer");
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.Projection), () => throw first);
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.Projection), () => throw second);
+        controller.SetSearchText("refresh");
+        ConsoleTestView.Pump();
+        ConsoleTestView.Pump();
+        var failure = Assert.IsType<AggregateException>(Assert.Single(failures.Errors));
+        Assert.Equal([first, second], failure.InnerExceptions);
+    }
+
+    /// <summary>A lone observer failure retains its original stack and is reported only once.</summary>
+    [AvaloniaTheory]
+    [InlineData(nameof(ConsoleController.ViewState))]
+    [InlineData(nameof(ConsoleController.Projection))]
+    public void DrainThrowingSubscriberReportsFailureOnce(string propertyName)
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        using var failures = new ConsoleDispatcherExceptionScope();
+        var observerError = new InvalidOperationException("observer");
+        controller.PropertyChanged += ConsoleTestView.OnProperty(propertyName, () => throw observerError);
+        controller.SetSearchText("refresh");
+        ConsoleTestView.Pump();
+        ConsoleTestView.Pump();
+        var failure = Assert.Single(failures.Errors);
+        Assert.Same(observerError, failure);
+        Assert.Contains(nameof(DrainThrowingSubscriberReportsFailureOnce), failure.StackTrace, StringComparison.Ordinal);
+    }
+
+    /// <summary>Even throwing observers on every property allow later subscribers to receive the full sequence.</summary>
+    [AvaloniaFact]
+    public void DrainThrowingSubscribersCompletesNotificationSequence()
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        var state = controller.ViewState;
+        controller.RequestViewState(state with { ExpandedIds = null! });
+        ConsoleTestView.Pump();
+        controller.RequestViewState(state);
+        using var failures = new ConsoleDispatcherExceptionScope();
+        var notifications = new List<string?>();
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.ViewState),
+            () => throw new InvalidOperationException("view state observer"));
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.Projection),
+            () => throw new InvalidOperationException("projection observer"));
+        controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(ConsoleController.RefreshError),
+            () => throw new InvalidOperationException("error observer"));
+        controller.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        ConsoleTestView.Pump();
+        Assert.Equal([nameof(ConsoleController.ViewState), nameof(ConsoleController.Projection),
+            nameof(ConsoleController.RefreshError)], notifications);
+    }
+
+    /// <summary>The constructor validates the same string argument that relative-time projection formats.</summary>
+    [AvaloniaFact]
+    public void ConstructorStringRelativeTemplateAcceptsOptions()
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller(new ConsoleProjectionOptions { RelativeTimeTemplate = "{0:X}" });
+        Assert.Equal("{0:X}", controller.Options.RelativeTimeTemplate);
+    }
 }

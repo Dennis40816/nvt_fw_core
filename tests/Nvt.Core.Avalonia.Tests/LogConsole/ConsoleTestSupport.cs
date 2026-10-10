@@ -70,7 +70,8 @@ internal sealed class ConsoleTestStore : IDisposable
     public void Dispose()
     {
         Store.Dispose();
-        Until(() => !_writer.IsEmpty);
+        // Waiting for queue availability must not run the very callback being awaited.
+        SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty; });
         while (_writer.TryDequeue(out var callback)) Task.Run(callback, _safety.Token).GetAwaiter().GetResult();
         _safety.Dispose();
     }
@@ -138,6 +139,21 @@ internal static class ConsoleTestView
     {
         Children = { new ConsoleHeader { Controller = controller }, new ConsoleToolbar { Controller = controller }, new ConsoleEmptyState { Controller = controller } },
     };
+}
+
+internal sealed class ConsoleDispatcherExceptionScope : IDisposable
+{
+    // Headless UI-thread-only event capture, restored before the next test.
+    private readonly Dispatcher _dispatcher = Dispatcher.UIThread;
+    private readonly List<Exception> _errors = [];
+    internal IReadOnlyList<Exception> Errors => _errors;
+    internal ConsoleDispatcherExceptionScope() => _dispatcher.UnhandledException += OnUnhandledException;
+    private void OnUnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs args)
+    {
+        _errors.Add(args.Exception);
+        args.Handled = true;
+    }
+    public void Dispose() => _dispatcher.UnhandledException -= OnUnhandledException;
 }
 
 internal sealed class ConsoleBindingLogScope : ILogSink, IDisposable
