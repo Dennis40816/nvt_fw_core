@@ -1,0 +1,49 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+  <sys:Double x:Key="Nvt.Console.MinimumWidth">640</sys:Double>
+  <sys:Double x:Key="Nvt.Console.NarrowBreakpoint">960</sys:Double>
+  <sys:String x:Key="Nvt.Console.Title" xml:space="preserve">Console</sys:String>
+  <sys:String x:Key="Nvt.Console.Search.Placeholder" xml:space="preserve">Search messages, sources or paths</sys:String>
+  <sys:String x:Key="Nvt.Console.Search.Name" xml:space="preserve">Search console</sys:String>
+  <sys:String x:Key="Nvt.Console.Search.Clear" xml:space="preserve">Clear search</sys:String>
+  <sys:String x:Key="Nvt.Console.OnlyMatches" xml:space="preserve">Only matches</sys:String>
+  <sys:String x:Key="Nvt.Console.Export" xml:space="preserve">Export</sys:String>
+  <sys:String x:Key="Nvt.Console.Export.Name" xml:space="preserve">Export console</sys:String>
+  <sys:String x:Key="Nvt.Console.Display" xml:space="preserve">Display</sys:String>
+  <sys:String x:Key="Nvt.Console.Display.Name" xml:space="preserve">Display console</sys:String>
+  <sys:String x:Key="Nvt.Console.More" xml:space="preserve">More</sys:String>
+  <sys:String x:Key="Nvt.Console.More.Name" xml:space="preserve">More console actions</sys:String>
+  <sys:String x:Key="Nvt.Console.Time.Name" xml:space="preserve">Time display</sys:String>
+  <sys:String x:Key="Nvt.Console.Time.Absolute" xml:space="preserve">Absolute time</sys:String>
+  <sys:String x:Key="Nvt.Console.Time.Relative" xml:space="preserve">Relative time</sys:String>
+  <sys:String x:Key="Nvt.Console.Time.Hidden" xml:space="preserve">Hidden time</sys:String>
+  <sys:String x:Key="Nvt.Console.CopySelected" xml:space="preserve">Copy selected</sys:String>
+  <sys:String x:Key="Nvt.Console.CopyVisible" xml:space="preserve">Copy visible rows</sys:String>
+  <sys:String x:Key="Nvt.Console.SaveLog" xml:space="preserve">Save as .log</sys:String>
+  <sys:String x:Key="Nvt.Console.IncludeTime" xml:space="preserve">Include time</sys:String>
+  <sys:String x:Key="Nvt.Console.IncludeLevel" xml:space="preserve">Include level</sys:String>
+  <sys:String x:Key="Nvt.Console.Clear" xml:space="preserve">Clear console</sys:String>
+  <sys:String x:Key="Nvt.Console.Sources.Name" xml:space="preserve">Select sources</sys:String>
+  <sys:String x:Key="Nvt.Console.Sources.All" xml:space="preserve">All sources</sys:String>
+  <sys:String x:Key="Nvt.Console.Sources.Selected" xml:space="preserve">Sources ({0})</sys:String>
+  <sys:String x:Key="Nvt.Console.Dedupe" xml:space="preserve">Dedupe</sys:String>
+  <sys:String x:Key="Nvt.Console.Dedupe.Count" xml:space="preserve">Dedupe ×{0}</sys:String>
+  <sys:String x:Key="Nvt.Console.Count" xml:space="preserve">{0} · {1}</sys:String>
+  <sys:String x:Key="Nvt.Console.Empty.NoEvents" xml:space="preserve">No events yet</sys:String>
+  <sys:String x:Key="Nvt.Console.Empty.NoMatches" xml:space="preserve">No matching events · {0}</sys:String>
+  <sys:String x:Key="Nvt.Console.ResetFilters" xml:space="preserve">Reset filters</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.NoLevels" xml:space="preserve">no levels</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.Search" xml:space="preserve">; search ‘{0}’ ({1})</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.MatchesOnly" xml:space="preserve">matches only</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.Highlight" xml:space="preserve">highlight</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.Dedupe" xml:space="preserve">; dedupe</sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.Separator" xml:space="preserve">, </sys:String>
+  <sys:String x:Key="Nvt.Console.Filter.Summary" xml:space="preserve">{0}; {1}{2}{3}</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Trace" xml:space="preserve">Trace</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Debug" xml:space="preserve">Debug</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Info" xml:space="preserve">Info</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Warn" xml:space="preserve">Warn</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Error" xml:space="preserve">Error</sys:String>
+  <sys:String x:Key="Nvt.Console.Level.Fatal" xml:space="preserve">Fatal</sys:String>
+</ResourceDictionary>
