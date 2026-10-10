@@ -46,6 +46,13 @@ $ErrorActionPreference = 'Stop'
 # Stable output on every host: UTF-8 without BOM, and compiler messages in the invariant culture.
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 [Globalization.CultureInfo]::CurrentUICulture = [Globalization.CultureInfo]::InvariantCulture
+# Fixed tool language on every host: localized compiler and format messages change the fingerprints.
+$env:DOTNET_CLI_UI_LANGUAGE = 'en'
+$env:VSLANG = '1033'
+$env:PreferredUILang = 'en-US'
+# Host limits: at most four build nodes, and no MSBuild node left running after a step (dotnet format included).
+$env:MSBUILDDISABLENODEREUSE = '1'
+$script:MsbuildLimits = @('-m:4', '-nodeReuse:false')
 $script:Version = 'roslyn-physical-v1'
 $script:Limits = @{ fileLines = 800; methodLines = 80; partialFiles = 8; stateMembers = 30; axamlCodeBehindLines = 150; viewTypeLines = 800 }
 # Test-duplication rules keep their own ledger (eng/code-health/test-debt.json), apart from the main baseline.
@@ -53,6 +60,7 @@ $script:TestRules = @('timeWaitsInTests', 'elapsedAssertionsInTests', 'tempPathI
 $script:SyntaxRules = @('asyncVoid', 'blockingWait', 'suppressions', 'generationFields', 'nativeImportDuplicates', 'fakeClockDuplicates', 'workspaceDuplicates', 'suppressionScopes') + $script:TestRules
 
 function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
+    if ($Exe -eq 'dotnet' -and $Arguments.Count -gt 0 -and $Arguments[0] -in @('build', 'msbuild')) { $Arguments = @($Arguments) + $script:MsbuildLimits }
     $lines = @(& $Exe @Arguments 2>&1)
     if ($LASTEXITCODE -ne 0) { throw "$Exe exited $LASTEXITCODE`: $($lines -join [Environment]::NewLine)" }
     return ($lines -join [Environment]::NewLine)
@@ -529,7 +537,6 @@ function Initialize-Enforcement($Baseline) {
         $sarif = Join-Path $Root "artifacts/code-health/$($project.name).sarif"
         if (Test-Path -LiteralPath $sarif) { Remove-Item -LiteralPath $sarif }
     }
-    $env:DOTNET_CLI_UI_LANGUAGE = 'en-US'
     [void](Invoke-Checked 'dotnet' @('build', $Solution, '-c', 'Release', '--no-restore', '--no-incremental', '-p:HealthCollectDiagnostics=true'))
     foreach ($project in $script:HealthProjects) { Read-ProjectSarif (Join-Path $Root "artifacts/code-health/$($project.name).sarif") $project.name $project.path -RequireAnalyzerMetadata }
     $script:FormatRuns = @()
