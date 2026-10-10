@@ -1,0 +1,19 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lc="using:Nvt.Core.Avalonia.LogConsole" xmlns:log="using:Nvt.Core.LogConsole"
+             xmlns:icons="using:Nvt.Core.Avalonia.Icons" xmlns:focus="using:Nvt.Core.Avalonia.Focus" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState" x:Name="Root" lc:ConsoleDimensions.NarrowBreakpoint="{lc:ConsoleResource NarrowBreakpoint}" MinWidth="{lc:ConsoleResource MinimumWidth}"
+             IsVisible="{Binding Controller.Projection.IsEmpty, ElementName=Root}">
+  <UserControl.Resources><lc:ConsoleValueConverter x:Key="ConsoleValue"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/><lc:ConsoleTextConverter x:Key="ConsoleText"/></UserControl.Resources>
+  <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleControlStyles.axaml"/></UserControl.Styles>
+  <Border Background="{DynamicResource NfcSurfaceBrush}" DataContext="{Binding Controller, ElementName=Root}">
+    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><DynamicResource ResourceKey="NfcSpace16"/><DynamicResource ResourceKey="NfcSpace8"/></MultiBinding></Border.Padding>
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <Border Grid.Column="1" Width="{DynamicResource NfcSpace16}"/>
+      <TextBlock x:Name="EmptyMessage" Foreground="{DynamicResource NfcTextMutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                 ToolTip.Tip="{Binding Text, RelativeSource={RelativeSource Self}}"><TextBlock.Text><MultiBinding Converter="{StaticResource ConsoleText}" ConverterParameter="Empty"><Binding Path="Filter"/><Binding Path="Projection"/><DynamicResource ResourceKey="Nvt.Console.Empty.NoEvents"/><DynamicResource ResourceKey="Nvt.Console.Empty.NoMatches"/><DynamicResource ResourceKey="Nvt.Console.Filter.NoLevels"/><DynamicResource ResourceKey="Nvt.Console.Sources.All"/><DynamicResource ResourceKey="Nvt.Console.Filter.Search"/><DynamicResource ResourceKey="Nvt.Console.Filter.MatchesOnly"/><DynamicResource ResourceKey="Nvt.Console.Filter.Highlight"/><DynamicResource ResourceKey="Nvt.Console.Filter.Dedupe"/><DynamicResource ResourceKey="Nvt.Console.Filter.Separator"/><DynamicResource ResourceKey="Nvt.Console.Filter.Summary"/><DynamicResource ResourceKey="Nvt.Console.Level.Trace"/><DynamicResource ResourceKey="Nvt.Console.Level.Debug"/><DynamicResource ResourceKey="Nvt.Console.Level.Info"/><DynamicResource ResourceKey="Nvt.Console.Level.Warn"/><DynamicResource ResourceKey="Nvt.Console.Level.Error"/><DynamicResource ResourceKey="Nvt.Console.Level.Fatal"/></MultiBinding></TextBlock.Text></TextBlock>
+      <Button x:Name="ResetFilters" Grid.Column="2" Classes="consoleAction actionGhost" Content="{lc:ConsoleResource ResetFilters}"
+              IsVisible="{Binding Projection.EventCount, Converter={StaticResource ConsoleValue}, ConverterParameter=HasEvents}"
+              Command="{Binding ResetFiltersCommand}" AutomationProperties.Name="{lc:ConsoleResource ResetFilters}"/>
+    </Grid>
+  </Border>
+</UserControl>

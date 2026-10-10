@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -41,11 +42,11 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
         }
 
         using var workspace = TestWorkspace.Create();
-        var time = new ManualTimeProvider();
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         var capacity = new ExternalProcessCapacity(limit);
         var invocations = new List<RetainedReaders>();
         var request = new ExternalProcessStartInfo(
-            ProcessProbe.Executable, workspace.Root, ExitArguments, TimeSpan.FromSeconds(30));
+            ProcessProbe.Executable, workspace.RootPath, ExitArguments, TimeSpan.FromSeconds(30));
         try
         {
             for (int count = 0; count < limit; count++)

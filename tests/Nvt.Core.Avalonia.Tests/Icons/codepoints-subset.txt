@@ -4,7 +4,9 @@ add_circle e990
 area_chart e770
 arrow_downward e5db
 block f08c
+bug_report e868
 call_split e0b6
+cancel e5c9
 check e668
 chevron_left e5cb
 chevron_right e5cc
@@ -38,6 +40,7 @@ maximize e930
 menu e5d2
 merge eb98
 minimize e931
+more_horiz e5d3
 more_vert e5d4
 notifications_off e7f6
 open_in_new e89e

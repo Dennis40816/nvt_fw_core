@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Text;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -52,8 +53,8 @@ public sealed class ProcessLaunchGateBoundaryTests
     public void FinalValidationRefusalStartsNoChild()
     {
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("refused.txt");
-        ProcessStartInfo info = ArgumentProbe(marker, workspace.Root);
+        string marker = workspace.GetPath("refused.txt");
+        ProcessStartInfo info = ArgumentProbe(marker, workspace.RootPath);
         int calls = 0;
         Assert.Null(ProcessLaunchGate.StartContained(info, [], () =>
         {
@@ -82,7 +83,7 @@ public sealed class ProcessLaunchGateBoundaryTests
     public async Task OrdinaryStartAndNullChecksShareFrozenGateOrder()
     {
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("ordinary.txt");
+        string marker = workspace.GetPath("ordinary.txt");
         using var entered = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
         using var attempting = new ManualResetEventSlim();
@@ -102,7 +103,7 @@ public sealed class ProcessLaunchGateBoundaryTests
             ordinary = Task.Factory.StartNew(() =>
             {
                 attempting.Set();
-                return ProcessLaunchGate.Start(ArgumentProbe(marker, workspace.Root));
+                return ProcessLaunchGate.Start(ArgumentProbe(marker, workspace.RootPath));
             }, TestContext.Current.CancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             Assert.True(attempting.Wait(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
             await Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken);
@@ -344,13 +345,13 @@ public sealed class ProcessLaunchGateBoundaryTests
         using var workspace = TestWorkspace.Create();
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         ProcessStartInfo info = ProcessProbe.Create("exit");
-        info.FileName = workspace.PathFor("missing.exe");
+        info.FileName = workspace.GetPath("missing.exe");
         int validations = 0;
         _ = Assert.Throws<Win32Exception>(() => ProcessLaunchGate.StartContained(info,
             [ProcessInheritedHandle.Parse("HANDLE", pipe.GetClientHandleAsString())],
             () => { validations++; return true; }));
         Assert.Equal(1, validations);
-        Assert.Empty(Directory.GetFiles(workspace.Root));
+        Assert.Empty(Directory.GetFiles(workspace.RootPath));
         pipe.DisposeLocalCopyOfClientHandle();
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(2));
@@ -430,14 +431,14 @@ public sealed class ProcessLaunchGateBoundaryTests
     public async Task ContainedStartSupportsRawArgumentsAndRenamedCompleteProbe()
     {
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("raw arguments.txt");
-        ProcessStartInfo info = ArgumentProbe(marker, workspace.Root);
+        string marker = workspace.GetPath("raw arguments.txt");
+        ProcessStartInfo info = ArgumentProbe(marker, workspace.RootPath);
         info.FileName = ProcessProbe.CopyAndRename(workspace, "worker helper");
         info.Arguments = "\"two words\" tail";
         using Process child = Assert.IsType<Process>(ProcessLaunchGate.StartContained(info, []));
         await ExitAsync(child);
         Assert.Equal(0, child.ExitCode);
-        Assert.Equal(new[] { "synthetic", workspace.Root, "two words", "tail" },
+        Assert.Equal(new[] { "synthetic", workspace.RootPath, "two words", "tail" },
             await File.ReadAllLinesAsync(marker, TestContext.Current.CancellationToken));
     }
 
@@ -453,8 +454,8 @@ public sealed class ProcessLaunchGateBoundaryTests
         string executable = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
         Assert.SkipUnless(File.Exists(executable), "The optional PowerShell quoting executable is unavailable.");
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("powershell.txt");
-        string script = workspace.Write("arguments.ps1", Encoding.UTF8.GetBytes(
+        string marker = workspace.GetPath("powershell.txt");
+        string script = ProcessProbe.Write(workspace, "arguments.ps1", Encoding.UTF8.GetBytes(
             "[IO.File]::WriteAllLines($env:CORE_TEST_PROBE_MARKER, [string[]]$args)\nexit 0\n"));
         var info = new ProcessStartInfo { FileName = executable, UseShellExecute = false, CreateNoWindow = true };
         foreach (string argument in new[] { "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script })
