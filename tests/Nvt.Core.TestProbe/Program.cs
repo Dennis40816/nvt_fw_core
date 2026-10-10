@@ -110,23 +110,41 @@ namespace Nvt.Core.TestProbe
             using var released = new ManualResetEvent(initialState: false);
             if (release is null)
             {
+                // No release file: the probe lives for the whole limit. The wait handle is never signaled. This is the
+                // lifetime of the helper process, and it is not a synchronization between a test and the probe.
                 _ = released.WaitOne(limit);
                 return Task.CompletedTask;
             }
             string fullPath = Path.GetFullPath(release);
             string directory = Path.GetDirectoryName(fullPath) ?? throw new ProbeInputException("Invalid input: release-path");
+            if (!Directory.Exists(directory))
+            {
+                throw new ProbeInputException("Invalid input: release-path");
+            }
             using var watcher = new FileSystemWatcher(directory, Path.GetFileName(fullPath))
             {
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
             };
-            watcher.Created += (_, _) => released.Set();
-            watcher.Changed += (_, _) => released.Set();
-            watcher.Renamed += (_, _) => released.Set();
+            // A late event can arrive on a pool thread after the wait ended and the handle was disposed.
+            void Release()
+            {
+                try
+                {
+                    _ = released.Set();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The wait already ended, so there is nothing left to release.
+                }
+            }
+            watcher.Created += (_, _) => Release();
+            watcher.Changed += (_, _) => Release();
+            watcher.Renamed += (_, _) => Release();
             watcher.EnableRaisingEvents = true;
             // The file may exist before the watcher starts. Check after the watcher is on, so no event is lost.
             if (File.Exists(fullPath))
             {
-                released.Set();
+                Release();
             }
             _ = released.WaitOne(limit);
             return Task.CompletedTask;
