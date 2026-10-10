@@ -6,7 +6,6 @@ using System.Globalization;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
-using Nvt.Core.Processes;
 using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;

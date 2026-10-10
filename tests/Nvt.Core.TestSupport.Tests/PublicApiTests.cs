@@ -18,7 +18,8 @@ public sealed class PublicApiTests
         Type child = typeof(ChildProcessFixture);
         Type perf = typeof(RelativePerf);
         Type block = typeof(TaskBlock);
-        Type[] expectedTypes = [child, clock, perf, signal, block, workspace];
+        Type files = typeof(TestFiles);
+        Type[] expectedTypes = [child, clock, perf, signal, block, files, workspace];
         Assert.Equal(expectedTypes, clock.Assembly.GetExportedTypes().OrderBy(type => type.Name, StringComparer.Ordinal));
         Assert.True(clock.IsSealed);
         Assert.True(workspace.IsSealed);
@@ -26,6 +27,7 @@ public sealed class PublicApiTests
         Assert.True(child.IsSealed);
         Assert.True(perf.IsAbstract && perf.IsSealed);
         Assert.True(block.IsAbstract && block.IsSealed);
+        Assert.True(files.IsAbstract && files.IsSealed);
         Assert.Equal(typeof(TimeProvider), clock.BaseType);
         Assert.Equal(typeof(DateTimeOffset), Assert.Single(Assert.Single(clock.GetConstructors()).GetParameters()).ParameterType);
         Assert.Empty(workspace.GetConstructors());
@@ -41,6 +43,7 @@ public sealed class PublicApiTests
         Assert.Equal(childMethods, NewPublicMethods(child));
         Assert.Equal(["CalibrationUnit", "InUnits", "MedianAllocatedBytes", "MedianTime", "ScaleRatio"], NewPublicMethods(perf));
         Assert.Equal(["UntilComplete", "UntilComplete"], NewPublicMethods(block));
+        Assert.Equal(["ReadLinesAsync", "WriteAllBytes"], NewPublicMethods(files));
         Assert.True(typeof(IDisposable).IsAssignableFrom(workspace));
         Assert.True(typeof(IAsyncDisposable).IsAssignableFrom(workspace));
         Assert.True(typeof(IDisposable).IsAssignableFrom(child));

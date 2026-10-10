@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using Nvt.Core.Avalonia.MessageCenter;
 using Nvt.Core.MessageCenter;
 using Xunit;
 using static Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTestValues;
