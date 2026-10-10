@@ -23,5 +23,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Testing\AvaloniaTestHost.cs" />
+    <InternalsVisibleTo Include="Nvt.Core.Avalonia.Tests" />
   </ItemGroup>
 </Project>

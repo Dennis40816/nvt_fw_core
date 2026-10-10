@@ -330,6 +330,9 @@ UI 工作；每次更新擷取有 lease 的快照，只呼叫一次 `ConsoleProj
 發布前以 `LogStore.IsCurrent` 驗證快照 generation，因此 Clear 的 admission fence 也會拒絕
 writer reset 尚未發布時已排隊的 UI 更新。Dispose 立即停止目前的通知序列，等執行中的
 callback 返回後才釋放 lease；callback 內重入 dispatcher 也不會提早釋放借用的投影。
+狀態 fence 拒絕投影時，會重新排入要求的更新，且只自動重試一次；清理通知不會補充
+重試額度。Command 驗證在擷取快照前後都檢查控制器生命週期；store 關閉會取消
+驗證，不交付任何內容給 app adapter。
 
 列表借用 `Projection`，透過 `RequestViewState(state)` 回報不可變的意圖，不直接修改
 控制器輸入，也不 Dispose 借用的投影。`Pause(rowId, textOffset, pixelOffset)` 保存閱讀
@@ -570,8 +573,8 @@ registry 的顯示名稱仍由投影或宿主處理。
 列寬跟隨 logical viewport，水平捲動關閉。
 
 Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既有 warning surface
-與 strong warning text。繪製順序是搜尋底色、文字、命中前景；
-後續底線層保留給連結互動。Theme 或 resource 改變會使顯示快取失效。
+與 strong warning text。繪製順序是搜尋底色、文字、連結裝飾與 hover，最後套用搜尋命中前景。
+搜尋命中之外的 hover 文字使用 app accent。Theme 或 resource 改變會使顯示快取失效。
 暫停閱讀時，重建量測高度會保留首個可見列及其 DIP 內位移。
 
 使用者離開末尾時，以首個可見列、sequence、文字 offset 與 DIP offset 要求 Pause。
@@ -589,7 +592,7 @@ viewport 夾限 offset 不會改變使用者的暫停／恢復意圖。送出前
 後續的展開切換或 `JumpToLatest()` 會取消該待送捲動要求，
 並立即送出自身要求。高度修正與寬度重排會保留量測期間收到的使用者捲動，不恢復量測開始時的位置。
 無關狀態變更若沿用同一個 Follow instance，會保留即時閱讀位置，即使呼叫端仍持有舊錨點也一樣。
-已送出的錨點只保留有界的近期歷史。接受仍在歷史內的錨點時，會保留即時座標，
+已送出的錨點只保留最近 32 次要求；送出 Resume 時會清除此歷史。接受仍在歷史內的錨點時，會保留即時座標，
 並只移除該錨點及之前的項目，因此後續排隊要求可依序接受，而不重播舊位置。
 以歷史外的不同 Follow 替換時，會清除歷史、取消待送捲動意圖並恢復呼叫端明確指定的位置。
 重新 attach 使用已接受的錨點。
@@ -605,5 +608,59 @@ Attach 建立 handlers 與可取消、合併的 dispatcher 工作；
 detach 釋放 handlers、借用內容及顯示快取。
 Attachment 生命週期可重複 Dispose；所有 host 狀態只在 UI thread 存取。
 
-標頭、工具列、空狀態、連結、選取、複製／匯出、右鍵選單與 console 快捷鍵
-由宿主及其他控制項組合。
+標頭、工具列、空狀態與檔案匯出由宿主及其他控制項組合。
+列表提供列連結、選取、有界 clipboard 複製、右鍵選單與列鍵盤操作。
+
+### 列互動
+
+將 `ConsoleListView.Controller` 設為提供目前投影的 app-owned controller。仍由宿主綁定
+`Projection` 與 `ViewState`，並將 `ViewStateRequested` 交給 `ConsoleController.RequestViewState`。
+列表只回報意圖，不自行接受要求的狀態。建構子的 `sources` 為唯一 registry 輸入；
+若 `options.SourceRegistry` 非空，必須連同身分、顯示名稱與順序都一致，否則建構失敗。
+標頭使用既有 catalog glyph `NvtIcons.DataObject`；console 的光學位移 helper 放在 LogConsole。
+
+選取只保存在 `ConsoleViewState.Selection`，使用原始事件的穩定身分。單擊替換選取，
+在連結以外 Ctrl-click 切換單列，Shift-click 或 Shift-navigation 選取含兩端的範圍，
+Ctrl+A 選取投影中的全部列。去重列包含所有仍保留的成員。Controller remap 會在去重、
+篩選與新增後保留仍存在的選取，並移除已淘汰身分。複製只依目前投影順序列舉可見選取，
+不包含被篩選隱藏的保留選取。焦點與範圍起點是 attachment-local 的原始事件身分；
+detach 釋放兩者，但不清除宿主選取。
+
+綁定前，透過 controller 的 init properties 注入 `IConsoleLinkOpener` 與 `IConsoleClipboard`。
+UI-thread 方法必須立即返回；app 負責非同步解析、快取能力、TopLevel clipboard dispatch 與開啟。
+`GetUnavailableReason` 對可開啟 target 回傳 null，否則回傳使用者可讀的原因，包含解析中。
+Hover、建立選單及啟用時重新檢查能力；此查詢不得執行 IO。Core 不檢查存在性、
+不解析相對路徑，也不自行開啟 target。既有有界 link cache 優先使用結構化 spans，
+否則按需掃描分段文字。每份採用的 snapshot 都同步 cache，包含 Clear 的空快照；Dispose 釋放 cache。
+產生投影的 snapshot 與 projection 一起退役，不建立完整大型訊息字串。
+不可開啟的連結仍顯示裝飾，tooltip 保留完整 target 與原因。
+Ctrl-left 的按下與放開必須命中同一 target，途中不能超過既有拖曳門檻。
+休止底線使用 `NfcBorderSoftBrush`，hover 使用 `NfcAccentBrush`；搜尋命中前景最後繪製。Ctrl+Enter 開啟唯一連結；多個連結時先開啟選擇選單。
+檔案行／欄及資料夾 kind 原樣交給 opener。
+
+列選單由 `ConsoleMenuBuilder` 與 controller commands 建立：複製訊息、列或來源，
+展開／收合，依來源或等級篩選，以及開啟連結（多個連結使用子選單）。
+停用項目透過既有 tooltip service 顯示原因，包含 disabled 狀態。
+Command 只保留身分，執行前以新快照及目前 filter／selection 重新驗證列、generation、target 與 adapter，
+不等待畫面更新。所有複製及開啟操作共用 controller 的單一狀態版本 fence，涵蓋投影讀取、
+格式化及 adapter 能力回呼。Filter、搜尋、選取、閱讀狀態、匯出選項或歷史改變時取消交付，
+即使回呼還原原始輸入也一樣。選取複製在格式化後再次核對交付身分目前的可見性與選取狀態。
+Detach 釋放列選單 commands 的 delegates 與 subscribers；Dispose 也釋放 copy-selection command。
+選單標籤使用 `Nvt.Console.List.Menu.*` 的英文預設及與其他列表文字相同的宿主 resource override／fallback。
+
+所有 clipboard 路徑共用有界 builder，最多送出 65,536 個 UTF-16 字元，以有界 chunk 讀取訊息。
+列複製在上限前與既有 export prefix、原始換行及去重 suffix 一致。
+`ConsoleController.CopySelectionCommand` 也可供標頭的 copy-selected command 使用。
+平台佇列操作的失敗由宿主管理。
+
+列表只有一個 Tab 入口。Up／Down、PageUp／PageDown 與 Home／End 移動列焦點；Shift 延伸選取。
+Enter／Space 切換展開，Ctrl+C 複製，Escape 先關閉列選單，再清除選取；Ctrl+End 要求 Resume。
+Shift+F10 與 Menu 鍵開啟目前列選單。操作透過 commands，不攔截 TextBox 文字編輯或工具列快捷鍵。
+已實現列使用 Core 只在鍵盤焦點顯示的 Focus B adorner，不加入 Tab 順序；回收焦點列時回到列表入口。
+此處不增加 automation peers。
+
+只有閱讀座標改變時重用 layout inputs；已實現列在 input／resource 變更及首次實現時 Configure，
+不在每次 measure 重複執行。重建高度索引時只讀一次共用幾何。Row order 每份 projection 快取一次，
+暫停時的座標擷取不複製順序；新 projection 使快取失效。
+Following 在 measure 中捲至末尾會丟棄待保存的 measure 位置；即使 layout／restore 拋錯，
+延後送出的捲動意圖也一定清除。Resume 清除未接受的暫停歷史。

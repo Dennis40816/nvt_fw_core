@@ -392,6 +392,10 @@ the refresh validates the snapshot generation with `LogStore.IsCurrent`, so Clea
 admission fence also rejects UI work queued before its writer reset. Disposal stops
 the active notification sequence and defers lease release until its callbacks return.
 A nested dispatcher pump cannot retire projections borrowed by those callbacks.
+A state-fence rejection requeues the requested refresh with a single automatic retry;
+cleanup notifications do not replenish that retry. Command validation checks controller
+lifetime before and after snapshot acquisition. Store shutdown cancels validation and
+delivers nothing to app adapters.
 
 The list borrows `Projection` and reports immutable intents through
 `RequestViewState(state)`. It does not dispose that projection or mutate controller
@@ -687,8 +691,8 @@ it creates no text visual per line and never materializes the complete message.
 Row width follows the logical viewport and horizontal scrolling is disabled.
 
 Error/Fatal backgrounds use the existing danger surface. Message/source search hits use the existing
-warning surface and strong warning text. Painting proceeds through search background, text and hit foreground;
-the subsequent underline layer is reserved for link interaction.
+warning surface and strong warning text. Painting proceeds through search background, text, link decoration
+and hover, then search foreground last. Hovered link text uses the app accent outside search hits.
 Theme/resource changes invalidate the measured display cache.
 Paused reading keeps the same first visible row and DIP inset while measured heights are rebuilt.
 
@@ -709,7 +713,7 @@ A later toggle or `JumpToLatest()`
 cancels that pending scroll request and is delivered immediately. Height corrections and width reflow preserve
 a user scroll received during the pass instead of restoring its start-of-pass position.
 Unrelated state changes that reuse the same Follow instance preserve the live reading position,
-even when the caller still holds an earlier anchor. Issued anchors have bounded recent history.
+even when the caller still holds an earlier anchor. Issued anchors retain the most recent 32 requests; issuing Resume clears this history.
 Accepting an anchor still in that history preserves live coordinates and retires only the accepted prefix,
 so later queued requests can be accepted in order without replaying old positions.
 A different Follow outside that history clears it, cancels pending scroll intent and restores the caller's explicit position.
@@ -726,5 +730,63 @@ Reaching the end, activating the button, or calling `JumpToLatest()` requests Re
 Attach creates handlers and cancellable coalesced dispatcher work; detach releases them, borrowed content and display caches.
 Attachment lifetime disposal is idempotent. All host state is accessed on the UI thread.
 
-The list does not provide header/toolbar content, empty-state presentation, links, selection, copy/export,
-context menus or console keyboard bindings. Those are composed by the host and companion controls.
+The host and companion controls compose header/toolbar content, empty states and file export.
+The list provides row links, selection, bounded clipboard copy, context menus and row keyboard routing.
+
+### Row interaction
+
+Set `ConsoleListView.Controller` to the app-owned controller that supplies its projection. Continue binding
+`Projection` and `ViewState`, and route `ViewStateRequested` to `ConsoleController.RequestViewState`.
+The list reports intents and never adopts its own requested state. `sources` is the authoritative constructor
+registry; a nonempty `options.SourceRegistry` must match it in identity, display name and order or construction throws.
+The header uses the existing `NvtIcons.DataObject` catalog glyph; console optical corrections live in LogConsole.
+
+Selection lives only in `ConsoleViewState.Selection`, as canonical raw event identities. Single click replaces it,
+Ctrl-click outside a link toggles a row, Shift-click or Shift-navigation selects an inclusive range, and Ctrl+A selects
+all projected rows. A grouped row contributes all its retained members. Controller remapping preserves retained
+selections through grouping, filtering and appends, and removes evicted identities. Copy enumerates selected rows
+only in current projection order, so hidden retained selections are excluded. Focus and the range origin are
+attachment-local raw identities; detach releases them without clearing host selection.
+
+Inject `IConsoleLinkOpener` and `IConsoleClipboard` through the controller's init properties before binding.
+Their UI-thread methods must return promptly: the app owns asynchronous resolution, cached availability,
+TopLevel clipboard dispatch and opening. `GetUnavailableReason` returns null for an available target or a
+user-facing reason, including pending resolution. Availability is sampled for hover, menu creation and activation;
+the app must keep the query free of IO. Core never queries existence, resolves relative paths or opens a target.
+The existing bounded link cache consumes structured spans first and otherwise scans segmented content lazily.
+Every adopted snapshot synchronizes the cache, including an empty Clear snapshot; Dispose releases the cache.
+Its producing snapshot and projection retire together; no complete large message is created for parsing.
+Unavailable links remain decorated and show their full target and reason in the tooltip.
+Ctrl-left press and release must hit the same target, with no excursion over the configured drag threshold.
+Resting underlines use `NfcBorderSoftBrush`; hover uses `NfcAccentBrush`, and search-hit foreground paints last. Ctrl+Enter opens a unique link or offers a choice menu for multiple links.
+File line/column and folder kind pass unchanged to the opener.
+
+Row menus use `ConsoleMenuBuilder` and controller commands: copy message, row or source; expand/collapse;
+filter by this source or level; and open link (with a submenu for multiple links). Disabled entries show a reason
+through the existing tooltip service, including while disabled. Commands retain identities and revalidate the
+row, generation, target and adapter against a fresh snapshot and current filter/selection before executing,
+without waiting for display refresh. A single controller state version fences every copy and open operation,
+including projection reads, formatting and adapter availability callbacks. Changes to filter, search, selection,
+reading state, export options or history cancel delivery, even if a callback restores the original inputs.
+Selection copy rechecks delivered identities against current visibility and selection after formatting.
+Detach releases row-menu delegates and subscribers; Dispose also releases
+the copy-selection command. Menu labels use `Nvt.Console.List.Menu.*` English defaults
+and the same host resource override/fallback path as other list text.
+
+Clipboard paths share one bounded builder. At most 65,536 UTF-16 characters are sent, with messages read in
+bounded chunks; row copy matches the existing export prefix, original newlines and dedupe suffix until the cap.
+`ConsoleController.CopySelectionCommand` can also supply the header's copy-selected command.
+The host owns failures of its queued platform operations.
+
+The list has one Tab entry. Up/Down, PageUp/PageDown and Home/End move row focus; Shift extends selection.
+Enter/Space toggles expansion, Ctrl+C copies, Escape closes the row menu before clearing selection,
+and Ctrl+End requests Resume. Shift+F10 and Menu open the focused row menu. Keys route through commands
+and do not intercept TextBox editing or toolbar shortcuts. Realized rows use Core's keyboard-only Focus B
+adorner and stay out of the Tab sequence. Recycled focus falls back to the list entry.
+No additional automation peers are supplied here.
+
+Reading-only state changes reuse layout inputs. Realized rows are configured on input/resource changes and
+first realization rather than each measure pass. Height rebuilding reads common geometry once. Row order is
+cached once per projection and omitted from paused coordinate captures; a new projection invalidates that cache.
+A measure-time Following scroll to the end discards any pending measure position. Deferred delivery clears its
+pending intent even when layout/restoration throws, and Resume retires unaccepted pause history.

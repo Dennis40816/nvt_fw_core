@@ -16,11 +16,13 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
 {
     // UI thread only. Release drops the gesture capture, borrowed content, callbacks and display caches.
     private RowInput? _input;
+    private int _measurePasses;
+    internal int MeasurePasses => _measurePasses;
     private PointerGesture? _gesture;
     private ConsoleRow? _row => _input?.Row;
-    private Action<ConsoleRowId>? _toggle => _input?.Toggle;
     private bool _expanded => _input is { } input && input.View.ViewState.ExpandedIds.Contains(input.Row.Id);
     private bool _timeVisible => _input?.View.TimeMode != ConsoleTimeMode.Hidden;
+    private readonly RowFeedback _feedback;
     private readonly TextBlock _time = Label("MonoCaption", "NfcTextMutedBrush");
     private readonly TextBlock _icon = Label("Icon", "NfcTextMutedBrush");
     private readonly TextBlock _level = Label("Body", "NfcTextBrush");
@@ -65,8 +67,11 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
 
     internal ConsoleRowPresenter()
     {
+        Focusable = true;
+        IsTabStop = false;
         ClipToBounds = true;
-        Children.AddRange([_time, _icon, _level, _source, _message, _count, _arrow]);
+        _feedback = new(this) { IsHitTestVisible = false };
+        Children.AddRange([_feedback, _time, _icon, _level, _source, _message, _count, _arrow]);
     }
 
     private static TextBlock Label(string role, string brush)
@@ -81,11 +86,13 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         return label;
     }
 
-    internal void Configure(ConsoleRow row, ConsoleListView view, Action<ConsoleRowId> toggle)
+    internal void Configure(ConsoleRow row, ConsoleListView view)
     {
         if (row.Level is LogLevel.Error or LogLevel.Fatal) Bind(BackgroundProperty, new DynamicResourceExtension("NfcDangerSurfaceBrush"));
         else ClearValue(BackgroundProperty);
-        _input = new(row, view, toggle);
+        var links = row.LinkSpans is { } supplied ? new ConsoleLinkIndex(supplied, row.TextContent.Length)
+            : view.Controller is null ? null : view.RowInteraction?.Links(row);
+        _input = new(row, view);
         _time.Text = ConsoleTimeFormatter.Format(row.Timestamp, view.Projection!.TimeBase, view.TimeMode,
             view.TimeOptions.RelativeTimeTemplate, view.TimeOptions.Culture, view.TimeOptions.AbsoluteTimeZone);
         var levelKey = $"Nvt.Console.List.Level.{row.Level}";
@@ -105,16 +112,19 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         _count.Text = row.Count > 1 ? $"×{row.Count}" : string.Empty;
         _arrow.Text = _expanded ? NvtIcons.ExpandLess : NvtIcons.ChevronRight;
         _source.Configure(row, false);
-        _message.Configure(row, _expanded);
+        _message.Configure(row, _expanded, links);
         ToolTip.SetTip(_source, row.SourceId);
         InvalidateMeasure();
         InvalidateVisual();
+        RefreshInteraction();
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
         // Recycled rows can still be in Avalonia's layout queue after losing their resource parent.
         if (_input is null) return default;
+        _measurePasses++;
+        _feedback.Measure(availableSize);
         _message.Measure(new(MessageWidth(availableSize.Width), double.PositiveInfinity));
         _source.Measure(new(Geometry("SourceWidth"), RowHeight));
         _time.Measure(new(Geometry("TimeWidth"), RowHeight));
@@ -129,6 +139,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     protected override Size ArrangeOverride(Size finalSize)
     {
         if (_input is null) return finalSize;
+        _feedback.Arrange(new Rect(finalSize));
         var x = RowPadding.Left;
         _time.IsVisible = _timeVisible;
         if (_timeVisible) { _time.Arrange(new(x, 0, Geometry("TimeWidth"), RowHeight)); x += Geometry("TimeWidth"); }
@@ -146,6 +157,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     internal void SetVisibleSlice(double start, double end) => _message.SetVisibleSlice(start, end);
     internal int TextOffsetAt(double pixel) => _message.TextOffsetAt(pixel);
     internal double PixelOffsetAt(int text, double fallback) => _message.PixelOffsetAt(text, fallback);
+    internal void RefreshInteraction() => _feedback.InvalidateVisual();
 
     bool ICustomHitTest.HitTest(Point point)
     {
@@ -156,17 +168,21 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && IsToggleTarget(e.GetPosition(this)))
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
         {
             CancelGesture();
             e.Pointer.Capture(this);
-            _gesture = new(e.Pointer, e.GetPosition(this));
+            _gesture = new(e.Pointer, e.GetPosition(this), LinkAt(e.GetPosition(this))?.Target, e.KeyModifiers);
         }
     }
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        var link = LinkAt(e.GetPosition(this));
+        _message.SetHoveredTarget(link?.Target);
+        var reason = link is null ? null : _input?.View.Controller?.RowCommands.HoverReason(link.Target);
+        ToolTip.SetTip(_message, link is null ? null : TargetText(link.Target) + (reason is null ? "" : "\n" + reason));
         if (_gesture is { } gesture && gesture.Pointer == e.Pointer
             && Distance(e.GetPosition(this), gesture.Start) > Geometry("DragThreshold")) CancelGesture();
     }
@@ -176,15 +192,55 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         base.OnPointerReleased(e);
         var gesture = _gesture;
         CancelGesture();
+        if (e.InitialPressMouseButton == MouseButton.Right && _row is { } menuRow)
+        {
+            _input?.View.RowInteraction?.ShowMenu(menuRow, LinkAt(e.GetPosition(this))?.Target);
+            e.Handled = true;
+            return;
+        }
         if (gesture is not null && gesture.Pointer == e.Pointer && e.InitialPressMouseButton == MouseButton.Left
             && Distance(e.GetPosition(this), gesture.Start) <= Geometry("DragThreshold") && _row is { } row
-            && IsToggleTarget(e.GetPosition(this)) && _message.Truncated) _toggle?.Invoke(row.Id);
+            && new Rect(Bounds.Size).Contains(e.GetPosition(this)))
+        {
+            var target = LinkAt(e.GetPosition(this))?.Target;
+            if (gesture.Modifiers.HasFlag(KeyModifiers.Control) && gesture.Target is not null)
+            {
+                if (target == gesture.Target) _input!.View.RowInteraction?.Open(row, target);
+            }
+            else _input!.View.RowInteraction?.Activate(row, gesture.Modifiers,
+                gesture.Modifiers == KeyModifiers.None && IsToggleTarget(gesture.Start)
+                && IsToggleTarget(e.GetPosition(this)) && _message.Truncated);
+            e.Handled = true;
+        }
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         if (_gesture?.Pointer == e.Pointer) _gesture = null;
         base.OnPointerCaptureLost(e);
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        _message.SetHoveredTarget(null);
+        ToolTip.SetTip(_message, null);
+        base.OnPointerExited(e);
+    }
+
+    private ConsoleLinkSpan? LinkAt(Point point) => _message.HitLink(new(point.X - _message.Bounds.X, point.Y));
+    private static string TargetText(LinkTarget target) => target.Path
+        + (target.Line is { } line ? $"({line}" + (target.Column is { } column ? $",{column})" : ")") : "");
+
+    private sealed class RowFeedback(ConsoleRowPresenter owner) : Control
+    {
+        public override void Render(DrawingContext context)
+        {
+            base.Render(context);
+            if (owner._input is not { } input) return;
+            if (input.Row.MemberSequences.Any(input.View.ViewState.Selection.Contains))
+                context.FillRectangle(UiResourceResolver.GetBrush(owner, "NfcSelectionSurfaceBrush", Brushes.Transparent,
+                    static color => new SolidColorBrush(color)), new Rect(Bounds.Size));
+        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -206,8 +262,8 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
 
     private static double Distance(Point a, Point b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
 
-    private sealed record RowInput(ConsoleRow Row, ConsoleListView View, Action<ConsoleRowId> Toggle);
-    private sealed record PointerGesture(IPointer Pointer, Point Start);
+    private sealed record RowInput(ConsoleRow Row, ConsoleListView View);
+    private sealed record PointerGesture(IPointer Pointer, Point Start, LinkTarget? Target, KeyModifiers Modifiers);
 
     internal void Release()
     {
@@ -216,5 +272,6 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         _source.Release();
         _message.Release();
         ToolTip.SetTip(_source, null);
+        ToolTip.SetTip(_message, null);
     }
 }

@@ -550,7 +550,7 @@ public sealed partial class ConsoleListViewTests
             view.ViewState = view.ViewState with { IsExpanded = false }; Flush(window);
             view.ViewState = view.ViewState with { IsExpanded = true }; Flush(window);
             AssertReadingPosition(view, original);
-            Assert.Equal([1L], view.ViewState.Selection);
+            Assert.Equal([51L], view.ViewState.Selection);
         }
         finally { window.Close(); }
     });

@@ -5,7 +5,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using Nvt.Core.Avalonia.Icons;
 using Nvt.Core.LogConsole;
 
 namespace Nvt.Core.Avalonia.LogConsole;

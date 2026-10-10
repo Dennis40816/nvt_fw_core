@@ -7,14 +7,17 @@ using Avalonia.Threading;
 using Nvt.Core.Avalonia.Threading;
 using Nvt.Core.LogConsole;
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Nvt.Core.Avalonia.Tests")]
-
 namespace Nvt.Core.Avalonia.LogConsole;
 
 /// <summary>A recycling console list. The caller owns projection leases and accepts state requests.</summary>
 /// <remarks>Load LogConsole/ConsoleListStyles.axaml. Set inputs on the UI thread; this view never projects data.</remarks>
 public sealed class ConsoleListView : TemplatedControl
 {
+    /// <summary>Defines the controller supplying row commands and injected app adapters.</summary>
+    public static readonly StyledProperty<ConsoleController?> ControllerProperty =
+        AvaloniaProperty.Register<ConsoleListView, ConsoleController?>(nameof(Controller));
+    /// <summary>Gets or sets the app-owned controller. Projection and ViewState remain host inputs.</summary>
+    public ConsoleController? Controller { get => GetValue(ControllerProperty); set => SetValue(ControllerProperty, value); }
     /// <summary>Defines <see cref="Projection"/>.</summary>
     public static readonly StyledProperty<ConsoleProjection?> ProjectionProperty =
         AvaloniaProperty.Register<ConsoleListView, ConsoleProjection?>(nameof(Projection));
@@ -49,6 +52,7 @@ public sealed class ConsoleListView : TemplatedControl
     internal Session? AttachmentSession => _session;
     internal ConsoleReadingAnchor? PendingReadingAnchor => _session?.ReadingAnchor;
     internal bool UserScrollPending => _session?.UserScrollPending == true;
+    internal ConsoleRowInteraction? RowInteraction => _session?.Interaction;
 
     internal void ScrollProgrammatically(Action scroll)
     {
@@ -96,7 +100,8 @@ public sealed class ConsoleListView : TemplatedControl
             _session?.Apply(ReferenceEquals(previous.Follow, current.Follow)
                 || _session.AcceptRequestedAnchor(current.Follow));
         }
-        else if (change.Property == ProjectionProperty || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty)
+        else if (change.Property == ProjectionProperty || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty
+            || change.Property == ControllerProperty)
             _session?.Apply(true);
     }
 
@@ -108,14 +113,14 @@ public sealed class ConsoleListView : TemplatedControl
         _session.Apply();
     }
 
-    private void Request(ConsoleViewState state)
+    internal void Request(ConsoleViewState state)
     {
         _session?.CancelDeferredScroll();
         _session?.RecordRequest(state);
         ViewStateRequested?.Invoke(this, state);
     }
 
-    private void Toggle(ConsoleRowId id)
+    internal void Toggle(ConsoleRowId id)
     {
         var state = _session?.CaptureReadingState() ?? ViewState;
         var collapsed = state.ExpandedIds.Remove(id);
@@ -141,6 +146,8 @@ public sealed class ConsoleListView : TemplatedControl
         internal DispatcherOperation? PendingOperation => _pending;
         internal ConsoleReadingAnchor? ReadingAnchor => _restore;
         internal bool UserScrollPending => _deferredScroll is not null;
+        internal ConsoleRowInteraction Interaction { get; }
+        internal DispatcherOperation? DeferredOperation => _deferredScroll?.Operation;
 
         internal void ScrollProgrammatically(Action scroll)
         {
@@ -158,9 +165,9 @@ public sealed class ConsoleListView : TemplatedControl
             _view = view;
             _parts = parts;
             _lastObservedOffset = parts.Host.Offset;
+            Interaction = new(view, parts.Host);
             parts.Host.ScrollInvalidated += Scrolled;
             parts.Jump.Click += Jump;
-            parts.Host.ToggleRequested += Toggle;
             parts.Host.LayoutUpdated += LaidOut;
             view.ResourcesChanged += ResourcesUpdated;
             view.ActualThemeVariantChanged += ResourcesUpdated;
@@ -168,6 +175,7 @@ public sealed class ConsoleListView : TemplatedControl
 
         internal void RecordRequest(ConsoleViewState state)
         {
+            if (state.Follow is ConsoleFollow.Following) _requestedAnchors.Clear();
             if (state.Follow is not ConsoleFollow.Paused paused) return;
             if (_requestedAnchors.Count == RequestedAnchorLimit) _requestedAnchors.RemoveAt(0);
             _requestedAnchors.Add(paused.Anchor);
@@ -212,13 +220,20 @@ public sealed class ConsoleListView : TemplatedControl
                 if (!weak.TryGetTarget(out var session) || session._detached
                     || session._deferredScroll is not { } request) return;
                 // Finish pending projection/reflow restoration before capturing the screen.
-                session._parts.Host.UpdateLayout();
-                session.Restore();
-                if (session._deferredScroll is not { } current || current.Operation != request.Operation) return;
-                session._pending?.Abort();
-                session._pending = null;
-                session._deferredScroll = null;
-                session.RequestScrollState(current.Intent);
+                try
+                {
+                    session._parts.Host.UpdateLayout();
+                    session.Restore();
+                    if (session._deferredScroll is not { } current || current.Operation != request.Operation) return;
+                    session._pending?.Abort();
+                    session._pending = null;
+                    session._deferredScroll = null;
+                    session.RequestScrollState(current.Intent);
+                }
+                finally
+                {
+                    if (session._deferredScroll?.Operation == request.Operation) session._deferredScroll = null;
+                }
             }, DispatcherPriority.Loaded);
             _deferredScroll = new(intent, operation);
             return true;
@@ -240,7 +255,7 @@ public sealed class ConsoleListView : TemplatedControl
             if (_view.Projection is not { } projection) return state;
             // One capture path for scrolling, toggles and projection application. A pending layout
             // anchor wins until a user scroll explicitly replaces it with fresh coordinates.
-            var anchor = _restore ?? _parts.Host.CaptureAnchor();
+            var anchor = _restore ?? _parts.Host.CaptureAnchor(state.Follow is ConsoleFollow.Following);
             if (state.Follow is ConsoleFollow.Paused)
                 return anchor is { } current ? WithReadingAnchor(state, current) : state;
             return anchor is { } reading
@@ -305,9 +320,8 @@ public sealed class ConsoleListView : TemplatedControl
             _pending = dispatcher!.InvokeAsync(() =>
             {
                 if (!weak.TryGetTarget(out var session) || session._detached) return;
-                session._parts.Host.UpdateLayout();
-                session.Restore();
-                session._pending = null;
+                try { session._parts.Host.UpdateLayout(); session.Restore(); }
+                finally { session._pending = null; }
             }, DispatcherPriority.Loaded);
         }
 
@@ -345,18 +359,18 @@ public sealed class ConsoleListView : TemplatedControl
             _lastObservedOffset = offset;
             if (_suppress != 0 || !changed || _view.Projection is null) return;
             _restore = null;
-            _parts.Host.PreserveUserScrollDuringMeasure();
             if (_parts.Host.AtEnd && _view.ViewState.Follow is ConsoleFollow.Following && _requestedAnchors.Count == 0)
             {
+                _parts.Host.ClearUserScrollDuringMeasure();
                 CancelDeferredScroll();
                 return;
             }
             var intent = _parts.Host.AtEnd ? ScrollIntent.Resume : ScrollIntent.Pause;
+            if (intent == ScrollIntent.Pause) _parts.Host.PreserveUserScrollDuringMeasure();
             if (!DeferScroll(intent)) RequestScrollState(intent);
         }
 
         private void Jump(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e) => _view.JumpToLatest();
-        private void Toggle(ConsoleRowId id) => _view.Toggle(id);
 
         internal void Detach()
         {
@@ -366,9 +380,9 @@ public sealed class ConsoleListView : TemplatedControl
             _pending = null;
             CancelDeferredScroll();
             _requestedAnchors.Clear();
+            Interaction.Detach();
             _parts.Host.ScrollInvalidated -= Scrolled;
             _parts.Jump.Click -= Jump;
-            _parts.Host.ToggleRequested -= Toggle;
             _parts.Host.LayoutUpdated -= LaidOut;
             _view.ResourcesChanged -= ResourcesUpdated;
             _view.ActualThemeVariantChanged -= ResourcesUpdated;

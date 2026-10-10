@@ -66,10 +66,11 @@ internal sealed class ConsoleTestStore : IDisposable
             else SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty || condition(); });
         }
     }
-    internal ConsoleController Controller(ConsoleProjectionOptions? options = null)
+    internal ConsoleController Controller(ConsoleProjectionOptions? options = null,
+        IConsoleClipboard? clipboard = null, IConsoleLinkOpener? opener = null)
     {
         UiThread.RegisterRunningDispatcher(global::Avalonia.Application.Current!.Dispatcher);
-        return new ConsoleController(Store, [new("app", "Application"), new("dxf", "Drawing"), new("idle", "Idle")], options);
+        return new ConsoleController(Store, [new("app", "Application"), new("dxf", "Drawing"), new("idle", "Idle")], options) { Clipboard = clipboard, LinkOpener = opener };
     }
     public void Dispose()
     {
