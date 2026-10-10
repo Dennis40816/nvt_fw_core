@@ -79,6 +79,31 @@ WaitForOutputAsync 等待輸出包含指定文字，輸出結束仍無該文字�
 隨機失敗，所以每個子行程都應經由此 fixture 啟動。行程樹結束只能涵蓋父行程仍
 存活的子孫；比父行程活得更久的子孫無法觸及。
 
+## RelativePerf
+
+RelativePerf 讓效能門檻跟著機器走。「少於一秒」這類絕對時間在慢的 CI 機器上會誤判，
+在快的機器上又掩蓋退化。請用三種形式之一。
+
+- **校準單位。** CalibrationUnit 執行固定的參考工作量並回傳其中位數時間。InUnits 把量到的時間
+  換成該單位的倍數。請在同一個行程、貼近量測前取得單位。
+- **規模比例。** ScaleRatio 把較大輸入的中位數時間除以較小輸入的中位數時間。線性演算法加倍約為 2，
+  平方演算法約為 4。這個比例與機器無關。
+- **計數。** MedianAllocatedBytes 計算工作在呼叫執行緒上配置的位元組。計數與機器速度無關，
+  能用計數時優先使用。
+
+每次量測都會暖身、取至少七個樣本（MinimumSamples）並回報中位數。門檻失敗不重試；不穩定的測試
+請開 Issue。門檻要寫在測試旁邊：參考機器上量到的中位數，以及乘上的餘裕。測試請標
+[Trait("Category", "Performance")]，CI 才能用獨立步驟執行。預設時鐘是 TimeProvider.System；
+測試此 helper 本身時改傳 ManualTimeProvider。
+
+## TaskBlock
+
+TaskBlock.UntilComplete 會阻塞呼叫執行緒直到工作完成。只能用在無法 await 的測試掛鉤，例如
+dispatcher 回呼或 fixture 建構函式。測試中禁用 Task.Wait、Task.Result 與 GetAwaiter().GetResult()。
+UntilComplete 以事件阻塞、重新擲回原始例外（不是 AggregateException）、已取消的工作會擲出
+OperationCanceledException，並且不使用呼叫端的同步內容。工作必須在其他執行緒執行；需要被阻塞
+執行緒才能繼續的工作永遠不會完成。
+
 ## 基準與刻意差異
 
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的

@@ -17,10 +17,19 @@ Each rule has a reason. Read the reason before you ask for an exception.
    - Use `ManualTimeProvider`, `TaskCompletionSource`, or a signal.
    - Why: a loaded CI machine makes timed waits fail at random. Three flaky tests had this one cause.
 
-3. **Do not assert elapsed time.**
-   - Do not write "finishes in less than one second".
-   - A wait must have a watchdog limit. The limit only prevents a hang.
-   - Why: elapsed time depends on the machine, not on the code.
+3. **Do not assert wall-clock time. Measure performance relative to the machine.**
+   - Do not write "finishes in less than one second". An absolute limit fails on a slow runner and hides a regression on a fast one.
+   - A hot path needs a performance test. Examples: console scrolling and a large load.
+   - Set its threshold with one of these:
+     - A calibration unit. Run a fixed reference workload in the same process and take the median as one unit. Limit the work to a multiple of it.
+     - A scale ratio. The time for 20,000 rows divided by the time for 10,000 rows must stay below 2.5. This catches O(n²) on any machine.
+     - A machine-independent count: allocated bytes, containers created, or number of measurements. Use a count when one fits.
+   - Warm up, take at least seven samples and use the median. Do not retry. Report an unstable test as an issue (rule 13).
+   - Write the threshold next to the test: the median measured on the reference machine and the margin applied.
+   - Use `RelativePerf` for all of this. It is the only test code that reads a clock to measure speed. A test does not start its own timer.
+   - Mark the test `[Trait("Category", "Performance")]`. CI runs these tests in a separate step, and a failure there blocks merging.
+   - A wait must still have a watchdog limit. The limit only prevents a hang.
+   - Why: wall-clock time depends on the machine, not on the code. A ratio or a count does not.
 
 4. **Use `TestWorkspace` for files.**
    - Do not call `Path.GetTempPath` in a test.
@@ -84,8 +93,10 @@ Build these helpers once. Use them in all repositories.
 |---|---|---|---|
 | `ManualTimeProvider` | Fake clock, including periodic timers | Available | `Nvt.Core.TestSupport` |
 | `TestWorkspace` | Temporary folder and cleanup | Available | `Nvt.Core.TestSupport` |
-| `SignalWait` and watchdog | Replaces `Task.Delay` in tests | Planned | `Nvt.Core.TestSupport` |
-| `ChildProcessFixture` | Child process, process tree, output limit | Planned | `Nvt.Core.TestSupport` |
+| `SignalWait` and watchdog | Replaces `Task.Delay` in tests | Available | `Nvt.Core.TestSupport` |
+| `ChildProcessFixture` | Child process, process tree, output limit | Available | `Nvt.Core.TestSupport` |
+| `RelativePerf` | Performance thresholds that follow the machine: calibration unit, scale ratio, allocation count | Available | `Nvt.Core.TestSupport` |
+| `TaskBlock` | The one way to block on a task in a test hook that cannot await; keeps `Task.Wait`, `Result` and `GetResult` out of tests | Available | `Nvt.Core.TestSupport` |
 | `HeadlessSessionFixture` | One Avalonia session for each test assembly | Many private copies | One thin wrapper in each app |
 | `SourceTextReader` and repository root lookup | One place that reads source text | Many private copies | Architecture test project only |
 | Shared fakes | Catalog, runtime probe, output writer, replay fakes | Copied in many files | Shared test project of each repository |
