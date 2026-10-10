@@ -666,7 +666,7 @@
       ],
       "kind": "file",
       "ceilings": {
-        "fileLines": 1364
+        "fileLines": 1359
       }
     },
     {
@@ -2509,39 +2509,6 @@
     {
       "rule": "asyncVoid",
       "removeBy": "2026-10-31",
-      "syntaxHash": "57347bfb6c57fbd71aac05d1052d552a0e64f08545ca7d1f3079e6dc75d4a2d6",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.StableLauncherHandoffHonorsCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "4cd0a3441fc872b207d60ecd5985a66fee6e2a37e3093baf84de19d76c066269",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.StableLauncherHandoffPreCancellationDisposesOwnedLeaseExactlyOnce()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "8f7edb4994388aaa9be8358e8dfe18854c55114908afd2e9ebb9753b9fe6d33f",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.CancellationAfterOwnedAcquisitionDisposesLeaseExactlyOnce()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "removeBy": "2026-10-31",
       "syntaxHash": "7ea87d7efd84ac76ecf82ac7a45776ef435e9cd8a77a447af36ee12e85b131fc",
       "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.RefusedOwnedFinalValidationPreservesInvalidDataException()",
       "count": 1,
@@ -2555,17 +2522,6 @@
       "removeBy": "2026-10-31",
       "syntaxHash": "e7c4d4872f6960ce45aa29708abaf1130af081f84c0fbaead9c9af39aef1a5d7",
       "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.StableLauncherHandoffCancellationDuringVerificationDoesNotLaunch()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5db32d86cd1c446ed74d49edc3d8eaf0b88f9e48f99e78fa400bcf9479e26edd",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.OversizedOwnedIdentityDisposesAllTransferredAuthority()",
       "count": 1,
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
@@ -3255,17 +3211,6 @@
       "path": "tests/Nvt.Core.Tests/Processes/BoundedProcessOutputReaderTests.cs"
     },
     {
-      "rule": "fakeClockDuplicates",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "b7d997a738b64ac8a70bd8666276e56c3c90fa8a00b24826bb1bdf18b98ba837",
-      "member": "Nvt.Core.Tests.Processes.ManualTimeProvider",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "Nvt.Core.Tests.Processes.ManualTimeProvider",
-      "path": "tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs"
-    },
-    {
       "rule": "blockingWait",
       "removeBy": "2026-10-31",
       "syntaxHash": "2489eb94a9e4ee677a821a1fafedfc6190204617d00fc7e554e3573c6e36ee71",
@@ -3407,17 +3352,6 @@
       "owner": "NVT CORE",
       "symbol": "Wait",
       "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "workspaceDuplicates",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5bdf6fce74158d793ae0fe60d946656f3cc402fb6f0dcac04bb41ee3bc4e4b92",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "Nvt.Core.Tests.Processes.TestWorkspace",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
     },
     {
       "rule": "asyncVoid",
@@ -4144,28 +4078,6 @@
       "owner": "NVT CORE",
       "symbol": "pragma:CS1591",
       "path": "tests/Nvt.Core.Tests/TestProbe/ProbeInputAndPipeTests.cs"
-    },
-    {
-      "rule": "suppressions",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "9059781aa36ec7242c9e378006e2f3273e124a43539463f0cba80acc15c6db57",
-      "member": "file:Nvt.Core.Tests.TestProbe.ProbeLifetimeTests",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:directive",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressions",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "9059781aa36ec7242c9e378006e2f3273e124a43539463f0cba80acc15c6db57",
-      "member": "file:Nvt.Core.Tests.TestProbe.ProbeLifetimeTests",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
     },
     {
       "rule": "suppressions",
@@ -6073,17 +5985,6 @@
     {
       "rule": "CA2000",
       "removeBy": "2026-10-31",
-      "syntaxHash": "a2b9179d4110c51f74abc6443ab6b5ac48a48f4353667a6a1b5d472deb619ed2",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.OversizedOwnedIdentityDisposesAllTransferredAuthority()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "CA2000",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "CA2000",
-      "removeBy": "2026-10-31",
       "syntaxHash": "4791d9a0dcbcfdcfe9a4deafab8b8038b973a0c42b8abaddc488c5b41d56bdca",
       "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.OwnedHandoffStartsContainedTreeAndCancellationConfirmsDescendantExit()",
       "count": 1,
@@ -7668,17 +7569,6 @@
     {
       "rule": "FORMAT:FINALNEWLINE",
       "removeBy": "2026-10-31",
-      "syntaxHash": "ea7e935bef317d391a5dd7d857d18c5045c36f66d45d3071baab61ba6ebe8ccc",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "FINALNEWLINE",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "FORMAT:FINALNEWLINE",
-      "removeBy": "2026-10-31",
       "syntaxHash": "0dc2e8a009ebc64e4517c355e147e453ba219cedbf424f38f36a59250338282a",
       "member": "Nvt.Core.Tests.TestProbe.ProbeReadyTests",
       "count": 1,
@@ -7741,17 +7631,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE0005",
       "path": "tests/Nvt.Core.Avalonia.Tests/Focus/ToolTipTextWrappingTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "0f7f0fbdd3266cecb90ee6b76ab99def1565de6734337211c791f22fac4a6129",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Icons/IconTests.cs"
     },
     {
       "rule": "FORMAT:IDE0005",
@@ -8075,17 +7954,6 @@
     {
       "rule": "FORMAT:IDE0005",
       "removeBy": "2026-10-31",
-      "syntaxHash": "90338839b071dec27cdf979826d516b0373c6008b24f68e4ef8ca535727a36f4",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/InheritedManagedProcessLifetimeTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
-      "removeBy": "2026-10-31",
       "syntaxHash": "a26f5f581efcf5514433ebdb16eb907e24b4de62c38f6e3686a21d8f0335a478",
       "member": "<global>",
       "count": 3,
@@ -8137,17 +8005,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE0005",
       "path": "tests/Nvt.Core.Tests/Launcher/Coordination/ManagedActivationCoordinatorTests.ActiveLaunchAttemptRecovery.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "f4e605401c7e58b529b2f01d777a8f1efa5a5c7f7242c2a7edb63a7d167707c7",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedApplicationProcessTests.cs"
     },
     {
       "rule": "FORMAT:WHITESPACE",
@@ -16303,17 +16160,6 @@
     {
       "rule": "IDE0330",
       "removeBy": "2026-10-31",
-      "syntaxHash": "9b2ba7c636c35a3af163392495443e979fd209add10393472468ae2363ae6954",
-      "member": "Nvt.Core.Tests.Processes.ManualTimeProvider.fields:_gate",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0330",
-      "path": "tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs"
-    },
-    {
-      "rule": "IDE0330",
-      "removeBy": "2026-10-31",
       "syntaxHash": "4f667dad9d642834dfc41ed083dd219d3ec1dc7fed518c924c4a33050a957749",
       "member": "Nvt.Core.Launcher.Transport.ImmutableBootstrapProcessLaunch.fields:_cleanupSync",
       "count": 1,
@@ -16849,17 +16695,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE1006",
       "path": "src/Nvt.Core/Threading/UiEventRunner.cs"
-    },
-    {
-      "rule": "IDE1006",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "9bc7ce57397ac2d02c17ae99e3ba5acf310fcb780a52eafeb505a97b6432efac",
-      "member": "Nvt.Core.TestProbe.ProbeInputs.fields:Names",
-      "count": 1,
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.TestProbe/ProbeInputs.cs"
     },
     {
       "rule": "IDE1006",
@@ -17887,17 +17722,6 @@
     {
       "rule": "IDE1006",
       "removeBy": "2026-10-31",
-      "syntaxHash": "e3c6181391887a3230ee06bb5917529cb5010195c8104be67df45ef37304bc5c",
-      "member": "Nvt.Core.Tests.Processes.ManualTimeProvider.fields:Origin",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs"
-    },
-    {
-      "rule": "IDE1006",
-      "removeBy": "2026-10-31",
       "syntaxHash": "738268560d313d712849b9eb9d6070a115ccf8d22f11185f121d8b9c2c747b94",
       "member": "Nvt.Core.Tests.Processes.ProcessLaunchGateBoundaryTests.fields:QuotedArguments",
       "count": 1,
@@ -17922,17 +17746,6 @@
       "removeBy": "2026-10-31",
       "syntaxHash": "44bfc0ad9ac80bcebeee1f3a5c4ae50687cc55cc9dbee437e9a9441fcee7caf1",
       "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerBoundaryTests.fields:PhaseNames",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerBoundaryTests.cs"
-    },
-    {
-      "rule": "IDE1006",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "2b75a9b5222f4640a09fe889c7902a5a9ad6da9d06d4ece9e04d305f08dbd1e0",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerBoundaryTests.fields:ReleaseBound",
       "count": 1,
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
@@ -17971,17 +17784,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE1006",
       "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeBoundaryTests.cs"
-    },
-    {
-      "rule": "IDE1006",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "593b5f07f940fd2ea4b5dcef46d01984565f35289af7095642a3970d14049c5d",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.fields:CancelReturnBound",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
     },
     {
       "rule": "IDE1006",
@@ -20549,17 +20351,6 @@
     {
       "rule": "RS0030",
       "removeBy": "2026-10-31",
-      "syntaxHash": "5de86731d0fad7c0948de008231797afb53e1e0a1f700118823b4dcb0b006e06",
-      "member": "Nvt.Core.TestProbe.Probe.HoldLockAsync(ProbeInputs)",
-      "count": 1,
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "symbol": "M:System.Threading.Tasks.Task.Delay(System.TimeSpan)",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
       "syntaxHash": "717714b962cb32c698dd36bf1c30da9a162f96d96111f2ae55e1d33bc1469c40",
       "member": "Nvt.Core.TestProbe.Probe.RunAsync(string[])",
       "count": 1,
@@ -20582,17 +20373,6 @@
     {
       "rule": "RS0030",
       "removeBy": "2026-10-31",
-      "syntaxHash": "5de86731d0fad7c0948de008231797afb53e1e0a1f700118823b4dcb0b006e06",
-      "member": "Nvt.Core.TestProbe.Probe.RunAsync(string[])",
-      "count": 2,
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "symbol": "M:System.Threading.Tasks.Task.Delay(System.TimeSpan)",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
       "syntaxHash": "83dea3267a3f23aec3f9b2a979aca5fb94e5548525652688f92d1c4e9be6d0af",
       "member": "Nvt.Core.TestProbe.Probe.RunTreeAsync(string,ProbeInputs)",
       "count": 1,
@@ -20610,17 +20390,6 @@
       "project": "Nvt.Core.TestProbe",
       "owner": "NVT CORE",
       "symbol": "M:System.IO.File.WriteAllTextAsync(System.String,System.String,System.Threading.CancellationToken)",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5de86731d0fad7c0948de008231797afb53e1e0a1f700118823b4dcb0b006e06",
-      "member": "Nvt.Core.TestProbe.Probe.RunTreeAsync(string,ProbeInputs)",
-      "count": 1,
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "symbol": "M:System.Threading.Tasks.Task.Delay(System.TimeSpan)",
       "path": "tests/Nvt.Core.TestProbe/Program.cs"
     },
     {
@@ -22535,17 +22304,6 @@
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
       "symbol": "P:System.Environment.TickCount64",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedLauncherProcessTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "018545589e320d784fa358b8559ddc82a43ec20468dc36ad79435b495af96f47",
-      "member": "Nvt.Core.Tests.Launcher.Transport.AnonymousPipeManagedLauncherProcessTests.ExactReadyCarriesCustomStatePathToCandidate()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.IO.File.ReadAllLinesAsync(System.String,System.Threading.CancellationToken)",
       "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedLauncherProcessTests.cs"
     },
     {
@@ -24905,28 +24663,6 @@
     {
       "rule": "RS0030",
       "removeBy": "2026-10-31",
-      "syntaxHash": "17b32949d31d5001f46e5b338f6ee2095fd962319cf65aec73df86f6bbfa6a44",
-      "member": "Nvt.Core.Tests.Processes.ProcessLaunchGateBoundaryTests.ContainedStartSupportsRawArgumentsAndRenamedCompleteProbe()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.IO.File.ReadAllLinesAsync(System.String,System.Threading.CancellationToken)",
-      "path": "tests/Nvt.Core.Tests/Processes/ProcessLaunchGateBoundaryTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "2ba085fa65cbb3d0fb9a6ec209bede853b58daa8f91c2611dc8fb2c851b50d8f",
-      "member": "Nvt.Core.Tests.Processes.ProcessLaunchGateBoundaryTests.OptionalPowerShellQuotedArguments()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.IO.File.ReadAllLinesAsync(System.String,System.Threading.CancellationToken)",
-      "path": "tests/Nvt.Core.Tests/Processes/ProcessLaunchGateBoundaryTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
       "syntaxHash": "11d977beb464a99e63757759db2f435439172f330ea07a8be6acaf05094ca12b",
       "member": "Nvt.Core.Tests.Processes.ProcessLaunchGateBoundaryTests.OrdinaryStartAndNullChecksShareFrozenGateOrder()",
       "count": 1,
@@ -25105,61 +24841,6 @@
       "removeBy": "2026-10-31",
       "syntaxHash": "cb33ed077fa4c20c2337b86f4c084992758d28014fe59cf9e8f254681ead69d9",
       "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelReturnsAtOnceAndRunEndsWithinDeadlineWhileTerminationBlocks()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "a40a4bca730bb51ae214a9cee98047bb3ea547044d0590687d798de8e278cf80",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinAsync(CancellationTokenSource,TimeSpan)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.Threading.Tasks.Task.Delay(System.TimeSpan,System.Threading.CancellationToken)",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "063987d481e83bb43f62d45adef89e4603e77913b0f82f83a15c7514b7f8855a",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinAsync(CancellationTokenSource,TimeSpan)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ad4c2a64082923efa4525e3f4ffe9b7b6fcc198345c1c5941a062060f95fb27f",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinAsync(CancellationTokenSource,TimeSpan)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "2725a6193012fc55b400745856baf7fda22d31d8dec49fc467e30e48addc9a4a",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinGuardFailsPromptlyOnBlockingCancel()",
-      "count": 2,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ad4c2a64082923efa4525e3f4ffe9b7b6fcc198345c1c5941a062060f95fb27f",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinGuardFailsPromptlyOnBlockingCancel()",
       "count": 1,
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
@@ -25352,72 +25033,6 @@
       "owner": "NVT CORE",
       "symbol": "T:System.Diagnostics.Stopwatch",
       "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "927c1701fb1eee2a6d251dfecfbcfe27a658f7b5dde071d0284c81311e301d90",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Dispose()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.IO.Path.GetTempPath",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "e749ea53804e5a6af1e3a8aa1a646424fcb0d022b5af918d8b2ab200d48fe70b",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Dispose()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.Threading.Thread.Sleep(System.Int32)",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "091518b0e0c19b191d8b986cd4726221fa31515000cb03b3da13cd077d58008d",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Dispose()",
-      "count": 2,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "P:System.Environment.TickCount64",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "72172cf4ba8274a119e407da53d31a14db6b573468506dcdf0fd4d0dcaf46076",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Dispose()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "P:System.Environment.TickCount64",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "914886e9217e6914ef5d3bb6290442ceee0ce26b5c8b80bab0bb439474271a1d",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Dispose()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "P:System.Environment.TickCount64",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "11f38364924f8956af1f5f9115c33be727127722317cfd64186a09938a036a77",
-      "member": "Nvt.Core.Tests.Processes.TestWorkspace.Write(string,byte[])",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "M:System.IO.File.WriteAllBytes(System.String,System.Byte[])",
-      "path": "tests/Nvt.Core.Tests/Processes/TestWorkspace.cs"
     },
     {
       "rule": "RS0030",
@@ -25967,28 +25582,6 @@
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
       "symbol": "M:System.IO.File.ReadAllTextAsync(System.String,System.Threading.CancellationToken)",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ad4c2a64082923efa4525e3f4ffe9b7b6fcc198345c1c5941a062060f95fb27f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "RS0030",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "db2eba7ceda82d719df780fe648506e564955c1353d2afc4397f1ff7e39f198f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "T:System.Diagnostics.Stopwatch",
       "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
     },
     {
@@ -43000,974 +42593,6 @@
     {
       "rule": "suppressionScopes",
       "removeBy": "2026-10-31",
-      "syntaxHash": "0c079d87411a5e996719c20955a31793fc03fa021f31fdd0f8dc4378ea21c1dd",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "13e3a7a59dc90e35a116569c74cd8457051fdfac20fc389937cbf9d0e8eee1cc",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1bf4830a4cc5c7e139103f48ed91261c8599cdc057f1f744a5f3c6f0e00c9d65",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "272f7b7ace643c91747cc6ec6b21400d2883950e3a433bffdb03ea713d9de638",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "34b4fe09f29fbffb4c81d100568604f355e6b0f8005ae86971cbfe4b4ebba1cd",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5ba940490f874374ba1fe04dd9224d547afccefdba3346e5df90fcdc1c1e333d",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5c90e09fae1d089bfce7e76df2ccb2712dd64ce075affa40f84c142965a88923",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "d1ea7435d61596cd3a12ff1b70c7eac1e52ca7169eec2d538ec7a2ad58353f41",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "fa25c20e2144e94696ea53480350cb56f6df86d022e49df7782f0684141a3c65",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.ContendedLockReturnsOneAndWritesOnlyStarted()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "00ef7490e41eee98349bbef9c86a894108f906efe1604f39011f65e573b11356",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "093e39824866727f5bc7355a394d6b92966a584153f5571dc6b03e8acfd12fb2",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1bf4830a4cc5c7e139103f48ed91261c8599cdc057f1f744a5f3c6f0e00c9d65",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1d0477bf14d2791fe22db6db2ece241df6cbb367360b6a6739187367ca8e2596",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "297a5b9e4ba80c8c45f7bf624348c9e72ace5a98f4630df75fe19c01420a09d2",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "358477092d4599fb749e5cc1beff5502a23e2da71ee5734465ff550abe889ac3",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "3706f59a88df261d3267aa8a0d11d5188c233d69e1eef0c4d8f1c569c52e3631",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "449e07a31dee25c69e10345856113aff0b9d0ca47446ec36928e69743e85ae06",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "4a73bda5d8dec1b252e5ebbae0050acf300538ce66125bc4fcaf0e09285e7903",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "50bbb8e85cde73a619b8fb989be564348608963aee46f68e81768e7dff96f3ac",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5c7f6ce28f63eaa60f9fdffcb450bbb8342938c85b93d0ddf16d1ae93587b20b",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "c32ae08807bad610e1c656012c504bc66652ceedfe130a7f67b068c1f24b5a37",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "e94ac9570ce2f57b4b2776076f820f38681e7aedf60b568c6d45f4da2a984870",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.FailedJobJoinReturnsTwentyFourAndOneErrorLine(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "12606c59f998c01f92bd16c1ff8c7c2f9e758348d73dc81aa791797066d91a63",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.PortableWaitingModesWriteTheirMarkersAndReturnZeroAfterThirtySeconds()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "06cc3520093358273e94a8c74411c6b458024ed55cbd9301fd99e756341f0282",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1a7a0ef9028bafe7d94f520b6b9d3afa24a779fae9305c1ce3136a1d4f7666c9",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1bf4830a4cc5c7e139103f48ed91261c8599cdc057f1f744a5f3c6f0e00c9d65",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "21d8783c92d6a75629ffa1092dc56ae2887e43deb5ff385892b0b0664566ce2f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "449e07a31dee25c69e10345856113aff0b9d0ca47446ec36928e69743e85ae06",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "50bbb8e85cde73a619b8fb989be564348608963aee46f68e81768e7dff96f3ac",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5aba692511f14a17311f01dbc3d16678bf646dab61f2515eaf8dd98f0cc6ea46",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5c91df3164d4d61e1994c3e03998d2b30476bb8d9d5baa03db762bcac636b89f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5d5f7140409dde58387703e2502a904cad0a39a6efe0fe840611e2b47c4a0d86",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "7615775390b8a616b91b3c9d2d5d8cdc49505d642c0354c227983bf55f97693d",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "877d71090b3afe487358a66c014b1e35f1832a1ba1281f55b6f9c99904cf3119",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "a03c08b35504f3c4d0042de7bc729906632d2f1acbcd431be49d03e4dcee960f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ab6e9b575ccf94c33cfd110a4ed0a4267f169c25cbf39464e69c273fa4f0bf12",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "acbea1bf6e9c446c1c75278ea3b0f9cb7c2f0d813f20a1cca249df07032548d4",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "aea88f39545677e76836b7f4ee632f412a339be6113060169b5d6b5bd9a31168",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "cbd9db071adcd824a0551f4c9322b85e4b6b3624066e0938e107e505ba6d091c",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "dc6a73fffb91fe1dd5e58f797c19e5d8fa73bdfbe320a0aab20fa4820d28e487",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "fc40bb41b52557c813d037a82a6b04e195f6866c6283b5d41a659536e774e1b4",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.TerminatingJobEndsRootAndInheritedDescendant()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "06cc3520093358273e94a8c74411c6b458024ed55cbd9301fd99e756341f0282",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "093e39824866727f5bc7355a394d6b92966a584153f5571dc6b03e8acfd12fb2",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "0baf91ff4a24acbcf6d13f46b2822ddfc57291443d7b7df769d8b2e216adc041",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "11c54110b3655db758a22f524335e0e7f5a2d4437283a439108cfc87ca7369c6",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1672f790339ee15d7d3cdeec4688d9af873c78aa13ba49475591b53149a86518",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1bf4830a4cc5c7e139103f48ed91261c8599cdc057f1f744a5f3c6f0e00c9d65",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1e25f271f39b9499a771a946ce6d0d366ab03051b9ba745d737cf1be3dd896be",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "2299955c6d145b03ba4ee7bf79adff9c490b6c82dd5bddbcf963fdee9ec40dff",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "233eeb5f4c50d35518caf753a8cca8abbb85b2c3a2962518ac2a3fa698d24412",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "33d1757ffe17035fb6d06d3a7afff70ddba03645ec4c7dd2fdf2d6d6b181b374",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "52bdb63ffd8a3d70d3bc7363ad1d087c92036b87c49715fcd9676ff279eaa709",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "5c7f6ce28f63eaa60f9fdffcb450bbb8342938c85b93d0ddf16d1ae93587b20b",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "61ebe03e7a4f2aeab8c16bf9c44bba2a9f423207e041dbb3d0fa91916cb3dc7d",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "6b55975bf88474e4adefa21b6537b4f0dcc95cc23216bf4ea9dd0b5ce1295ee2",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "6efc0de7df7eec202e173860bf85b4fd8e3bc85ddfccd98bd7ac4d63f3953237",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "73ab15d9eb78ac8fb14052df162083f054c747a35ad8ba6a02588014b8878e4b",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "7aad1324757e2b2e723d8a364f0a88ac3225fe685d844c30d57cc08d9803ab52",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "8313909324c079577a251ed9d138c34c9a5ea7030f9da0c5f4d13bccc7e7acf7",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "83580c356a2a6ea005f26640e60fb6e3d617b540486b5ef9a9e13c91682a2708",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "85c19d05ccefc26d6f50b891aedc414bc20482fb4e96e8a00f3d55d0de083075",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "877d71090b3afe487358a66c014b1e35f1832a1ba1281f55b6f9c99904cf3119",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "92cff64ab89d7585d0949b4dae6f540681b171eb613c91fb6ae1e629d324b90c",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "97103465d447becee7560a45c586f0a1021239b291aa395f21fa3b59ef858092",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "991fbffa01985abdcd85a02dee699b9671df341cf437644123aa0f0ca6ed5b60",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "9c4cc88eb75d7c23a69abc6e1496a94819f7dc427d3950b63bf4ae09899289a2",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "9e0eb824d8e7b6ced4665aa3fdb3a7e33401482481059d9f23b7d7705e121785",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "a9912128b1f577f7c7ef13c08dc78397e14d227473eadc95c67c4544f345fefc",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "aae6b62974e829f5212dd1848917b1c37b9b36e93ed20f0ef6d10164c5f6931a",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ad4c2a64082923efa4525e3f4ffe9b7b6fcc198345c1c5941a062060f95fb27f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "aeb259b865b54c99dfa6c5e386b4e0b4f0f6fd85dde74f3d28be8461673ac560",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "b6a9b8c09b31edb70b81158eada5cc9ac234a687fcbc6ef30dca3db0740e9ca0",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "cbd9db071adcd824a0551f4c9322b85e4b6b3624066e0938e107e505ba6d091c",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "cc76daa577f33580cf84e905b1048ee2e487957a1fa910223bb42c2b470e4d86",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "cc9d62d671436d46f449205d8ef08c24b02c8b56e70ecbaa44ffa8a38808aa0b",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "cccc8fdaaf7235a4b3c62f4199287ea006aaebb7c868ecec652cd9d17739c85f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "d06194a80b05961c3f0f124d89d375a669309152fe4f02a33d7d38b425d90be6",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "dade84e9424c9d330b6110c8b566407b3a2df42a4f5570b2798a700cc5a327a1",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "db2eba7ceda82d719df780fe648506e564955c1353d2afc4397f1ff7e39f198f",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "dbd51fabd1e67917a0111106cf52ca54bcb94e9e7a5fd5113f4e20a8fecf5faa",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "ed0cb735896ef339dd19aa34f2752c5db79d316f9fb7d77ad13fa63e3a388664",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "f5caa14bf7c2d2b20e5fdb74910549355eb0d958e087b1a7e62c8cbf4cc9c91a",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "f5db22b1bdd297c0e7b28a91ff707790e2d61f99be9e749e6245892d0b3852c3",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "febd8fd18c1494c28a28cae2cc5174493cf3dc6279de4075fd54c15f2af1674b",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "817468e5489d782d467404091a0430a4fe773050d214e0aa1a033f06ddbaa044",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WindowsWaitingModesWriteTheirMarkersAndReturnZeroAfterThirtySeconds()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "c0f5adba31b7ff07914c72aeb919d71c4d3f799950be20c27e6c7f54c9eddc5e",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WindowsWaitingModesWriteTheirMarkersAndReturnZeroAfterThirtySeconds()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "03aa556aa8bec9fe6ad79af4d70fd678dfee487d98b6c519db6e576f35453b22",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "a319435b0ffdbc966e3d469b48178f03160cde7eda5e32523a1e130474b5ec49",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "pragma:CS1591",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
-    },
-    {
-      "rule": "suppressionScopes",
-      "removeBy": "2026-10-31",
       "syntaxHash": "06cc3520093358273e94a8c74411c6b458024ed55cbd9301fd99e756341f0282",
       "member": "Nvt.Core.Tests.TestProbe.ProbePipeTests.DetachedDescendantLeavesBothRedirectedStreamsAtEndOfStream()",
       "count": 1,
@@ -51279,17 +49904,6 @@
       "owner": "NVT CORE",
       "symbol": "VSTHRD103",
       "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerBoundaryTests.cs"
-    },
-    {
-      "rule": "VSTHRD103",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "1903cbd520b16c027e53bee7e64ba9179f3b8242b484da0ddf55c43d9083eeee",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinAsync(CancellationTokenSource,TimeSpan)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "VSTHRD103",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
     },
     {
       "rule": "VSTHRD103",

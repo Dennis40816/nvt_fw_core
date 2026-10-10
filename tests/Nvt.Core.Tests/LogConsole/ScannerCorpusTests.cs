@@ -7,6 +7,7 @@ using Xunit;
 namespace Nvt.Core.Tests.LogConsole;
 
 /// <summary>Path components remain whole at every storage and scanner read boundary.</summary>
+[Collection(ScannerParallelIsolation.Name)]
 public sealed class ScannerCorpusTests(ITestOutputHelper output)
 {
     /// <summary>Leading dots belong to the path, including filename-only location targets.</summary>
@@ -62,19 +63,25 @@ public sealed class ScannerCorpusTests(ITestOutputHelper output)
         Assert.Equal(corpus.Length, corpus.Select(item => item.Text).Distinct(StringComparer.Ordinal).Count());
         var scans = 0;
         var threeWaySplits = 0;
-        foreach (var item in corpus)
+        // The lines are independent and the scanner has no shared state, so the lines run in parallel.
+        var options = new ParallelOptions
         {
-            scans += VerifyEverySplit(item);
+            CancellationToken = TestContext.Current.CancellationToken,
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
+        };
+        _ = Parallel.ForEach(corpus, options, item =>
+        {
+            _ = Interlocked.Add(ref scans, VerifyEverySplit(item));
             // Exhaust every pair of interior split positions for shorter lines.
-            if (item.Text.Length > 32) continue;
+            if (item.Text.Length > 32) return;
             for (var first = 1; first < item.Text.Length - 1; first++)
                 for (var second = first + 1; second < item.Text.Length; second++)
                 {
                     Verify(item, 1024 - first, [first, second]);
-                    scans++;
-                    threeWaySplits++;
+                    _ = Interlocked.Increment(ref scans);
+                    _ = Interlocked.Increment(ref threeWaySplits);
                 }
-        }
+        });
         Assert.True(threeWaySplits > 0);
         output.WriteLine($"{corpus.Length} corpus lines; {scans} comparisons; {threeWaySplits} three-way splits.");
     }

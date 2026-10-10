@@ -450,7 +450,7 @@ Parent lifetime authority 將精確 exclusive lease、不可繼承的保留 file
 | `HandleContainment.ApplicationReadyHandleIsNonInheritableImmediatelyAfterCapture` 與 invalid-version closure | `InheritedPipeApplicationReadySignalTests.HandleContainment.cs` |
 | `AnonymousPipeManagedLauncherProcessTests.AcceptedOuterReadyKeepsChildAndGrandchildAlive` | 相同 class 與 method name |
 | Launcher 精確 custom state path、candidate timeout／LKG admission reuse 與 exit-17 outcome | `AnonymousPipeManagedLauncherProcessTests` |
-| 四個 `ManagedStartDeadlineTests` cases，包含 `CallerCancellationCannotWaitForeverForUnfinishedCreation` | 相同 class 與 method names |
+| 四個 `ManagedStartDeadlineTests` cases，包含 `CallerCancellationCannotWaitForeverForUnfinishedCreation` | 相同 class 與 method names。`CallerCancellationCannotWaitForeverForUnfinishedCreation` 改用手動 `TimeProvider`（`ManualTimeProvider`），預算相同，測試不再等真實時間 |
 | Bootstrap descendant admission／completion cancellation、pre-admission exit、successful completion 與 later invocation failure | `ImmutableBootstrapProcessLaunchTests` 對應方法，保留原 assertion 與 budget |
 | `AnonymousPipeManagedLauncherProcessTests.Identity` legacy handoff authority、cancellation 與 observation failure | `StableLauncherHandoffTests` 對應方法 |
 | `AnonymousPipeManagedApplicationProcessTests.Bootstrap` legacy ancestor custody、immediate exit 24 與 Win32 creation failure | `StableLauncherHandoffTests.StableLauncherHandoffRetainsAncestorCustodyThroughLegacyStart`、`StableLauncherHandoffReportsImmediateExitCode` 與 `StableLauncherHandoffReportsWin32ProcessCreationFailure`；保留原 result assertion、兩次 blocked rename 與注入的 Win32 error 5 |

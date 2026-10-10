@@ -13,7 +13,7 @@ namespace Nvt.Core.TestProbe
 {
     internal static class Probe
     {
-        internal static readonly TimeSpan Wait = TimeSpan.FromSeconds(30);
+        private const int DefaultWaitMilliseconds = 30_000;
         internal static readonly TimeSpan ReadyLinger = TimeSpan.FromMilliseconds(200);
         internal const int HandshakeLimitMilliseconds = 5_000;
         internal const int HandshakePollMilliseconds = 10;
@@ -42,7 +42,7 @@ namespace Nvt.Core.TestProbe
                 if (mode == "tree-grandchild")
                 {
                     await WriteProcessIdAsync(inputs.Required("tree-marker"));
-                    await Task.Delay(Wait);
+                    await WaitAsync(inputs);
                     return 0;
                 }
                 if (mode is "ambient-pipe" or "contained-isolation")
@@ -76,7 +76,7 @@ namespace Nvt.Core.TestProbe
                 }
                 if (mode == "silent-wait")
                 {
-                    await Task.Delay(Wait);
+                    await WaitAsync(inputs);
                     return 0;
                 }
                 if (mode == "hold-lock")
@@ -99,6 +99,55 @@ namespace Nvt.Core.TestProbe
                 Console.Error.WriteLine(error.Message);
                 return 24;
             }
+        }
+
+        // A waiting mode ends when the release file appears, or after wait-ms (30 seconds by default). The test sets
+        // CORE_TEST_PROBE_RELEASE_PATH, which a descendant process inherits, and creates the file when it is done.
+        internal static Task WaitAsync(ProbeInputs inputs)
+        {
+            var limit = TimeSpan.FromMilliseconds(inputs.Integer("wait-ms", DefaultWaitMilliseconds, minimum: 1));
+            string? release = inputs.Optional("release-path");
+            using var released = new ManualResetEvent(initialState: false);
+            if (release is null)
+            {
+                // No release file: the probe lives for the whole limit. The wait handle is never signaled. This is the
+                // lifetime of the helper process, and it is not a synchronization between a test and the probe.
+                _ = released.WaitOne(limit);
+                return Task.CompletedTask;
+            }
+            string fullPath = Path.GetFullPath(release);
+            string directory = Path.GetDirectoryName(fullPath) ?? throw new ProbeInputException("Invalid input: release-path");
+            if (!Directory.Exists(directory))
+            {
+                throw new ProbeInputException("Invalid input: release-path");
+            }
+            using var watcher = new FileSystemWatcher(directory, Path.GetFileName(fullPath))
+            {
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
+            };
+            // A late event can arrive on a pool thread after the wait ended and the handle was disposed.
+            void Release()
+            {
+                try
+                {
+                    _ = released.Set();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The wait already ended, so there is nothing left to release.
+                }
+            }
+            watcher.Created += (_, _) => Release();
+            watcher.Changed += (_, _) => Release();
+            watcher.Renamed += (_, _) => Release();
+            watcher.EnableRaisingEvents = true;
+            // The file may exist before the watcher starts. Check after the watcher is on, so no event is lost.
+            if (File.Exists(fullPath))
+            {
+                Release();
+            }
+            _ = released.WaitOne(limit);
+            return Task.CompletedTask;
         }
 
         internal static void RequireWindows()
@@ -174,7 +223,7 @@ namespace Nvt.Core.TestProbe
             }
             if (mode is "tree-root-wait" or "orphan-chain-root")
             {
-                await Task.Delay(Wait);
+                await WaitAsync(inputs);
             }
             return exitCode;
         }
@@ -200,7 +249,7 @@ namespace Nvt.Core.TestProbe
                 await File.WriteAllTextAsync(ready, "ready");
                 Console.Out.WriteLine("LOCK_HELD");
                 Console.Out.Flush();
-                await Task.Delay(Wait);
+                await WaitAsync(inputs);
             }
             return 0;
         }
@@ -210,7 +259,7 @@ namespace Nvt.Core.TestProbe
         {
             var output = RepeatedText.Read(inputs, "out", wait ? "O" : "A", wait ? "OUT-PARTIAL-END" : "OUT-END");
             var error = RepeatedText.Read(inputs, "err", wait ? "E" : "B", wait ? "ERR-PARTIAL-END" : "ERR-END");
-            int milliseconds = wait ? inputs.Integer("wait-ms", 30_000, minimum: 1) : 0;
+            int milliseconds = wait ? inputs.Integer("wait-ms", DefaultWaitMilliseconds, minimum: 1) : 0;
             output.WriteTo(Console.Out);
             error.WriteTo(Console.Error);
             if (wait)

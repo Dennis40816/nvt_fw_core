@@ -446,17 +446,6 @@
     {
       "symbol": "Assert.True",
       "removeBy": "2026-10-31",
-      "syntaxHash": "10d4276a874a139f7e621660d79058448d589871b6f5f672211833fe17513a1a",
-      "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CancelWithinGuardFailsPromptlyOnBlockingCancel()",
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "count": 1,
-      "rule": "elapsedAssertionsInTests",
-      "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-    },
-    {
-      "symbol": "Assert.True",
-      "removeBy": "2026-10-31",
       "syntaxHash": "94ea7b7f91faf74262a250732b4f99c6727ed918989fc43bf79bb1f12ff1f724",
       "member": "Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.SpinUntilAsync(Func<bool>,TimeSpan)",
       "project": "Nvt.Core.Tests",
@@ -552,17 +541,6 @@
       "count": 1,
       "rule": "elapsedAssertionsInTests",
       "path": "tests/Nvt.Core.Tests/TestProbe/ProbeDualOutputTests.cs"
-    },
-    {
-      "symbol": "Assert.True",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "d898710c4f6781b9139dc2c58b36e106170bcef2cb830fbb9e9eeb361351c8a7",
-      "member": "Nvt.Core.Tests.TestProbe.ProbeLifetimeTests.WaitingModeAsync(string)",
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "count": 1,
-      "rule": "elapsedAssertionsInTests",
-      "path": "tests/Nvt.Core.Tests/TestProbe/ProbeLifetimeTests.cs"
     },
     {
       "symbol": "Assert.True",
@@ -948,17 +926,6 @@
       "count": 1,
       "rule": "sourceTextReadsInTests",
       "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedApplicationProcessTests.cs"
-    },
-    {
-      "symbol": "ReadAllLinesAsync",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "c70daa62ccc849ef37315d614b51f79e5d8ce924420a8459a591724255b770a7",
-      "member": "Nvt.Core.Tests.Launcher.Transport.AnonymousPipeManagedLauncherProcessTests.ExactReadyCarriesCustomStatePathToCandidate()",
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "count": 1,
-      "rule": "sourceTextReadsInTests",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedLauncherProcessTests.cs"
     },
     {
       "symbol": "ReadAllLinesAsync",
@@ -1790,39 +1757,6 @@
       "removeBy": "2026-10-31",
       "syntaxHash": "923a367e778a9a36712317fe2dde8eb9872e58675a85061804828a5e598ecaf4",
       "member": "Nvt.Core.TestProbe.Probe.HandshakeAsync(Func<bool>)",
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "count": 1,
-      "rule": "timeWaitsInTests",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "symbol": "Task.Delay",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "0b673c26a83fad1e5781efe4dfa505ba1bf13c18e9e4561d3d9b8558385b8298",
-      "member": "Nvt.Core.TestProbe.Probe.HoldLockAsync(ProbeInputs)",
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "count": 1,
-      "rule": "timeWaitsInTests",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "symbol": "Task.Delay",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "0b673c26a83fad1e5781efe4dfa505ba1bf13c18e9e4561d3d9b8558385b8298",
-      "member": "Nvt.Core.TestProbe.Probe.RunAsync(string[])",
-      "project": "Nvt.Core.TestProbe",
-      "owner": "NVT CORE",
-      "count": 2,
-      "rule": "timeWaitsInTests",
-      "path": "tests/Nvt.Core.TestProbe/Program.cs"
-    },
-    {
-      "symbol": "Task.Delay",
-      "removeBy": "2026-10-31",
-      "syntaxHash": "0b673c26a83fad1e5781efe4dfa505ba1bf13c18e9e4561d3d9b8558385b8298",
-      "member": "Nvt.Core.TestProbe.Probe.RunTreeAsync(string,ProbeInputs)",
       "project": "Nvt.Core.TestProbe",
       "owner": "NVT CORE",
       "count": 1,

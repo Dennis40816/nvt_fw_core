@@ -6,12 +6,12 @@ namespace Nvt.Core.TestProbe;
 
 internal sealed class ProbeInputs
 {
-    private static readonly HashSet<string> Names = new(StringComparer.Ordinal)
+    private static readonly HashSet<string> _names = new(StringComparer.Ordinal)
     {
         "mode", "marker", "text", "ambient-handle", "allowed-handle", "cross-handle", "payload",
         "tree-marker", "stdout-text", "exit-code", "app-version", "app-admission", "app-manifest",
         "args-path", "process-marker", "identity-marker", "oversize-chars", "partial-drop", "lock-path", "lock-ready",
-        "out-char", "out-count", "out-suffix", "err-char", "err-count", "err-suffix", "wait-ms",
+        "out-char", "out-count", "out-suffix", "err-char", "err-count", "err-suffix", "wait-ms", "release-path",
     };
     private readonly Dictionary<string, string> _values = new(StringComparer.Ordinal);
 
@@ -21,7 +21,7 @@ internal sealed class ProbeInputs
         for (int index = 0; index < args.Length; index++)
         {
             string argument = args[index];
-            if (argument.StartsWith("--", StringComparison.Ordinal) && Names.Contains(argument[2..]))
+            if (argument.StartsWith("--", StringComparison.Ordinal) && _names.Contains(argument[2..]))
             {
                 if (++index == args.Length)
                 {

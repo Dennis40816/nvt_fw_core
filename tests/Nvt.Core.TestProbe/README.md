@@ -16,15 +16,15 @@ It runs from any folder under any executable name.
 | `invalid-utf8` | READY inputs | Writes bytes `C3 28 0A`. Holds the pipe open for 200 milliseconds. | 0 |
 | `oversized` | READY inputs; optional `oversize-chars` | Writes the specified number of `X` characters and a literal newline. Holds the pipe open for 200 milliseconds. | 0 |
 | `ready-tree-root` | READY inputs, `tree-marker` | Writes its identifier to `.root`. Starts a pipe-holding child with a `.child` marker. Writes READY after the handshake. | 0 or 25 |
-| `silent-wait` | None | Writes nothing. Waits 30 seconds. | 0 |
+| `silent-wait` | Optional `release-path`, `wait-ms` | Writes nothing. Waits until the release file exists, or until `wait-ms` (30 seconds by default). | 0 |
 | `exit` | Optional `exit-code` | Writes nothing. Exits immediately. | Requested code |
-| `tree-grandchild` | `tree-marker` | Writes its process identifier. Waits 30 seconds. | 0 |
+| `tree-grandchild` | `tree-marker`; optional `release-path`, `wait-ms` | Writes its process identifier. Waits until the release file exists, or until `wait-ms` (30 seconds by default). | 0 |
 | `tree-root-exit` | `tree-marker`; optional `stdout-text`, `exit-code` | Writes the optional output line. Starts a pipe-holding child. Exits after its marker appears. | Requested code or 25 |
-| `tree-root-wait` | `tree-marker` | Starts a pipe-holding child. Waits 30 seconds after its marker appears. | 0 or 25 |
+| `tree-root-wait` | `tree-marker`; optional `release-path`, `wait-ms` | Starts a pipe-holding child. After its marker appears, waits until the release file exists, or until `wait-ms` (30 seconds by default). | 0 or 25 |
 | `orphan-chain-root` | `tree-marker` | Starts a pipe-holding middle process. Writes `.middle` and `.ready` markers. Waits with an exited middle process and a live leaf. | 0 or 25 |
 | `orphan-chain-exit` | `tree-marker`; optional `stdout-text` | Writes the optional output line. Runs the `orphan-chain-root` chain, then exits after the `.ready` marker. The live leaf keeps the inherited standard streams open after the root and middle processes exit. | 0 or 25 |
 | `detached-descendant-root` | `tree-marker` | Starts a child without inherited standard streams. Exits after its marker appears. | 0 or 25 |
-| `hold-lock` | `lock-path`, `lock-ready` | Writes `STARTED`. Opens an exclusive read/write file. Writes the ready marker and `LOCK_HELD`. Holds the file for 30 seconds. | 0 or 1 |
+| `hold-lock` | `lock-path`, `lock-ready`; optional `release-path`, `wait-ms` | Writes `STARTED`. Opens an exclusive read/write file. Writes the ready marker and `LOCK_HELD`. Holds the file until the release file exists, or until `wait-ms` (30 seconds by default). | 0 or 1 |
 | `dual-output-exit` | Optional `out-char`, `out-count`, `out-suffix`, `err-char`, `err-count`, `err-suffix` | Writes the repeated character and the suffix to standard output, then to standard error. Writes no newline. Flushes each stream. Exits immediately. | 0 |
 | `dual-output-wait` | The `dual-output-exit` inputs; optional `wait-ms` | Writes both streams like `dual-output-exit`, with other defaults. Then waits without more output. | 0 |
 
@@ -34,6 +34,7 @@ Every input has two forms:
 - Environment: `CORE_TEST_PROBE_<NAME>`, with uppercase letters and underscores instead of hyphens.
 
 Arguments override environment values.
+A waiting mode that supports `release-path` ends when that file exists. Its `wait-ms` input is the upper limit, 30 seconds by default.
 The probe removes recognized input pairs from the payload arguments.
 All other arguments remain in their original order, including empty arguments.
 The probe requires `mode` and has no default mode.

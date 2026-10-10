@@ -7,7 +7,9 @@ internal sealed class ManagedStartDeadline
 {
     private static TimeSpan CleanupWaitTimeout =>
         2 * ManagedProcessTermination.DefaultWaitTimeout;
+    private readonly CancellationTokenSource _expiry;
     private readonly CancellationTokenSource _deadline;
+    private readonly TimeProvider _time;
     // Guard: Interlocked writes and Volatile reads. The worker owns creation and cleanup.
     private int _creationStarted;
 
@@ -15,9 +17,29 @@ internal sealed class ManagedStartDeadline
         TimeSpan readyDeadline,
         CancellationToken cancellationToken,
         CancellationToken testDeadlineSignal = default)
+        : this(readyDeadline, TimeProvider.System, cancellationToken, testDeadlineSignal)
     {
-        _deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, testDeadlineSignal);
-        _deadline.CancelAfter(readyDeadline);
+    }
+
+    // The time provider drives the ready deadline and the cleanup wait. Tests pass a manual clock.
+    internal ManagedStartDeadline(
+        TimeSpan readyDeadline,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken,
+        CancellationToken testDeadlineSignal = default)
+    {
+        _time = timeProvider;
+        _expiry = CreateExpiry(readyDeadline, timeProvider);
+        try
+        {
+            _deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, testDeadlineSignal, _expiry.Token);
+        }
+        catch
+        {
+            // A disposed caller token source makes the link fail. The expiry timer must not outlive the failed constructor.
+            _expiry.Dispose();
+            throw;
+        }
     }
 
     internal CancellationToken Token => _deadline.Token;
@@ -54,6 +76,7 @@ internal sealed class ManagedStartDeadline
                 {
                     return await worker.WaitAsync(
                             CleanupWaitTimeout,
+                            _time,
                             CancellationToken.None)
                         .ConfigureAwait(false);
                 }
@@ -73,6 +96,7 @@ internal sealed class ManagedStartDeadline
             {
                 return await worker.WaitAsync(
                         CleanupWaitTimeout,
+                        _time,
                         CancellationToken.None)
                     .ConfigureAwait(false);
             }
@@ -85,7 +109,7 @@ internal sealed class ManagedStartDeadline
         {
             if (worker.IsCompleted)
             {
-                _deadline.Dispose();
+                Release();
             }
             else
             {
@@ -93,12 +117,23 @@ internal sealed class ManagedStartDeadline
                     completed =>
                     {
                         _ = completed.Exception;
-                        _deadline.Dispose();
+                        Release();
                     },
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously,
                     TaskScheduler.Default);
             }
         }
+    }
+
+    // The expiry source keeps the BCL timer range: -1 is infinite and 4294967294 ms is the inclusive maximum.
+    // Release disposes it. This type is not IDisposable because RunAsync owns the whole lifetime.
+    private static CancellationTokenSource CreateExpiry(TimeSpan readyDeadline, TimeProvider timeProvider) =>
+        new(readyDeadline, timeProvider);
+
+    private void Release()
+    {
+        _deadline.Dispose();
+        _expiry.Dispose();
     }
 }

@@ -7,17 +7,28 @@ using Xunit;
 namespace Nvt.Core.Tests.LogConsole;
 
 /// <summary>Constructed text parts supply an independent oracle for quote boundaries and recovery.</summary>
+[Collection(ScannerParallelIsolation.Name)]
 public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
 {
     /// <summary>Every generated line preserves exactly its constructed targets through both scanner entry points.</summary>
+    /// <remarks>
+    /// The cases are independent and the scanner has no shared state, so the cases run in parallel. The oracle still
+    /// compares every case at every split.
+    /// </remarks>
     [Fact]
     public void GeneratedQuoteGrammarMatchesConstructedLinksAtEveryChunkSplit()
     {
         var cases = Cases().ToArray();
         Assert.Equal(cases.Length, cases.Select(item => item.Text).Distinct(StringComparer.Ordinal).Count());
-        var comparisons = 0;
+        var comparisons = 0L;
         output.WriteLine($"{cases.Length} generated texts; {2 * cases.Sum(item => item.Text.Length + 1)} oracle comparisons.");
-        foreach (var item in cases)
+        var options = new ParallelOptions
+        {
+            CancellationToken = TestContext.Current.CancellationToken,
+            MaxDegreeOfParallelism = Environment.ProcessorCount,
+        };
+        _ = Parallel.ForEach(cases, options, item =>
+        {
             for (var split = 0; split <= item.Text.Length; split++)
             {
                 // Align the physical split with the cursor seam, including both endpoint splits.
@@ -33,10 +44,11 @@ public sealed class ScannerQuoteOracleTests(ITestOutputHelper output)
                 {
                     if (!expected.SequenceEqual(actual))
                         Assert.Fail($"{entryPoint} scanner at split {split} in '{item.Text}': expected [{string.Join("; ", expected)}], actual [{string.Join("; ", actual)}].");
-                    comparisons++;
+                    _ = Interlocked.Increment(ref comparisons);
                 }
             }
-        Assert.Equal(2 * cases.Sum(item => item.Text.Length + 1), comparisons);
+        });
+        Assert.Equal(2L * cases.Sum(item => item.Text.Length + 1), Interlocked.Read(ref comparisons));
     }
 
     private static IEnumerable<LineCase> Cases()
