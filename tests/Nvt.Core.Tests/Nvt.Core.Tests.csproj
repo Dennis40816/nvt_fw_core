@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nvt.Core\Nvt.Core.csproj" />
+    <ProjectReference Include="..\Nvt.Core.TestSupport\Nvt.Core.TestSupport.csproj" />
     <ProjectReference Include="..\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\Nvt.Core.LinkedProbe\Nvt.Core.LinkedProbe.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>

@@ -9,6 +9,7 @@ using System.Text;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -28,9 +29,9 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("bootstrap-admission-cancel/grandchild.txt");
+        string marker = workspace.GetPath("bootstrap-admission-cancel/grandchild.txt");
         using ImmutableBootstrapProcessLaunch launch = StartBootstrapTree(
-            workspace.Root,
+            workspace.RootPath,
             marker,
             "tree-root-wait",
             out AnonymousPipeClientStream client,
@@ -56,10 +57,10 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("bootstrap-exit-before-admission/grandchild.txt");
+        string marker = workspace.GetPath("bootstrap-exit-before-admission/grandchild.txt");
         using ImmutableBootstrapProcessLaunch launch =
             StartBootstrapTreeWithoutAdmissionWriter(
-            workspace.Root,
+            workspace.RootPath,
             marker,
             "tree-root-exit",
             out int rootId);
@@ -80,9 +81,9 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("bootstrap-completion-timeout/grandchild.txt");
+        string marker = workspace.GetPath("bootstrap-completion-timeout/grandchild.txt");
         using ImmutableBootstrapProcessLaunch launch = StartBootstrapTree(
-            workspace.Root,
+            workspace.RootPath,
             marker,
             "tree-root-wait",
             out AnonymousPipeClientStream client,
@@ -119,12 +120,12 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor($"bootstrap-accepted-{exitCode}/grandchild.txt");
+        string marker = workspace.GetPath($"bootstrap-accepted-{exitCode}/grandchild.txt");
         int childId = 0;
         try
         {
             using ImmutableBootstrapProcessLaunch launch = StartBootstrapTree(
-                workspace.Root,
+                workspace.RootPath,
                 marker,
                 behavior,
                 out AnonymousPipeClientStream client,
@@ -164,9 +165,9 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         int acceptedChildId = 0;
         try
         {
-            string acceptedMarker = workspace.PathFor("bootstrap-first-accepted/grandchild.txt");
+            string acceptedMarker = workspace.GetPath("bootstrap-first-accepted/grandchild.txt");
             using (ImmutableBootstrapProcessLaunch accepted = StartBootstrapTree(
-                       workspace.Root,
+                       workspace.RootPath,
                        acceptedMarker,
                        "tree-root-exit",
                        out AnonymousPipeClientStream acceptedClient,
@@ -191,9 +192,9 @@ public sealed class ImmutableBootstrapProcessLaunchTests
                 Assert.True(IsRunning(acceptedChildId));
             }
 
-            string failedMarker = workspace.PathFor("bootstrap-second-failed/grandchild.txt");
+            string failedMarker = workspace.GetPath("bootstrap-second-failed/grandchild.txt");
             using ImmutableBootstrapProcessLaunch failed = StartBootstrapTree(
-                workspace.Root,
+                workspace.RootPath,
                 failedMarker,
                 "tree-root-wait",
                 out AnonymousPipeClientStream failedClient,
@@ -228,7 +229,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using Process process = StartSilentProbe(workspace.Root);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(
             PipeDirection.In,
@@ -238,7 +239,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
         using ImmutableBootstrapProcessLaunch launch =
-            CreateBootstrapLaunch(process, pipe, workspace.Root);
+            CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.CancelAfter(TimeSpan.FromMilliseconds(100));
 
@@ -256,7 +257,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using Process process = StartSilentProbe(workspace.Root);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(
             PipeDirection.In,
@@ -266,7 +267,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
         using ImmutableBootstrapProcessLaunch launch =
-            CreateBootstrapLaunch(process, pipe, workspace.Root);
+            CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.Cancel();
 
@@ -284,7 +285,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using Process process = StartSilentProbe(workspace.Root);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(
             PipeDirection.In,
@@ -294,7 +295,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
         using ImmutableBootstrapProcessLaunch launch =
-            CreateBootstrapLaunch(process, pipe, workspace.Root);
+            CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         await client.WriteAsync("ADMITTED\n"u8.ToArray(), TestContext.Current.CancellationToken);
         await client.FlushAsync(TestContext.Current.CancellationToken);
 
@@ -317,12 +318,12 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using Process process = StartSilentProbe(workspace.Root);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         await using var writer = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         Assert.Equal(ImmutableBootstrapCompletionOutcome.Unavailable,
             (await launch.WaitForCompletionAsync(CompletionBudget, TestContext.Current.CancellationToken)).Outcome);
         await writer.WriteAsync("ADMITTED\n"u8.ToArray(), TestContext.Current.CancellationToken);
@@ -347,12 +348,12 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using Process process = StartSilentProbe(workspace.Root);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         await using var writer = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         await writer.WriteAsync(Encoding.UTF8.GetBytes(new string('界', characters) + "\n"), TestContext.Current.CancellationToken);
         await writer.FlushAsync(TestContext.Current.CancellationToken);
         ImmutableBootstrapAdmissionResult result = await launch.WaitForAdmissionAsync(AdmissionBudget, TestContext.Current.CancellationToken);
@@ -377,7 +378,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         await using var writer = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         await writer.WriteAsync("ADMITTED"u8.ToArray(), TestContext.Current.CancellationToken);
         await writer.FlushAsync(TestContext.Current.CancellationToken);
         await writer.DisposeAsync();
@@ -402,7 +403,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         await using var writer = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         await writer.WriteAsync("ADMITTED\n"u8.ToArray(), TestContext.Current.CancellationToken);
         await writer.FlushAsync(TestContext.Current.CancellationToken);
         await process.WaitForExitAsync(TestContext.Current.CancellationToken);
@@ -431,7 +432,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         await process.WaitForExitAsync(TestContext.Current.CancellationToken);
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root);
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath);
         ImmutableBootstrapAdmissionResult result = await launch.WaitForAdmissionAsync(AdmissionBudget, TestContext.Current.CancellationToken);
         Assert.Equal(outcome, result.Outcome);
         Assert.Equal(code, result.ExitCode);
@@ -447,7 +448,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
         using var workspace = TestWorkspace.Create();
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         using var gate = new BootstrapStartAuthorization(TransportFixture.Names);
-        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.PathFor("bootstrap-state.json"));
+        using ManagedProcessLifetimeLease lifetime = Acquire(workspace.GetPath("bootstrap-state.json"));
         var creation = new TaskCompletionSource<Process?>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var launch = new ImmutableBootstrapProcessLaunch(creation.Task, pipe, gate, lifetime,
             ManagedProcessTermination.Instance, TimeSpan.FromMilliseconds(500));
@@ -459,7 +460,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             Assert.Equal(ImmutableBootstrapAdmissionOutcome.TerminationUnconfirmed, result.Outcome);
             Assert.True(result.HasValidShape);
             Assert.InRange(timer.Elapsed, TimeSpan.Zero, TimeSpan.FromSeconds(1));
-            using Process process = StartSilentProbe(workspace.Root);
+            using Process process = StartSilentProbe(workspace.RootPath);
             using Process observer = Process.GetProcessById(process.Id);
             creation.SetResult(process);
             Assert.True(await Task.Run(() => observer.WaitForExit(5_000), TestContext.Current.CancellationToken));
@@ -483,13 +484,13 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        WindowsCustodyCapability.RequireFile(workspace.Root);
-        using Process process = StartSilentProbe(workspace.Root);
+        WindowsCustodyCapability.RequireFile(workspace.RootPath);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         await using var client = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root,
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath,
             new SlowThenRealTermination(TimeSpan.FromSeconds(1)));
         TimeSpan operationBudget = TimeSpan.FromMilliseconds(1500);
         var budget = new ImmutableBootstrapWaitBudget(operationBudget, operationBudget + TimeSpan.FromMilliseconds(500));
@@ -505,7 +506,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             Assert.Equal(ImmutableBootstrapExitIssue.TerminationUnconfirmed, result.ExitIssue);
             Assert.True(result.HasValidShape);
             await WaitForProcessExitAsync(processId);
-            await WaitForBootstrapLifetimeExitAsync(Path.Combine(workspace.Root, "state.json"));
+            await WaitForBootstrapLifetimeExitAsync(Path.Combine(workspace.RootPath, "state.json"));
         }
         finally { TerminateProcess(processId); }
     }
@@ -516,13 +517,13 @@ public sealed class ImmutableBootstrapProcessLaunchTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        WindowsCustodyCapability.RequireFile(workspace.Root);
-        using Process process = StartSilentProbe(workspace.Root);
+        WindowsCustodyCapability.RequireFile(workspace.RootPath);
+        using Process process = StartSilentProbe(workspace.RootPath);
         int processId = process.Id;
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
         await using var client = new AnonymousPipeClientStream(PipeDirection.Out, WindowsPipeHandles.DuplicateClient(pipe));
         pipe.DisposeLocalCopyOfClientHandle();
-        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.Root,
+        using ImmutableBootstrapProcessLaunch launch = CreateBootstrapLaunch(process, pipe, workspace.RootPath,
             new SlowThenRealTermination(TimeSpan.FromSeconds(1)));
         await client.WriteAsync("ADMITTED\n"u8.ToArray(), TestContext.Current.CancellationToken);
         await client.FlushAsync(TestContext.Current.CancellationToken);
@@ -541,7 +542,7 @@ public sealed class ImmutableBootstrapProcessLaunchTests
             Assert.Equal(ImmutableBootstrapExitIssue.TerminationUnconfirmed, result.ExitIssue);
             Assert.True(result.HasValidShape);
             await WaitForProcessExitAsync(processId);
-            await WaitForBootstrapLifetimeExitAsync(Path.Combine(workspace.Root, "state.json"));
+            await WaitForBootstrapLifetimeExitAsync(Path.Combine(workspace.RootPath, "state.json"));
         }
         finally { TerminateProcess(processId); }
     }

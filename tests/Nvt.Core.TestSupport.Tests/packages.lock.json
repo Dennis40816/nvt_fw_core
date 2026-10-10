@@ -163,9 +163,6 @@
           "xunit.v3.runner.common": "[3.2.2]"
         }
       },
-      "nvt.core": {
-        "type": "Project"
-      },
       "nvt.core.testsupport": {
         "type": "Project"
       }
