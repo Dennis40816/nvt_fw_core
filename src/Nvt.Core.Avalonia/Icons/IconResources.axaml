@@ -6,7 +6,9 @@
   <x:String x:Key="Nvt.Icon.AreaChart">&#xE770;</x:String>
   <x:String x:Key="Nvt.Icon.ArrowDownward">&#xE5DB;</x:String>
   <x:String x:Key="Nvt.Icon.Block">&#xF08C;</x:String>
+  <x:String x:Key="Nvt.Icon.BugReport">&#xE868;</x:String>
   <x:String x:Key="Nvt.Icon.CallSplit">&#xE0B6;</x:String>
+  <x:String x:Key="Nvt.Icon.Cancel">&#xE5C9;</x:String>
   <x:String x:Key="Nvt.Icon.Check">&#xE668;</x:String>
   <x:String x:Key="Nvt.Icon.ChevronLeft">&#xE5CB;</x:String>
   <x:String x:Key="Nvt.Icon.ChevronRight">&#xE5CC;</x:String>
@@ -40,6 +42,7 @@
   <x:String x:Key="Nvt.Icon.Menu">&#xE5D2;</x:String>
   <x:String x:Key="Nvt.Icon.Merge">&#xEB98;</x:String>
   <x:String x:Key="Nvt.Icon.Minimize">&#xE931;</x:String>
+  <x:String x:Key="Nvt.Icon.MoreHoriz">&#xE5D3;</x:String>
   <x:String x:Key="Nvt.Icon.MoreVert">&#xE5D4;</x:String>
   <x:String x:Key="Nvt.Icon.NotificationsOff">&#xE7F6;</x:String>
   <x:String x:Key="Nvt.Icon.OpenInNew">&#xE89E;</x:String>
