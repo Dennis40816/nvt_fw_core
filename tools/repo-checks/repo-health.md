@@ -58,8 +58,15 @@ and contributing path. They never offset each other through repository totals.
 | `suppressions` | SuppressMessage/UnconditionalSuppressMessage attributes (with check ID), each disable pragma plus every disabled ID (`ALL` for no IDs), evaluated NoWarn/WarningsNotAsErrors IDs when props contain those properties. MSBuild evaluates imports/conditions without building; default configuration only in H02. |
 | `nativeImportDuplicates` | DllImport/LibraryImport (including resolved attribute aliases): exact DLL string + effective EntryPoint constant, falling back to method name. Report duplicate groups/excess and fingerprints of all participants. Unresolved constants fail. |
 | `generationFields` | Mutable int/long/uint/ulong/Int32/Int64 fields whose names contain Generation/Revision/RequestId, ignoring case; increment/adoption semantics need review. |
-| `fakeClockDuplicates` | Candidate TimeProvider descendants, ClockState, and Fake/Manual/Test-prefixed Clock/TimeProvider names. Owner classification awaits H03's reviewed seam manifest; no blanket exemption. |
+| `fakeClockDuplicates` | Candidate TimeProvider descendants, ClockState, and Fake/Manual/Test-prefixed Clock/TimeProvider names. The `*.TestSupport` project is the reviewed owner (conventions T2) and is exempt. `*.TestSupport.Tests` and every other project are not. |
 | `workspaceDuplicates` | Exact TestWorkspace types, or types directly containing Path.GetTempPath, Directory.CreateDirectory and Directory.Delete calls. Candidates require clone/ownership review. |
+| `timeWaitsInTests` | In a test project, a call to `Task.Delay`, `Thread.Sleep` or `SpinWait.SpinUntil`. Use `SignalWait` or `ManualTimeProvider`. Own ledger: `test-debt.json`. |
+| `elapsedAssertionsInTests` | In a test project, an `Assert.*` call whose arguments use an identifier containing `Elapsed` or `Stopwatch`. Own ledger. |
+| `tempPathInTests` | In a test project, `Path.GetTempPath`, `Path.GetTempFileName` or `Directory.CreateTempSubdirectory`. Use `TestWorkspace`. Own ledger. |
+| `sourceTextReadsInTests` | In a test project, a call to `ReadText`, `ReadAllText[Async]`, `ReadAllLines[Async]` or `OpenText`. Files under Architecture, Boundary, Layout or Snapshot names, and `Architecture.Tests` projects, are the sanctioned readers and are skipped. Own ledger. |
+| `headlessSessionSetups` | In a test project, `UseHeadless`, `HeadlessUnitTestSession.StartNew` or `GetOrStartForAssembly`, and the `AvaloniaTestApplication` assembly attribute. Each test assembly needs one setup. Own ledger. |
+| `childProcessInTests` | In a test project, `new Process`, `new ProcessStartInfo` and `Process.Start`. Use `ChildProcessFixture`. Own ledger. |
+| `sameNameFakes` | In a test project, a non-partial type named `Fake`, `Stub`, `Spy`, `Mock`, `Recording` or `Dummy` plus an upper-case letter, declared in two or more files. Every participant is a finding. Own ledger. |
 | `sourceTextAssertions` | Discovery: ReadText, ReadAllText/Lines/Bytes (including Async), OpenText; Contains/DoesNotContain/Matches/DoesNotMatch calls in the same file. All locations retained, with a separate Architecture.Tests or Tests+Architecture/Boundary/Layout/Snapshot filter flag. These counts do not prove source dependence. |
 
 Tracked C# source is measured in Git trees; standalone fixture trees use all files.
@@ -171,6 +178,33 @@ Enroll once after the owner has approved the current-tree evidence:
 ```powershell
 ./tools/repo-checks/repo-health.ps1 -Mode Enroll -Repo core -Root . -Solution Nvt.Core.sln
 ```
+
+### Test-duplication ledger
+
+The seven test rules above (`timeWaitsInTests` to `sameNameFakes`) answer to the testing
+conventions in `docs/core/testing.md`. They use their own ledger,
+`eng/code-health/test-debt.json` (`-TestDebtPath` changes the path), and never touch
+`baseline.json`. Clock classes and temp-directory lifecycles stay with
+`fakeClockDuplicates` and `workspaceDuplicates`.
+
+A file is a test file when its path has a `tests` or `test` folder or a folder ending in
+`.Tests`/`.Test`, or when its project name ends in `Tests`. A folder or project ending in
+`.TestSupport` is exempt: it is the one place where these helpers are built.
+
+- `-Mode EnrollTestDebt -Solution <sln>` writes the ledger once. It evaluates the projects
+  (so a file linked into two test projects counts for each, as in Verify) but does not build.
+  Without `-Solution` it attributes by the nearest project file, which can disagree with
+  Verify. It refuses to overwrite a ledger. Owner and removeBy follow Enroll (removeBy
+  `2026-10-31`).
+- Verify fails with `New test duplication` when a fingerprint appears or its count grows.
+  It also fails with `run LowerBaseline` when a recorded fingerprint shrinks and the ledger
+  was not lowered. LowerBaseline lowers the ledger and never adds to it.
+- The ledger of the base ref is the ceiling. A ledger that grows, or is deleted, against
+  the base ref fails. When the base ref has no ledger, the change is the first enrollment.
+- When the ledger is missing and a test rule has findings, Verify fails and names
+  `EnrollTestDebt`.
+- A repository that pins this script must seed its own ledger in its gate pull request.
+  `baseline.json` and the bundle schema do not change.
 
 ### First enrollment (seeding)
 
