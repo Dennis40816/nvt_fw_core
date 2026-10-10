@@ -148,9 +148,11 @@ NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並
 
 展示狀態、命令、工作階段操作與非同步延續都在主程式 UI 執行緒執行，Core 不新增派送。工作階段回呼保留提交前的 `PropertyChanging` 與提交後的 `PropertyChanged`。開啟先遞增世代、清除失敗再清除狀態、記錄 `Opened`、通知活動，最後提交可見性。關閉先遞增世代、關閉報告，最後提交可見性。OpenRunReports 先關閉報告、選取報告頁，再開啟。重複開啟仍重設／記錄／通知；重複關閉仍關閉報告。同頁面選取無動作。頁面變更在提交前依序通知 `IsSystemInformationSelected` 與 `IsRunReportsSelected` 的 changing，在提交後以相同順序通知 changed。
 
-篩選命令依序通知篩選值、`ActivityItems`、`HasActivityItems`、`HasNoActivityItems`，以及 important／warning／error 旗標。揭露依序通知本身、上述三個活動屬性，最後 `DebugActivityActionLabel`。Toolkit 在提交前以相同順序發出主屬性及相依屬性的 changing，提交後發出 changed；同值 setter 無動作。計數原樣交給主程式格式函式，包含零與負數；目前診斷保留精確的 `count > 0` 判斷。Badge 與摘要讀取不擷取或投影活動。活動 getter 每次擷取新中繼資料，經共用篩選後才呼叫主程式投影，不新增列快取。
+篩選命令依序通知篩選值、`ActivityItems`、`HasActivityItems`、`HasNoActivityItems`，以及 important／warning／error 旗標。揭露依序通知本身、上述三個活動屬性，最後 `DebugActivityActionLabel`。Toolkit 在提交前以相同順序發出主屬性及相依屬性的 changing，提交後發出 changed；同值 setter 無動作。計數原樣交給主程式格式函式，包含零與負數；目前診斷保留精確的 `count > 0` 判斷。Badge 與摘要讀取不擷取或投影活動。
 
-語言變更依序通知 `Text`、`MessageCenterAccessibleName`、`SystemStatusAnnouncement`、`RefreshActionLabel`、`ActivityItems`、`SessionActivitySummary` 與 `DebugActivityActionLabel`，再清除失敗及非空狀態，不變更世代。文字與投影回呼每次使用目前主程式文字。此操作保留原本不通知活動有無屬性的行為。
+`ActivityItems`、`HasActivityItems` 與 `HasNoActivityItems` 在每個活動 revision 共用一份延後建立的列投影。首次讀取至多擷取一次提供者中繼資料，再經共用篩選與主程式投影；重複讀取共用相同列，包含空結果。篩選或 debug 揭露變更在提交後、changed 通知前使快取失效。`NotifyActivityChanged()` 與 `NotifyDiagnosticsChanged()` 在第一個通知前使快取失效，即使觀察者拋出例外也不受影響。診斷批次與其後的活動通知共用同一個 revision。同值篩選、頁面／可見性變更、重新整理進度與匯出狀態 setter 不使活動快取失效。提供者歷程的變更在下一個 revision 訊號後才可見。擷取／投影例外仍向外傳遞，並共用至下一個 revision；不新增鎖定或派送。
+
+語言變更依序通知 `Text`、`MessageCenterAccessibleName`、`SystemStatusAnnouncement`、`RefreshActionLabel`、`ActivityItems`、`SessionActivitySummary` 與 `DebugActivityActionLabel`，再清除失敗及非空狀態，不變更世代。`ApplyLanguageChanged()` 在通知前使列快取失效：`MessageCenterActivityFilter.Apply` 呼叫使用目前主程式文字的 `ProjectItem`，而 `MessageCenterActivityItem` 儲存格式化字串。因此下一次活動讀取會為新語言擷取並重新投影一次；只發通知不會擷取。文字回呼仍使用目前主程式文字。此操作保留原本不通知活動有無屬性的行為。
 
 重新整理先記錄 `RefreshRequested`、通知活動，再呼叫供應的明確重新整理委派。主程式擁有進度切換、成功重設、診斷發布、就緒狀態及其重新整理位置的例外隔離。內層重新整理使用 `MessageCenterRefreshCoordinator`；VM 不新增整個命令的合併器。Toolkit 擁有命令執行、CanExecute 與取消。進度依序通知本身、`SystemStatusAnnouncement`、`RefreshActionLabel`，提交前發出 changing，提交後發出 changed。繼承的 protected virtual 通知接縫可覆寫，讓 facade 在通用名稱之間依凍結順序插入產品通知。
 
@@ -161,6 +163,8 @@ NFC 在建置時透過 `core-packages.json` 下載已驗證的版本套件，並
 ## 展示測試對照與採用
 
 [PresentationTests.cs](../../../tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs) 使用 [PresentationTestValues.cs](../../../tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTestValues.cs)、被動合成提供者、明顯不同的 A/B 文字、有序軌跡、確定性閘門及衍生 facade。UI 執行緒案例使用既有 linked-source [Testing 主機](Testing.zh-TW.md) 與唯一組件註冊，保留 Inter、Skia、`UseHeadlessDrawing=false`。
+
+[ActivitySnapshotTests.cs](../../../tests/Nvt.Core.Avalonia.Tests/MessageCenter/ActivitySnapshotTests.cs) 使用計數提供者驗證一致的 getter、重複讀取、每種 revision 訊號、文字重新投影、快取失效時機、觀察者例外、不相關狀態與投影例外。
 
 | 凍結來源斷言 | 展示測試 |
 | --- | --- |

@@ -94,11 +94,15 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
-- Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time and bounded temporary workspace cleanup. Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. It is not packed or published by the `core-v*` release; publishing is a follow-up.
+- Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time, bounded temporary workspace cleanup, `SignalWait` (a signal with a watchdog that only prevents a hang), and `ChildProcessFixture` (a child process with an output limit, a watchdog and process-tree cleanup). Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. It is not packed or published by the `core-v*` release; publishing is a follow-up.
 - Threading: `UiEventRunner` observes UI event operation failures on the calling context, handles operation-token cancellation, and contains primary and fallback reporter failures. NFC can compile the canonical source as internal with `NVT_CORE_SOURCE_CONSUMPTION` and verify its LF-byte SHA-256 using `tools/source-consumption/manifest.json`.
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
 - Added the public API inventory for the non-Launcher `Nvt.Core` namespaces (`PublicAPI.Unshipped.txt`, 745 entries) and the consumer table in `docs/core/api-inventory.md`. The analyzer gate follows in a later change.
 - `Nvt.Core.Fonts` 0.1.1 adds the Inter font license (SIL Open Font License 1.1, version 3.19 text) as `licenses/Inter/LICENSE`. Package 0.1.0 did not carry it. The release tag is `core-fonts-v0.1.1`.
+
+### Fixed
+
+- MessageCenter: `ActivityItems`, `HasActivityItems` and `HasNoActivityItems` share one lazy provider capture and row projection per revision. Filter, debug disclosure, activity/diagnostic signals and language changes invalidate the cache before changed notifications, keeping rows and presence flags coherent while preserving notification order and observer isolation.
 
 ## 0.5.0 - 2026-10-08
 
