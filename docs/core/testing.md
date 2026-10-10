@@ -96,6 +96,7 @@ Build these helpers once. Use them in all repositories.
 | `SignalWait` and watchdog | Replaces `Task.Delay` in tests | Available | `Nvt.Core.TestSupport` |
 | `ChildProcessFixture` | Child process, process tree, output limit | Available | `Nvt.Core.TestSupport` |
 | `RelativePerf` | Performance thresholds that follow the machine: calibration unit, scale ratio, allocation count | Available | `Nvt.Core.TestSupport` |
+| `TaskBlock` | The one way to block on a task in a test hook that cannot await; keeps `Task.Wait`, `Result` and `GetResult` out of tests | Available | `Nvt.Core.TestSupport` |
 | `HeadlessSessionFixture` | One Avalonia session for each test assembly | Many private copies | One thin wrapper in each app |
 | `SourceTextReader` and repository root lookup | One place that reads source text | Many private copies | Architecture test project only |
 | Shared fakes | Catalog, runtime probe, output writer, replay fakes | Copied in many files | Shared test project of each repository |

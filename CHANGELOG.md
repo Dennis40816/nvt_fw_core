@@ -94,6 +94,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- `Nvt.Core.TestSupport` gains `TaskBlock`: the one way to block on a task in a test hook that cannot await. It rethrows the original fault and does not use the caller's synchronization context.
 - `Nvt.Core.TestSupport` gains `RelativePerf`: performance thresholds that follow the machine (a calibration unit, a scale ratio, an allocation count) with a warm-up and a median of at least seven samples. Testing rule 3 and convention T1 now ask for such a test on hot paths and forbid absolute wall-clock limits.
 - Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time, bounded temporary workspace cleanup, `SignalWait` (a signal with a watchdog that only prevents a hang), and `ChildProcessFixture` (a child process with an output limit, a watchdog and process-tree cleanup). Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. It is not packed or published by the `core-v*` release; publishing is a follow-up.
 - Threading: `UiEventRunner` observes UI event operation failures on the calling context, handles operation-token cancellation, and contains primary and fallback reporter failures. NFC can compile the canonical source as internal with `NVT_CORE_SOURCE_CONSUMPTION` and verify its LF-byte SHA-256 using `tools/source-consumption/manifest.json`.

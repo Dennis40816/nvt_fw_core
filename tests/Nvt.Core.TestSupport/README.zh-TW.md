@@ -96,6 +96,14 @@ RelativePerf 讓效能門檻跟著機器走。「少於一秒」這類絕對時�
 [Trait("Category", "Performance")]，CI 才能用獨立步驟執行。預設時鐘是 TimeProvider.System；
 測試此 helper 本身時改傳 ManualTimeProvider。
 
+## TaskBlock
+
+TaskBlock.UntilComplete 會阻塞呼叫執行緒直到工作完成。只能用在無法 await 的測試掛鉤，例如
+dispatcher 回呼或 fixture 建構函式。測試中禁用 Task.Wait、Task.Result 與 GetAwaiter().GetResult()。
+UntilComplete 以事件阻塞、重新擲回原始例外（不是 AggregateException）、已取消的工作會擲出
+OperationCanceledException，並且不使用呼叫端的同步內容。工作必須在其他執行緒執行；需要被阻塞
+執行緒才能繼續的工作永遠不會完成。
+
 ## 基準與刻意差異
 
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的

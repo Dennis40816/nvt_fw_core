@@ -113,6 +113,15 @@ the median measured on the reference machine and the margin applied. Mark the te
 [Trait("Category", "Performance")] so CI can run it in its own step. The default clock is
 TimeProvider.System. A test of the helper itself passes a ManualTimeProvider.
 
+## TaskBlock
+
+TaskBlock.UntilComplete blocks the calling thread until a task completes. Use it only in a test hook that
+cannot await, such as a dispatcher callback or a fixture constructor. Task.Wait, Task.Result and
+GetAwaiter().GetResult() are banned in tests. UntilComplete blocks through an event, rethrows the original
+fault (not an aggregate), throws OperationCanceledException for a canceled task, and does not use the caller's
+synchronization context. The task must run on another thread. A task that needs the blocked thread to
+continue never completes.
+
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
