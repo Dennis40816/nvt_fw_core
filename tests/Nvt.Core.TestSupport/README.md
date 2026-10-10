@@ -62,6 +62,36 @@ helpers, including the private StartupTraceTests and ThrottledProgressTests
 clocks, remain for migration after release. The private LinkedProbeWorkspace in
 the Launcher transport tests is another workspace copy and also remains.
 
+## SignalWait
+
+SignalWait is a one-shot signal for a test to set and wait for. It replaces
+Task.Delay and Thread.Sleep as a way to wait for a result. Set returns true for
+the first call and false after that; waiters continue on another thread, never
+inside Set. WaitAsync waits for the signal, the token, or the watchdog.
+
+The watchdog only prevents a hang. It is finite and positive (default 30 s,
+DefaultWatchdog) and never decides a result. When it expires, WaitAsync throws
+TimeoutException and the message names the signal. A token cancellation stays an
+OperationCanceledException. The watchdog clock is TimeProvider.System unless the
+test passes another one, for example a ManualTimeProvider, so a test can prove
+the expiry without waiting. The static WaitAsync(Task, name, ...) puts the same
+watchdog around any task and passes the task's own failure through unchanged.
+
+## ChildProcessFixture
+
+ChildProcessFixture.Start runs an executable without a shell. It captures
+standard output and standard error together, in arrival order, up to a
+character limit (default 64 KiB, OutputTruncated tells that output was cut).
+Standard input is closed at once. A watchdog (default 60 s) ends the process
+tree if the child does not exit; WaitForExitAsync then throws TimeoutException
+and WatchdogExpired is true. WaitForOutputAsync waits until the output contains
+a text, and fails when the output ends without it. KillTree ends the tree on
+request. Dispose and DisposeAsync end the whole tree, wait a bounded time for
+the root to exit, and release the handle; they are idempotent. A child that
+stays alive holds files open and makes the next test fail at random, so start
+every child through the fixture. The tree kill reaches descendants while their
+parent is alive; a descendant that outlives its parent is not reachable.
+
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
