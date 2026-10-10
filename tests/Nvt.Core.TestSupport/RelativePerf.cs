@@ -52,6 +52,7 @@ public static class RelativePerf
     /// <summary>Gets the time of a fixed reference workload on this machine. One calibration unit equals this time.</summary>
     /// <remarks>
     /// The workload fills and sorts a fixed integer array. It is deterministic and does not depend on the repository.
+    /// Do not change it: a threshold written as a number of units is only valid for this workload.
     /// Run it in the same process as the measured work, close to it, so both see the same machine load.
     /// </remarks>
     /// <param name="samples">The sample count, at least <see cref="MinimumSamples"/>.</param>
