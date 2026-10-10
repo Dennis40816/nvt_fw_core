@@ -50,6 +50,7 @@
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Padding" Value="{DynamicResource Nvt.Expander.HeaderPadding}" />
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}" />
+    <Setter Property="Tag" Value="{DynamicResource Nvt.Controls.RestFillMode}" />
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
@@ -95,6 +96,10 @@
   <Style Selector="Expander.section /template/ ToggleButton#ExpanderHeader">
     <Setter Property="Height" Value="{DynamicResource Nvt.Expander.SectionHeaderHeight}" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- With the rest-fill mode None, the rest and disabled header fills are transparent. Later hover and pressed styles still win. -->
+  <Style Selector="Expander /template/ ToggleButton#ExpanderHeader[Tag=None]">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}" />
   </Style>
   <Style Selector="Expander /template/ ToggleButton#ExpanderHeader:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />

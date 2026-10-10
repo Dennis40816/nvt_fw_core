@@ -13,6 +13,7 @@ Edit tokens to tune the controls together. Keep geometry out of style files.
 | ToggleButton roles and ToggleSwitch | `ToggleTokens.axaml` |
 | TextBox, NumericUpDown, closed ComboBox, TabControl and TabItem | `FormTokens.axaml` and `TabTokens.axaml` |
 | Shared selected colors and exterior or inset focus margins | `ControlTokens.axaml` |
+| Rest-fill mode | `ControlTokens.axaml` (default), `RestFillSoft.axaml` and `RestFillNone.axaml` |
 | Shape-dependent corners | `ShapePill.axaml` and `ShapeSquare.axaml` |
 | Shared row heights, fonts and focus thickness | `ThemeTokens.axaml` |
 
@@ -42,6 +43,7 @@ Keep these coupled values aligned:
 
 Override shared keys at the application resource root to tune every attached instance.
 Change family tokens for narrower adjustments. Dynamic resources update without replacing templates.
+Use `ThemeRestFills.SetRestFill(resources, ThemeRestFill.None)` to hide Choice row and Expander header rest fills while preserving interaction feedback.
 
 Keep switch track, knob, travel and focus dimensions aligned when changing switch geometry.
 `Nvt.Toggle.SwitchKnobTravel` sets both the knob canvas width and the checked position.

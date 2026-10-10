@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Diagnostics;
-using Microsoft.Win32.SafeHandles;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.TestSupport;

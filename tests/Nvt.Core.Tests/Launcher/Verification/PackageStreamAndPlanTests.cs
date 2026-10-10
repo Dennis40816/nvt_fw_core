@@ -10,16 +10,16 @@ namespace Nvt.Core.Tests.Launcher.Verification;
 /// <summary>Checks borrowed stream custody, Files read ordering and internal closed-plan lifetime.</summary>
 public sealed class PackageStreamAndPlanTests
 {
-    /// <summary>The public verifier requires all mandatory dependencies and exports no plan or extraction API.</summary>
+    /// <summary>The internal verifier requires all mandatory dependencies and exports no verification implementation API.</summary>
     [Fact]
-    public void PublicSurfaceRequiresPolicyAndKeepsPlansInternal()
+    public void InternalSurfaceRequiresPolicyAndKeepsPlansInternal()
     {
         PackageFixture fixture = PackageFixture.Create();
         Assert.Equal("descriptor", Assert.Throws<ArgumentNullException>(() => new ManagedPackageVerifier(null!, fixture.Policy, PackageFixture.FrozenLimits)).ParamName);
         Assert.Equal("productPolicy", Assert.Throws<ArgumentNullException>(() => new ManagedPackageVerifier(ContractFixture.Descriptor, null!, PackageFixture.FrozenLimits)).ParamName);
         Assert.Equal("limits", Assert.Throws<ArgumentNullException>(() => new ManagedPackageVerifier(ContractFixture.Descriptor, fixture.Policy, null!)).ParamName);
-        Assert.Equal(nameof(ManagedPackageVerifier), Assert.Single(typeof(ManagedPackageVerifier).Assembly.GetExportedTypes(),
-            type => type.Namespace == "Nvt.Core.Launcher.Verification").Name);
+        Assert.DoesNotContain(typeof(ManagedPackageVerifier).Assembly.GetExportedTypes(),
+            type => type.Namespace == "Nvt.Core.Launcher.Verification");
         Assert.Equal(nameof(ManagedPackageVerifier.VerifyAsync), Assert.Single(typeof(ManagedPackageVerifier)
             .GetMethods(System.Reflection.BindingFlags.DeclaredOnly | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)).Name);
     }

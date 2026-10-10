@@ -513,7 +513,7 @@ The 12 × 6 chevron, 20-DIP chevron host, and 10-DIP spacing match `CollapsibleP
 The styles support `ExpandDirection` Down and Up. Left and Right are not styled.
 `CollapsiblePanel` retains its existing template and behavior.
 
-Rest and expanded headers use `NfcSurfaceSubtleBrush`. Hover uses `NfcSelectionSurfaceBrush`; pressed uses `Nvt.Controls.ExpanderPressedBrush`.
+Rest and expanded headers use `NfcSurfaceSubtleBrush` (Soft rest-fill mode; see [Rest-fill setting](#rest-fill-setting)). Hover uses `NfcSelectionSurfaceBrush`; pressed uses `Nvt.Controls.ExpanderPressedBrush`.
 Disabled headers use `Nvt.Controls.ExpanderDisabledForegroundBrush` and ignore pointer, pressed, and focus visuals.
 Keyboard focus shows one two-DIP ring with a two-DIP outside gap. Pointer focus shows no ring.
 Down and up expansion position the content below or above the header. The chevron rotates with the direction and expansion state.
@@ -1111,7 +1111,7 @@ Tests disable transitions locally for stable snapshots, as they do for the exist
 ## CheckBox
 
 The visible row follows `Nvt.Shape.ControlCornerRadius`, while the checkbox indicator remains square with radius 6.
-Rest uses the subtle surface; hover and pressed tint the whole row. Checked and mixed rows share the selected tonal states.
+Rest uses the subtle surface (Soft rest-fill mode; see [Rest-fill setting](#rest-fill-setting)); hover and pressed tint the whole row. Checked and mixed rows share the selected tonal states.
 Row padding is 10,6; compact padding is 10,2. Enabled labels use `Nvt.Controls.ChoiceForegroundBrush`.
 
 `ChoiceStyles.axaml` gives native checkboxes a shared Core appearance without an appearance class.
@@ -1705,3 +1705,118 @@ Tests cover runtime corners, token geometry, error precedence, keyboard-only unc
 Owner review still covers popup placement in an actual application, live 150 ms motion, long Traditional Chinese content, and application compositions.
 ComboBox tests cover the closed shell, editable input, and native validation geometry. The read-only visual class does not enforce selection restrictions.
 See [Post-adoption tuning](../post-adoption-tuning.md) for the token ownership and validation workflow.
+
+## Rest-fill setting
+
+`ThemeRestFill.Soft` is the default and preserves the current look.
+`ThemeRestFill.None` hides CheckBox and RadioButton row fills, including checked, indeterminate, and disabled rows.
+It also hides the Expander header rest and disabled fills.
+Hover and pressed fills, keyboard focus rings, indicator colors, and whole-row hit targets remain unchanged.
+Selected List rows, checked Menu items, input fields, toggles, switches, progress tracks, and Expander container surfaces remain unchanged.
+
+The additive API lives in `Nvt.Core.Avalonia.Theme`:
+
+```csharp
+public enum ThemeRestFill { Soft, None }
+public static class ThemeRestFills
+public static void SetRestFill(IResourceDictionary resources, ThemeRestFill fill)
+```
+
+Call `ThemeRestFills.SetRestFill` on the UI thread with application, window, or subtree resources.
+If `ThemeTokens.axaml` is merged at the same root, merge it before calling this method.
+The method replaces one rest-fill `ResourceInclude` and preserves unrelated dictionaries, including the shape setting.
+Only absolute `avares://` rest-fill sources are recognized. Resolve relative paths before adding an include. Avalonia does not expose the include's base URI.
+Null resources, undefined enum values, and worker-thread calls throw before resources change.
+Attached controls update through dynamic resources without replacing templates.
+None at a narrower resource root hides fills only within that subtree. Theme and shape changes keep the selected rest-fill mode.
+Soft removes that root's override and uses inherited resources; an ancestor's None setting remains inherited.
+
+```csharp
+using Nvt.Core.Avalonia.Theme;
+ThemeRestFills.SetRestFill(Avalonia.Application.Current!.Resources, ThemeRestFill.None);
+ThemeRestFills.SetRestFill(Avalonia.Application.Current!.Resources, ThemeRestFill.Soft);
+```
+
+`RestFillSoft.axaml` has no keys and lets the default mode apply.
+`RestFillNone.axaml` sets one plain string token, `Nvt.Controls.RestFillMode`, to `None`. `ControlTokens.axaml` defaults it to `Soft`.
+`Nvt.Controls.RestFillMode` is internal. Only the exact string `None` has an effect. Any other value means Soft.
+Change it only through `SetRestFill`.
+The later merged dictionary overrides the default in both themes.
+The Choice row and the Expander header carry that mode in their `Tag`. A selector on `Tag=None` makes the rest and disabled fills transparent, before the hover and pressed styles, so those still win.
+The Soft path is the baseline path: rows and headers still read `NfcSurfaceSubtleBrush` and `Nvt.Controls.SelectedBrush` dynamically. A palette override at the application or the window, including one set after first use, still reaches them.
+
+| Token | Soft | None |
+| --- | --- | --- |
+| `Nvt.Controls.RestFillMode` | `Soft` | `None` |
+
+Frozen baseline for the Soft characterization tests and the 65 pixel comparisons: repository `Dennis40816/nvt_fw_core`, branch `feature/core/controls-forms-tabs`, full commit `98f4e3a53c6d0075da693438bca6deb20f54af33`. The affected files are `src/Nvt.Core.Avalonia/Theme/ChoiceStyles.axaml`, `src/Nvt.Core.Avalonia/Theme/ControlTokens.axaml`, and `src/Nvt.Core.Avalonia/Theme/ExpanderStyles.axaml`.
+`SoftFillsFollowPaletteOverridesAtTheWindow` pins the dynamic palette lookup. The 65 sheets were rendered in explicit Soft mode and compared pixel by pixel with that baseline: zero differing pixels.
+
+### Rest-fill contrast
+
+`PaintedSurfaceContrastPreservesDocumentedLevels` measures 8,232 pairs from attached controls in both shapes, themes, and modes.
+Transparent brushes reveal the actual underlying surface before the relative-luminance calculation.
+Pill and Square produce identical numbers, measured separately; every row below applies to both shapes.
+The table uses `NfcSurfaceBrush` underneath choices and inside Expander containers.
+The test also checks application, subtle, selection, and pressed surfaces behind choices.
+It preserves the existing documented numeric minima, allowing their three-decimal rounding.
+Enabled text and glyphs retain 4.5:1; disabled text and glyphs, indicator silhouettes, and focus rings retain 3:1.
+No contrast token needed correction for None mode.
+
+Rest numbers also apply during keyboard focus. Focus does not change the fill.
+Checked and indeterminate checkboxes and checked radio buttons have identical color pairs.
+Disabled rows share one fill regardless of selection. Disabled controls show no focus ring.
+A selected indicator's border may equal its fill; its silhouette is measured against the row and its glyph against the fill.
+Container borders and dividers keep their existing decorative ratios; they carry no text or active-control identity.
+
+| Pair (Pill and Square) | Soft Light | Soft Dark | None Light | None Dark |
+| --- | ---: | ---: | ---: | ---: |
+| Unchecked rest label / row | 17.063:1 | 15.737:1 | 17.853:1 | 17.740:1 |
+| Unchecked rest indicator border / row | 3.838:1 | 3.959:1 | 4.015:1 | 4.462:1 |
+| Unchecked rest focus / row | 6.359:1 | 8.692:1 | 6.653:1 | 9.798:1 |
+| Unchecked pointer over label / row | 15.285:1 | 14.629:1 | 15.285:1 | 14.629:1 |
+| Unchecked pointer over indicator border / row | 6.488:1 | 9.853:1 | 6.488:1 | 9.853:1 |
+| Unchecked pointer over focus / row | 5.696:1 | 8.080:1 | 5.696:1 | 8.080:1 |
+| Unchecked pressed label / row | 14.482:1 | 12.945:1 | 14.482:1 | 12.945:1 |
+| Unchecked pressed indicator border / row | 14.482:1 | 12.373:1 | 14.482:1 | 12.373:1 |
+| Unchecked pressed focus / row | 5.397:1 | 7.150:1 | 5.397:1 | 7.150:1 |
+| Checked / indeterminate rest label / row | 16.075:1 | 14.633:1 | 17.853:1 | 17.740:1 |
+| Checked / indeterminate rest indicator border / row | 5.294:1 | 5.748:1 | 5.879:1 | 6.968:1 |
+| Checked / indeterminate rest focus / row | 5.991:1 | 8.082:1 | 6.653:1 | 9.798:1 |
+| Checked / indeterminate pointer over label / row | 15.022:1 | 12.744:1 | 15.022:1 | 12.744:1 |
+| Checked / indeterminate pointer over indicator border / row | 6.558:1 | 6.683:1 | 6.558:1 | 6.683:1 |
+| Checked / indeterminate pointer over focus / row | 5.598:1 | 7.039:1 | 5.598:1 | 7.039:1 |
+| Checked / indeterminate pressed label / row | 14.328:1 | 11.215:1 | 14.328:1 | 11.215:1 |
+| Checked / indeterminate pressed indicator border / row | 6.255:1 | 5.882:1 | 6.255:1 | 5.882:1 |
+| Checked / indeterminate pressed focus / row | 5.340:1 | 6.194:1 | 5.340:1 | 6.194:1 |
+| Disabled choice label / row | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
+| Disabled choice indicator border / row | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
+| Unchecked rest border / indicator fill | 4.015:1 | 4.462:1 | 4.015:1 | 4.462:1 |
+| Unchecked pointer over border / indicator fill | 7.243:1 | 10.600:1 | 7.243:1 | 10.600:1 |
+| Unchecked pressed border / indicator fill | 15.285:1 | 13.982:1 | 15.285:1 | 13.982:1 |
+| Unchecked disabled border / indicator fill | 4.358:1 | 4.599:1 | 4.358:1 | 4.599:1 |
+| Checked / indeterminate rest border / indicator fill | 1.000:1 | 3.062:1 | 1.000:1 | 3.062:1 |
+| Checked / indeterminate pointer over border / indicator fill | 1.000:1 | 5.102:1 | 1.000:1 | 5.102:1 |
+| Checked / indeterminate pressed border / indicator fill | 1.248:1 | 6.336:1 | 1.248:1 | 6.336:1 |
+| Checked / indeterminate disabled border / indicator fill | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
+| Selected rest glyph / indicator fill | 5.879:1 | 7.794:1 | 5.879:1 | 7.794:1 |
+| Selected pointer over glyph / indicator fill | 7.794:1 | 9.728:1 | 7.794:1 | 9.728:1 |
+| Selected pressed glyph / indicator fill | 9.728:1 | 12.081:1 | 9.728:1 | 12.081:1 |
+| Selected disabled glyph / indicator fill | 4.559:1 | 3.422:1 | 4.559:1 | 3.422:1 |
+| Choice focus / five surrounding surfaces (minimum) | 5.397:1 | 7.150:1 | 5.397:1 | 7.150:1 |
+| Expander rest text and chevron / header | 13.982:1 | 12.766:1 | 14.629:1 | 14.390:1 |
+| Expander pointer over text and chevron / header | 12.525:1 | 11.866:1 | 12.525:1 | 11.866:1 |
+| Expander pressed text and chevron / header | 12.611:1 | 11.884:1 | 12.611:1 | 11.884:1 |
+| Expander disabled text and chevron / header | 4.794:1 | 5.997:1 | 5.016:1 | 6.760:1 |
+| Expander rest focus / header | 4.720:1 | 5.994:1 | 4.938:1 | 6.757:1 |
+| Expander pointer over focus / header | 4.228:1 | 5.572:1 | 4.228:1 | 5.572:1 |
+| Expander pressed focus / header | 3.326:1 | 4.526:1 | 3.326:1 | 4.526:1 |
+| Expander focus / container | 4.938:1 | 6.757:1 | 4.938:1 | 6.757:1 |
+| Expander divider / container (decorative) | 1.233:1 | 1.414:1 | 1.233:1 | 1.414:1 |
+| Expander container border / container (decorative) | 1.485:1 | 1.713:1 | 1.485:1 | 1.713:1 |
+| Expander container border / page (decorative) | 1.355:1 | 1.808:1 | 1.355:1 | 1.808:1 |
+
+`RenderRestFillSoftReferences` reuses the existing renderers for all 45 redesign and 20 forms, tabs, and text sheets.
+It keeps the two reference sets in separate directories because four ComboBox filenames overlap.
+`RenderRestFillNoneChoices` and `RenderRestFillNoneExpanders` reuse the existing state sheets and write to `NVT_RESTFILL_NONE_IMAGES_DIR`, so they never overwrite the Soft sheets.
+They export 12 English sheets at 100% scale, each 1200 pixels wide and below one megabyte.

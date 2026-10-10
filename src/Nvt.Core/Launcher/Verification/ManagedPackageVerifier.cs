@@ -10,7 +10,7 @@ namespace Nvt.Core.Launcher.Verification;
 
 /// <summary>Verifies a bounded compressed package and its complete closed payload.</summary>
 /// <remarks>The caller holds stable read custody throughout the operation. Strict manifest schema and product payload policy remain in the mandatory adapter.</remarks>
-public sealed class ManagedPackageVerifier
+internal sealed class ManagedPackageVerifier
 {
     internal const string ManifestFileName = "RELEASE-MANIFEST.json";
     internal const string ChecksumFileName = "SHA256SUMS.txt";
