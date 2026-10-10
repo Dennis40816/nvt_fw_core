@@ -5,7 +5,6 @@ using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
 
-#pragma warning disable CA1707 // Owner-mandated Method_Scenario_Expected test names.
 
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
@@ -13,7 +12,7 @@ public sealed partial class ConsoleListViewTests
 {
     /// <summary>Append and direct scrolling share one layout cycle; the user pause wins.</summary>
     [Fact]
-    public Task Scrolled_AppendInSameLayoutCycle_RequestsPauseWithoutFollowing() => Run(() =>
+    public Task ScrolledAppendInSameLayoutCycleRequestsPauseWithoutFollowing() => Run(() =>
     {
         using var initial = Many(100);
         using var appended = Many(110);
@@ -34,7 +33,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A measured height correction does not hide user scrolling in the same cycle.</summary>
     [Fact]
-    public Task Scrolled_HeightCorrectionInSameLayoutCycle_RequestsPauseWithoutFollowing() => Run(() =>
+    public Task ScrolledHeightCorrectionInSameLayoutCycleRequestsPauseWithoutFollowing() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 20 ? "first\nsecond\nthird" : "Message")));
@@ -56,7 +55,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Correcting an expanded overscan row preserves the visible row inset.</summary>
     [Fact]
-    public Task MeasureOverride_OverscanExpandedRowCorrection_PreservesFirstVisibleRowPosition() => Run(() =>
+    public Task MeasureOverrideOverscanExpandedRowCorrectionPreservesFirstVisibleRowPosition() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 40 ? "first\nsecond\nthird" : "Message")));
@@ -80,7 +79,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A paused user scroll requests fresh coordinates before overscan correction can consume its offset.</summary>
     [Fact]
-    public Task Scrolled_PausedHeightCorrectionInSameLayoutCycle_RequestsUpdatedAnchor() => Run(() =>
+    public Task ScrolledPausedHeightCorrectionInSameLayoutCycleRequestsUpdatedAnchor() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 40 ? "first\nsecond\nthird" : "Message")));
@@ -103,7 +102,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Programmatic scrolling during height correction preserves following.</summary>
     [Fact]
-    public Task MeasureOverride_FollowingHeightCorrection_DoesNotRequestPause() => Run(() =>
+    public Task MeasureOverrideFollowingHeightCorrectionDoesNotRequestPause() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 95 ? "first\nsecond\nthird" : "Message")));
@@ -124,7 +123,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>An unrelated state edit retains the live position while acceptance is deferred.</summary>
     [Fact]
-    public Task ViewState_UnrelatedChangeWithStaleAnchor_PreservesLiveOffset() => Run(() =>
+    public Task ViewStateUnrelatedChangeWithStaleAnchorPreservesLiveOffset() => Run(() =>
     {
         using var projection = Many(100);
         var stale = new ConsoleViewState().Pause(projection, new(21));
@@ -145,7 +144,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A caller explicitly changing Follow can navigate to a different anchor.</summary>
     [Fact]
-    public Task ViewState_ExplicitFollowAnchorChange_RestoresRequestedPosition() => Run(() =>
+    public Task ViewStateExplicitFollowAnchorChangeRestoresRequestedPosition() => Run(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection,
@@ -162,7 +161,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Replacing the template drops all borrowed rows from its old host.</summary>
     [Fact]
-    public Task OnApplyTemplate_ReplacedHost_ReleasesBorrowedRows() => Run(() =>
+    public Task OnApplyTemplateReplacedHostReleasesBorrowedRows() => Run(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection };

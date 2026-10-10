@@ -393,13 +393,17 @@ dotnet test Nvt.Core.sln --no-build --no-restore
 
 使用者可見文字透過宿主資源解析，英文預設值放在 `ConsoleListGeometry.axaml`。
 可在列表或資源祖先覆寫下列鍵以在地化。跳至最新與保留範圍通知使用 `TimeOptions.Culture`
-格式化；`{0}` 是投影的新訊息數或淘汰數。新訊息恰為一則時使用單數鍵，零或其他數量
-使用複數鍵。資源變更會更新顯示文字。
+格式化；`{0}` 是投影的新訊息數或淘汰數。新訊息或淘汰數恰為一則時使用各自的單數鍵，
+零或其他數量使用複數鍵。資源變更會更新顯示文字。
+每個列出的文字鍵在缺漏、型別不是字串、空白或複合格式無效（含不存在的參數）時，
+都回退至內建英文預設值；文字覆寫不會從 measure 或資源事件處理常式拋出例外。
+等級文字不接受格式參數；字面大括號須寫成 `{{` 與 `}}`。
 
 | 資源鍵 | 英文預設值 | 繁體中文覆寫範例 |
 |---|---|---|
 | `Nvt.Console.List.JumpToLatestOne` | `Jump to latest ({0} new message)` | `跳至最新（{0} 則新訊息）` |
 | `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` | `跳至最新（{0} 則新訊息）` |
+| `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
 | `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
 | `Nvt.Console.List.Level.Trace` | `Trace` | `追蹤` |
 | `Nvt.Console.List.Level.Debug` | `Debug` | `偵錯` |
@@ -429,9 +433,13 @@ Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既
 訊息欄與箭頭的命中區皆接受 pointer 啟用。
 按下時擷取 pointer，因此移出列後再回到起點仍會取消啟用。
 失去擷取時清除手勢；放開、取消與 detach 都釋放手勢的擷取。
-暫停期間每次使用者捲動都要求更新閱讀座標，不改變暫停時間、generation、
-序號邊界與凍結的列順序。無關狀態變更若沿用同一個 Follow instance，會保留即時閱讀位置，
-即使呼叫端仍持有舊錨點也一樣。接受與列表最新要求相同的錨點時，也保留即時座標；
+暫停期間，使用者捲動造成 offset 改變且未抵達末尾時，才要求更新閱讀座標，
+不改變暫停時間、generation、序號邊界與凍結的列順序。同一 offset 的重複通知、
+viewport 改變、資源失效與列表自身的高度修正都不要求狀態。
+measure 期間產生的要求會延後至該次量測結束，再合併為單一待送要求並保留最新錨點。
+無關狀態變更若沿用同一個 Follow instance，會保留即時閱讀位置，
+即使呼叫端仍持有舊錨點也一樣。接受與上次套用後任何列表要求相同的錨點時，也保留即時座標，
+因此多次捲動的要求可延後依序接受；
 以不同錨點替換 Follow 時，則恢復呼叫端明確指定的位置。重新 attach 使用已接受的錨點。
 暫停時先保存目前錨點，套用投影後於 layout 恢復；合併的投影替換與寬度改變
 沿用待恢復錨點，直到恢復完成或使用者捲動替換它。

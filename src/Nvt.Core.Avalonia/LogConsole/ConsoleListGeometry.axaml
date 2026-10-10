@@ -14,6 +14,7 @@
   <Thickness x:Key="Nvt.Console.List.JumpMargin">16</Thickness>
   <x:String x:Key="Nvt.Console.List.JumpToLatestOne">Jump to latest ({0} new message)</x:String>
   <x:String x:Key="Nvt.Console.List.JumpToLatestMany">Jump to latest ({0} new messages)</x:String>
+  <x:String x:Key="Nvt.Console.List.RetentionOne">Retention changed · {0} message evicted</x:String>
   <x:String x:Key="Nvt.Console.List.RetentionFormat">Retention changed · {0} messages evicted</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Trace">Trace</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Debug">Debug</x:String>

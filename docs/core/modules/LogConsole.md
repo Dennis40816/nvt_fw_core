@@ -486,13 +486,17 @@ Time text is produced by `ConsoleTimeFormatter` from `Projection.TimeBase`, with
 
 User text resolves through the host's resources, with English defaults in `ConsoleListGeometry.axaml`.
 Override these keys on the list or a resource ancestor to localize it. Jump and retention formats use
-`TimeOptions.Culture`; `{0}` is the projection's new-message or eviction count. Exactly one new message
-selects the singular key; zero and other counts select the plural key. Resource changes refresh the text.
+`TimeOptions.Culture`; `{0}` is the projection's new-message or eviction count. Exactly one message or
+eviction selects its singular key; zero and other counts select the plural key. Resource changes refresh the text.
+Every listed text key falls back to its built-in English default when missing, non-string, blank or a malformed
+composite format, including an unavailable argument. Text overrides never throw from measure or resource handlers.
+Level labels take no format arguments; escape literal braces as `{{` and `}}`.
 
 | Resource key | English default |
 |---|---|
 | `Nvt.Console.List.JumpToLatestOne` | `Jump to latest ({0} new message)` |
 | `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` |
+| `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` |
 | `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` |
 | `Nvt.Console.List.Level.Trace` | `Trace` |
 | `Nvt.Console.List.Level.Debug` | `Debug` |
@@ -523,10 +527,14 @@ Expansion reports one combined expansion/pause state; pointer movement beyond 4 
 The message column and arrow receive pointer activation across their hit areas.
 Press captures the pointer for the gesture, so excursions outside the row cancel activation even after returning.
 Capture loss clears the gesture; release, cancellation and detach release its capture.
-Every user scroll while paused requests updated reading coordinates without changing the pause time,
-generation, sequence boundary or frozen row order. Unrelated state changes that reuse the same Follow
+While paused, a changed user scroll offset away from the end requests updated reading coordinates without
+changing the pause time, generation, sequence boundary or frozen row order. Repeated notifications for the same
+offset, viewport changes, resource invalidation and the list's own height corrections do not request state.
+Requests originating during measure are posted after the pass, coalescing to one pending request with the latest anchor.
+Unrelated state changes that reuse the same Follow
 instance preserve the live reading position, even when the caller still holds an earlier anchor.
-Accepting an anchor matching the latest list request also preserves live coordinates; replacing Follow
+Accepting any anchor requested since the last application also preserves live coordinates, including deferred
+in-order acceptance of multiple scroll requests; replacing Follow
 with a different anchor restores the caller's explicit position. Reattachment uses the accepted anchor.
 While paused, projection application saves the current anchor and restores it after layout;
 coalesced replacements and width changes reuse the pending anchor until restoration completes or a user scroll replaces it.

@@ -81,8 +81,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         _time.Text = ConsoleTimeFormatter.Format(row.Timestamp, view.Projection!.TimeBase, view.TimeMode,
             view.TimeOptions.RelativeTimeTemplate, view.TimeOptions.Culture, view.TimeOptions.AbsoluteTimeZone);
         var levelKey = $"Nvt.Console.List.Level.{row.Level}";
-        _level.Text = UiResourceResolver.GetString(view, levelKey)
-            ?? throw new InvalidOperationException($"Console list requires resource '{levelKey}'.");
+        _level.Text = ConsoleListText.Format(view, levelKey);
         var (glyph, brush) = row.Level switch
         {
             LogLevel.Trace => (NvtIcons.MoreHoriz, "NfcTextMutedBrush"),

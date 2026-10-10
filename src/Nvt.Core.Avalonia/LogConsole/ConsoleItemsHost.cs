@@ -32,6 +32,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     private double[] _tops = [0];
     private Size _viewport;
     private Vector _offset;
+    private int _measureDepth;
+    internal bool IsMeasuring => _measureDepth != 0;
     internal RowSource ItemsSource { get; } = new();
     internal event Action<ConsoleRowId>? ToggleRequested;
 
@@ -59,6 +61,12 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     }
     public event EventHandler? ScrollInvalidated;
     public void RaiseScrollInvalidated(EventArgs e) => ScrollInvalidated?.Invoke(this, e);
+    private void NotifyGeometryChanged()
+    {
+        // The scroll viewer may clamp Offset while handling geometry. Those are the list's writes.
+        if (_view is { } view) view.ScrollProgrammatically(() => RaiseScrollInvalidated(EventArgs.Empty));
+        else RaiseScrollInvalidated(EventArgs.Empty);
+    }
     public bool BringIntoView(Control target, Rect targetRect) => false;
     public Control? GetControlInDirection(NavigationDirection direction, Control? from) => null;
     internal bool AtEnd => Extent.Height - Viewport.Height - Offset.Y <= 1;
@@ -83,7 +91,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
                 container.Configure(row, view, id => ToggleRequested?.Invoke(id));
         RebuildHeights();
         InvalidateMeasure();
-        RaiseScrollInvalidated(EventArgs.Empty);
+        NotifyGeometryChanged();
     }
 
     private double MessageWidth => ConsoleRowPresenter.GetMessageWidth((Control?)_view ?? this, Viewport.Width,
@@ -107,6 +115,14 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     protected override Size MeasureOverride(Size availableSize)
     {
         Dispatcher.UIThread.VerifyAccess();
+        _measureDepth++;
+        try { return MeasureViewport(availableSize); }
+        finally { _measureDepth--; }
+    }
+
+    private Size MeasureViewport(Size availableSize)
+    {
+        Dispatcher.UIThread.VerifyAccess();
         var width = double.IsFinite(availableSize.Width) ? availableSize.Width : Bounds.Width;
         var height = double.IsFinite(availableSize.Height) ? availableSize.Height : Bounds.Height;
         var viewport = new Size(Math.Max(0, width), Math.Max(0, height));
@@ -127,7 +143,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
                 readingPosition = CaptureReadingPosition();
             }
         }
-        if (viewportChanged) RaiseScrollInvalidated(EventArgs.Empty);
+        if (viewportChanged) NotifyGeometryChanged();
         if (_view is null || ItemsSource.Count == 0 || height <= 0) { ClearRealized(); return viewport; }
         for (var pass = 0; pass < 3; pass++)
         {
@@ -161,7 +177,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
             if (_view.ViewState.Follow is not ConsoleFollow.Following)
                 RestoreReadingPosition(readingPosition);
             else if (wasAtEnd) ScrollToEnd();
-            RaiseScrollInvalidated(EventArgs.Empty);
+            NotifyGeometryChanged();
         }
         if (reading is not null) RestoreAnchor(reading, ItemsSource.Projection?.ResolvedAnchorId);
         else if (wasAtEnd && _view.ViewState.Follow is ConsoleFollow.Following) ScrollToEnd();
@@ -189,12 +205,14 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     {
         // Resource ancestry can disappear before the visual detach notification.
         if (_view is null || !this.TryFindResource("Nvt.Console.List.RowHeight", ActualThemeVariant, out _)) return;
+        var wasAtEnd = AtEnd;
         var readingPosition = CaptureReadingPosition();
         _heights.Clear();
         RebuildHeights();
         if (_view.ViewState.Follow is not ConsoleFollow.Following) RestoreReadingPosition(readingPosition);
+        else if (wasAtEnd) ScrollToEnd();
         InvalidateMeasure();
-        RaiseScrollInvalidated(EventArgs.Empty);
+        NotifyGeometryChanged();
     }
 
     protected override Size ArrangeOverride(Size finalSize)

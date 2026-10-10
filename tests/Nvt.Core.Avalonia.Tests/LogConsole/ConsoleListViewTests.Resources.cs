@@ -10,7 +10,6 @@ using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
 
-#pragma warning disable CA1707 // Owner-mandated Method_Scenario_Expected test names.
 
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
@@ -18,7 +17,7 @@ public sealed partial class ConsoleListViewTests
 {
     /// <summary>Exactly one new message resolves the host singular string.</summary>
     [Fact]
-    public Task JumpButton_SingleNewMessage_UsesHostSingularResource() => Run(() =>
+    public Task JumpButtonSingleNewMessageUsesHostSingularResource() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), newCount: 1);
         var view = new ConsoleListView { Projection = projection,
@@ -37,7 +36,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Plural text uses the host format and explicit time culture.</summary>
     [Fact]
-    public Task JumpButton_MultipleNewMessages_FormatsHostResourceWithTimeCulture() => Run(() =>
+    public Task JumpButtonMultipleNewMessagesFormatsHostResourceWithTimeCulture() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), newCount: 1234);
         var culture = new CultureInfo("en-US");
@@ -58,7 +57,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Retention text uses the host format and explicit time culture.</summary>
     [Fact]
-    public Task RetentionNotice_HostResourceOverride_FormatsWithTimeCulture() => Run(() =>
+    public Task RetentionNoticeHostResourceOverrideFormatsWithTimeCulture() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), evicted: 1234);
         var culture = new CultureInfo("en-US");
@@ -84,7 +83,7 @@ public sealed partial class ConsoleListViewTests
     [InlineData(LogLevel.Warn, "警告")]
     [InlineData(LogLevel.Error, "錯誤")]
     [InlineData(LogLevel.Fatal, "嚴重")]
-    public Task Configure_LevelResourceOverride_DisplaysHostText(LogLevel level, string text) => Run(() =>
+    public Task ConfigureLevelResourceOverrideDisplaysHostText(LogLevel level, string text) => Run(() =>
     {
         using var projection = Project([Row(1, level: level)]);
         var view = new ConsoleListView { Projection = projection };
@@ -100,7 +99,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A font change invalidates measured heights of offscreen expanded rows.</summary>
     [Fact]
-    public Task ResourcesChanged_FontSizeWithUnrealizedExpandedRow_InvalidatesMeasuredHeight() => Run(() =>
+    public Task ResourcesChangedFontSizeWithUnrealizedExpandedRowInvalidatesMeasuredHeight() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 1 ? new string('W', 4000) : "Message")));
@@ -122,7 +121,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A theme change invalidates measured heights of offscreen expanded rows.</summary>
     [Fact]
-    public Task ActualThemeVariantChanged_UnrealizedExpandedRow_InvalidatesMeasuredHeight() => Run(() =>
+    public Task ActualThemeVariantChangedUnrealizedExpandedRowInvalidatesMeasuredHeight() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 1 ? new string('W', 4000) : "Message")));
@@ -142,7 +141,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A font resource change preserves the paused row and its pixel inset.</summary>
     [Fact]
-    public Task ResourcesChanged_PausedWithUnrealizedExpandedRow_PreservesReadingRowPosition() => Run(() =>
+    public Task ResourcesChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -167,7 +166,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A theme change preserves the paused row and its pixel inset.</summary>
     [Fact]
-    public Task ActualThemeVariantChanged_PausedWithUnrealizedExpandedRow_PreservesReadingRowPosition() => Run(() =>
+    public Task ActualThemeVariantChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -192,7 +191,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Resource invalidation keeps Following at the bottom of the rebuilt extent.</summary>
     [Fact]
-    public Task ResourcesChanged_FollowingWithUnrealizedExpandedRow_RemainsAtBottom() => Run(() =>
+    public Task ResourcesChangedFollowingWithUnrealizedExpandedRowRemainsAtBottom() => Run(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -215,7 +214,7 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData("_icon")]
     [InlineData("_arrow")]
-    public Task RowGlyph_SharedIconStyle_IsRawForAccessibility(string member) => Run(() =>
+    public Task RowGlyphSharedIconStyleIsRawForAccessibility(string member) => Run(() =>
     {
         using var projection = Project([Row(1, "first\nsecond")]);
         var view = new ConsoleListView { Projection = projection };
