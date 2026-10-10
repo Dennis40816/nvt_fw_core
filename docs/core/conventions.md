@@ -253,7 +253,7 @@ Core ships one `Directory.Build.props` fragment, one `.editorconfig` and the ban
 
 | # | Rule | Check |
 |---|---|---|
-| T1 | No fixed sleep and no wall-clock range in an assertion. Wait on a signal with a token and a hard cap, or drive a manual clock. | RS0030 in test projects and review |
+| T1 | No fixed sleep and no absolute wall-clock limit in an assertion. Wait on a signal with a token and a hard cap, or drive a manual clock. A performance test sets its threshold relative to the machine (calibration unit, scale ratio or count, see testing rule 3) and uses `RelativePerf`. | RS0030 in test projects and review |
 | T2 | One shared test-support project per repository (Core first) holds the manual clock, the temp workspace and the process probe. Tests do not declare their own. | Script: a second `TimeProvider` implementation or `TestWorkspace` fails |
 | T3 | Tests are hermetic. The path resolver fails closed in test processes. Use one headless Avalonia session for each collection. Process-wide state lives only in a serial collection. | Base fixture and review |
 | T4 | Test behavior, not source text or private members (`BindingFlags.NonPublic`). | Health check count |

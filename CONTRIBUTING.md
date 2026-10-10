@@ -2,6 +2,10 @@
 
 This repository is the shared baseline for the NVT firmware tools (NFC, NFH, NFU). When a tool repository adopts a rule from here, it copies or links the text in the same pull request.
 
+## Code and test conventions
+
+New C# code and tests follow [conventions.md](docs/core/conventions.md) and [testing.md](docs/core/testing.md). Existing code is the baseline. It can only go down.
+
 ## Language
 
 Owner decision of 2026-10-05: 「後續文件，除了 README 預設要有中文版本，其他都預設用英文，除非我指定新增中文版本」 ("From now on, documents default to English. The exception is README, which also has a Chinese version by default. Other documents get a Chinese version only when I ask for one.")

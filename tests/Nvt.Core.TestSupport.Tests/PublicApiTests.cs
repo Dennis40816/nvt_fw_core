@@ -8,7 +8,7 @@ namespace Nvt.Core.TestSupport.Tests;
 /// <summary>Protects the intentionally small test-support public contract.</summary>
 public sealed class PublicApiTests
 {
-    /// <summary>Only the four planned types and their declared API are exported; disposal implements the two interfaces.</summary>
+    /// <summary>Only the planned types and their declared API are exported; disposal implements the two interfaces.</summary>
     [Fact]
     public void PublicSurfaceMatchesThePlan()
     {
@@ -16,12 +16,14 @@ public sealed class PublicApiTests
         Type workspace = typeof(TestWorkspace);
         Type signal = typeof(SignalWait);
         Type child = typeof(ChildProcessFixture);
-        Type[] expectedTypes = [child, clock, signal, workspace];
+        Type perf = typeof(RelativePerf);
+        Type[] expectedTypes = [child, clock, perf, signal, workspace];
         Assert.Equal(expectedTypes, clock.Assembly.GetExportedTypes().OrderBy(type => type.Name, StringComparer.Ordinal));
         Assert.True(clock.IsSealed);
         Assert.True(workspace.IsSealed);
         Assert.True(signal.IsSealed);
         Assert.True(child.IsSealed);
+        Assert.True(perf.IsAbstract && perf.IsSealed);
         Assert.Equal(typeof(TimeProvider), clock.BaseType);
         Assert.Equal(typeof(DateTimeOffset), Assert.Single(Assert.Single(clock.GetConstructors()).GetParameters()).ParameterType);
         Assert.Empty(workspace.GetConstructors());
@@ -35,6 +37,7 @@ public sealed class PublicApiTests
         Assert.Equal(workspaceMethods, NewPublicMethods(workspace));
         Assert.Equal(signalMethods, NewPublicMethods(signal));
         Assert.Equal(childMethods, NewPublicMethods(child));
+        Assert.Equal(["CalibrationUnit", "InUnits", "MedianAllocatedBytes", "MedianTime", "ScaleRatio"], NewPublicMethods(perf));
         Assert.True(typeof(IDisposable).IsAssignableFrom(workspace));
         Assert.True(typeof(IAsyncDisposable).IsAssignableFrom(workspace));
         Assert.True(typeof(IDisposable).IsAssignableFrom(child));

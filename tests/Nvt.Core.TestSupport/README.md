@@ -93,6 +93,26 @@ stays alive holds files open and makes the next test fail at random, so start
 every child through the fixture. The tree kill reaches descendants while their
 parent is alive; a descendant that outlives its parent is not reachable.
 
+## RelativePerf
+
+RelativePerf sets a performance threshold that follows the machine. An absolute limit such as "under
+one second" fails on a slow runner and hides a regression on a fast one. Use one of three forms.
+
+- **Calibration unit.** CalibrationUnit runs a fixed reference workload and returns its median time.
+  InUnits expresses a measured time as a multiple of that unit. Take the unit close to the measurement,
+  in the same process.
+- **Scale ratio.** ScaleRatio divides the median time of a larger input by the median time of a smaller
+  one. Doubling a linear algorithm gives about 2; a quadratic one gives about 4. The ratio does not depend
+  on the machine.
+- **Count.** MedianAllocatedBytes counts the bytes that the work allocates on the calling thread. A count
+  does not depend on the machine speed. Prefer it when one fits.
+
+Each measurement warms up, takes at least seven samples (MinimumSamples) and reports the median. Never
+retry a failed threshold; report an unstable test as an issue. Write the threshold next to the test:
+the median measured on the reference machine and the margin applied. Mark the test with
+[Trait("Category", "Performance")] so CI can run it in its own step. The default clock is
+TimeProvider.System. A test of the helper itself passes a ManualTimeProvider.
+
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
