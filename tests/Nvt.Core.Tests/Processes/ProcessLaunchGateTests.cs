@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO.Pipes;
 using System.Text;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -29,7 +30,7 @@ public sealed class ProcessLaunchGateTests
         using var ambient = new AnonymousPipeServerStream(
             PipeDirection.In,
             HandleInheritability.Inheritable);
-        string marker = workspace.PathFor("containment/ambient.txt");
+        string marker = workspace.GetPath("containment/ambient.txt");
         _ = Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
         ProcessStartInfo startInfo = CreateProbe(marker, ambient.GetClientHandleAsString());
 
@@ -65,8 +66,8 @@ public sealed class ProcessLaunchGateTests
         using var cleanupPipe = new AnonymousPipeServerStream(
             PipeDirection.In,
             HandleInheritability.None);
-        string failedMarker = workspace.PathFor("containment/failed.txt");
-        string recoveredMarker = workspace.PathFor("containment/recovered.txt");
+        string failedMarker = workspace.GetPath("containment/failed.txt");
+        string recoveredMarker = workspace.GetPath("containment/recovered.txt");
         _ = Directory.CreateDirectory(Path.GetDirectoryName(failedMarker)!);
 
         _ = Assert.Throws<Win32Exception>(() => ProcessLaunchGate.StartContained(
@@ -182,7 +183,7 @@ public sealed class ProcessLaunchGateTests
             return;
         }
         using var workspace = TestWorkspace.Create();
-        string workingDirectory = workspace.PathFor("containment/路徑 空間");
+        string workingDirectory = workspace.GetPath("containment/路徑 空間");
         _ = Directory.CreateDirectory(workingDirectory);
         string marker = Path.Combine(workingDirectory, "引數 結果.txt");
         string[] arguments = ["第一 個", "quote\"inside", "尾端\\", ""];
@@ -218,7 +219,7 @@ public sealed class ProcessLaunchGateTests
         using var pipe = new AnonymousPipeServerStream(
             PipeDirection.In,
             HandleInheritability.None);
-        string marker = workspace.PathFor("containment/adjacent-validation.txt");
+        string marker = workspace.GetPath("containment/adjacent-validation.txt");
         _ = Directory.CreateDirectory(Path.GetDirectoryName(marker)!);
         int custodyValid = 1;
 
@@ -249,8 +250,8 @@ public sealed class ProcessLaunchGateTests
             return;
         }
         using var workspace = TestWorkspace.Create();
-        string firstMarker = workspace.PathFor("containment/gate-first.txt");
-        string secondMarker = workspace.PathFor("containment/gate-second.txt");
+        string firstMarker = workspace.GetPath("containment/gate-first.txt");
+        string secondMarker = workspace.GetPath("containment/gate-second.txt");
         _ = Directory.CreateDirectory(Path.GetDirectoryName(firstMarker)!);
         using var firstValidationEntered = new ManualResetEventSlim();
         using var releaseFirstValidation = new ManualResetEventSlim();
@@ -260,7 +261,7 @@ public sealed class ProcessLaunchGateTests
 
         Task<Process?> firstStart = Task.Factory.StartNew(
             () => ProcessLaunchGate.StartContained(
-                CreateArgumentProbe(firstMarker, workspace.Root, "first", []),
+                CreateArgumentProbe(firstMarker, workspace.RootPath, "first", []),
                 [],
                 () =>
                 {
@@ -281,7 +282,7 @@ public sealed class ProcessLaunchGateTests
             {
                 secondAttemptingStart.Set();
                 return ProcessLaunchGate.StartContained(
-                    CreateArgumentProbe(secondMarker, workspace.Root, "second", []),
+                    CreateArgumentProbe(secondMarker, workspace.RootPath, "second", []),
                     [],
                     () =>
                     {
