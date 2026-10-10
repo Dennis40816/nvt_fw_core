@@ -1,0 +1,11 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:lc="using:Nvt.Core.Avalonia.LogConsole">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleResources.axaml"/></ResourceDictionary.MergedDictionaries>
+      <lc:ConsoleValueConverter x:Key="ConsoleSearchEmpty"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/>
+    </ResourceDictionary>
+  </Styles.Resources>
+  <StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleControlStyles.axaml"/>
+</Styles>

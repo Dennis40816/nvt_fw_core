@@ -21,8 +21,14 @@ public static class NvtIcons
     /// <summary>Block an action.</summary>
     public const string Block = "\uF08C";
 
+    /// <summary>Debug a problem.</summary>
+    public const string BugReport = "\uE868";
+
     /// <summary>Split a path.</summary>
     public const string CallSplit = "\uE0B6";
+
+    /// <summary>Cancel or fatal status.</summary>
+    public const string Cancel = "\uE5C9";
 
     /// <summary>Confirm or complete.</summary>
     public const string Check = "\uE668";
@@ -122,6 +128,9 @@ public static class NvtIcons
 
     /// <summary>Minimize extent.</summary>
     public const string Minimize = "\uE931";
+
+    /// <summary>More horizontal detail.</summary>
+    public const string MoreHoriz = "\uE5D3";
 
     /// <summary>More actions.</summary>
     public const string MoreVert = "\uE5D4";
