@@ -22,7 +22,9 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     private static readonly string[] ExitArguments = ["--mode", "exit"];
     private static readonly TimeSpan Watchdog = TimeSpan.FromSeconds(40);
     private static readonly TimeSpan SchedulingMargin = TimeSpan.FromSeconds(4);
-    private static readonly TimeSpan CancelReturnBound = TimeSpan.FromSeconds(1);
+    // Cancel() must return, not block on the termination it requests. A blocking callback waits for the 60 s helper,
+    // so 10 s separates the regression from a loaded CI machine without comparing a short real-time budget.
+    private static readonly TimeSpan CancelReturnBound = TimeSpan.FromSeconds(10);
     private static readonly ExternalProcessCleanupTiming Fast = new(
         TimeSpan.FromMilliseconds(1500),
         TimeSpan.FromMilliseconds(300),
@@ -1159,14 +1161,36 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
     /// </summary>
     private static async Task<TimeSpan> CancelWithinAsync(CancellationTokenSource cancellation, TimeSpan bound)
     {
-        var clock = Stopwatch.StartNew();
-        Task cancel = Task.Run(cancellation.Cancel);
-        using var boundStop = new CancellationTokenSource();
-        Task first = await Task.WhenAny(cancel, Task.Delay(bound, boundStop.Token));
-        boundStop.Cancel();
-        Assert.True(ReferenceEquals(first, cancel) && cancel.IsCompleted, $"Cancel() did not return within {bound}.");
-        await cancel; // Observe a fault; a signal-only Cancel() never throws.
-        return clock.Elapsed;
+        // A dedicated thread keeps a starved thread pool from delaying the call the bound is meant to measure.
+        var returned = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            var clock = Stopwatch.StartNew();
+            try
+            {
+                cancellation.Cancel();
+                returned.SetResult(clock.Elapsed);
+            }
+            catch (Exception exception)
+            {
+                returned.SetException(exception);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Cancel under test",
+        };
+        thread.Start();
+        try
+        {
+            // A signal-only Cancel() never throws; a fault surfaces here.
+            return await returned.Task.WaitAsync(bound, TestToken);
+        }
+        catch (TimeoutException)
+        {
+            Assert.Fail($"Cancel() did not return within {bound}.");
+            throw;
+        }
     }
 
     /// <summary>Replaces only standard output; standard error uses the production drain.</summary>
