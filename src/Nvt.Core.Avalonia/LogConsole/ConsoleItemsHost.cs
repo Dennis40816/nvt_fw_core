@@ -6,7 +6,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.Threading;
 using Nvt.Core.Avalonia.Theme;
 using Nvt.Core.LogConsole;
 
@@ -41,6 +40,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     {
         if (IsMeasuring) _measureReadingPosition = CaptureReadingPosition();
     }
+    internal IReadOnlyDictionary<ConsoleRowId, HeightMeasurement> MeasuredHeights => _heights;
     internal RowSource ItemsSource { get; } = new();
     internal event Action<ConsoleRowId>? ToggleRequested;
 
@@ -60,7 +60,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         get => _offset;
         set
         {
-            Dispatcher.UIThread.VerifyAccess();
+            VerifyAccess();
             var next = new Vector(0, Math.Clamp(value.Y, 0, Math.Max(0, Extent.Height - Viewport.Height)));
             if (next == _offset) return;
             _offset = next;
@@ -88,7 +88,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
 
     internal void Synchronize(ConsoleListView view)
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         _view = view;
         ItemsSource.Projection = view.Projection;
         var retained = ItemsSource.Select(row => row.Id).ToHashSet();
@@ -123,7 +123,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         _measureDepth++;
         try { return MeasureViewport(availableSize); }
         finally
@@ -134,7 +134,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
 
     private Size MeasureViewport(Size availableSize)
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         var width = double.IsFinite(availableSize.Width) ? availableSize.Width : Bounds.Width;
         var height = double.IsFinite(availableSize.Height) ? availableSize.Height : Bounds.Height;
         var viewport = new Size(Math.Max(0, width), Math.Max(0, height));
@@ -262,7 +262,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
 
     internal ConsoleReadingAnchor? CaptureAnchor()
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         if (ItemsSource.Count == 0 || ItemsSource.Projection is not { } projection) return null;
         var index = FindRow(Offset.Y);
         var row = ItemsSource[index];
@@ -274,7 +274,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
 
     internal ConsoleReadingAnchor? RestoreAnchor(ConsoleReadingAnchor anchor, ConsoleRowId? successor)
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         var index = -1;
         for (var i = 0; i < ItemsSource.Count; i++) if (ItemsSource[i].Id == anchor.RowId) { index = i; break; }
         var same = index >= 0;
@@ -298,13 +298,18 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         if (same && anchor.TextOffset > 0 && _realized.TryGetValue(ItemsSource[index].Id, out var container))
             pixel = container.PixelOffsetAt(anchor.TextOffset, pixel);
         SetScrollOffset(new(0, _tops[index] + pixel));
-        return anchor with { RowId = ItemsSource[index].Id, Sequence = ItemsSource[index].LastSequence,
-            TextOffset = same ? anchor.TextOffset : 0, PixelOffset = pixel };
+        return anchor with
+        {
+            RowId = ItemsSource[index].Id,
+            Sequence = ItemsSource[index].LastSequence,
+            TextOffset = same ? anchor.TextOffset : 0,
+            PixelOffset = pixel
+        };
     }
 
     internal void Release()
     {
-        Dispatcher.UIThread.VerifyAccess();
+        VerifyAccess();
         ClearRealized();
         _pool.Clear();
         _heights.Clear();
@@ -323,5 +328,5 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         _pool.Push(container);
     }
 
-    private sealed record HeightMeasurement(long Version, double Width, double Height);
+    internal sealed record HeightMeasurement(long Version, double Width, double Height);
 }

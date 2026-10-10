@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 
 namespace Nvt.Core.TestSupport;
@@ -8,10 +7,10 @@ namespace Nvt.Core.TestSupport;
 /// <summary>Owns a short, unique temporary directory for synthetic test fixtures and bounded cleanup.</summary>
 public sealed class TestWorkspace : IDisposable, IAsyncDisposable
 {
-    private static readonly TimeSpan RetryBudget = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan RetryInterval = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan _retryBudget = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan _retryInterval = TimeSpan.FromMilliseconds(50);
     private const int MaximumAttempts = 10;
-    private readonly object _gate = new();
+    private readonly Lock _gate = new();
     private readonly Action<string> _delete;
     private readonly Action<TimeSpan> _waitForRetry;
     private readonly Func<TimeSpan>? _retryElapsed;
@@ -94,7 +93,7 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
                 _cleanupFailure?.Throw();
                 return;
             }
-            long started = Stopwatch.GetTimestamp();
+            long started = TimeProvider.System.GetTimestamp();
             Exception? failure = null;
             for (int attempt = 0; attempt < MaximumAttempts; attempt++)
             {
@@ -117,13 +116,13 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
                 {
                     failure = exception;
                 }
-                TimeSpan remaining = RetryBudget - (_retryElapsed?.Invoke() ?? Stopwatch.GetElapsedTime(started));
+                TimeSpan remaining = _retryBudget - (_retryElapsed?.Invoke() ?? TimeProvider.System.GetElapsedTime(started));
                 if (attempt == MaximumAttempts - 1 || remaining <= TimeSpan.Zero)
                 {
                     break;
                 }
-                _waitForRetry(remaining < RetryInterval ? remaining : RetryInterval);
-                if ((_retryElapsed?.Invoke() ?? Stopwatch.GetElapsedTime(started)) >= RetryBudget)
+                _waitForRetry(remaining < _retryInterval ? remaining : _retryInterval);
+                if ((_retryElapsed?.Invoke() ?? TimeProvider.System.GetElapsedTime(started)) >= _retryBudget)
                 {
                     break;
                 }

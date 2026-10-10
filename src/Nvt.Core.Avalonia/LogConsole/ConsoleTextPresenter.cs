@@ -24,6 +24,9 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
     private readonly record struct VisibleRange(double Start, double End);
     private VisibleRange? _slice;
     private double LineHeight => UiResourceResolver.GetDouble(this, "Nvt.Console.List.RowHeight");
+    internal IReadOnlyList<Segment> Segments => _segments;
+    internal IReadOnlyDictionary<int, TextLayout> VisibleLayouts => _visible;
+    internal LayoutKey? CurrentLayout => _key;
     internal bool Truncated
     {
         get
@@ -35,9 +38,9 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
             return untrimmed.WidthIncludingTrailingWhitespace > (_key?.Width ?? Bounds.Width);
         }
     }
-    private Typeface Typeface => new(Resource<FontFamily>($"Nvt.Font.{role}.Family"),
+    internal Typeface Typeface => new(Resource<FontFamily>($"Nvt.Font.{role}.Family"),
         weight: Resource<FontWeight>($"Nvt.Font.{role}.Weight"));
-    private double FontSize => Resource<double>($"Nvt.Font.{role}.Size");
+    internal double FontSize => Resource<double>($"Nvt.Font.{role}.Size");
     private IBrush Foreground => Resource<IBrush>(foregroundKey);
     private T Resource<T>(string key) => this.TryFindResource(key, ActualThemeVariant, out var value) && value is T result
         ? result : throw new InvalidOperationException($"Console list requires Core resource '{key}'.");
@@ -213,8 +216,8 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
     }
 
     internal void Release() { _input = null; _key = null; _slice = null; _segments.Clear(); ClearLayouts(); }
-    private void ClearLayouts() { foreach (var layout in _visible.Values) layout.Dispose(); _visible.Clear(); }
-    private sealed record Segment(int Offset, int Length, double Y, double Height);
+    internal void ClearLayouts() { foreach (var layout in _visible.Values) layout.Dispose(); _visible.Clear(); }
+    internal sealed record Segment(int Offset, int Length, double Y, double Height);
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -234,6 +237,6 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
     private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) { InvalidateMeasure(); InvalidateVisual(); }
 
     private sealed record RenderInput(ConsoleRow Row, bool Expanded);
-    private sealed record LayoutKey(ConsoleRowId RowId, long TextVersion, int Length, string SourceId, bool Expanded,
+    internal sealed record LayoutKey(ConsoleRowId RowId, long TextVersion, int Length, string SourceId, bool Expanded,
         double Width, double LineHeight, Typeface Typeface, double FontSize, ThemeVariant? ThemeVariant, IBrush Foreground);
 }

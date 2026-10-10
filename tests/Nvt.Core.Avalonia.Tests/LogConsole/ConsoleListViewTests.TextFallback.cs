@@ -24,11 +24,14 @@ public sealed partial class ConsoleListViewTests
     [InlineData("Level.Warn", "Warn", 1, LogLevel.Warn)]
     [InlineData("Level.Error", "Error", 1, LogLevel.Error)]
     [InlineData("Level.Fatal", "Fatal", 1, LogLevel.Fatal)]
-    public Task MissingTextResourceUsesEnglishDefault(string suffix, string expected, int count, LogLevel level) => Run(() =>
+    public Task MissingTextResourceUsesEnglishDefault(string suffix, string expected, int count, LogLevel level) => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i, level: level)), newCount: count, evicted: count);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -57,11 +60,14 @@ public sealed partial class ConsoleListViewTests
     [InlineData("Level.Warn", "Warn", 1, LogLevel.Warn)]
     [InlineData("Level.Error", "Error", 1, LogLevel.Error)]
     [InlineData("Level.Fatal", "Fatal", 1, LogLevel.Fatal)]
-    public Task MalformedTextResourceUsesEnglishDefault(string suffix, string expected, int count, LogLevel level) => Run(() =>
+    public Task MalformedTextResourceUsesEnglishDefault(string suffix, string expected, int count, LogLevel level) => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i, level: level)), newCount: count, evicted: count);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -74,11 +80,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Count text with an unavailable argument is also a malformed override.</summary>
     [Fact]
-    public Task OutOfRangeTextFormatUsesEnglishDefault() => Run(() =>
+    public Task OutOfRangeTextFormatUsesEnglishDefault() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), newCount: 2);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -91,11 +100,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A non-string override cannot make row measurement fail.</summary>
     [Fact]
-    public Task WrongTypeTextResourceUsesEnglishDefault() => Run(() =>
+    public Task WrongTypeTextResourceUsesEnglishDefault() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -110,11 +122,14 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
-    public Task BlankTextOverrideUsesEnglishDefault(string text) => Run(() =>
+    public Task BlankTextOverrideUsesEnglishDefault(string text) => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -127,11 +142,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>An unknown level uses its key suffix without failing row measurement.</summary>
     [Fact]
-    public Task UnknownLevelUsesKeySuffix() => Run(() =>
+    public Task UnknownLevelUsesKeySuffix() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i, level: (LogLevel)17)));
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try { Assert.Equal("17", DisplayedListText(view, "Level.17")); }
         finally { window.Close(); }
@@ -139,11 +157,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>One eviction selects the singular host resource instead of the plural format.</summary>
     [Fact]
-    public Task SingleEvictionUsesHostSingularRetentionText() => Run(() =>
+    public Task SingleEvictionUsesHostSingularRetentionText() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), evicted: 1);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {

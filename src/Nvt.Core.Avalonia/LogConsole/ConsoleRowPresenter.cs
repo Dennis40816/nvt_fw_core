@@ -54,6 +54,14 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
             : throw new InvalidOperationException($"Console list requires geometry resource '{name}'.");
     }
     internal ConsoleRowId? RowId => _row?.Id;
+    internal ConsoleRow? Row => _row;
+    internal TextBlock TimeLabel => _time;
+    internal TextBlock IconLabel => _icon;
+    internal TextBlock LevelLabel => _level;
+    internal ConsoleTextPresenter SourceText => _source;
+    internal ConsoleTextPresenter MessageText => _message;
+    internal TextBlock CountLabel => _count;
+    internal TextBlock ArrowLabel => _arrow;
 
     internal ConsoleRowPresenter()
     {

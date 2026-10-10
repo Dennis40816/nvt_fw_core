@@ -3,7 +3,8 @@
 English | [繁體中文](https://github.com/Dennis40816/nvt_fw_core/blob/main/tests/Nvt.Core.TestSupport/README.zh-TW.md)
 
 A packable net10.0 library for deterministic tests. It inherits the Core version
-from Directory.Build.props and has no dependency on Nvt.Core, xUnit or Avalonia.
+from Directory.Build.props. It depends on Nvt.Core only for `ProcessLaunchGate`, the Core
+process start seam that `ChildProcessFixture` uses. It has no dependency on xUnit or Avalonia.
 Reference this project or package **only from test projects**. Do not create new
 copies of clocks or workspace helpers; extend the shared implementation and its
 tests when another consumer needs behavior.
@@ -62,14 +63,74 @@ helpers, including the private StartupTraceTests and ThrottledProgressTests
 clocks, remain for migration after release. The private LinkedProbeWorkspace in
 the Launcher transport tests is another workspace copy and also remains.
 
+## SignalWait
+
+SignalWait is a one-shot signal for a test to set and wait for. It replaces
+Task.Delay and Thread.Sleep as a way to wait for a result. Set returns true for
+the first call and false after that; waiters continue on another thread, never
+inside Set. WaitAsync waits for the signal, the token, or the watchdog.
+
+The watchdog only prevents a hang. It is finite and positive (default 30 s,
+DefaultWatchdog) and never decides a result. When it expires, WaitAsync throws
+TimeoutException and the message names the signal. A token cancellation stays an
+OperationCanceledException. The watchdog clock is TimeProvider.System unless the
+test passes another one, for example a ManualTimeProvider, so a test can prove
+the expiry without waiting. The static WaitAsync(Task, name, ...) puts the same
+watchdog around any task and passes the task's own failure through unchanged.
+
+## ChildProcessFixture
+
+ChildProcessFixture.Start runs an executable without a shell. It captures
+standard output and standard error together, in arrival order, up to a
+character limit (default 64 KiB, OutputTruncated tells that output was cut).
+Standard input is closed at once. A watchdog (default 60 s) ends the process
+tree if the child does not exit; WaitForExitAsync then throws TimeoutException
+and WatchdogExpired is true. WaitForOutputAsync waits until the output contains
+a text, and fails when the output ends without it. KillTree ends the tree on
+request. Dispose and DisposeAsync end the whole tree, wait a bounded time for
+the root to exit, and release the handle; they are idempotent. A child that
+stays alive holds files open and makes the next test fail at random, so start
+every child through the fixture. The tree kill reaches descendants while their
+parent is alive; a descendant that outlives its parent is not reachable.
+
+## RelativePerf
+
+RelativePerf sets a performance threshold that follows the machine. An absolute limit such as "under
+one second" fails on a slow runner and hides a regression on a fast one. Use one of three forms.
+
+- **Calibration unit.** CalibrationUnit runs a fixed reference workload and returns its median time.
+  InUnits expresses a measured time as a multiple of that unit. Take the unit close to the measurement,
+  in the same process.
+- **Scale ratio.** ScaleRatio divides the median time of a larger input by the median time of a smaller
+  one. Doubling a linear algorithm gives about 2; a quadratic one gives about 4. The ratio does not depend
+  on the machine.
+- **Count.** MedianAllocatedBytes counts the bytes that the work allocates on the calling thread. A count
+  does not depend on the machine speed. Prefer it when one fits.
+
+Each measurement warms up, takes at least seven samples (MinimumSamples) and reports the median. Never
+retry a failed threshold; report an unstable test as an issue. Write the threshold next to the test:
+the median measured on the reference machine and the margin applied. Mark the test with
+[Trait("Category", "Performance")] so CI can run it in its own step. The default clock is
+TimeProvider.System. A test of the helper itself passes a ManualTimeProvider.
+
+## TaskBlock
+
+TaskBlock.UntilComplete blocks the calling thread until a task completes. Use it only in a test hook that
+cannot await, such as a dispatcher callback or a fixture constructor. Task.Wait, Task.Result and
+GetAwaiter().GetResult() are banned in tests. UntilComplete blocks through an event, rethrows the original
+fault (not an aggregate), throws OperationCanceledException for a canceled task, and does not use the caller's
+synchronization context. The task must run on another thread. A task that needs the blocked thread to
+continue never completes.
+
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and
 `tests/Nvt.Core.Tests/Processes/TestWorkspace.cs` of repository
 Dennis40816/nvt_fw_core (branch `main`, the PR #147 clock). The two files are
 identical at commit d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 and at the parent
-of this change, f90900bbb04f84e590aa77dc47b6e04b7a77d9c6. Compare with
-`git show <commit>:<path>`. These behaviors differ on purpose, and the migrated
+of the shared-support change, f90900bbb04f84e590aa77dc47b6e04b7a77d9c6. Compare with
+`git show <commit>:<path>`. `SignalWait` and `ChildProcessFixture` are new. They replace no
+existing code, so they have no source behavior to match. These behaviors differ on purpose, and the migrated
 Core tests do not depend on the old ones:
 
 Clock:

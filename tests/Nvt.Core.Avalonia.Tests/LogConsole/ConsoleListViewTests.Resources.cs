@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Collections;
 using System.Globalization;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -16,11 +15,14 @@ public sealed partial class ConsoleListViewTests
 {
     /// <summary>Exactly one new message resolves the host singular string.</summary>
     [Fact]
-    public Task JumpButtonSingleNewMessageUsesHostSingularResource() => Run(() =>
+    public Task JumpButtonSingleNewMessageUsesHostSingularResource() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), newCount: 1);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -35,13 +37,17 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Plural text uses the host format and explicit time culture.</summary>
     [Fact]
-    public Task JumpButtonMultipleNewMessagesFormatsHostResourceWithTimeCulture() => Run(() =>
+    public Task JumpButtonMultipleNewMessagesFormatsHostResourceWithTimeCulture() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), newCount: 1234);
         var culture = new CultureInfo("en-US");
         culture.NumberFormat.NumberGroupSeparator = "_";
-        var view = new ConsoleListView { Projection = projection, TimeOptions = new() { Culture = culture },
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            TimeOptions = new() { Culture = culture },
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -56,13 +62,17 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Retention text uses the host format and explicit time culture.</summary>
     [Fact]
-    public Task RetentionNoticeHostResourceOverrideFormatsWithTimeCulture() => Run(() =>
+    public Task RetentionNoticeHostResourceOverrideFormatsWithTimeCulture() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i => Row(i)), evicted: 1234);
         var culture = new CultureInfo("en-US");
         culture.NumberFormat.NumberGroupSeparator = "_";
-        var view = new ConsoleListView { Projection = projection, TimeOptions = new() { Culture = culture },
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            TimeOptions = new() { Culture = culture },
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -82,7 +92,7 @@ public sealed partial class ConsoleListViewTests
     [InlineData(LogLevel.Warn, "警告")]
     [InlineData(LogLevel.Error, "錯誤")]
     [InlineData(LogLevel.Fatal, "嚴重")]
-    public Task ConfigureLevelResourceOverrideDisplaysHostText(LogLevel level, string text) => Run(() =>
+    public Task ConfigureLevelResourceOverrideDisplaysHostText(LogLevel level, string text) => RunAsync(() =>
     {
         using var projection = Project([Row(1, level: level)]);
         var view = new ConsoleListView { Projection = projection };
@@ -91,14 +101,14 @@ public sealed partial class ConsoleListViewTests
         {
             view.Resources[$"Nvt.Console.List.Level.{level}"] = text;
             Flush(window);
-            Assert.Equal(text, ((TextBlock)Member(Container(view, 1), "_level")!).Text);
+            Assert.Equal(text, ((TextBlock)Container(view, 1).LevelLabel).Text);
         }
         finally { window.Close(); }
     });
 
     /// <summary>A font change invalidates measured heights of offscreen expanded rows.</summary>
     [Fact]
-    public Task ResourcesChangedFontSizeWithUnrealizedExpandedRowInvalidatesMeasuredHeight() => Run(() =>
+    public Task ResourcesChangedFontSizeWithUnrealizedExpandedRowInvalidatesMeasuredHeight() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 1 ? new string('W', 4000) : "Message")));
@@ -106,13 +116,13 @@ public sealed partial class ConsoleListViewTests
         var window = Window(view);
         try
         {
-            var heights = (IDictionary)Member(Host(view), "_heights")!;
-            Assert.True(heights.Contains(new ConsoleRowId(1)));
+            var heights = Host(view).MeasuredHeights;
+            Assert.True(heights.ContainsKey(new ConsoleRowId(1)));
             Assert.DoesNotContain(Host(view).Children, row => Id(row).Value == 1);
             var extent = Scroll(view).Extent.Height;
             view.Resources["Nvt.Font.Body.Size"] = 24d;
             Flush(window);
-            Assert.False(heights.Contains(new ConsoleRowId(1)));
+            Assert.False(heights.ContainsKey(new ConsoleRowId(1)));
             Assert.True(Scroll(view).Extent.Height > extent);
         }
         finally { window.Close(); }
@@ -120,7 +130,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A theme change invalidates measured heights of offscreen expanded rows.</summary>
     [Fact]
-    public Task ActualThemeVariantChangedUnrealizedExpandedRowInvalidatesMeasuredHeight() => Run(() =>
+    public Task ActualThemeVariantChangedUnrealizedExpandedRowInvalidatesMeasuredHeight() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 1 ? new string('W', 4000) : "Message")));
@@ -128,19 +138,19 @@ public sealed partial class ConsoleListViewTests
         var window = Window(view);
         try
         {
-            var heights = (IDictionary)Member(Host(view), "_heights")!;
-            Assert.True(heights.Contains(new ConsoleRowId(1)));
+            var heights = Host(view).MeasuredHeights;
+            Assert.True(heights.ContainsKey(new ConsoleRowId(1)));
             Assert.DoesNotContain(Host(view).Children, row => Id(row).Value == 1);
             window.RequestedThemeVariant = ThemeVariant.Dark;
             Flush(window);
-            Assert.False(heights.Contains(new ConsoleRowId(1)));
+            Assert.False(heights.ContainsKey(new ConsoleRowId(1)));
         }
         finally { window.Close(); }
     });
 
     /// <summary>A font resource change preserves the paused row and its pixel inset.</summary>
     [Fact]
-    public Task ResourcesChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => Run(() =>
+    public Task ResourcesChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -165,7 +175,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A theme change preserves the paused row and its pixel inset.</summary>
     [Fact]
-    public Task ActualThemeVariantChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => Run(() =>
+    public Task ActualThemeVariantChangedPausedWithUnrealizedExpandedRowPreservesReadingRowPosition() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -190,7 +200,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Resource invalidation keeps Following at the bottom of the rebuilt extent.</summary>
     [Fact]
-    public Task ResourcesChangedFollowingWithUnrealizedExpandedRowRemainsAtBottom() => Run(() =>
+    public Task ResourcesChangedFollowingWithUnrealizedExpandedRowRemainsAtBottom() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, "first\nsecond\nthird")));
@@ -213,14 +223,14 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData("_icon")]
     [InlineData("_arrow")]
-    public Task RowGlyphSharedIconStyleIsRawForAccessibility(string member) => Run(() =>
+    public Task RowGlyphSharedIconStyleIsRawForAccessibility(string member) => RunAsync(() =>
     {
         using var projection = Project([Row(1, "first\nsecond")]);
         var view = new ConsoleListView { Projection = projection };
         var window = Window(view);
         try
         {
-            var glyph = (TextBlock)Member(Container(view, 1), member)!;
+            var glyph = (TextBlock)Element(Container(view, 1), member);
             Assert.Contains("nvtIcon", glyph.Classes);
             Assert.Equal(AccessibilityView.Raw, AutomationProperties.GetAccessibilityView(glyph));
         }

@@ -1,0 +1,44 @@
+<Project>
+  <!-- Every C# project is classified here. Valid layers: domain, application, presentation, infrastructure, composition, tests, tooling. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core'">
+    <HealthLayer>infrastructure</HealthLayer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Avalonia'">
+    <HealthLayer>presentation</HealthLayer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Fonts'">
+    <HealthLayer>presentation</HealthLayer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.SourceConsumption.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.Avalonia.Tests' Or '$(MSBuildProjectName)' == 'Nvt.Core.Fonts.Tests'">
+    <HealthLayer>tests</HealthLayer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport.Tests'">
+    <HealthLayer>tooling</HealthLayer>
+  </PropertyGroup>
+  <!-- BEGIN GENERATED HEALTH WARNING IDS -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core'">
+    <HealthBaselineWarningIds>CA1031;CA1307;CA2000;CA5392;IDE0005;IDE0330;IDE1006;RS0030;VSTHRD002;VSTHRD003;VSTHRD103;VSTHRD200</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Avalonia'">
+    <HealthBaselineWarningIds>CA1031;IDE0330;IDE1006;RS0030;VSTHRD200</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Avalonia.Tests'">
+    <HealthBaselineWarningIds>CA1031;EnableGenerateDocumentationFile;IDE1006;RS0030;VSTHRD003;VSTHRD101;VSTHRD103;VSTHRD200</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Fonts.Tests'">
+    <HealthBaselineWarningIds>EnableGenerateDocumentationFile</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe'">
+    <HealthBaselineWarningIds>CA5392;EnableGenerateDocumentationFile;IDE1006;RS0030;VSTHRD103</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.SourceConsumption.Tests'">
+    <HealthBaselineWarningIds>CA1031;EnableGenerateDocumentationFile;IDE1006;RS0030</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe'">
+    <HealthBaselineWarningIds>CA2000;CA5392;EnableGenerateDocumentationFile;IDE1006;RS0030;VSTHRD103</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.Tests'">
+    <HealthBaselineWarningIds>CA1031;CA1307;CA2000;CA5392;EnableGenerateDocumentationFile;IDE0060;IDE0330;IDE1006;RS0030;VSTHRD002;VSTHRD003;VSTHRD101;VSTHRD103;VSTHRD200</HealthBaselineWarningIds>
+  </PropertyGroup>
+  <!-- END GENERATED HEALTH WARNING IDS -->
+</Project>

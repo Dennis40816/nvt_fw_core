@@ -2,7 +2,6 @@
 
 using System.Collections.Concurrent;
 using Nvt.Core.Time;
-using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -17,6 +16,7 @@ using Nvt.Core.Avalonia.Theme;
 using Nvt.Core.Avalonia.Threading;
 using Nvt.Core.LogConsole;
 using Xunit;
+using Nvt.Core.TestSupport;
 
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
@@ -49,22 +49,26 @@ internal sealed class ConsoleTestStore : IDisposable
     }
     internal void Fence()
     {
-        var capture = Store.CaptureLatestAsync(_safety.Token).AsTask();
+        var capture = CaptureAndReleaseAsync(Store, _safety.Token);
         Until(() => capture.IsCompleted);
-        using var snapshot = capture.GetAwaiter().GetResult();
+        TaskBlock.UntilComplete(capture);
+    }
+    private static async Task CaptureAndReleaseAsync(LogStore store, CancellationToken token)
+    {
+        using var snapshot = await store.CaptureLatestAsync(token).ConfigureAwait(false);
     }
     internal void Until(Func<bool> condition)
     {
         while (!condition())
         {
             _safety.Token.ThrowIfCancellationRequested();
-            if (_writer.TryDequeue(out var callback)) Task.Run(callback, _safety.Token).GetAwaiter().GetResult();
+            if (_writer.TryDequeue(out var callback)) TaskBlock.UntilComplete(Task.Run(callback, _safety.Token));
             else SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty || condition(); });
         }
     }
     internal ConsoleController Controller(ConsoleProjectionOptions? options = null)
     {
-        UiThread.RegisterRunningDispatcher(Dispatcher.UIThread);
+        UiThread.RegisterRunningDispatcher(global::Avalonia.Application.Current!.Dispatcher);
         return new ConsoleController(Store, [new("app", "Application"), new("dxf", "Drawing"), new("idle", "Idle")], options);
     }
     public void Dispose()
@@ -72,7 +76,7 @@ internal sealed class ConsoleTestStore : IDisposable
         Store.Dispose();
         // Waiting for queue availability must not run the very callback being awaited.
         SpinWait.SpinUntil(() => { _safety.Token.ThrowIfCancellationRequested(); return !_writer.IsEmpty; });
-        while (_writer.TryDequeue(out var callback)) Task.Run(callback, _safety.Token).GetAwaiter().GetResult();
+        while (_writer.TryDequeue(out var callback)) TaskBlock.UntilComplete(Task.Run(callback, _safety.Token));
         _safety.Dispose();
     }
 }
@@ -87,35 +91,26 @@ internal static class ConsoleTestView
         var called = false; // UI-thread-only callback lifetime.
         return OnProperty(name, () => { count(); if (called) return; called = true; first(); });
     }
-    private static string? PrepareEvidenceDirectory()
-    {
-        var evidence = Environment.GetEnvironmentVariable("NVT_CONSOLE_EVIDENCE");
-        if (!string.IsNullOrEmpty(evidence)) Directory.CreateDirectory(evidence);
-        return evidence;
-    }
-    internal static void SaveEvidence(global::Avalonia.Media.Imaging.RenderTargetBitmap frame, string name)
-    {
-        var evidence = PrepareEvidenceDirectory();
-        if (string.IsNullOrEmpty(evidence)) return;
-        frame.Save(Path.Combine(evidence, name), global::Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
-    }
     internal static Window Create(Control content, bool dark = false, ThemeShape shape = ThemeShape.Pill, double width = 1200, double height = 144)
     {
-        var window = new Window { Content = content, Width = width, Height = height,
-            RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light };
+        var window = new Window
+        {
+            Content = content,
+            Width = width,
+            Height = height,
+            RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light
+        };
         var uri = new Uri("avares://Nvt.Core.Fonts/FontRoles.axaml");
         window.Resources.MergedDictionaries.Add(new ResourceInclude(uri) { Source = uri });
         window.Styles.Add(new FluentTheme());
         ThemeShapes.SetShape(window.Resources, shape);
-        // Prepare the caller-supplied evidence destination for every view, including the unchanged icon tests.
-        _ = PrepareEvidenceDirectory();
         window.Show();
         Pump(window);
         return window;
     }
     internal static void Pump(Window? window = null)
     {
-        Dispatcher.UIThread.RunJobs();
+        (window?.Dispatcher ?? global::Avalonia.Application.Current!.Dispatcher).RunJobs();
         window?.UpdateLayout();
     }
     internal static void Click(Window window, Button button)
@@ -144,7 +139,7 @@ internal static class ConsoleTestView
 internal sealed class ConsoleDispatcherExceptionScope : IDisposable
 {
     // Headless UI-thread-only event capture, restored before the next test.
-    private readonly Dispatcher _dispatcher = Dispatcher.UIThread;
+    private readonly Dispatcher _dispatcher = global::Avalonia.Application.Current!.Dispatcher;
     private readonly List<Exception> _errors = [];
     internal IReadOnlyList<Exception> Errors => _errors;
     internal ConsoleDispatcherExceptionScope() => _dispatcher.UnhandledException += OnUnhandledException;

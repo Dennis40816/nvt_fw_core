@@ -9,12 +9,12 @@ namespace Nvt.Core.Avalonia.LogConsole;
 // UI thread only. The independent built-in dictionary is the sole source of English defaults.
 internal static class ConsoleListText
 {
-    private static readonly ResourceDictionary Defaults = (ResourceDictionary)AvaloniaXamlLoader.Load(
+    private static readonly ResourceDictionary _defaults = (ResourceDictionary)AvaloniaXamlLoader.Load(
         new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleListGeometry.axaml"));
 
     internal static string Format(ConsoleListView view, string key, params object[] arguments)
     {
-        var fallback = Defaults.TryGetValue(key, out var value) && value is string builtIn
+        var fallback = _defaults.TryGetValue(key, out var value) && value is string builtIn
             ? builtIn : key[(key.LastIndexOf('.') + 1)..];
         var text = UiResourceResolver.GetString(view, key);
         if (string.IsNullOrWhiteSpace(text)) text = fallback;

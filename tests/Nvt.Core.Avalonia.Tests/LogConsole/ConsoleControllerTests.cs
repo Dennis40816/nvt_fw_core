@@ -1,11 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Collections.Immutable;
-using System.ComponentModel;
 using System.Globalization;
 using Avalonia.Headless.XUnit;
-using Avalonia.Threading;
-using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
 
@@ -137,7 +133,7 @@ public sealed class ConsoleControllerTests
     public void ReplacementKeepsOldLeaseReadableDuringNotificationThenReleasesIt()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();
@@ -162,10 +158,10 @@ public sealed class ConsoleControllerTests
     public void DisposingWithRetirementQueuedReleasesBothProjections()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
-        var controller = fixture.Controller();
+        using var controller = fixture.Controller();
         controller.PropertyChanged += ConsoleTestView.OnProperty(nameof(controller.Projection), controller.Dispose);
         controller.SetSearchText("text");
         ConsoleTestView.Pump();
@@ -236,7 +232,8 @@ public sealed class ConsoleControllerTests
         fixture.Fence();
         using var controller = fixture.Controller(new ConsoleProjectionOptions
         {
-            Culture = CultureInfo.GetCultureInfo("fr-FR"), RelativeTimeTemplate = "−{0} s",
+            Culture = CultureInfo.GetCultureInfo("fr-FR"),
+            RelativeTimeTemplate = "−{0} s",
             AbsoluteTimeZone = TimeZoneInfo.CreateCustomTimeZone("display", TimeSpan.FromHours(8), "display", "display"),
         });
         Assert.Equal("19:59:57.700", controller.Projection.Rows[0].TimeText);
@@ -279,7 +276,7 @@ public sealed class ConsoleControllerTests
     public void DisposeDuringViewStatePublicationStopsNotificationsAndDefersLeaseRelease()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new TrackedContent();
+        using var content = new TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();

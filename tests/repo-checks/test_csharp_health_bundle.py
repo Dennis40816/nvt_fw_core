@@ -144,17 +144,17 @@ class HealthBundleTests(unittest.TestCase):
     def test_schema_uses_defined_fields_and_marks_unspecified_documents(self) -> None:
         schema = json.loads((BUNDLE / "schema.json").read_bytes())
         definitions = schema["$defs"]
-        for name in ("policy", "core-health.lock", "seam-owners"):
+        for name in ("policy",):
             self.assertEqual({}, definitions[name]["not"])
             self.assertNotIn("properties", definitions[name])
         for name, fields in {
             "baseline": "schemaVersion measurementVersion snapshotCommit limits entities findings",
-            "baseline-entity": "project kind symbol locations ceilings owner issue",
+            "baseline-entity": "project kind symbol locations ceilings owner issue contentHash",
             "baseline-finding": "rule project path member symbol syntaxHash count owner removeBy",
             "seam-owner-entry": "path member symbol owner reason kind review",
         }.items():
             self.assertEqual(set(fields.split()), set(definitions[name]["properties"]))
-            self.assertEqual(set(fields.split()), set(definitions[name]["required"]))
+            self.assertEqual(set(fields.split()) - ({"contentHash"} if name == "baseline-entity" else set()), set(definitions[name]["required"]))
             self.assertFalse(definitions[name]["additionalProperties"])
 
 

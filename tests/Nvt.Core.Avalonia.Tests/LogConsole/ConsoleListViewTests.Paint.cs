@@ -15,8 +15,8 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
 public sealed partial class ConsoleListViewTests
 {
-    private static readonly string[] FirstLineMetadata = ["_icon", "_level", "_source", "_count", "_arrow"];
-    private static readonly string[] SearchPresenters = ["_message", "_source"];
+    private static readonly string[] _firstLineMetadata = ["_icon", "_level", "_source", "_count", "_arrow"];
+    private static readonly string[] _searchPresenters = ["_message", "_source"];
     private static T Resource<T>(Control owner, string key)
     {
         Assert.True(owner.TryFindResource(key, owner.ActualThemeVariant, out var value), key);
@@ -25,7 +25,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Every list dimension resolves, and resource overrides drive measured row geometry.</summary>
     [Fact]
-    public Task ListGeometryResourcesExistAndPresentersConsumeOverrides() => Run(() =>
+    public Task ListGeometryResourcesExistAndPresentersConsumeOverrides() => RunAsync(() =>
     {
         using var projection = Project([Row(1, "first\nsecond", count: 2)]);
         var view = new ConsoleListView { Projection = projection };
@@ -34,11 +34,17 @@ public sealed partial class ConsoleListViewTests
         {
             var expected = new Dictionary<string, double>
             {
-                ["RowHeight"] = 20, ["TimeWidth"] = 104, ["LevelWidth"] = 84, ["SourceWidth"] = 120,
-                ["RepeatWidth"] = 48, ["ArrowWidth"] = 24, ["DragThreshold"] = 4, ["RetentionHeight"] = 20,
+                ["RowHeight"] = 20,
+                ["TimeWidth"] = 104,
+                ["LevelWidth"] = 84,
+                ["SourceWidth"] = 120,
+                ["RepeatWidth"] = 48,
+                ["ArrowWidth"] = 24,
+                ["DragThreshold"] = 4,
+                ["RetentionHeight"] = 20,
             };
-            foreach (var (key, value) in expected)
-                Assert.Equal(value, UiResourceResolver.GetDouble(view, "Nvt.Console.List." + key, double.NaN));
+            Assert.All(expected, item =>
+                Assert.Equal(item.Value, UiResourceResolver.GetDouble(view, "Nvt.Console.List." + item.Key, double.NaN)));
             Assert.Equal(16, UiResourceResolver.GetDouble(view, "Nvt.Font.Icon.Size"));
             Assert.Equal(4, UiResourceResolver.GetDouble(view, "NfcSpace4"));
             Assert.Equal(32, view.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PART_Jump").Height);
@@ -58,15 +64,15 @@ public sealed partial class ConsoleListViewTests
             var row = Container(view, 1);
             Assert.Equal(24, row.Bounds.Height);
             Assert.Equal(24, Scroll(view).ScrollSize.Height);
-            Assert.Equal(new Rect(18, 0, 112, 24), ((Control)Member(row, "_time")!).Bounds);
-            Assert.Equal(new Rect(130, 0, 18, 24), ((Control)Member(row, "_icon")!).Bounds);
-            Assert.Equal(new Rect(154, 0, 64, 24), ((Control)Member(row, "_level")!).Bounds);
-            Assert.Equal(new Rect(218, 0, 128, 24), ((Control)Member(row, "_source")!).Bounds);
-            var message = (Control)Member(row, "_message")!;
+            Assert.Equal(new Rect(18, 0, 112, 24), ((Control)row.TimeLabel).Bounds);
+            Assert.Equal(new Rect(130, 0, 18, 24), ((Control)row.IconLabel).Bounds);
+            Assert.Equal(new Rect(154, 0, 64, 24), ((Control)row.LevelLabel).Bounds);
+            Assert.Equal(new Rect(218, 0, 128, 24), (row.SourceText).Bounds);
+            var message = row.MessageText;
             Assert.Equal(row.Bounds.Width - 18 - 346 - 52 - 28, message.Bounds.Width);
-            Assert.Equal(52, ((Control)Member(row, "_count")!).Bounds.Width);
-            Assert.Equal(18, ((Control)Member(row, "_arrow")!).Bounds.Width);
-            Assert.Equal(24, ((TextBlock)Member(row, "_time")!).LineHeight);
+            Assert.Equal(52, ((Control)row.CountLabel).Bounds.Width);
+            Assert.Equal(18, ((Control)row.ArrowLabel).Bounds.Width);
+            Assert.Equal(24, ((TextBlock)row.TimeLabel).LineHeight);
         }
         finally { window.Close(); }
     });
@@ -75,7 +81,7 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public Task ExactColumnGeometryKeepsExpandedMetadataOnFirstLine(bool hiddenTime) => Run(() =>
+    public Task ExactColumnGeometryKeepsExpandedMetadataOnFirstLine(bool hiddenTime) => RunAsync(() =>
     {
         using var projection = Project([Row(1, "first\nsecond\nthird", count: 3)]);
         var view = new ConsoleListView { Projection = projection, TimeMode = hiddenTime ? ConsoleTimeMode.Hidden : ConsoleTimeMode.Absolute };
@@ -84,20 +90,20 @@ public sealed partial class ConsoleListViewTests
         {
             Assert.Equal(20, Container(view, 1).Bounds.Height);
             view.ViewStateRequested += (_, state) => view.ViewState = state;
-            Click(window, (Control)Member(Container(view, 1), "_message")!); Flush(window);
+            Click(window, Container(view, 1).MessageText); Flush(window);
             var row = Container(view, 1);
             Assert.Equal(60, row.Bounds.Height);
             var shift = hiddenTime ? 104 : 0;
-            if (!hiddenTime) Assert.Equal(new Rect(16, 0, 104, 20), ((Control)Member(row, "_time")!).Bounds);
-            Assert.Equal(new Rect(120 - shift, 0, 16, 20), ((Control)Member(row, "_icon")!).Bounds);
-            Assert.Equal(new Rect(140 - shift, 0, 64, 20), ((Control)Member(row, "_level")!).Bounds);
-            Assert.Equal(new Rect(204 - shift, 0, 120, 20), ((Control)Member(row, "_source")!).Bounds);
-            var message = (Control)Member(row, "_message")!;
+            Assert.Equal(hiddenTime ? default : new Rect(16, 0, 104, 20), row.TimeLabel.Bounds);
+            Assert.Equal(new Rect(120 - shift, 0, 16, 20), ((Control)row.IconLabel).Bounds);
+            Assert.Equal(new Rect(140 - shift, 0, 64, 20), ((Control)row.LevelLabel).Bounds);
+            Assert.Equal(new Rect(204 - shift, 0, 120, 20), (row.SourceText).Bounds);
+            var message = row.MessageText;
             Assert.Equal(new Rect(324 - shift, 0, row.Bounds.Width - 412 + shift, 60), message.Bounds);
-            Assert.Equal(new Rect(row.Bounds.Width - 88, 0, 48, 20), ((Control)Member(row, "_count")!).Bounds);
-            Assert.Equal(new Rect(row.Bounds.Width - 36, 0, 16, 20), ((Control)Member(row, "_arrow")!).Bounds);
-            Assert.All(FirstLineMetadata, name =>
-                Assert.Equal(message.Bounds.Y, ((Control)Member(row, name)!).Bounds.Y));
+            Assert.Equal(new Rect(row.Bounds.Width - 88, 0, 48, 20), ((Control)row.CountLabel).Bounds);
+            Assert.Equal(new Rect(row.Bounds.Width - 36, 0, 16, 20), ((Control)row.ArrowLabel).Bounds);
+            Assert.All(_firstLineMetadata, name =>
+                Assert.Equal(message.Bounds.Y, ((Control)Element(row, name)).Bounds.Y));
         }
         finally { window.Close(); }
     });
@@ -106,7 +112,7 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public Task EveryLevelUsesCatalogNameColorAndErrorFatalBackground(bool dark) => Run(() =>
+    public Task EveryLevelUsesCatalogNameColorAndErrorFatalBackground(bool dark) => RunAsync(() =>
     {
         var levels = Enum.GetValues<LogLevel>();
         using var projection = Project(levels.Select((level, index) => Row(index + 1, level: level)));
@@ -116,11 +122,11 @@ public sealed partial class ConsoleListViewTests
         {
             string[] glyphs = [NvtIcons.MoreHoriz, NvtIcons.BugReport, NvtIcons.Info, NvtIcons.Warning, NvtIcons.Error, NvtIcons.Cancel];
             string[] brushes = ["NfcTextMutedBrush", "NfcTextSecondaryBrush", "NfcInfoTextBrush", "NfcWarningTextBrush", "NfcDangerTextBrush", "NfcDangerTextStrongBrush"];
-            for (var i = 0; i < levels.Length; i++)
+            Assert.All(Enumerable.Range(0, levels.Length), i =>
             {
                 var row = Container(view, i + 1);
-                var icon = (TextBlock)Member(row, "_icon")!;
-                var name = (TextBlock)Member(row, "_level")!;
+                var icon = (TextBlock)row.IconLabel;
+                var name = (TextBlock)row.LevelLabel;
                 Assert.Equal(glyphs[i], icon.Text);
                 Assert.Equal(levels[i].ToString(), name.Text);
                 Assert.Equal(Resource<IBrush>(view, brushes[i]), icon.Foreground);
@@ -128,10 +134,9 @@ public sealed partial class ConsoleListViewTests
                 Assert.Equal(Resource<FontFamily>(view, "Nvt.Font.Icon.Family"), icon.FontFamily);
                 Assert.Equal(Resource<double>(view, "Nvt.Font.Icon.Size"), icon.FontSize);
                 Assert.Equal(Resource<FontWeight>(view, "Nvt.Font.Icon.Weight"), icon.FontWeight);
-                if (levels[i] is LogLevel.Error or LogLevel.Fatal)
-                    Assert.Equal(Resource<IBrush>(view, "NfcDangerSurfaceBrush"), ((Panel)row).Background);
-                else Assert.Null(((Panel)row).Background);
-            }
+                Assert.Equal(levels[i] is LogLevel.Error or LogLevel.Fatal
+                    ? Resource<IBrush>(view, "NfcDangerSurfaceBrush") : null, row.Background);
+            });
         }
         finally { window.Close(); }
     });
@@ -143,7 +148,7 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public Task SearchPaintUsesThemeBrushesBeforeTextAndReservedUnderlineLayer(bool dark) => Run(() =>
+    public Task SearchPaintUsesThemeBrushesBeforeTextAndReservedUnderlineLayer(bool dark) => RunAsync(() =>
     {
         using var projection = Project([Row(1, "hit plain", source: "hit source",
             hits: [new(ConsoleSearchArea.Message, 0, 3), new(ConsoleSearchArea.Source, 0, 3)])]);
@@ -151,9 +156,9 @@ public sealed partial class ConsoleListViewTests
         var window = Window(view, dark: dark);
         try
         {
-            foreach (var name in SearchPresenters)
+            Assert.All(_searchPresenters, name =>
             {
-                var presenter = (Control)Member(Container(view, 1), name)!;
+                var presenter = (Control)Element(Container(view, 1), name);
                 var drawing = new DrawingGroup();
                 using (var context = drawing.Open()) presenter.Render(context);
                 var commands = Drawings(drawing).ToArray();
@@ -167,7 +172,7 @@ public sealed partial class ConsoleListViewTests
                 Assert.Equal(Resource<IBrush>(view, "NfcWarningTextStrongBrush"), glyphs[^1].Foreground);
                 // The final underline layer is empty until links are introduced: no strokes over or under text.
                 Assert.DoesNotContain(commands.OfType<GeometryDrawing>(), command => command.Pen is not null);
-            }
+            });
         }
         finally { window.Close(); }
     });

@@ -4,16 +4,15 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
-using System.Diagnostics.CodeAnalysis;
 using Nvt.Core.Avalonia.Threading;
 using Nvt.Core.LogConsole;
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("Nvt.Core.Avalonia.Tests")]
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
 /// <summary>A recycling console list. The caller owns projection leases and accepts state requests.</summary>
 /// <remarks>Load LogConsole/ConsoleListStyles.axaml. Set inputs on the UI thread; this view never projects data.</remarks>
-[SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable", Justification = "Avalonia attachment owns the session; detach and template replacement dispose it.")]
 public sealed class ConsoleListView : TemplatedControl
 {
     /// <summary>Defines <see cref="Projection"/>.</summary>
@@ -47,6 +46,7 @@ public sealed class ConsoleListView : TemplatedControl
     /// <summary>Requests explicit resume. A controller may bind its Ctrl+End command to this method.</summary>
     public void JumpToLatest() => Request(ViewState.Resume());
 
+    internal Session? AttachmentSession => _session;
     internal ConsoleReadingAnchor? PendingReadingAnchor => _session?.ReadingAnchor;
     internal bool UserScrollPending => _session?.UserScrollPending == true;
 
@@ -59,7 +59,7 @@ public sealed class ConsoleListView : TemplatedControl
     /// <inheritdoc />
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
-        _session?.Dispose();
+        _session?.Detach();
         _session = null;
         _parts?.Host.Release();
         base.OnApplyTemplate(e);
@@ -79,7 +79,7 @@ public sealed class ConsoleListView : TemplatedControl
     /// <inheritdoc />
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        _session?.Dispose();
+        _session?.Detach();
         _session = null;
         _parts?.Host.Release();
         base.OnDetachedFromVisualTree(e);
@@ -103,7 +103,7 @@ public sealed class ConsoleListView : TemplatedControl
     private void AttachSession()
     {
         if (_parts is null || _session is not null) return;
-        UiThread.RegisterRunningDispatcher(Dispatcher.UIThread);
+        UiThread.RegisterRunningDispatcher(Dispatcher);
         _session = new(this, _parts);
         _session.Apply();
     }
@@ -122,15 +122,15 @@ public sealed class ConsoleListView : TemplatedControl
         Request(state with { ExpandedIds = ReferenceEquals(collapsed, state.ExpandedIds) ? state.ExpandedIds.Add(id) : collapsed });
     }
 
-    private sealed record Parts(ConsoleItemsHost Host, ScrollViewer Scroll, Button Jump, TextBlock Retention);
+    internal sealed record Parts(ConsoleItemsHost Host, ScrollViewer Scroll, Button Jump, TextBlock Retention);
 
     // UI-thread-only attachment state. Queued work captures a weak Session, never a view or projection lease.
-    private sealed class Session : IDisposable
+    internal sealed class Session
     {
         private const int RequestedAnchorLimit = 32;
         private readonly ConsoleListView _view;
         private readonly Parts _parts;
-        private readonly CancellationTokenSource _lifetime = new();
+        private bool _detached;
         private ConsoleReadingAnchor? _restore;
         private DispatcherOperation? _pending;
         private int _suppress;
@@ -138,6 +138,7 @@ public sealed class ConsoleListView : TemplatedControl
         private readonly List<ConsoleReadingAnchor> _requestedAnchors = [];
         // Pending user intent only; capture both coordinates and caller state when delivered.
         private DeferredScroll? _deferredScroll;
+        internal DispatcherOperation? PendingOperation => _pending;
         internal ConsoleReadingAnchor? ReadingAnchor => _restore;
         internal bool UserScrollPending => _deferredScroll is not null;
 
@@ -206,10 +207,9 @@ public sealed class ConsoleListView : TemplatedControl
             }
             if (!_parts.Host.IsMeasuring) return false;
             var weak = new WeakReference<Session>(this);
-            UiThread.TryGetRunningDispatcher(out var dispatcher);
-            var operation = (dispatcher ?? Dispatcher.UIThread).InvokeAsync(() =>
+            var operation = _view.Dispatcher.InvokeAsync(() =>
             {
-                if (!weak.TryGetTarget(out var session) || session._lifetime.IsCancellationRequested
+                if (!weak.TryGetTarget(out var session) || session._detached
                     || session._deferredScroll is not { } request) return;
                 // Finish pending projection/reflow restoration before capturing the screen.
                 session._parts.Host.UpdateLayout();
@@ -252,17 +252,22 @@ public sealed class ConsoleListView : TemplatedControl
         {
             var paused = (ConsoleFollow.Paused)state.Follow;
             // Reading coordinates move; the pause snapshot and relative-time base remain frozen.
-            return state with { Follow = new ConsoleFollow.Paused(paused.Anchor with
+            return state with
             {
-                RowId = current.RowId, Sequence = current.Sequence,
-                TextOffset = current.TextOffset, PixelOffset = current.PixelOffset,
-            }, paused.PausedAt) };
+                Follow = new ConsoleFollow.Paused(paused.Anchor with
+                {
+                    RowId = current.RowId,
+                    Sequence = current.Sequence,
+                    TextOffset = current.TextOffset,
+                    PixelOffset = current.PixelOffset,
+                }, paused.PausedAt)
+            };
         }
 
         /// <param name="preservePosition">True keeps the live reading position instead of the pause anchor.</param>
         internal void Apply(bool preservePosition = false)
         {
-            if (_lifetime.IsCancellationRequested) return;
+            if (_detached) return;
             _suppress++;
             try
             {
@@ -299,7 +304,7 @@ public sealed class ConsoleListView : TemplatedControl
             var weak = new WeakReference<Session>(this);
             _pending = dispatcher!.InvokeAsync(() =>
             {
-                if (!weak.TryGetTarget(out var session) || session._lifetime.IsCancellationRequested) return;
+                if (!weak.TryGetTarget(out var session) || session._detached) return;
                 session._parts.Host.UpdateLayout();
                 session.Restore();
                 session._pending = null;
@@ -310,7 +315,7 @@ public sealed class ConsoleListView : TemplatedControl
 
         private void Restore()
         {
-            if (_lifetime.IsCancellationRequested || _parts.Host.Viewport.Height <= 0) return;
+            if (_detached || _parts.Host.Viewport.Height <= 0) return;
             _suppress++;
             try
             {
@@ -353,10 +358,10 @@ public sealed class ConsoleListView : TemplatedControl
         private void Jump(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e) => _view.JumpToLatest();
         private void Toggle(ConsoleRowId id) => _view.Toggle(id);
 
-        public void Dispose()
+        internal void Detach()
         {
-            if (_lifetime.IsCancellationRequested) return;
-            _lifetime.Cancel();
+            if (_detached) return;
+            _detached = true;
             _pending?.Abort();
             _pending = null;
             CancelDeferredScroll();
@@ -367,7 +372,6 @@ public sealed class ConsoleListView : TemplatedControl
             _parts.Host.LayoutUpdated -= LaidOut;
             _view.ResourcesChanged -= ResourcesUpdated;
             _view.ActualThemeVariantChanged -= ResourcesUpdated;
-            _lifetime.Dispose();
         }
 
         private enum ScrollIntent { Pause, Resume }

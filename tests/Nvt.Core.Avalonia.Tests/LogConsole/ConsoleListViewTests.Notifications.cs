@@ -1,11 +1,9 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Collections.Immutable;
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Input.Raw;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.LogConsole;
@@ -18,7 +16,7 @@ public sealed partial class ConsoleListViewTests
 {
     /// <summary>Host and scroll-viewer notifications report one user intent.</summary>
     [Fact]
-    public Task UserScrollRaisesExactlyOneRequest() => Run(() =>
+    public Task UserScrollRaisesExactlyOneRequest() => RunAsync(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection };
@@ -38,7 +36,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A taller viewport reaching the end does not express a resume intent.</summary>
     [Fact]
-    public Task ViewportGrowthAfterUserScrollDoesNotRequestResume() => Run(() =>
+    public Task ViewportGrowthAfterUserScrollDoesNotRequestResume() => RunAsync(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection };
@@ -60,12 +58,15 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Geometry before queued restoration cannot substitute pre-restoration coordinates.</summary>
     [Fact]
-    public Task GeometryNotificationPreservesPendingProjectionAnchor() => Run(() =>
+    public Task GeometryNotificationPreservesPendingProjectionAnchor() => RunAsync(() =>
     {
         using var initial = Many(100);
         using var trimmed = Many(90, 11);
-        var view = new ConsoleListView { Projection = initial,
-            ViewState = new ConsoleViewState().Pause(initial, new(11)) };
+        var view = new ConsoleListView
+        {
+            Projection = initial,
+            ViewState = new ConsoleViewState().Pause(initial, new(11))
+        };
         var window = Window(view);
         try
         {
@@ -85,7 +86,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Refreshing resources after a user scroll does not request reading state.</summary>
     [Fact]
-    public Task ResourceInvalidationAfterUserScrollDoesNotRequestState() => Run(() =>
+    public Task ResourceInvalidationAfterUserScrollDoesNotRequestState() => RunAsync(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection };
@@ -107,11 +108,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Deferred in-order acceptance never restores the earlier of two user positions.</summary>
     [Fact]
-    public Task DeferredScrollRequestsAcceptedInOrderPreserveLatestPosition() => Run(() =>
+    public Task DeferredScrollRequestsAcceptedInOrderPreserveLatestPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(11)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(11))
+        };
         var window = Window(view);
         try
         {
@@ -136,11 +140,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Each acceptance retires only its prefix of the queued user positions.</summary>
     [Fact]
-    public Task ThreeScrollRequestsAcceptedInOrderPreserveLatestPosition() => Run(() =>
+    public Task ThreeScrollRequestsAcceptedInOrderPreserveLatestPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(11)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(11))
+        };
         var window = Window(view);
         try
         {
@@ -173,11 +180,14 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(0)]
     [InlineData(7)]
-    public Task ScrollRequestsBeyondHistoryLimitRestoreExplicitAnchor(int requestIndex) => Run(() =>
+    public Task ScrollRequestsBeyondHistoryLimitRestoreExplicitAnchor(int requestIndex) => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -195,11 +205,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>The oldest of the most recent anchors remains recognizable at the cap.</summary>
     [Fact]
-    public Task OldestRetainedScrollRequestPreservesLatestPosition() => Run(() =>
+    public Task OldestRetainedScrollRequestPreservesLatestPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -217,11 +230,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A caller may copy the frozen row order without changing anchor identity.</summary>
     [Fact]
-    public Task CopiedEqualRowOrderPreservesLatestPosition() => Run(() =>
+    public Task CopiedEqualRowOrderPreservesLatestPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -234,8 +250,11 @@ public sealed partial class ConsoleListViewTests
             var paused = Assert.IsType<ConsoleFollow.Paused>(requests[0].Follow);
             var order = paused.Anchor.RowOrder.ToArray().ToImmutableArray();
             Assert.False(order == paused.Anchor.RowOrder);
-            view.ViewState = requests[0] with { Follow = new ConsoleFollow.Paused(
-                paused.Anchor with { RowOrder = order }, paused.PausedAt) };
+            view.ViewState = requests[0] with
+            {
+                Follow = new ConsoleFollow.Paused(
+                paused.Anchor with { RowOrder = order }, paused.PausedAt)
+            };
             Flush(window);
             Assert.Equal(805, Scroll(view).Offset.Y);
             Assert.Equal(new ConsoleRowId(41), FirstVisibleRow(view));
@@ -245,11 +264,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A different row order makes the host anchor an explicit restore.</summary>
     [Fact]
-    public Task ChangedRowOrderRestoresExplicitPosition() => Run(() =>
+    public Task ChangedRowOrderRestoresExplicitPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -260,8 +282,11 @@ public sealed partial class ConsoleListViewTests
             Scroll(view).Offset = new(0, 805);
             Flush(window);
             var paused = Assert.IsType<ConsoleFollow.Paused>(requests[0].Follow);
-            view.ViewState = requests[0] with { Follow = new ConsoleFollow.Paused(
-                paused.Anchor with { RowOrder = paused.Anchor.RowOrder.Reverse().ToImmutableArray() }, paused.PausedAt) };
+            view.ViewState = requests[0] with
+            {
+                Follow = new ConsoleFollow.Paused(
+                paused.Anchor with { RowOrder = paused.Anchor.RowOrder.Reverse().ToImmutableArray() }, paused.PausedAt)
+            };
             Flush(window);
             Assert.Equal(405, Scroll(view).Offset.Y);
             Assert.Equal(new ConsoleRowId(21), FirstVisibleRow(view));
@@ -271,11 +296,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Explicit host navigation retires even the later issued anchors.</summary>
     [Fact]
-    public Task UnrequestedFollowRetiresAllIssuedAnchors() => Run(() =>
+    public Task UnrequestedFollowRetiresAllIssuedAnchors() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -297,11 +325,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Expansion with the same Follow leaves later issued positions recognizable.</summary>
     [Fact]
-    public Task ExpansionChangePreservesLaterIssuedAnchors() => Run(() =>
+    public Task ExpansionChangePreservesLaterIssuedAnchors() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(1)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(1))
+        };
         var window = Window(view);
         try
         {
@@ -327,12 +358,15 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A projection refresh between two user scrolls keeps the earlier request valid for a later in-order acceptance.</summary>
     [Fact]
-    public Task ProjectionRefreshBetweenDeferredRequestsKeepsLatestPosition() => Run(() =>
+    public Task ProjectionRefreshBetweenDeferredRequestsKeepsLatestPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
         using var refreshed = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(11)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(11))
+        };
         var window = Window(view);
         try
         {
@@ -355,7 +389,7 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public Task HeightInvalidationGrowingExtentKeepsFollowingAtBottom(bool themeChange) => Run(() =>
+    public Task HeightInvalidationGrowingExtentKeepsFollowingAtBottom(bool themeChange) => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1, new string('i', 3000))));
@@ -376,10 +410,10 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A host may synchronously reproject when a measure-originated request is delivered.</summary>
     [Fact]
-    public Task ScrollRequestDuringMeasureIsDeliveredAfterMeasure() => Run(() =>
+    public Task ScrollRequestDuringMeasureIsDeliveredAfterMeasure() => RunAsync(() =>
     {
         using var smaller = Many(3);
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -406,9 +440,9 @@ public sealed partial class ConsoleListViewTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public Task ScrollRequestsDuringMeasureCoalesceToLatestAnchor(bool resize) => Run(() =>
+    public Task ScrollRequestsDuringMeasureCoalesceToLatestAnchor(bool resize) => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -443,9 +477,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Deferred scroll delivery uses host expansion changes made after measuring.</summary>
     [Fact]
-    public Task DeferredScrollRequestPreservesHostExpansionBeforeDelivery() => Run(() =>
+    public Task DeferredScrollRequestPreservesHostExpansionBeforeDelivery() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -481,9 +515,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Queued following work cannot undo scroll-away intent awaiting delivery.</summary>
     [Fact]
-    public Task ScrollDuringFollowingMeasurePreservesLatestPosition() => Run(() =>
+    public Task ScrollDuringFollowingMeasurePreservesLatestPosition() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -508,9 +542,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Projection replacement before delivery remaps the request to the live screen.</summary>
     [Fact]
-    public Task DeferredScrollRequestUsesReplacementProjection() => Run(() =>
+    public Task DeferredScrollRequestUsesReplacementProjection() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         using var trimmed = Many(80, 21);
@@ -535,9 +569,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A resume command supersedes pending scroll intent immediately.</summary>
     [Fact]
-    public Task JumpToLatestReplacesDeferredScrollRequest() => Run(() =>
+    public Task JumpToLatestReplacesDeferredScrollRequest() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -561,9 +595,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A toggle replaces pending scroll intent with one immediate combined request.</summary>
     [Fact]
-    public Task ToggleReplacesDeferredScrollRequest() => Run(() =>
+    public Task ToggleReplacesDeferredScrollRequest() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i, "first\nsecond"))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -597,9 +631,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Removing the projection leaves no meaningful scroll state to deliver.</summary>
     [Fact]
-    public Task DeferredScrollRequestIsDiscardedWhenProjectionClears() => Run(() =>
+    public Task DeferredScrollRequestIsDiscardedWhenProjectionClears() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -619,9 +653,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Detachment cancels pending user scroll delivery with the attachment lifetime.</summary>
     [Fact]
-    public Task DeferredScrollRequestIsCancelledOnDetach() => Run(() =>
+    public Task DeferredScrollRequestIsCancelledOnDetach() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -641,9 +675,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Delivery evaluates reaching the end after the original measure-time scroll.</summary>
     [Fact]
-    public Task DeferredScrollToEndRequestsResume() => Run(() =>
+    public Task DeferredScrollToEndRequestsResume() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -665,9 +699,9 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Scroll-away before delivery supersedes a transient arrival at the end.</summary>
     [Fact]
-    public Task DeferredScrollAwayReplacesPendingResume() => Run(() =>
+    public Task DeferredScrollAwayReplacesPendingResume() => RunAsync(() =>
     {
-        var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
+        using var content = new MeasureCallbackContent("first\nsecond\nthird\nfourth");
         using var projection = Project(Enumerable.Range(2, 99).Select(i => Row(i))
             .Prepend(Row(1) with { TextContent = content }));
         var view = new ConsoleListView { Projection = projection };
@@ -722,11 +756,9 @@ public sealed partial class ConsoleListViewTests
         }
     }
 
-    private static ConsoleRowId RowIdentity(Control row) => (ConsoleRowId)row.GetType()
-        .GetProperty("RowId", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(row)!;
+    private static ConsoleRowId RowIdentity(Control row) => ((ConsoleRowPresenter)row).RowId!.Value;
 
-    private static bool IsHostMeasuring(ConsoleListView view) => (bool)Host(view).GetType()
-        .GetProperty("IsMeasuring", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(Host(view))!;
+    private static bool IsHostMeasuring(ConsoleListView view) => Host(view).IsMeasuring;
 
     private static void InvalidateListResources(ConsoleListView view, Window window, bool themeChange)
     {

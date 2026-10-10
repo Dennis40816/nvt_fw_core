@@ -2,12 +2,7 @@
 
 
 using System.ComponentModel;
-using Avalonia.Automation;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
-using Avalonia.Threading;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
@@ -35,12 +30,12 @@ public sealed class ConsoleRefreshTests
     public void DrainSearchReaderFailurePreservesProjectionAndRecovers()
     {
         using var fixture = new ConsoleTestStore();
-        var previousContent = new ConsoleControllerTests.TrackedContent();
+        using var previousContent = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", previousContent));
         fixture.Fence();
         using var controller = fixture.Controller();
         var previous = controller.Projection;
-        var content = new ConsoleControllerTests.TrackedContent();
+        using var content = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Warn, "app", content));
         fixture.Fence();
         content.ThrowOnRead = true;
@@ -70,7 +65,7 @@ public sealed class ConsoleRefreshTests
     public void DrainRemapFailureDisposesFreshLeases()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new ConsoleControllerTests.TrackedContent();
+        using var content = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();
@@ -135,13 +130,13 @@ public sealed class ConsoleRefreshTests
     public void DrainThrowingRefreshErrorSubscriberOnFailurePreservesProjectionAndRecovers()
     {
         using var fixture = new ConsoleTestStore();
-        var previousContent = new ConsoleControllerTests.TrackedContent();
+        using var previousContent = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", previousContent));
         fixture.Fence();
         using var controller = fixture.Controller();
         var previous = controller.Projection;
         var state = controller.ViewState;
-        var content = new ConsoleControllerTests.TrackedContent();
+        using var content = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Warn, "app", content));
         fixture.Fence();
         controller.RequestViewState(state with { ExpandedIds = null! });
@@ -205,7 +200,7 @@ public sealed class ConsoleRefreshTests
     public void ClearPausedDedupeChangeReleasesTransferredContent()
     {
         using var fixture = new ConsoleTestStore();
-        var content = new ConsoleControllerTests.TrackedContent();
+        using var content = new ConsoleControllerTests.TrackedContent();
         fixture.Store.Add(new LogWrite(LogLevel.Info, "app", content));
         fixture.Fence();
         using var controller = fixture.Controller();

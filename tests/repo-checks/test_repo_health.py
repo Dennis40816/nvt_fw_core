@@ -13,11 +13,23 @@ from test_doc_sync import GitRepositoryTests
 REPOSITORY = Path(__file__).resolve().parents[2]
 CHECKER = REPOSITORY / "tools/repo-checks/repo-health.ps1"
 BASELINE = "eng/code-health/baseline.json"
+TEST_DEBT = "eng/code-health/test-debt.json"
+TEST_RULES = ("timeWaitsInTests", "elapsedAssertionsInTests", "tempPathInTests", "sourceTextReadsInTests",
+              "headlessSessionSetups", "childProcessInTests", "sameNameFakes")
 
 
 class RepoHealthTests(GitRepositoryTests):
     def setUp(self) -> None:
         super().setUp()
+        self.fixture_checker = self.root / "fixture-checker.ps1"
+        source = CHECKER.read_text(encoding="utf-8")
+        source = source.replace("if ($Mode -notin @('Measure', 'EnrollTestDebt')) { Initialize-Enforcement $baseline }",
+            "if ($baseline -and @($baseline.findings + $allowed.findings | Where-Object { $_.rule -notin $script:SyntaxRules }).Count) { throw 'HC_NOT_IMPLEMENTED: fixture has no diagnostic provider' }")
+        source = source.replace("else { Measure-Health }", "else { Measure-Syntax }")
+        source = source.replace("                Write-LedgerWarningIds $baseline", "                # fixture warning generator")
+        schema_path = (REPOSITORY / "tools/repo-checks/csharp/schema.json").as_posix()
+        source = source.replace("Join-Path $PSScriptRoot 'csharp/schema.json'", "'" + schema_path + "'")
+        self.fixture_checker.write_text(source, encoding="utf-8")
         self.write("global.json", (REPOSITORY / "global.json").read_text(encoding="utf-8"))
         self.write("src/Fixture/Fixture.csproj",
                    '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
@@ -26,7 +38,7 @@ class RepoHealthTests(GitRepositoryTests):
 
     def run_health(self, mode: str = "Measure", *args: str) -> subprocess.CompletedProcess[str]:
         # Ordinary subprocesses use the current console; no detached window.
-        return subprocess.run(["pwsh", "-NoProfile", "-File", str(CHECKER), "-Mode", mode,
+        return subprocess.run(["pwsh", "-NoProfile", "-File", str(self.fixture_checker), "-Mode", mode,
                                "-Repo", "core", "-Root", str(self.root), *args],
                               env=self.env, capture_output=True, encoding="utf-8", timeout=90)
 
@@ -37,7 +49,7 @@ class RepoHealthTests(GitRepositoryTests):
         return json.loads(result.stdout)
 
     def enroll(self) -> dict:
-        # Enrollment exists only in fixtures. The checker has no enrollment mode.
+        # Syntax fixture enrollment is hand-built; production Enroll requires all providers.
         m = self.measure()
         b = {key: copy.deepcopy(m[key]) for key in
              ("schemaVersion", "measurementVersion", "snapshotCommit", "limits")}
@@ -52,7 +64,7 @@ class RepoHealthTests(GitRepositoryTests):
         b["findings"] = [{key: copy.deepcopy(f[key]) for key in
                           ("rule", "project", "path", "member", "symbol", "syntaxHash", "count")}
                          | {"owner": "fixture", "removeBy": "2026-10-14"}
-                         for f in m["findings"]]
+                         for f in m["findings"] if f["rule"] not in TEST_RULES]
         self.write_baseline(b)
         self.base = self.commit()
         return b
@@ -512,6 +524,124 @@ class Words { string s="class TestWorkspace {} Path.GetTempPath Directory.Delete
         self.assert_exit(0, result)
         self.assertEqual("", result.stdout)
         self.assertEqual("roslyn-physical-v1", json.loads(output.read_text())["measurementVersion"])
+
+    SAMPLE = """using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+class Sample {
+    async Task A() { await Task.Delay(1); Thread.Sleep(1); SpinWait.SpinUntil(() => true); }
+    void B() { var w = Stopwatch.StartNew(); Assert.True(w.Elapsed.Ticks > 0); Assert.Equal(1, elapsedMs); }
+    void C() { Path.GetTempPath(); Path.GetTempFileName(); Directory.CreateTempSubdirectory(); }
+    void D() { File.ReadAllText("x"); File.ReadAllLines("y"); }
+    void E() { HeadlessUnitTestSession.StartNew(typeof(object)); builder.UseHeadless(); }
+    void F() { new Process(); new ProcessStartInfo("x"); Process.Start("x"); }
+}
+"""
+
+    def rule_counts(self) -> dict[str, int]:
+        summary = self.measure()["summary"]
+        return {rule: summary[rule] for rule in TEST_RULES}
+
+    def test_test_duplication_rules_count_each_pattern_in_a_test_project(self) -> None:
+        self.write("tests/Fixture.Tests/One.cs", self.SAMPLE)
+        self.assertEqual({"timeWaitsInTests": 3, "elapsedAssertionsInTests": 2, "tempPathInTests": 3,
+                          "sourceTextReadsInTests": 2, "headlessSessionSetups": 2, "childProcessInTests": 3,
+                          "sameNameFakes": 0}, self.rule_counts())
+
+    def test_test_duplication_rules_ignore_product_code_and_the_shared_helper_project(self) -> None:
+        self.write("src/Fixture/Two.cs", self.SAMPLE)
+        self.write("tests/Nvt.Core.TestSupport/Helper.cs", self.SAMPLE.replace("Sample", "Helper"))
+        self.assertEqual(dict.fromkeys(TEST_RULES, 0), self.rule_counts())
+
+    SHARED = ("using System;\nusing System.Threading.Tasks;\n"
+              "class FakeClock : TimeProvider { }\n"
+              "class TestWorkspace { void M() { Task.Run(() => { }).Wait(); } }\n")
+    SHARED_RULES = ("fakeClockDuplicates", "workspaceDuplicates", "blockingWait")
+
+    def test_shared_helper_project_owns_the_clock_the_workspace_and_the_blocking_wait(self) -> None:
+        self.write("tests/Nvt.Core.TestSupport/Helper.cs", self.SHARED)
+        summary = self.measure()["summary"]
+        self.assertEqual({rule: 0 for rule in self.SHARED_RULES}, {rule: summary[rule] for rule in self.SHARED_RULES})
+
+    def test_the_helper_tests_project_and_other_projects_are_not_exempt(self) -> None:
+        self.write("tests/Nvt.Core.TestSupport.Tests/Helper.cs", self.SHARED)
+        self.write("tests/Fixture.Tests/Other.cs", self.SHARED.replace("FakeClock", "OtherClock").replace("TestWorkspace", "OtherWorkspace"))
+        summary = self.measure()["summary"]
+        self.assertGreaterEqual(summary["fakeClockDuplicates"], 2)
+        self.assertGreaterEqual(summary["workspaceDuplicates"], 1)
+        self.assertGreaterEqual(summary["blockingWait"], 2)
+
+    def test_test_duplication_rules_ignore_comments_and_strings(self) -> None:
+        self.write("tests/Fixture.Tests/One.cs", 'class One { string s = "Task.Delay(1) Process.Start(x)"; // Thread.Sleep(1);\n}\n')
+        self.assertEqual(dict.fromkeys(TEST_RULES, 0), self.rule_counts())
+
+    def test_architecture_files_may_read_source_text(self) -> None:
+        self.write("tests/Fixture.Tests/ArchitectureRules.cs", 'class R { void M() { System.IO.File.ReadAllText("x"); } }\n')
+        self.assertEqual(0, self.measure()["summary"]["sourceTextReadsInTests"])
+
+    def test_assembly_attribute_counts_as_a_headless_setup(self) -> None:
+        self.write("tests/Fixture.Tests/One.cs", "using System;\n[assembly: AvaloniaTestApplication(typeof(One))]\nclass One {}\n")
+        self.assertEqual(1, self.measure()["summary"]["headlessSessionSetups"])
+
+    def test_same_name_fakes_need_two_files_and_ignore_partial_types(self) -> None:
+        self.write("tests/Fixture.Tests/A.cs", "namespace A; class FakeStore {}\nclass Faker {}\npartial class FakeSplit {}\n")
+        self.write("tests/Fixture.Tests/B.cs", "namespace B; class FakeStore {}\npartial class FakeSplit {}\n")
+        self.assertEqual(2, self.measure()["summary"]["sameNameFakes"])
+        self.write("tests/Fixture.Tests/B.cs", "namespace B; class FakeOther {}\n")
+        self.assertEqual(0, self.measure()["summary"]["sameNameFakes"])
+
+    def seed_test_debt(self, source: str) -> None:
+        self.write("tests/Fixture.Tests/One.cs", source)
+        self.enroll()
+        self.assert_exit(0, self.run_health("EnrollTestDebt"), "EnrollTestDebt passed")
+        self.base = self.commit()
+
+    def test_enrolled_test_debt_passes_and_new_duplication_fails(self) -> None:
+        self.seed_test_debt("class One { async System.Threading.Tasks.Task M() { await System.Threading.Tasks.Task.Delay(1); } }\n")
+        ledger = json.loads((self.root / TEST_DEBT).read_text())
+        self.assertEqual(["timeWaitsInTests"], [f["rule"] for f in ledger["findings"]])
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+        self.write("tests/Fixture.Tests/Two.cs", "class Two { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "New test duplication")
+
+    def test_fixed_test_debt_must_be_lowered_in_the_same_change(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        self.write("tests/Fixture.Tests/One.cs", "class One { void M() { } }\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "run LowerBaseline")
+        self.assert_exit(0, self.run_health("LowerBaseline", "-BaseRef", self.base))
+        self.assertEqual([], json.loads((self.root / TEST_DEBT).read_text())["findings"])
+        self.git("add", "-A")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_test_debt_ledger_cannot_be_raised_or_deleted_after_enrollment(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        path = self.root / TEST_DEBT
+        ledger = json.loads(path.read_text())
+        ledger["findings"][0]["count"] += 1
+        path.write_text(json.dumps(ledger, indent=2) + "\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "may only shrink")
+        path.unlink()
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "cannot be deleted")
+
+    def test_missing_test_debt_ledger_fails_when_test_duplication_exists(self) -> None:
+        self.write("tests/Fixture.Tests/One.cs", "class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        self.enroll()
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "Run -Mode EnrollTestDebt")
+
+    def test_enroll_test_debt_refuses_an_existing_ledger_and_rejects_bad_ledgers(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        self.assert_exit(2, self.run_health("EnrollTestDebt"), "already exists")
+        path = self.root / TEST_DEBT
+        ledger = json.loads(path.read_text())
+        ledger["findings"][0]["rule"] = "asyncVoid"
+        path.write_text(json.dumps(ledger, indent=2) + "\n")
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "not a test-duplication rule")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Dennis Liu. All rights reserved.
 [CmdletBinding()]
-param([switch]$Check)
+param([switch]$Check, [switch]$Distribute, [string]$CoreCommit = '')
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -59,4 +59,35 @@ if ($Check) {
 else {
     [System.IO.File]::WriteAllBytes($manifestPath, $expected)
     Write-Output "Bundle manifest written: $($bundleFiles.Count) files."
+}
+
+if ($Distribute) {
+    if ($Check) { throw '-Check cannot be combined with -Distribute' }
+    $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+    $destination = Join-Path $repoRoot 'eng/core-health'
+    [void][IO.Directory]::CreateDirectory($destination)
+    foreach ($name in $bundleFiles) {
+        [IO.File]::WriteAllBytes((Join-Path $destination $name), [IO.File]::ReadAllBytes((Join-Path $PSScriptRoot $name)))
+    }
+    $editorPath = Join-Path $repoRoot '.editorconfig'
+    $common = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '.editorconfig'))
+    $begin = '# BEGIN CORE HEALTH MANAGED BLOCK'
+    $end = '# END CORE HEALTH MANAGED BLOCK'
+    $editor = [IO.File]::ReadAllText($editorPath)
+    if ($editor.Contains($begin)) {
+        $pattern = '(?s)' + [regex]::Escape($begin) + '\n.*?' + [regex]::Escape($end)
+        $editor = [regex]::Replace($editor, $pattern, $begin + "`n" + $common + $end)
+    }
+    elseif ($editor.Replace("`r`n", "`n") -ceq $common) { $editor = $begin + "`n" + $common + $end + "`n" }
+    else { throw 'Root .editorconfig needs a reviewed managed-block integration' }
+    [IO.File]::WriteAllText($editorPath, $editor, $utf8)
+    if ($CoreCommit) {
+        $commit = (& git -C $repoRoot rev-parse "$CoreCommit^{commit}").Trim()
+        if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') { throw 'Invalid CoreCommit' }
+        $hashes = [ordered]@{}
+        foreach ($name in $bundleFiles) { $hashes[$name] = (Get-FileHash -LiteralPath (Join-Path $destination $name) -Algorithm SHA256).Hash.ToLowerInvariant() }
+        $lock = [ordered]@{ schemaVersion = 1; coreCommit = $commit; files = $hashes }
+        [IO.File]::WriteAllText((Join-Path $repoRoot 'eng/core-health.lock.json'), ($lock | ConvertTo-Json -Depth 10).Replace("`r`n", "`n") + "`n", $utf8)
+    }
+    Write-Output 'Distributed six files and the managed EditorConfig block. Verify provenance before committing the pin.'
 }

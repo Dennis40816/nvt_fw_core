@@ -3,7 +3,8 @@
 [English](README.md) | 繁體中文
 
 這是供確定性測試使用的 net10.0 可封裝程式庫。版本繼承 Directory.Build.props，
-不相依於 Nvt.Core、xUnit 或 Avalonia。**只有測試專案可以參考此專案或套件**。
+只為了 `ChildProcessFixture` 使用的 Core 行程啟動 seam `ProcessLaunchGate` 而相依於 Nvt.Core，
+不相依於 xUnit 或 Avalonia。**只有測試專案可以參考此專案或套件**。
 不得新增時鐘或測試工作目錄的副本；需要新行為時，擴充共用實作及其測試。
 
 ## ManualTimeProvider
@@ -53,14 +54,64 @@ Files、Startup、Progress，以及 StartupTraceTests、ThrottledProgressTests
 內部的時鐘副本留待發布後遷移。
 Launcher 傳輸測試內部的 LinkedProbeWorkspace 是另一份工作區副本，同樣留待遷移。
 
+## SignalWait
+
+SignalWait 是供測試設定與等待的一次性訊號，取代以 Task.Delay 與 Thread.Sleep
+等待結果的做法。Set 第一次呼叫回傳 true，之後回傳 false；等待者在其他執行緒
+繼續，不會在 Set 內執行。WaitAsync 等待訊號、取消權杖或看門狗。
+
+看門狗只用來避免卡死，必須是有限的正數（預設 30 秒，DefaultWatchdog），絕不
+決定測試結果。到期時 WaitAsync 擲出 TimeoutException，訊息會寫出訊號名稱；
+權杖取消仍是 OperationCanceledException。看門狗時鐘預設為 TimeProvider.System，
+測試可改傳其他時鐘，例如 ManualTimeProvider，不必實際等待就能驗證到期。
+靜態的 WaitAsync(Task, name, ...) 為任何工作加上同樣的看門狗，工作本身的失敗
+原樣傳出。
+
+## ChildProcessFixture
+
+ChildProcessFixture.Start 不經 shell 啟動可執行檔。標準輸出與標準錯誤依到達
+順序合併擷取，最多到字元上限（預設 64 KiB，OutputTruncated 表示輸出被截斷）。
+標準輸入會立即關閉。子行程未自行結束時，看門狗（預設 60 秒）會結束整個行程
+樹；之後 WaitForExitAsync 擲出 TimeoutException，WatchdogExpired 為 true。
+WaitForOutputAsync 等待輸出包含指定文字，輸出結束仍無該文字則失敗。KillTree
+依要求結束行程樹。Dispose 與 DisposeAsync 會結束整個行程樹，有限度等待根行程
+結束並釋放控制代碼，可重複呼叫。子行程若一直存活，會占住檔案並讓下一個測試
+隨機失敗，所以每個子行程都應經由此 fixture 啟動。行程樹結束只能涵蓋父行程仍
+存活的子孫；比父行程活得更久的子孫無法觸及。
+
+## RelativePerf
+
+RelativePerf 讓效能門檻跟著機器走。「少於一秒」這類絕對時間在慢的 CI 機器上會誤判，
+在快的機器上又掩蓋退化。請用三種形式之一。
+
+- **校準單位。** CalibrationUnit 執行固定的參考工作量並回傳其中位數時間。InUnits 把量到的時間
+  換成該單位的倍數。請在同一個行程、貼近量測前取得單位。
+- **規模比例。** ScaleRatio 把較大輸入的中位數時間除以較小輸入的中位數時間。線性演算法加倍約為 2，
+  平方演算法約為 4。這個比例與機器無關。
+- **計數。** MedianAllocatedBytes 計算工作在呼叫執行緒上配置的位元組。計數與機器速度無關，
+  能用計數時優先使用。
+
+每次量測都會暖身、取至少七個樣本（MinimumSamples）並回報中位數。門檻失敗不重試；不穩定的測試
+請開 Issue。門檻要寫在測試旁邊：參考機器上量到的中位數，以及乘上的餘裕。測試請標
+[Trait("Category", "Performance")]，CI 才能用獨立步驟執行。預設時鐘是 TimeProvider.System；
+測試此 helper 本身時改傳 ManualTimeProvider。
+
+## TaskBlock
+
+TaskBlock.UntilComplete 會阻塞呼叫執行緒直到工作完成。只能用在無法 await 的測試掛鉤，例如
+dispatcher 回呼或 fixture 建構函式。測試中禁用 Task.Wait、Task.Result 與 GetAwaiter().GetResult()。
+UntilComplete 以事件阻塞、重新擲回原始例外（不是 AggregateException）、已取消的工作會擲出
+OperationCanceledException，並且不使用呼叫端的同步內容。工作必須在其他執行緒執行；需要被阻塞
+執行緒才能繼續的工作永遠不會完成。
+
 ## 基準與刻意差異
 
 這些工具取代儲存庫 Dennis40816/nvt_fw_core（分支 `main`，PR #147 的時鐘）中的
 `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` 與
 `tests/Nvt.Core.Tests/Processes/TestWorkspace.cs`。這兩個檔案在提交
-d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與本變更的父提交
+d3f0a1ddb467b0abb1cb832b81b0bf6da69ef559 與共用支援變更的父提交
 f90900bbb04f84e590aa77dc47b6e04b7a77d9c6 完全相同。可用
-`git show <commit>:<path>` 比對。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
+`git show <commit>:<path>` 比對。`SignalWait` 與 `ChildProcessFixture` 是新增的，不取代任何既有程式，所以沒有要比對的來源行為。以下行為是刻意改變，已遷移的 Core 測試不依賴舊行為：
 
 時鐘：
 

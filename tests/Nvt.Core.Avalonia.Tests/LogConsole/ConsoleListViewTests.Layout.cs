@@ -1,6 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using Avalonia.Controls;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.LogConsole;
 using Xunit;
@@ -11,7 +10,7 @@ public sealed partial class ConsoleListViewTests
 {
     /// <summary>Append and direct scrolling share one layout cycle; the user pause wins.</summary>
     [Fact]
-    public Task ScrolledAppendInSameLayoutCycleRequestsPauseWithoutFollowing() => Run(() =>
+    public Task ScrolledAppendInSameLayoutCycleRequestsPauseWithoutFollowing() => RunAsync(() =>
     {
         using var initial = Many(100);
         using var appended = Many(110);
@@ -32,7 +31,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A measured height correction does not hide user scrolling in the same cycle.</summary>
     [Fact]
-    public Task ScrolledHeightCorrectionInSameLayoutCycleRequestsPauseWithoutFollowing() => Run(() =>
+    public Task ScrolledHeightCorrectionInSameLayoutCycleRequestsPauseWithoutFollowing() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 20 ? "first\nsecond\nthird" : "Message")));
@@ -54,12 +53,15 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Correcting an expanded overscan row preserves the visible row inset.</summary>
     [Fact]
-    public Task MeasureOverrideOverscanExpandedRowCorrectionPreservesFirstVisibleRowPosition() => Run(() =>
+    public Task MeasureOverrideOverscanExpandedRowCorrectionPreservesFirstVisibleRowPosition() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 40 ? "first\nsecond\nthird" : "Message")));
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(41), pixelOffset: 5) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(41), pixelOffset: 5)
+        };
         var window = Window(view);
         try
         {
@@ -78,12 +80,15 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A paused user scroll requests fresh coordinates before overscan correction can consume its offset.</summary>
     [Fact]
-    public Task ScrolledPausedHeightCorrectionInSameLayoutCycleRequestsUpdatedAnchor() => Run(() =>
+    public Task ScrolledPausedHeightCorrectionInSameLayoutCycleRequestsUpdatedAnchor() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 40 ? "first\nsecond\nthird" : "Message")));
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState { ExpandedIds = [new(40)] }.Pause(projection, new(71), pixelOffset: 5) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState { ExpandedIds = [new(40)] }.Pause(projection, new(71), pixelOffset: 5)
+        };
         var window = Window(view);
         try
         {
@@ -101,7 +106,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Programmatic scrolling during height correction preserves following.</summary>
     [Fact]
-    public Task MeasureOverrideFollowingHeightCorrectionDoesNotRequestPause() => Run(() =>
+    public Task MeasureOverrideFollowingHeightCorrectionDoesNotRequestPause() => RunAsync(() =>
     {
         using var projection = Project(Enumerable.Range(1, 100).Select(i =>
             Row(i, i == 95 ? "first\nsecond\nthird" : "Message")));
@@ -122,7 +127,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>An unrelated state edit retains the live position while acceptance is deferred.</summary>
     [Fact]
-    public Task ViewStateUnrelatedChangeWithStaleAnchorPreservesLiveOffset() => Run(() =>
+    public Task ViewStateUnrelatedChangeWithStaleAnchorPreservesLiveOffset() => RunAsync(() =>
     {
         using var projection = Many(100);
         var stale = new ConsoleViewState().Pause(projection, new(21));
@@ -143,11 +148,14 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>A caller explicitly changing Follow can navigate to a different anchor.</summary>
     [Fact]
-    public Task ViewStateExplicitFollowAnchorChangeRestoresRequestedPosition() => Run(() =>
+    public Task ViewStateExplicitFollowAnchorChangeRestoresRequestedPosition() => RunAsync(() =>
     {
         using var projection = Many(100);
-        var view = new ConsoleListView { Projection = projection,
-            ViewState = new ConsoleViewState().Pause(projection, new(21)) };
+        var view = new ConsoleListView
+        {
+            Projection = projection,
+            ViewState = new ConsoleViewState().Pause(projection, new(21))
+        };
         var window = Window(view);
         try
         {
@@ -160,7 +168,7 @@ public sealed partial class ConsoleListViewTests
 
     /// <summary>Replacing the template drops all borrowed rows from its old host.</summary>
     [Fact]
-    public Task OnApplyTemplateReplacedHostReleasesBorrowedRows() => Run(() =>
+    public Task OnApplyTemplateReplacedHostReleasesBorrowedRows() => RunAsync(() =>
     {
         using var projection = Many(100);
         var view = new ConsoleListView { Projection = projection };
@@ -169,18 +177,18 @@ public sealed partial class ConsoleListViewTests
         {
             var host = Host(view);
             var row = host.Children[0];
-            var source = Member(host, "ItemsSource")!;
+            var source = host.ItemsSource;
             var template = view.Template;
-            Assert.Same(projection, Member(source, "Projection"));
+            Assert.Same(projection, source.Projection);
             view.Template = null;
             view.ApplyTemplate();
             view.Template = template;
             view.ApplyTemplate();
             Flush(window);
             Assert.NotSame(host, Host(view));
-            Assert.Null(Member(source, "Projection"));
+            Assert.Null(source.Projection);
             Assert.Empty(host.Children);
-            Assert.Null(Member(row, "_input"));
+            Assert.Null(((ConsoleRowPresenter)row).Row);
         }
         finally { window.Close(); }
     });
