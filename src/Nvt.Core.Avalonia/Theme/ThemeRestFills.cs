@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml.Styling;
-using Avalonia.Threading;
 
 namespace Nvt.Core.Avalonia.Theme;
 
@@ -21,7 +21,7 @@ public static class ThemeRestFills
     {
         ArgumentNullException.ThrowIfNull(resources);
         if (!Enum.IsDefined(fill)) throw new ArgumentOutOfRangeException(nameof(fill));
-        Dispatcher.UIThread.VerifyAccess();
+        (resources as AvaloniaObject ?? Application.Current)?.VerifyAccess();
 
         var uri = new Uri($"{Prefix}{fill}.axaml");
         var next = new ResourceInclude(uri) { Source = uri };
