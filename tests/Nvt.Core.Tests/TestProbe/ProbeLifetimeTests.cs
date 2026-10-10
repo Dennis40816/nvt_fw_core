@@ -14,13 +14,14 @@ public sealed class ProbeLifetimeTests
     private static readonly string[] PortableWaitingModes = ["silent-wait", "tree-grandchild", "hold-lock"];
     private static readonly string[] WindowsWaitingModes = ["tree-root-wait", "orphan-chain-root"];
 
-    // Each waiting mode lasts 30 seconds, so one test runs its modes at the same time.
+    // A waiting mode stays alive until the test creates its release file, so these tests do not depend on a clock.
+    // One test runs its modes at the same time.
     [Fact]
-    public Task PortableWaitingModesWriteTheirMarkersAndReturnZeroAfterThirtySeconds() =>
+    public Task PortableWaitingModesWriteTheirMarkersAndExitZeroWhenReleased() =>
         Task.WhenAll(PortableWaitingModes.Select(WaitingModeAsync));
 
     [Fact]
-    public Task WindowsWaitingModesWriteTheirMarkersAndReturnZeroAfterThirtySeconds()
+    public Task WindowsWaitingModesWriteTheirMarkersAndExitZeroWhenReleased()
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Descendant handle inheritance requires Windows.");
         return Task.WhenAll(WindowsWaitingModes.Select(WaitingModeAsync));
@@ -32,13 +33,14 @@ public sealed class ProbeLifetimeTests
         string marker = workspace.PathFor("leaf.pid");
         string lockPath = workspace.PathFor("lock.dat");
         string lockReady = workspace.PathFor("lock.ready");
+        string release = workspace.PathFor("release.flag");
         workspace.WatchTree(marker);
         string[] arguments = mode == "hold-lock"
             ? ["--mode", mode, "--lock-path", lockPath, "--lock-ready", lockReady]
             : mode == "silent-wait" ? ["--mode", mode] : ["--mode", mode, "--tree-marker", marker];
-        var clock = Stopwatch.StartNew();
         var process = workspace.Start(arguments, info =>
         {
+            info.Environment["CORE_TEST_PROBE_RELEASE_PATH"] = release;
             if (mode == "tree-grandchild")
             {
                 info.Environment["CORE_TEST_LIFETIME_JOB"] = "missing-job";
@@ -86,8 +88,11 @@ public sealed class ProbeLifetimeTests
                 }
             }
         }
-        await ProbeWorkspace.ExitAsync(process, 0, 40);
-        Assert.True(clock.Elapsed >= TimeSpan.FromSeconds(30));
+        Assert.False(process.HasExited, "The probe left its waiting mode before the release file existed.");
+        using (File.Create(release))
+        {
+        }
+        await ProbeWorkspace.ExitAsync(process, 0, 20);
         Assert.Empty(await ProbeWorkspace.ReadAsync(process.StandardOutput));
         Assert.Empty(await ProbeWorkspace.ReadAsync(process.StandardError));
         if (mode == "hold-lock")
@@ -97,7 +102,7 @@ public sealed class ProbeLifetimeTests
         }
         if (mode == "silent-wait")
         {
-            Assert.Empty(Directory.GetFiles(workspace.Root));
+            Assert.Equal([release], Directory.GetFiles(workspace.Root));
         }
     }
 

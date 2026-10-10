@@ -2,6 +2,7 @@
 
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Transport;
@@ -124,16 +125,17 @@ public sealed class ManagedStartDeadlineTests
             await start.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
     }
 
-    /// <summary>An unfinished native creation yields an existing fail-closed outcome.</summary>
+    /// <summary>An unfinished native creation yields an existing fail-closed outcome. The cleanup wait runs on a manual clock.</summary>
     [Fact]
     public async Task CallerCancellationCannotWaitForeverForUnfinishedCreation()
     {
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(
             TestContext.Current.CancellationToken);
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var workerExited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var deadline = new ManagedStartDeadline(TimeSpan.FromSeconds(10), caller.Token);
+        var deadline = new ManagedStartDeadline(TimeSpan.FromSeconds(10), time, caller.Token);
         Task<ManagedProcessStartResult> start = deadline.RunAsync<ManagedProcessStartResult>(async () =>
         {
             try
@@ -155,9 +157,14 @@ public sealed class ManagedStartDeadlineTests
             await entered.Task.WaitAsync(TestContext.Current.CancellationToken);
             caller.Cancel();
 
+            // The ready deadline timer and the cleanup wait are both pending. Advancing the manual clock ends the
+            // cleanup wait at once, so the test needs no real time.
+            TimeSpan cleanup = 2 * ManagedProcessTermination.DefaultWaitTimeout;
+            await time.WhenPendingAsync(2, cleanup, TestContext.Current.CancellationToken)
+                .WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+            time.Advance(cleanup);
             ManagedProcessStartResult result = await start.WaitAsync(
-                (2 * ManagedProcessTermination.DefaultWaitTimeout) + TimeSpan.FromSeconds(2),
-                TestContext.Current.CancellationToken);
+                TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
             Assert.Equal(ManagedProcessStartOutcome.TerminationUnconfirmed, result.Outcome);
         }
         finally
