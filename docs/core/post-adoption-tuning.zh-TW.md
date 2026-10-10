@@ -13,6 +13,7 @@
 | ToggleButton 角色與 ToggleSwitch | `ToggleTokens.axaml` |
 | TextBox、NumericUpDown、關閉狀態的 ComboBox、TabControl 與 TabItem | `FormTokens.axaml` 與 `TabTokens.axaml` |
 | 共用選取顏色，以及外側或內縮焦點邊距 | `ControlTokens.axaml` |
+| 靜止填色模式 | `ControlTokens.axaml`（預設）、`RestFillSoft.axaml` 與 `RestFillNone.axaml` |
 | 隨形狀改變的圓角 | `ShapePill.axaml` 與 `ShapeSquare.axaml` |
 | 共用列高、字型與焦點框粗細 | `ThemeTokens.axaml` |
 

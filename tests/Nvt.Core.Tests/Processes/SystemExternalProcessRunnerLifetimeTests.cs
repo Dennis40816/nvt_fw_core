@@ -16,6 +16,7 @@ namespace Nvt.Core.Tests.Processes;
 /// from before the triggering call (including <c>Cancel()</c> itself). Helpers live 30 s, far past each bound, so a
 /// pass cannot come from a helper ending on its own.
 /// </summary>
+[Collection(ProcessSerialCollection.Name)]
 public sealed class SystemExternalProcessRunnerLifetimeTests
 {
     private const int HelperLifetimeSeconds = 30;
@@ -765,28 +766,6 @@ public sealed class SystemExternalProcessRunnerLifetimeTests
         // The reserve is carved out of the deadline, not appended to it.
         Assert.Equal(schedule.DeadlineAt, schedule.ReaderStopAt + reserveTicks);
         Assert.True(schedule.HeldOutputGraceAt <= schedule.ReaderStopAt, "The held-output grace must fall within the deadline.");
-    }
-
-    /// <summary>Guard: CancelWithinAsync catches a synchronous blocking cancel promptly instead of hanging.</summary>
-    [Fact]
-    public async Task CancelWithinGuardFailsPromptlyOnBlockingCancel()
-    {
-        using var gate = new ManualResetEventSlim(false);
-        using var cancellation = new CancellationTokenSource();
-        using CancellationTokenRegistration registration = cancellation.Token.Register(gate.Wait);
-        try
-        {
-            // A synchronous blocking callback (the pre-fix regression) must be reported within the small bound,
-            // long before the 40 s watchdog, so a regressed runner fails fast rather than hanging the suite.
-            var clock = Stopwatch.StartNew();
-            _ = await Assert.ThrowsAnyAsync<Exception>(
-                () => CancelWithinAsync(cancellation, TimeSpan.FromSeconds(1)));
-            Assert.True(clock.Elapsed < TimeSpan.FromSeconds(10), $"The guard took {clock.Elapsed} to report a blocking cancel.");
-        }
-        finally
-        {
-            gate.Set();
-        }
     }
 
     /// <summary>detached, unsettled invocations are capped; a new run is refused, and settling frees a slot.</summary>

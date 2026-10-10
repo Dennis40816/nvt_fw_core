@@ -30,7 +30,7 @@
         <!-- The transparent row makes the label, gap, and padding part of the native hit target. -->
         <Grid Background="{DynamicResource Nvt.Toggle.TransparentBrush}">
           <Border x:Name="ChoiceRow" Padding="{TemplateBinding Padding}"
-                  Background="{DynamicResource NfcSurfaceSubtleBrush}" CornerRadius="{DynamicResource Nvt.Shape.ControlCornerRadius}">
+                  Background="{DynamicResource NfcSurfaceSubtleBrush}" Tag="{DynamicResource Nvt.Controls.RestFillMode}" CornerRadius="{DynamicResource Nvt.Shape.ControlCornerRadius}">
             <Border.Transitions><Transitions><BrushTransition Property="Background" Duration="0:0:0.15"/></Transitions></Border.Transitions>
             <Grid ColumnDefinitions="Auto,*">
               <Border x:Name="ChoiceIndicator" Width="{DynamicResource Nvt.Choice.IndicatorSize}"
@@ -119,6 +119,10 @@
   <Style Selector="CheckBox.reducedMotion, RadioButton.reducedMotion, .reducedMotion CheckBox, .reducedMotion RadioButton">
     <Setter Property="Transitions" Value="{x:Null}"/>
   </Style>
+  <!-- With the rest-fill mode None, rest and disabled rows are transparent. Later hover and pressed styles still win. -->
+  <Style Selector="CheckBox /template/ Border#ChoiceRow[Tag=None], RadioButton /template/ Border#ChoiceRow[Tag=None]">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+  </Style>
   <Style Selector="CheckBox:pointerover:not(:disabled) /template/ Border#ChoiceRow, RadioButton:pointerover:not(:disabled) /template/ Border#ChoiceRow">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
   </Style>
@@ -127,6 +131,9 @@
   </Style>
   <Style Selector="CheckBox:checked:not(:disabled) /template/ Border#ChoiceRow, CheckBox:indeterminate:not(:disabled) /template/ Border#ChoiceRow, RadioButton:checked:not(:disabled) /template/ Border#ChoiceRow">
     <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:checked:not(:disabled) /template/ Border#ChoiceRow[Tag=None], CheckBox:indeterminate:not(:disabled) /template/ Border#ChoiceRow[Tag=None], RadioButton:checked:not(:disabled) /template/ Border#ChoiceRow[Tag=None]">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
   </Style>
   <Style Selector="CheckBox:checked:pointerover:not(:disabled) /template/ Border#ChoiceRow, CheckBox:indeterminate:pointerover:not(:disabled) /template/ Border#ChoiceRow, RadioButton:checked:pointerover:not(:disabled) /template/ Border#ChoiceRow">
     <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedPointerOverBrush}"/>

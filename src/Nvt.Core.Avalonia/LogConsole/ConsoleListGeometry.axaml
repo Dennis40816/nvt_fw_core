@@ -1,0 +1,25 @@
+<!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Structural dimensions from the proposal; Core supplies spacing, icon size and control height. -->
+  <x:Double x:Key="Nvt.Console.List.RowHeight">20</x:Double>
+  <x:Double x:Key="Nvt.Console.List.TimeWidth">104</x:Double>
+  <x:Double x:Key="Nvt.Console.List.LevelWidth">84</x:Double>
+  <x:Double x:Key="Nvt.Console.List.SourceWidth">120</x:Double>
+  <x:Double x:Key="Nvt.Console.List.RepeatWidth">48</x:Double>
+  <x:Double x:Key="Nvt.Console.List.ArrowWidth">24</x:Double>
+  <x:Double x:Key="Nvt.Console.List.DragThreshold">4</x:Double>
+  <Thickness x:Key="Nvt.Console.List.RowPadding">16,0</Thickness>
+  <StaticResource x:Key="Nvt.Console.List.RetentionHeight" ResourceKey="Nvt.Console.List.RowHeight"/>
+  <StaticResource x:Key="Nvt.Console.List.RetentionMargin" ResourceKey="Nvt.Console.List.RowPadding"/>
+  <Thickness x:Key="Nvt.Console.List.JumpMargin">16</Thickness>
+  <x:String x:Key="Nvt.Console.List.JumpToLatestOne">Jump to latest ({0} new message)</x:String>
+  <x:String x:Key="Nvt.Console.List.JumpToLatestMany">Jump to latest ({0} new messages)</x:String>
+  <x:String x:Key="Nvt.Console.List.RetentionOne">Retention changed · {0} message evicted</x:String>
+  <x:String x:Key="Nvt.Console.List.RetentionFormat">Retention changed · {0} messages evicted</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Trace">Trace</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Debug">Debug</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Info">Info</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Warn">Warn</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Error">Error</x:String>
+  <x:String x:Key="Nvt.Console.List.Level.Fatal">Fatal</x:String>
+</ResourceDictionary>

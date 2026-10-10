@@ -6,7 +6,7 @@
 
 `Nvt.Core.LogConsole` 提供 NFC、NFH、NFU 共用的非 UI console 模型。
 目標框架是 `net8.0`，沒有新增套件。
-控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。
+控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。Avalonia 列表見[列表檢視](#列表檢視)；宿主 commands 負責投影與狀態。
 
 ## 設計與來源
 
@@ -498,7 +498,112 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-Avalonia 標題、工具列與空狀態的 accessibility 及視覺證據已實作。
-UI virtualization、列的 pointer 互動、列 accessibility 與鍵盤路由由 K2 的列表切片負責；
+Avalonia 標題、工具列與空狀態的 accessibility、視覺證據與列表檢視已實作。
+連結與選取的 pointer 互動、console keyboard commands，以及整個 console 的宿主 accessibility 與視覺驗證，仍由後續 UI 工作完成；
 clipboard 與檔案 adapter 仍由 app 擁有。
 宿主採用是另外的變更，路徑政策、開啟、clipboard 與 spill-store 整合仍屬於 app。
+
+## 列表檢視
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleListView` 是可選用的樣板化列表控制項。
+載入 `avares://Nvt.Core.Avalonia/LogConsole/ConsoleListStyles.axaml`、Core theme tokens 與字型角色，
+並在宿主設定 `WithNvtCoreFonts()`。列表樣式組合既有按鈕、捲軸與圖示樣式，
+不依賴 panel controller 或 app 型別。
+列表載入 `ConsoleListGeometry.axaml` 提供結構尺寸，並沿用 Core 共用圖示尺寸、
+間距與控制項高度 token。所有等級字形皆來自 `NvtIcons`。
+
+| 成員 | 呼叫端契約 |
+|---|---|
+| `Projection` / `ProjectionProperty` | 借用 `ConsoleProjection`；呼叫端在替換前維持 leases 有效並負責 Dispose。 |
+| `ViewState` / `ViewStateProperty` | 呼叫端持有的 immutable `ConsoleViewState`；列表不自行寫入展開或跟隨狀態。 |
+| `TimeOptions` / `TimeOptionsProperty` | 明確的 `ConsoleProjectionOptions` culture、相對時間樣板與絕對時間時區。列表忽略 `SourceRegistry`；來源欄顯示 source ID。 |
+| `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`，預設 Absolute；Hidden 移除整個時間欄。 |
+| `ViewStateRequested` | 以 `EventHandler<ConsoleViewState>` 傳回要求替換的新狀態。 |
+| `JumpToLatest()` | 要求 Resume；宿主的 Ctrl+End command 可呼叫此方法。 |
+
+輸入設定與要求接受都在 UI thread 執行。呼叫端決定是否接受要求，
+替換自己的狀態後再設定 `ViewState`。列表不呼叫 `ConsoleProjector`、
+不訂閱 store，也不 Dispose 投影。外層 console 收合時，狀態仍由呼叫端保留。
+設定投影時會同步將保留的 presenter 重新繫結；設定返回後，呼叫端即可立即 Dispose
+先前投影，即使尚未 layout 或接著再次替換也一樣。
+
+收合列使用 `ConsoleRow.GetFirstLine`，列高固定 20 DIP。
+欄位為時間 104、等級 84、來源 120、訊息剩餘空間、重複次數 48、箭頭 24 DIP，
+內容左右各留 16 DIP。等級同時顯示共用 Material Symbols 圖示與名稱。
+長來源使用字元省略號，tooltip 保留完整 SourceId。
+內容被省略或實際超出寬度才顯示箭頭；重複列才顯示次數。
+展開列保留換行並折行，metadata 對齊首行。
+訊息使用 Body，時間與來源使用 MonoCaption，次數使用 Numbers，圖示使用 Icon，
+每個角色都使用 Family、Size、Weight。時間由 `ConsoleTimeFormatter` 依
+`Projection.TimeBase` 格式化，不使用 timer 或隱含的本機時鐘。
+
+使用者可見文字透過宿主資源解析，英文預設值放在 `ConsoleListGeometry.axaml`。
+可在列表或資源祖先覆寫下列鍵以在地化。跳至最新與保留範圍通知使用 `TimeOptions.Culture`
+格式化；`{0}` 是投影的新訊息數或淘汰數。新訊息或淘汰數恰為一則時使用各自的單數鍵，
+零或其他數量使用複數鍵。資源變更會更新顯示文字。
+每個列出的文字鍵在缺漏、型別不是字串、空白或複合格式無效（含不存在的參數）時，
+都回退至內建英文預設值；文字覆寫不會從 measure 或資源事件處理常式拋出例外。
+未知等級鍵回退至鍵的最後一段。等級文字不接受格式參數；字面大括號須寫成 `{{` 與 `}}`。
+
+| 資源鍵 | 英文預設值 | 繁體中文覆寫範例 |
+|---|---|---|
+| `Nvt.Console.List.JumpToLatestOne` | `Jump to latest ({0} new message)` | `跳至最新（{0} 則新訊息）` |
+| `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` | `跳至最新（{0} 則新訊息）` |
+| `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
+| `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
+| `Nvt.Console.List.Level.Trace` | `Trace` | `追蹤` |
+| `Nvt.Console.List.Level.Debug` | `Debug` | `偵錯` |
+| `Nvt.Console.List.Level.Info` | `Info` | `資訊` |
+| `Nvt.Console.List.Level.Warn` | `Warn` | `警告` |
+| `Nvt.Console.List.Level.Error` | `Error` | `錯誤` |
+| `Nvt.Console.List.Level.Fatal` | `Fatal` | `嚴重` |
+
+來源欄與 tooltip 顯示 `ConsoleRow.SourceId`。列表忽略 `TimeOptions.SourceRegistry`；
+registry 的顯示名稱仍由投影或宿主處理。
+
+固定的 item source 借用目前投影。以像素捲動的可回收 host 依 `ConsoleRowId`
+保留已實現容器；套用投影時更新身分，不重設 source。
+只實現 viewport 與少量 overscan。展開高度先估計，再由 measure 更新。
+超大訊息以有界讀取分段，段落邊界使用實際折行位置。
+只保存精簡 offset／height 索引，文字 layout 僅保留可見段落；
+不逐行建立 visual，也不把完整訊息轉成單一字串。
+列寬跟隨 logical viewport，水平捲動關閉。
+
+Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既有 warning surface
+與 strong warning text。繪製順序是搜尋底色、文字、命中前景；
+後續底線層保留給連結互動。Theme 或 resource 改變會使顯示快取失效。
+暫停閱讀時，重建量測高度會保留首個可見列及其 DIP 內位移。
+
+使用者離開末尾時，以首個可見列、sequence、文字 offset 與 DIP offset 要求 Pause。
+展開以同一個新狀態合併展開與暫停；pointer 移動超過 4 DIP 即取消啟用。
+訊息欄與箭頭的命中區皆接受 pointer 啟用。
+按下時擷取 pointer，因此移出列後再回到起點仍會取消啟用。
+失去擷取時清除手勢；放開、取消與 detach 都釋放手勢的擷取。
+暫停期間，使用者捲動造成 offset 改變且未抵達末尾時，才要求更新閱讀座標，
+不改變暫停時間、generation、序號邊界與凍結的列順序。同一 offset 的重複通知、
+viewport 改變、資源失效與列表自身的高度修正都不要求狀態。
+只有捲動來源的要求會在 measure 期間延後，並合併為待處理的使用者意圖；量測結束後，
+才依目前畫面位置與呼叫端狀態擷取要求。待送期間的投影更新、高度修正與寬度重排會保留閱讀位置；
+viewport 夾限 offset 不會改變使用者的暫停／恢復意圖。送出前先完成 layout 與恢復，再取消尚未執行的恢復工作，
+因此呼叫端延後接受時，先前排隊的恢復也不會推翻已發布的閱讀位置。
+後續的展開切換或 `JumpToLatest()` 會取消該待送捲動要求，
+並立即送出自身要求。高度修正與寬度重排會保留量測期間收到的使用者捲動，不恢復量測開始時的位置。
+無關狀態變更若沿用同一個 Follow instance，會保留即時閱讀位置，即使呼叫端仍持有舊錨點也一樣。
+已送出的錨點只保留有界的近期歷史。接受仍在歷史內的錨點時，會保留即時座標，
+並只移除該錨點及之前的項目，因此後續排隊要求可依序接受，而不重播舊位置。
+以歷史外的不同 Follow 替換時，會清除歷史、取消待送捲動意圖並恢復呼叫端明確指定的位置。
+重新 attach 使用已接受的錨點。
+暫停時先保存目前錨點，套用投影後於 layout 恢復；合併的投影替換與寬度改變
+沿用待恢復錨點，直到恢復完成或使用者捲動替換它。
+程式捲動使用可巢狀的事件抑制；有排程工作時，仍接受使用者離開末尾的 Pause 要求。
+寬度改變會在重新折行後映射文字 offset。已淘汰錨點使用 `ResolvedAnchorId`
+並要求更新為後繼列。待送捲動期間，Following 投影未提供後繼列時，即時錨點保留 sequence 與列順序，
+以第一個仍存在的後繼列恢復，依序退回 sequence 與最後保留列；保留範圍通知顯示 `EvictedCount`。
+右下角跳至最新按鈕顯示 `NewSincePauseCount`。
+抵達末尾、按下按鈕或呼叫 `JumpToLatest()` 都要求 Resume。
+Attach 建立 handlers 與可取消、合併的 dispatcher 工作；
+detach 釋放 handlers、借用內容及顯示快取。
+Attachment 生命週期可重複 Dispose；所有 host 狀態只在 UI thread 存取。
+
+標頭、工具列、空狀態、連結、選取、複製／匯出、右鍵選單與 console 快捷鍵
+由宿主及其他控制項組合。

@@ -64,9 +64,6 @@ public sealed class ConsoleIconTests(ITestOutputHelper output)
                 output.WriteLine($"{levels[index]} @ {scale}: icon/text ink delta {delta}");
                 Assert.InRange(delta, -0.5, 0.5);
             }
-            var evidence = Environment.GetEnvironmentVariable("NVT_CONSOLE_EVIDENCE");
-            if (!string.IsNullOrEmpty(evidence))
-                frame.Save(Path.Combine(evidence, $"icons-{(dark ? "dark" : "light")}-{(int)(scale * 100)}.png"), PngBitmapEncoderOptions.Default);
         }
         finally { window.Close(); }
     }
@@ -77,15 +74,15 @@ public sealed class ConsoleIconTests(ITestOutputHelper output)
         var top = int.MaxValue;
         var bottom = -1;
         for (var row = y; row < y + height; row++)
-        for (var column = x; column < x + width; column++)
-        {
-            var pixel = (row * stridePixels + column) * 4;
-            var difference = Math.Abs(bytes[pixel] - bytes[sample]) + Math.Abs(bytes[pixel + 1] - bytes[sample + 1]) + Math.Abs(bytes[pixel + 2] - bytes[sample + 2]);
-            // Include every antialiased edge, matching the approved non-background ink measurement.
-            if (difference == 0) continue;
-            top = Math.Min(top, row);
-            bottom = Math.Max(bottom, row);
-        }
+            for (var column = x; column < x + width; column++)
+            {
+                var pixel = (row * stridePixels + column) * 4;
+                var difference = Math.Abs(bytes[pixel] - bytes[sample]) + Math.Abs(bytes[pixel + 1] - bytes[sample + 1]) + Math.Abs(bytes[pixel + 2] - bytes[sample + 2]);
+                // Include every antialiased edge, matching the approved non-background ink measurement.
+                if (difference == 0) continue;
+                top = Math.Min(top, row);
+                bottom = Math.Max(bottom, row);
+            }
         Assert.True(bottom >= top, "The glyph must have visible ink.");
         return (top + bottom) / 2.0;
     }

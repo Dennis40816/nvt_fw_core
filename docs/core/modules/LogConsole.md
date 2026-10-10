@@ -7,7 +7,7 @@
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
 It targets `net8.0`.
 It adds no package.
-The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`.
+The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`. The Avalonia list is described under [List view](#list-view); host commands own projection and state.
 
 ## Design and provenance
 
@@ -613,8 +613,118 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-The Avalonia header, toolbar, empty-state accessibility, and their visual evidence are implemented.
-UI virtualization, row pointer interaction, row accessibility, and keyboard routing remain
-with the list slice of K2; clipboard and file adapters remain app-owned.
+The Avalonia header, toolbar, empty-state accessibility, their visual evidence and the list view are implemented.
+Link and selection pointer interaction, console keyboard commands, and host accessibility and visual
+verification of the whole console remain for later UI slices; clipboard and file adapters remain app-owned.
 Host adoption remains separate.
 Path policy, opening, clipboard, and spill-store integration remain app responsibilities.
+
+## List view
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleListView` is an opt-in templated list control.
+Load `avares://Nvt.Core.Avalonia/LogConsole/ConsoleListStyles.axaml`, the Core theme tokens,
+and the font roles; configure the host with `WithNvtCoreFonts()`.
+The list style composes Core's existing button, scroll and icon styles.
+It loads `ConsoleListGeometry.axaml` for structural dimensions and uses the shared Core icon size,
+spacing and control height tokens. Level glyphs all come from `NvtIcons`.
+It has no dependency on a panel controller or an app type.
+
+| Member | Caller contract |
+|---|---|
+| `Projection` / `ProjectionProperty` | Borrowed `ConsoleProjection`; the caller keeps its leases alive until replacement and owns disposal. |
+| `ViewState` / `ViewStateProperty` | The caller's immutable `ConsoleViewState`; expansion, pause and resume are never assigned by the list. |
+| `TimeOptions` / `TimeOptionsProperty` | Explicit `ConsoleProjectionOptions` culture, relative template and absolute zone. `SourceRegistry` is ignored; the source column displays the source ID. |
+| `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`, default Absolute; Hidden removes the time column. |
+| `ViewStateRequested` | `EventHandler<ConsoleViewState>` carrying the requested replacement state. |
+| `JumpToLatest()` | Requests Resume; a host command can bind Ctrl+End here. |
+
+Assign inputs and accept requests on the UI thread. The caller decides whether to accept a request,
+replaces its own state, and assigns the accepted `ViewState`.
+The list never invokes `ConsoleProjector`, subscribes to a store, or disposes a projection.
+Projection assignment synchronously rebinds surviving presenters, so the caller can dispose the preceding
+projection immediately after the assignment returns, even before layout or another replacement.
+Collapse of the containing console preserves the externally owned state.
+
+Collapsed rows use `ConsoleRow.GetFirstLine` and have a fixed 20 DIP height.
+Columns are time 104, level 84, source 120, remaining message, repeat 48, and arrow 24 DIP,
+with 16 DIP content insets. Level has both a shared Material Symbols glyph and a name.
+Long sources use character ellipsis with the complete source ID in a tooltip.
+The arrow appears for omitted content or actual width truncation; repeat text appears only for duplicates.
+Expanded rows preserve newlines, wrap and keep metadata on the first line.
+Message uses Body, time/source MonoCaption, repeat Numbers and glyphs Icon, including each role's family, size and weight.
+Time text is produced by `ConsoleTimeFormatter` from `Projection.TimeBase`, with no timer or implicit local clock.
+
+User text resolves through the host's resources, with English defaults in `ConsoleListGeometry.axaml`.
+Override these keys on the list or a resource ancestor to localize it. Jump and retention formats use
+`TimeOptions.Culture`; `{0}` is the projection's new-message or eviction count. Exactly one message or
+eviction selects its singular key; zero and other counts select the plural key. Resource changes refresh the text.
+Every listed text key falls back to its built-in English default when missing, non-string, blank or a malformed
+composite format, including an unavailable argument. Text overrides never throw from measure or resource handlers.
+Unknown level keys fall back to their suffix. Level labels take no format arguments; escape literal braces as `{{` and `}}`.
+
+| Resource key | English default |
+|---|---|
+| `Nvt.Console.List.JumpToLatestOne` | `Jump to latest ({0} new message)` |
+| `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` |
+| `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` |
+| `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` |
+| `Nvt.Console.List.Level.Trace` | `Trace` |
+| `Nvt.Console.List.Level.Debug` | `Debug` |
+| `Nvt.Console.List.Level.Info` | `Info` |
+| `Nvt.Console.List.Level.Warn` | `Warn` |
+| `Nvt.Console.List.Level.Error` | `Error` |
+| `Nvt.Console.List.Level.Fatal` | `Fatal` |
+
+The source column and its tooltip display `ConsoleRow.SourceId`. `TimeOptions.SourceRegistry`
+is ignored by the list; registry display names remain a projection or host concern.
+
+The persistent item source borrows the current projection. A pixel-scrolling recycling host retains
+realized containers by `ConsoleRowId`; projection application updates identities without resetting the source.
+Only viewport rows and a small overscan are realized. Expanded heights begin as estimates and are updated
+by measurement. Huge messages are read in bounded segments ending on wrapped-line boundaries.
+The host stores compact offset/height indexes and retains text layouts only for visible segments;
+it creates no text visual per line and never materializes the complete message.
+Row width follows the logical viewport and horizontal scrolling is disabled.
+
+Error/Fatal backgrounds use the existing danger surface. Message/source search hits use the existing
+warning surface and strong warning text. Painting proceeds through search background, text and hit foreground;
+the subsequent underline layer is reserved for link interaction.
+Theme/resource changes invalidate the measured display cache.
+Paused reading keeps the same first visible row and DIP inset while measured heights are rebuilt.
+
+User scroll-away requests Pause with the first visible row, sequence, text offset and DIP offset.
+Expansion reports one combined expansion/pause state; pointer movement beyond 4 DIP cancels activation.
+The message column and arrow receive pointer activation across their hit areas.
+Press captures the pointer for the gesture, so excursions outside the row cancel activation even after returning.
+Capture loss clears the gesture; release, cancellation and detach release its capture.
+While paused, a changed user scroll offset away from the end requests updated reading coordinates without
+changing the pause time, generation, sequence boundary or frozen row order. Repeated notifications for the same
+offset, viewport changes, resource invalidation and the list's own height corrections do not request state.
+Only scroll-origin requests are deferred during measure. They coalesce as pending user intent; after the pass,
+the request captures the current screen position and caller-owned state. Pending reading survives projection
+updates, height corrections and width reflow; viewport clamping does not change the user's pause/resume intent.
+Delivery finishes layout and restoration, then retires outstanding restore work before publishing the request,
+so delayed host acceptance cannot let an earlier queued restore undo the published reading position.
+A later toggle or `JumpToLatest()`
+cancels that pending scroll request and is delivered immediately. Height corrections and width reflow preserve
+a user scroll received during the pass instead of restoring its start-of-pass position.
+Unrelated state changes that reuse the same Follow instance preserve the live reading position,
+even when the caller still holds an earlier anchor. Issued anchors have bounded recent history.
+Accepting an anchor still in that history preserves live coordinates and retires only the accepted prefix,
+so later queued requests can be accepted in order without replaying old positions.
+A different Follow outside that history clears it, cancels pending scroll intent and restores the caller's explicit position.
+Reattachment uses the accepted anchor.
+While paused, projection application saves the current anchor and restores it after layout;
+coalesced replacements and width changes reuse the pending anchor until restoration completes or a user scroll replaces it.
+Programmatic scroll calls use nested suppression, and queued work still permits user scroll-away pause requests.
+Width changes remap the text offset after reflow. An evicted anchor uses `ResolvedAnchorId` and reports the successor.
+If the projection supplies none while Following and a scroll is pending, the live anchor retains its sequence and row order to resolve
+the first surviving successor, falling back to sequence and then the last retained row;
+a retention notice displays `EvictedCount`.
+The bottom-right jump button displays `NewSincePauseCount`.
+Reaching the end, activating the button, or calling `JumpToLatest()` requests Resume.
+Attach creates handlers and cancellable coalesced dispatcher work; detach releases them, borrowed content and display caches.
+Attachment lifetime disposal is idempotent. All host state is accessed on the UI thread.
+
+The list does not provide header/toolbar content, empty-state presentation, links, selection, copy/export,
+context menus or console keyboard bindings. Those are composed by the host and companion controls.
