@@ -7,6 +7,7 @@ using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Transport;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -45,12 +46,12 @@ public sealed class LauncherBootstrapRuntimeTests
         var runtime = Runtime((root, state) =>
         {
             Assert.Null(Environment.GetEnvironmentVariable(TransportFixture.Names.BootstrapIdentity));
-            Assert.Equal(Path.GetFullPath(workspace.Root), root);
-            Assert.Equal(workspace.PathFor("state.json"), state);
+            Assert.Equal(Path.GetFullPath(workspace.RootPath), root);
+            Assert.Equal(workspace.GetPath("state.json"), state);
             trace.Add("compose");
             return Services(new StateStore(new(null, VersionManagerStateLoadIssue.Invalid), trace));
         });
-        Assert.Equal(10, await runtime.RunEntryAsync(workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(10, await runtime.RunEntryAsync(workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
         Assert.Equal(ExpectedTrace.Legacy, trace.Events);
     }
 
@@ -68,7 +69,7 @@ public sealed class LauncherBootstrapRuntimeTests
         Environment.SetEnvironmentVariable(key, "v1");
         Environment.SetEnvironmentVariable(TransportFixture.Names.BootstrapIdentity, SerializedIdentity());
         var runtime = Runtime(static (_, _) => throw new InvalidOperationException("Managed state must not be accessed."));
-        Assert.Equal(22, await runtime.RunEntryAsync(string.Empty, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(22, await runtime.RunEntryAsync(string.Empty, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
         Assert.All(ContextKeys, static name => Assert.Null(Environment.GetEnvironmentVariable(name)));
     }
 
@@ -95,7 +96,7 @@ public sealed class LauncherBootstrapRuntimeTests
         var trace = new TraceLog();
         var hooks = new LauncherBootstrapRuntimeHooks((state, kind, advertised) =>
         {
-            Assert.Equal(workspace.PathFor("state.json"), state);
+            Assert.Equal(workspace.GetPath("state.json"), state);
             Assert.Equal(ManagedProcessLifetimeKind.Bootstrap, kind);
             Assert.True(advertised);
             Assert.Equal(serialized, Environment.GetEnvironmentVariable(TransportFixture.Names.BootstrapIdentity));
@@ -111,7 +112,7 @@ public sealed class LauncherBootstrapRuntimeTests
             trace.Add("compose");
             return Services(new StateStore(new(null, VersionManagerStateLoadIssue.Invalid), trace));
         }, hooks);
-        Task<int> entry = runtime.RunEntryAsync(workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken).AsTask();
+        Task<int> entry = runtime.RunEntryAsync(workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken).AsTask();
         Assert.False(entry.IsCompleted);
         Assert.Equal(ExpectedTrace.BeforeAuthorization, trace.Events);
         Assert.Null(Environment.GetEnvironmentVariable(TransportFixture.Names.BootstrapIdentity));
@@ -144,7 +145,7 @@ public sealed class LauncherBootstrapRuntimeTests
         var runtime = Runtime(static (_, _) => throw new InvalidOperationException("Managed state must not be accessed."), hooks);
         await start.WriteAsync("STOP\n"u8.ToArray(), TestContext.Current.CancellationToken);
         await start.FlushAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(23, await runtime.RunEntryAsync(workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(23, await runtime.RunEntryAsync(workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
     }
 
     /// <summary>Seed and writer failures preserve exact Bootstrap exit values through the real runtime composition.</summary>
@@ -161,13 +162,13 @@ public sealed class LauncherBootstrapRuntimeTests
         using var environment = EmptyContext();
         var trace = new TraceLog();
         VersionManagerStateLoadResult load = scenario == "invalid-existing" ? new(null, VersionManagerStateLoadIssue.Invalid)
-            : scenario == "root-mismatch" ? new(AppState(workspace.PathFor("other")), VersionManagerStateLoadIssue.None)
-            : scenario == "existing-coordinator-busy" ? new(AppState(workspace.Root), VersionManagerStateLoadIssue.None)
+            : scenario == "root-mismatch" ? new(AppState(workspace.GetPath("other")), VersionManagerStateLoadIssue.None)
+            : scenario == "existing-coordinator-busy" ? new(AppState(workspace.RootPath), VersionManagerStateLoadIssue.None)
             : new(null, VersionManagerStateLoadIssue.Missing);
         VersionManagerWriteLeaseIssue writer = scenario is "busy" or "existing-coordinator-busy" ? VersionManagerWriteLeaseIssue.Busy
             : scenario == "unavailable" ? VersionManagerWriteLeaseIssue.Unavailable : VersionManagerWriteLeaseIssue.None;
         var runtime = Runtime((_, _) => Services(new StateStore(load, trace, writer)));
-        Assert.Equal(expected, await runtime.RunEntryAsync(workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.Equal(expected, await runtime.RunEntryAsync(workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
     }
 
     /// <summary>Every coordinator outcome keeps its exact completion or encoded failure exit, including undefined outcomes.</summary>
@@ -235,13 +236,13 @@ public sealed class LauncherBootstrapRuntimeTests
         ManagedLauncherIdentity candidate = Launcher('c');
         ManagedLauncherIdentity previous = Launcher('d');
         PendingLauncherActivation pending = PendingLauncherActivation.Create(candidate, active, previous, LauncherActivationPhase.CandidateLaunchRecorded);
-        LauncherBootstrapState state = LauncherBootstrapState.Create(workspace.Root, active, previous, pending, null);
+        LauncherBootstrapState state = LauncherBootstrapState.Create(workspace.RootPath, active, previous, pending, null);
         ManagedLauncherIdentity expected = selected == "candidate" ? candidate : selected == "previous" ? previous : active;
         var trace = new TraceLog();
         var runtime = Runtime((root, path) =>
         {
-            Assert.Equal(workspace.Root, root);
-            Assert.Equal(workspace.PathFor("state.json"), path);
+            Assert.Equal(workspace.RootPath, root);
+            Assert.Equal(workspace.GetPath("state.json"), path);
             return Services(new StateStore(new(AppState(root), VersionManagerStateLoadIssue.None), trace), new LauncherStore(new(state, LauncherBootstrapStateLoadIssue.None), trace));
         });
         using var pipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.None);
@@ -254,12 +255,12 @@ public sealed class LauncherBootstrapRuntimeTests
         Assert.Equal(0u, WindowsPipeHandles.Flags(handle) & 1u);
         Assert.Null(Environment.GetEnvironmentVariable(TransportFixture.Names.LauncherReadyHandle));
         Assert.Null(Environment.GetEnvironmentVariable(TransportFixture.Names.ExpectedLauncherReady));
-        Assert.True(await runtime.ReportNestedReadyAsync(context, workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.True(await runtime.ReportNestedReadyAsync(context, workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
         using var reader = new StreamReader(pipe, Encoding.UTF8, leaveOpen: true);
         string bytes = await reader.ReadToEndAsync(TestContext.Current.CancellationToken).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.Equal(LauncherReadyProtocol.Create(expected, Admission) + "\n", bytes);
         Assert.Equal(ExpectedTrace.Ready, trace.Events);
-        Assert.False(await runtime.ReportNestedReadyAsync(context, workspace.Root, workspace.PathFor("state.json"), TestContext.Current.CancellationToken));
+        Assert.False(await runtime.ReportNestedReadyAsync(context, workspace.RootPath, workspace.GetPath("state.json"), TestContext.Current.CancellationToken));
     }
 
     /// <summary>Invalid snapshots, pending app journals, missing admission, writer failure, I/O, and cancellation cannot report READY.</summary>
@@ -285,9 +286,9 @@ public sealed class LauncherBootstrapRuntimeTests
             ? new(TransportFixture.Version, Admission.AdmissionIdentity, TransportFixture.Version, TransportFixture.Version) : null;
         PendingManagedVersionMutation? mutation = mismatch == "mutation"
             ? new(ManagedVersionMutationKind.Delete, new ManagedVersionAdmission(ManagedAppVersion.Parse("1.2.4"), "other-admission", new string('b', 64))) : null;
-        VersionManagerState app = AppState(mismatch == "app-root" ? workspace.PathFor("other") : workspace.Root, activation, mutation, mismatch == "no-active");
+        VersionManagerState app = AppState(mismatch == "app-root" ? workspace.GetPath("other") : workspace.RootPath, activation, mutation, mismatch == "no-active");
         ManagedLauncherIdentity launcher = mismatch == "different-launcher" ? Launcher('f') : TransportFixture.Launcher();
-        LauncherBootstrapState journal = LauncherBootstrapState.Create(mismatch == "launcher-root" ? workspace.PathFor("other") : workspace.Root, launcher, launcher, null, null);
+        LauncherBootstrapState journal = LauncherBootstrapState.Create(mismatch == "launcher-root" ? workspace.GetPath("other") : workspace.RootPath, launcher, launcher, null, null);
         var store = new StateStore(mismatch == "app-invalid" ? new(null, VersionManagerStateLoadIssue.Invalid) : new(app, VersionManagerStateLoadIssue.None), trace,
             mismatch == "writer-busy" ? VersionManagerWriteLeaseIssue.Busy : VersionManagerWriteLeaseIssue.None, failRead: mismatch == "io");
         var runtime = Runtime((_, _) => Services(store, new LauncherStore(mismatch == "launcher-invalid"
@@ -300,7 +301,7 @@ public sealed class LauncherBootstrapRuntimeTests
         pipe.DisposeLocalCopyOfClientHandle();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         if (mismatch == "cancelled") { cancellation.Cancel(); }
-        Assert.False(await runtime.ReportNestedReadyAsync(context, workspace.Root, workspace.PathFor("state.json"), cancellation.Token));
+        Assert.False(await runtime.ReportNestedReadyAsync(context, workspace.RootPath, workspace.GetPath("state.json"), cancellation.Token));
         Assert.True(WindowsPipeHandles.IsOpen(handle));
         context.Dispose();
         Assert.False(WindowsPipeHandles.IsOpen(handle));

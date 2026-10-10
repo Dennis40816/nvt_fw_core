@@ -7,6 +7,7 @@ using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -276,9 +277,9 @@ public sealed class AnonymousPipeManagedApplicationProcessTests
         {
             _files = new(workspace, executable);
         }
-        internal string Root => _files.Workspace.Root;
+        internal string Root => _files.Workspace.RootPath;
         internal string StatePath => Path.Combine(Root, "state", "custom state.json");
-        internal string PathFor(string path) => _files.Workspace.PathFor(path);
+        internal string PathFor(string path) => _files.Workspace.GetPath(path);
         internal static ApplicationProbe Create()
         {
             TestWorkspace workspace = TestWorkspace.Create();
