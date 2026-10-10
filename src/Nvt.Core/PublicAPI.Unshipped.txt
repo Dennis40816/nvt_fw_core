@@ -31,6 +31,452 @@ Nvt.Core.Files.FileSizeLimitExceededException.ObservedBytes.get -> long
 Nvt.Core.Files.RegularFileGuard
 Nvt.Core.Files.RootedPathGuard
 Nvt.Core.IO.AtomicOutput
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision.ActivationRecoveryDecision(Nvt.Core.Launcher.Activation.VersionManagerState! State, Nvt.Core.Launcher.Contracts.ManagedAppVersion? RollbackVersion) -> void
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision.RollbackVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision.RollbackVersion.init -> void
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision.State.get -> Nvt.Core.Launcher.Activation.VersionManagerState!
+Nvt.Core.Launcher.Activation.ActivationRecoveryDecision.State.init -> void
+Nvt.Core.Launcher.Activation.IInstalledLauncherRepository
+Nvt.Core.Launcher.Activation.IInstalledLauncherRepository.AcquireLaunchLeaseAsync(string! managedRoot, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult!>
+Nvt.Core.Launcher.Activation.IInstalledLauncherRepository.VerifyAsync(string! managedRoot, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Contracts.InstalledLauncherResult!>
+Nvt.Core.Launcher.Activation.ILauncherBootstrapStateStore
+Nvt.Core.Launcher.Activation.ILauncherBootstrapStateStore.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult!>
+Nvt.Core.Launcher.Activation.ILauncherBootstrapStateStore.TrySaveAsync(Nvt.Core.Launcher.Activation.LauncherBootstrapState! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult>
+Nvt.Core.Launcher.Activation.ILauncherMutationFence
+Nvt.Core.Launcher.Activation.ILauncherMutationFence.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.LauncherMutationProtection!>
+Nvt.Core.Launcher.Activation.ILauncherMutationFence.RetireLastKnownGoodOwnerAsync(Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! expectedOwner, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue>
+Nvt.Core.Launcher.Activation.IManagedVersionRepository
+Nvt.Core.Launcher.Activation.IManagedVersionRepository.AcquireApplicationLaunchLeaseAsync(string! managedRoot, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult!>
+Nvt.Core.Launcher.Activation.IManagedVersionRepository.DeleteAsync(string! managedRoot, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission, Nvt.Core.Launcher.Contracts.ManagedAppVersion? activeVersion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue>
+Nvt.Core.Launcher.Activation.IManagedVersionRepository.InstallAsync(string! managedRoot, string! sourceRoot, Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot! package, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult!>
+Nvt.Core.Launcher.Activation.IManagedVersionRepository.InventoryAsync(string! managedRoot, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!>! admissions, Nvt.Core.Launcher.Contracts.ManagedAppVersion? activeVersion, Nvt.Core.Launcher.Contracts.ManagedAppVersion? lastKnownGoodVersion, Nvt.Core.Launcher.Contracts.ManagedAppVersion? failedActivationVersion, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult!>
+Nvt.Core.Launcher.Activation.IManagedVersionRepository.VerifyPackageAsync(string! sourceRoot, Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot! package, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult!>
+Nvt.Core.Launcher.Activation.IVersionManagerStateReader
+Nvt.Core.Launcher.Activation.IVersionManagerStateReader.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult!>
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.AdmissionIdentity.get -> string!
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.AdmissionIdentity.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.AdmissionState.get -> Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.AdmissionState.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.DamageReason.get -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason?
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.DamageReason.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.InstalledVersionSnapshot(Nvt.Core.Launcher.Contracts.ManagedAppVersion Version, string! AdmissionIdentity, Nvt.Core.Launcher.Activation.ManagedVersionIntegrity Integrity, Nvt.Core.Launcher.Activation.ManagedVersionDamageReason? DamageReason, bool IsActive, bool IsLastKnownGood, Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState AdmissionState = Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState.Admitted, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission? ObservedAdmission = null) -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.Integrity.get -> Nvt.Core.Launcher.Activation.ManagedVersionIntegrity
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.Integrity.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.IsActive.get -> bool
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.IsActive.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.IsLastKnownGood.get -> bool
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.IsLastKnownGood.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.ObservedAdmission.get -> Nvt.Core.Launcher.Contracts.ManagedVersionAdmission?
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.ObservedAdmission.init -> void
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Activation.InstalledVersionSnapshot.Version.init -> void
+Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.LauncherActivationPhase.ActiveLaunchRecorded = 3 -> Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.LauncherActivationPhase.CandidateLaunchRecorded = 1 -> Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.LauncherActivationPhase.Requested = 0 -> Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.LauncherActivationPhase.RollbackLaunchRecorded = 2 -> Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.LauncherBootstrapState
+Nvt.Core.Launcher.Activation.LauncherBootstrapState.Active.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Activation.LauncherBootstrapState.Failed.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Activation.LauncherBootstrapState.LastKnownGood.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Activation.LauncherBootstrapState.ManagedRootIdentity.get -> string!
+Nvt.Core.Launcher.Activation.LauncherBootstrapState.Pending.get -> Nvt.Core.Launcher.Activation.PendingLauncherActivation?
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue.Invalid = 2 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue.Missing = 1 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue.None = 0 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue.Unavailable = 3 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.Issue.get -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.LauncherBootstrapStateLoadResult(Nvt.Core.Launcher.Activation.LauncherBootstrapState? State, Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadIssue Issue) -> void
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.State.get -> Nvt.Core.Launcher.Activation.LauncherBootstrapState?
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateLoadResult.State.init -> void
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue.None = 0 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue.Unavailable = 1 -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult.Issue.get -> Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult.Issue.init -> void
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult.LauncherBootstrapStateSaveResult() -> void
+Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult.LauncherBootstrapStateSaveResult(Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveIssue Issue) -> void
+Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue
+Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue.Invalid = 1 -> Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue
+Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue.None = 0 -> Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue
+Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue.Unavailable = 2 -> Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue
+Nvt.Core.Launcher.Activation.LauncherMutationProtection
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.ActiveOwner.get -> Nvt.Core.Launcher.Contracts.ManagedVersionAdmission?
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.ActiveOwner.init -> void
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.HasPendingActivation.get -> bool
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.HasPendingActivation.init -> void
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.IsClear.get -> bool
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.IsHardProtected(Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission) -> bool
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.IsLastKnownGoodOnly(Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission) -> bool
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.Issue.get -> Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.Issue.init -> void
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.LastKnownGoodOwner.get -> Nvt.Core.Launcher.Contracts.ManagedVersionAdmission?
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.LastKnownGoodOwner.init -> void
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.LauncherMutationProtection(Nvt.Core.Launcher.Activation.LauncherMutationFenceIssue Issue, bool HasPendingActivation, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission? ActiveOwner, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission? LastKnownGoodOwner, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!>! PendingOwners) -> void
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.PendingOwners.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!>!
+Nvt.Core.Launcher.Activation.LauncherMutationProtection.PendingOwners.init -> void
+Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState
+Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState.Admitted = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState
+Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState.RecoveryCandidate = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState
+Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState.Unadmitted = 2 -> Nvt.Core.Launcher.Activation.ManagedVersionAdmissionState
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.ContentMismatch = 3 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.FailedActivation = 5 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.ManifestMismatch = 2 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.MissingFile = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.UnexpectedPath = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDamageReason.Unreadable = 4 -> Nvt.Core.Launcher.Activation.ManagedVersionDamageReason
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.ActiveVersion = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.LauncherActivationPending = 4 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.LauncherOwner = 5 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.None = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.NotInstalled = 2 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock.RecoveryRequired = 3 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.Block.get -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.Block.init -> void
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.IsAllowed.get -> bool
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.ManagedVersionDeleteDecision(Nvt.Core.Launcher.Activation.ManagedVersionDeleteBlock Block, bool RequiresRollbackLossWarning) -> void
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.RequiresRollbackLossWarning.get -> bool
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision.RequiresRollbackLossWarning.init -> void
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue.ActiveVersion = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue.DeleteFailed = 4 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue.None = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue.NotInstalled = 2 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue.UnsafeTarget = 3 -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue
+Nvt.Core.Launcher.Activation.ManagedVersionIntegrity
+Nvt.Core.Launcher.Activation.ManagedVersionIntegrity.Damaged = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionIntegrity
+Nvt.Core.Launcher.Activation.ManagedVersionIntegrity.Healthy = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionIntegrity
+Nvt.Core.Launcher.Activation.ManagedVersionInventory
+Nvt.Core.Launcher.Activation.ManagedVersionInventory.DamagedCount.get -> int
+Nvt.Core.Launcher.Activation.ManagedVersionInventory.Find(Nvt.Core.Launcher.Contracts.ManagedAppVersion version) -> Nvt.Core.Launcher.Activation.InstalledVersionSnapshot?
+Nvt.Core.Launcher.Activation.ManagedVersionInventory.HealthyCount.get -> int
+Nvt.Core.Launcher.Activation.ManagedVersionInventory.UnadmittedCount.get -> int
+Nvt.Core.Launcher.Activation.ManagedVersionInventory.Versions.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Activation.InstalledVersionSnapshot!>!
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue.None = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue.Unavailable = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult.Inventory.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventory?
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult.Issue.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Activation.ManagedVersionMutationKind
+Nvt.Core.Launcher.Activation.ManagedVersionMutationKind.Delete = 1 -> Nvt.Core.Launcher.Activation.ManagedVersionMutationKind
+Nvt.Core.Launcher.Activation.ManagedVersionMutationKind.Install = 0 -> Nvt.Core.Launcher.Activation.ManagedVersionMutationKind
+Nvt.Core.Launcher.Activation.PendingLauncherActivation
+Nvt.Core.Launcher.Activation.PendingLauncherActivation.Candidate.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity!
+Nvt.Core.Launcher.Activation.PendingLauncherActivation.Phase.get -> Nvt.Core.Launcher.Activation.LauncherActivationPhase
+Nvt.Core.Launcher.Activation.PendingLauncherActivation.PreviousActive.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Activation.PendingLauncherActivation.PreviousLastKnownGood.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation.Admission.get -> Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation.Admission.init -> void
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation.Kind.get -> Nvt.Core.Launcher.Activation.ManagedVersionMutationKind
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation.Kind.init -> void
+Nvt.Core.Launcher.Activation.PendingManagedVersionMutation.PendingManagedVersionMutation(Nvt.Core.Launcher.Activation.ManagedVersionMutationKind Kind, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! Admission) -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation
+Nvt.Core.Launcher.Activation.PendingVersionActivation.CandidateAdmissionIdentity.get -> string!
+Nvt.Core.Launcher.Activation.PendingVersionActivation.CandidateAdmissionIdentity.init -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation.CandidateVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Activation.PendingVersionActivation.CandidateVersion.init -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation.PendingVersionActivation(Nvt.Core.Launcher.Contracts.ManagedAppVersion CandidateVersion, string! CandidateAdmissionIdentity, Nvt.Core.Launcher.Contracts.ManagedAppVersion? PreviousActiveVersion, Nvt.Core.Launcher.Contracts.ManagedAppVersion? PreviousLastKnownGoodVersion, Nvt.Core.Launcher.Activation.VersionActivationPhase Phase = Nvt.Core.Launcher.Activation.VersionActivationPhase.Requested) -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation.Phase.get -> Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.PendingVersionActivation.Phase.init -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation.PreviousActiveVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.PendingVersionActivation.PreviousActiveVersion.init -> void
+Nvt.Core.Launcher.Activation.PendingVersionActivation.PreviousLastKnownGoodVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.PendingVersionActivation.PreviousLastKnownGoodVersion.init -> void
+Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.VersionActivationPhase.ActiveLaunchRecorded = 3 -> Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.VersionActivationPhase.CandidateLaunchRecorded = 1 -> Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.VersionActivationPhase.Requested = 0 -> Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.VersionActivationPhase.RollbackLaunchRecorded = 2 -> Nvt.Core.Launcher.Activation.VersionActivationPhase
+Nvt.Core.Launcher.Activation.VersionActivationPolicy
+Nvt.Core.Launcher.Activation.VersionManagementPolicy
+Nvt.Core.Launcher.Activation.VersionManagerState
+Nvt.Core.Launcher.Activation.VersionManagerState.ActiveVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.VersionManagerState.Admissions.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!>!
+Nvt.Core.Launcher.Activation.VersionManagerState.FailedActivationVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.VersionManagerState.LastKnownGoodVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Activation.VersionManagerState.ManagedRootIdentity.get -> string?
+Nvt.Core.Launcher.Activation.VersionManagerState.PendingActivation.get -> Nvt.Core.Launcher.Activation.PendingVersionActivation?
+Nvt.Core.Launcher.Activation.VersionManagerState.PendingMutation.get -> Nvt.Core.Launcher.Activation.PendingManagedVersionMutation?
+Nvt.Core.Launcher.Activation.VersionManagerState.RetentionReviewDue.get -> bool
+Nvt.Core.Launcher.Activation.VersionManagerState.SourceRegistryState.get -> Nvt.Core.Launcher.Activation.VersionSourceRegistryState?
+Nvt.Core.Launcher.Activation.VersionManagerState.UpdateSource.get -> string?
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.Invalid = 2 -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.ManagedRootMismatch = 4 -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.Missing = 1 -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.None = 0 -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.Unavailable = 3 -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.Issue.get -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.State.get -> Nvt.Core.Launcher.Activation.VersionManagerState?
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.State.init -> void
+Nvt.Core.Launcher.Activation.VersionManagerStateLoadResult.VersionManagerStateLoadResult(Nvt.Core.Launcher.Activation.VersionManagerState? State, Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue Issue) -> void
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue.None = 0 -> Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue.Unavailable = 1 -> Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult.Issue.get -> Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult.Issue.init -> void
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult.VersionManagerStateSaveResult() -> void
+Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult.VersionManagerStateSaveResult(Nvt.Core.Launcher.Activation.VersionManagerStateSaveIssue Issue) -> void
+Nvt.Core.Launcher.Activation.VersionSourceRegistryState
+Nvt.Core.Launcher.Activation.VersionSourceRegistryState.AcceptedDigest.get -> string?
+Nvt.Core.Launcher.Activation.VersionSourceRegistryState.AcceptedRevision.get -> long
+Nvt.Core.Launcher.Activation.VersionSourceRegistryState.IsManualPin.get -> bool
+Nvt.Core.Launcher.Activation.VersionSourceRegistryState.VersionSourceRegistryState(long acceptedRevision, string? acceptedDigest, bool isManualPin) -> void
+Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease
+Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease.ExecutablePath.get -> string!
+Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease.TryValidateForStart() -> bool
+Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease.WorkingDirectory.get -> string!
+Nvt.Core.Launcher.Contracts.IProductPackagePolicy
+Nvt.Core.Launcher.Contracts.IProductPackagePolicy.IsSafeRelativePayloadPath(string! path) -> bool
+Nvt.Core.Launcher.Contracts.IProductPackagePolicy.TryReadManifest(System.ReadOnlyMemory<byte> exactBytes, Nvt.Core.Launcher.Contracts.ManagedAppVersion expectedVersion, System.Collections.Generic.IReadOnlyCollection<string!>? archivePaths, out Nvt.Core.Launcher.Contracts.PackageManifest? manifest) -> bool
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.InvalidManifest = 2 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.None = 0 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.ProtocolMismatch = 4 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.Tampered = 3 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.Unavailable = 1 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherIssue.UnsafePath = 5 -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Identity.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Identity.init -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.InstalledLauncherLaunchResult(Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? Identity, Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease? Lease, Nvt.Core.Launcher.Contracts.InstalledLauncherIssue Issue) -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.IsAcquired.get -> bool
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Issue.get -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Issue.init -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Lease.get -> Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease?
+Nvt.Core.Launcher.Contracts.InstalledLauncherLaunchResult.Lease.init -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.Identity.get -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity?
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.Identity.init -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.InstalledLauncherResult(Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? Identity, Nvt.Core.Launcher.Contracts.InstalledLauncherIssue Issue) -> void
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.IsVerified.get -> bool
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.Issue.get -> Nvt.Core.Launcher.Contracts.InstalledLauncherIssue
+Nvt.Core.Launcher.Contracts.InstalledLauncherResult.Issue.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ApplicationReadyHandle.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ApplicationReadyHandle.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapAdmissionHandle.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapAdmissionHandle.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapIdentity.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapIdentity.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapStartContext.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapStartContext.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapStartHandle.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.BootstrapStartHandle.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ExpectedApplicationVersion.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ExpectedApplicationVersion.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ExpectedLauncherReady.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.ExpectedLauncherReady.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LauncherProtocolNames(string! ApplicationReadyHandle, string! ExpectedApplicationVersion, string! LauncherReadyHandle, string! ExpectedLauncherReady, string! BootstrapAdmissionHandle, string! BootstrapStartContext, string! BootstrapStartHandle, string! LifetimeContext, string! LifetimeHandle, string! LifetimeJob, string! LifetimeStatePath, string! LifetimeKind, string! BootstrapIdentity) -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LauncherReadyHandle.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LauncherReadyHandle.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeContext.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeContext.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeHandle.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeHandle.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeJob.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeJob.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeKind.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeKind.init -> void
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeStatePath.get -> string!
+Nvt.Core.Launcher.Contracts.LauncherProtocolNames.LifetimeStatePath.init -> void
+Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.ManagedAppVersion.CompareTo(Nvt.Core.Launcher.Contracts.ManagedAppVersion other) -> int
+Nvt.Core.Launcher.Contracts.ManagedAppVersion.Major.get -> int
+Nvt.Core.Launcher.Contracts.ManagedAppVersion.ManagedAppVersion() -> void
+Nvt.Core.Launcher.Contracts.ManagedAppVersion.Minor.get -> int
+Nvt.Core.Launcher.Contracts.ManagedAppVersion.Patch.get -> int
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue.None = 0 -> Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue.Tampered = 2 -> Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue.Unavailable = 1 -> Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue.UnsafePath = 3 -> Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.IsAcquired.get -> bool
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.Issue.get -> Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.Issue.init -> void
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.Lease.get -> Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease?
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.Lease.init -> void
+Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchLeaseResult.ManagedExecutableLaunchLeaseResult(Nvt.Core.Launcher.Contracts.IManagedExecutableLaunchLease? Lease, Nvt.Core.Launcher.Contracts.ManagedExecutableLaunchIssue Issue) -> void
+Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity
+Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity.FileName.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity.Length.get -> long
+Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity.Sha256.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.ExecutableRelativePath.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.LauncherVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.MatchesOwner(Nvt.Core.Launcher.Contracts.ManagedVersionAdmission! admission) -> bool
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.OwnerAdmissionIdentity.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.OwnerAppVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.OwnerReleaseManifestSha256.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.ProtocolVersion.get -> int
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.Sha256.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.Size.get -> long
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.Candidate.get -> Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate?
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.Candidate.init -> void
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.HasSupportedManagedLauncher.get -> bool
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.HasSupportedManagedLauncher.init -> void
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.IsVerified.get -> bool
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.Issue.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.Issue.init -> void
+Nvt.Core.Launcher.Contracts.ManagedPackageVerificationResult.ManagedPackageVerificationResult(Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate? Candidate, Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue Issue) -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.AdmissionIdentity.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.AdmissionIdentity.init -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.ManagedVersionAdmission(Nvt.Core.Launcher.Contracts.ManagedAppVersion Version, string! AdmissionIdentity, string! ReleaseManifestSha256) -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.ReleaseManifestSha256.get -> string!
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.ReleaseManifestSha256.init -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.ManagedVersionAdmission.Version.init -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.CleanupIncomplete = 7 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.IdentityConflict = 5 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.InvalidPayload = 4 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.None = 0 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.PackageMismatch = 2 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.PackageUnavailable = 1 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.PromotionFailed = 6 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.StateUnavailable = 8 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue.UnsafeArchive = 3 -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.Admission.get -> Nvt.Core.Launcher.Contracts.ManagedVersionAdmission?
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.Admission.init -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.Issue.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.Issue.init -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.ManagedVersionInstallResult(Nvt.Core.Launcher.Contracts.ManagedVersionAdmission? Admission, Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue Issue, bool WasAlreadyInstalled) -> void
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.WasAlreadyInstalled.get -> bool
+Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult.WasAlreadyInstalled.init -> void
+Nvt.Core.Launcher.Contracts.PackageFile
+Nvt.Core.Launcher.Contracts.PackageFile.PackageFile(string! Path, long Size, string! Sha256) -> void
+Nvt.Core.Launcher.Contracts.PackageFile.Path.get -> string!
+Nvt.Core.Launcher.Contracts.PackageFile.Path.init -> void
+Nvt.Core.Launcher.Contracts.PackageFile.Sha256.get -> string!
+Nvt.Core.Launcher.Contracts.PackageFile.Sha256.init -> void
+Nvt.Core.Launcher.Contracts.PackageFile.Size.get -> long
+Nvt.Core.Launcher.Contracts.PackageFile.Size.init -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher
+Nvt.Core.Launcher.Contracts.PackageLauncher.ExecutableRelativePath.get -> string!
+Nvt.Core.Launcher.Contracts.PackageLauncher.ExecutableRelativePath.init -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher.LauncherVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.PackageLauncher.LauncherVersion.init -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher.PackageLauncher(Nvt.Core.Launcher.Contracts.ManagedAppVersion LauncherVersion, int ProtocolVersion, string! ExecutableRelativePath, long Size, string! Sha256) -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher.ProtocolVersion.get -> int
+Nvt.Core.Launcher.Contracts.PackageLauncher.ProtocolVersion.init -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher.Sha256.get -> string!
+Nvt.Core.Launcher.Contracts.PackageLauncher.Sha256.init -> void
+Nvt.Core.Launcher.Contracts.PackageLauncher.Size.get -> long
+Nvt.Core.Launcher.Contracts.PackageLauncher.Size.init -> void
+Nvt.Core.Launcher.Contracts.PackageManifest
+Nvt.Core.Launcher.Contracts.PackageManifest.Files.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.PackageFile!>!
+Nvt.Core.Launcher.Contracts.PackageManifest.Files.init -> void
+Nvt.Core.Launcher.Contracts.PackageManifest.Launcher.get -> Nvt.Core.Launcher.Contracts.PackageLauncher?
+Nvt.Core.Launcher.Contracts.PackageManifest.Launcher.init -> void
+Nvt.Core.Launcher.Contracts.PackageManifest.PackageManifest(string! ProductId, string! RuntimeIdentifier, Nvt.Core.Launcher.Contracts.ManagedAppVersion Version, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.PackageFile!>! Files, Nvt.Core.Launcher.Contracts.PackageLauncher? Launcher) -> void
+Nvt.Core.Launcher.Contracts.PackageManifest.ProductId.get -> string!
+Nvt.Core.Launcher.Contracts.PackageManifest.ProductId.init -> void
+Nvt.Core.Launcher.Contracts.PackageManifest.RuntimeIdentifier.get -> string!
+Nvt.Core.Launcher.Contracts.PackageManifest.RuntimeIdentifier.init -> void
+Nvt.Core.Launcher.Contracts.PackageManifest.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.PackageManifest.Version.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumAdmissionBytes.get -> int
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumAdmissionBytes.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumArchiveEntries.get -> int
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumArchiveEntries.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumExecutableBytes.get -> long
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumExecutableBytes.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumExpandedBytes.get -> long
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumExpandedBytes.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumInstalledDirectories.get -> int
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumInstalledDirectories.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumManifestBytes.get -> int
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumManifestBytes.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumPackageBytes.get -> long
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.MaximumPackageBytes.init -> void
+Nvt.Core.Launcher.Contracts.PackageVerificationLimits.PackageVerificationLimits(int MaximumArchiveEntries, long MaximumPackageBytes, long MaximumExpandedBytes, int MaximumManifestBytes, int MaximumAdmissionBytes, long MaximumExecutableBytes, int MaximumInstalledDirectories) -> void
+Nvt.Core.Launcher.Contracts.ProductDescriptor
+Nvt.Core.Launcher.Contracts.ProductDescriptor.ApplicationExecutableRelativePath.get -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.BootstrapExecutableFileName.get -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.GetArchiveRootName(Nvt.Core.Launcher.Contracts.ManagedAppVersion version) -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.LauncherExecutableRelativePath.get -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.ProductDescriptor(string! productId, string! runtimeIdentifier, string! registryId, string! applicationExecutableRelativePath, string! launcherExecutableRelativePath, string! bootstrapExecutableFileName, System.Func<Nvt.Core.Launcher.Contracts.ManagedAppVersion, string!>! archiveRootName, Nvt.Core.Launcher.Contracts.LauncherProtocolNames! protocolNames) -> void
+Nvt.Core.Launcher.Contracts.ProductDescriptor.ProductId.get -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.ProtocolNames.get -> Nvt.Core.Launcher.Contracts.LauncherProtocolNames!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.RegistryId.get -> string!
+Nvt.Core.Launcher.Contracts.ProductDescriptor.RuntimeIdentifier.get -> string!
+Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath
+Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath.UpdateCatalogPackagePath() -> void
+Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath.UpdateCatalogPackagePath(string? Value) -> void
+Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath.Value.get -> string?
+Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath.Value.init -> void
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.Identity.get -> string!
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.NotificationPolicy.get -> Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.PackagePath.get -> Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.PackageSha256.get -> string!
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.PackageSize.get -> long
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.PublishedAt.get -> System.DateTimeOffset
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.ReleaseManifestSha256.get -> string!
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.ReleaseNotes.get -> string!
+Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy
+Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy.ManualOnly = 0 -> Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy
+Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy.Notify = 1 -> Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.AdmissionIdentity.get -> string!
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.AdmissionIdentity.init -> void
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.ReleaseNotes.get -> string!
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.ReleaseNotes.init -> void
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.VerifiedUpdateCandidate(Nvt.Core.Launcher.Contracts.ManagedAppVersion Version, string! AdmissionIdentity, string! ReleaseNotes) -> void
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate.Version.init -> void
+Nvt.Core.Launcher.Persistence.FileSystemVersionManagerWriteLease
+Nvt.Core.Launcher.Persistence.IVersionManagerStateStore
+Nvt.Core.Launcher.Persistence.IVersionManagerStateStore.SaveAsync(Nvt.Core.Launcher.Activation.VersionManagerState! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Nvt.Core.Launcher.Persistence.IVersionManagerStateStore.TryAcquireWriteLeaseAsync(System.TimeSpan waitTimeout, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult!>
+Nvt.Core.Launcher.Persistence.IVersionManagerStateStore.TrySaveAsync(Nvt.Core.Launcher.Activation.VersionManagerState! state, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerStateSaveResult>
+Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile
+Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile.LauncherBootstrapStateFile(string! versionManagerStatePath, string! pathSuffix, int maximumBytes) -> void
+Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<byte[]?>
+Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile.StatePathIdentity.get -> string!
+Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile.TryWriteAsync(System.ReadOnlyMemory<byte> bytes, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.LauncherBootstrapStateSaveResult>
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile.ReadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<byte[]?>
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile.StatePathIdentity.get -> string!
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile.TryAcquireWriteLeaseAsync(System.TimeSpan waitTimeout, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult!>
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile.VersionManagerStateFile(string! path, int maximumBytes) -> void
+Nvt.Core.Launcher.Persistence.VersionManagerStateFile.WriteAsync(System.ReadOnlyMemory<byte> bytes, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue.Busy = 1 -> Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue.None = 0 -> Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue.Unavailable = 2 -> Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult.Dispose() -> void
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult.HoldsStatePath(string! statePath) -> bool
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult.IsAcquired.get -> bool
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult.Issue.get -> Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue
+Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult.VersionManagerWriteLeaseResult(Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseIssue issue, System.IDisposable? lease = null) -> void
 Nvt.Core.Lifecycle.CoalescedRefresh
 Nvt.Core.Lifecycle.CoalescedRefresh.CoalescedRefresh(System.Action<System.Action!>! schedule, System.Action! refresh) -> void
 Nvt.Core.Lifecycle.CoalescedRefresh.Request() -> void
@@ -688,6 +1134,9 @@ Nvt.Core.Threading.UiEventRunner.UiEventRunner(System.Action<string!, System.Exc
 Nvt.Core.Time.DelegateTimeProvider
 Nvt.Core.Time.DelegateTimeProvider.DelegateTimeProvider(System.Func<System.DateTimeOffset>! utcNow) -> void
 Nvt.Core.Time.DelegateTimeProvider.DelegateTimeProvider(System.Func<System.DateTimeOffset>! utcNow, System.Func<long>! timestamp, long timestampFrequency) -> void
+const Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity.MaximumExecutableBytes = 200000000 -> long
+const Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.SupportedProtocolVersion = 1 -> int
+override Nvt.Core.Launcher.Contracts.ManagedAppVersion.ToString() -> string!
 override Nvt.Core.Time.DelegateTimeProvider.GetTimestamp() -> long
 override Nvt.Core.Time.DelegateTimeProvider.GetUtcNow() -> System.DateTimeOffset
 override Nvt.Core.Time.DelegateTimeProvider.TimestampFrequency.get -> long
@@ -705,6 +1154,34 @@ static Nvt.Core.Files.RootedPathGuard.ResolveFileUnderRoots(string! path, System
 static Nvt.Core.Files.RootedPathGuard.ResolveRoot(string! rootDirectory) -> string!
 static Nvt.Core.IO.AtomicOutput.WriteAsync(string! path, System.Func<System.IO.Stream!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! write, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static Nvt.Core.IO.AtomicOutput.WriteBytesAsync(string! path, System.ReadOnlyMemory<byte> bytes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Nvt.Core.Launcher.Activation.LauncherBootstrapState.Create(string! managedRootIdentity, Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? active, Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? lastKnownGood, Nvt.Core.Launcher.Activation.PendingLauncherActivation? pending, Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? failed) -> Nvt.Core.Launcher.Activation.LauncherBootstrapState!
+static Nvt.Core.Launcher.Activation.ManagedVersionInventory.Create(System.Collections.Generic.IEnumerable<Nvt.Core.Launcher.Activation.InstalledVersionSnapshot!>! versions) -> Nvt.Core.Launcher.Activation.ManagedVersionInventory!
+static Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult.Success(Nvt.Core.Launcher.Activation.ManagedVersionInventory! inventory) -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult!
+static Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult.Unavailable() -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadResult!
+static Nvt.Core.Launcher.Activation.PendingLauncherActivation.Create(Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity! candidate, Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? previousActive, Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity? previousLastKnownGood, Nvt.Core.Launcher.Activation.LauncherActivationPhase phase) -> Nvt.Core.Launcher.Activation.PendingLauncherActivation!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.BeginActivation(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion candidateVersion) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.CancelRequestedActivation(Nvt.Core.Launcher.Activation.VersionManagerState! state) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.ClearActiveLaunch(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion version) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.CommitReady(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion readyVersion) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.CommitRollback(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion rollbackVersion) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.FailActivation(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion failedVersion) -> Nvt.Core.Launcher.Activation.ActivationRecoveryDecision!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.RecordActiveLaunch(Nvt.Core.Launcher.Activation.VersionManagerState! state) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.RecordCandidateLaunch(Nvt.Core.Launcher.Activation.VersionManagerState! state) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Activation.VersionActivationPolicy.RecordRollbackLaunch(Nvt.Core.Launcher.Activation.VersionManagerState! state, Nvt.Core.Launcher.Contracts.ManagedAppVersion failedVersion) -> Nvt.Core.Launcher.Activation.ActivationRecoveryDecision!
+static Nvt.Core.Launcher.Activation.VersionManagementPolicy.DecideDelete(Nvt.Core.Launcher.Activation.ManagedVersionInventory! inventory, Nvt.Core.Launcher.Contracts.ManagedAppVersion version) -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision!
+static Nvt.Core.Launcher.Activation.VersionManagementPolicy.DecideDelete(Nvt.Core.Launcher.Activation.ManagedVersionInventory! inventory, Nvt.Core.Launcher.Contracts.ManagedAppVersion version, Nvt.Core.Launcher.Activation.LauncherMutationProtection! launcherProtection, Nvt.Core.Launcher.Contracts.ManagedVersionAdmission? installedAdmission) -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision!
+static Nvt.Core.Launcher.Activation.VersionManagerState.Create(string? updateSource, Nvt.Core.Launcher.Contracts.ManagedAppVersion? activeVersion, Nvt.Core.Launcher.Contracts.ManagedAppVersion? lastKnownGoodVersion, System.Collections.Generic.IEnumerable<Nvt.Core.Launcher.Contracts.ManagedVersionAdmission!>! admissions, Nvt.Core.Launcher.Activation.PendingVersionActivation? pendingActivation, Nvt.Core.Launcher.Contracts.ManagedAppVersion? failedActivationVersion, bool retentionReviewDue, Nvt.Core.Launcher.Activation.PendingManagedVersionMutation? pendingMutation = null, string? managedRootIdentity = null, Nvt.Core.Launcher.Activation.VersionSourceRegistryState? sourceRegistryState = null) -> Nvt.Core.Launcher.Activation.VersionManagerState!
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.Parse(string! value) -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.TryParse(string? value, out Nvt.Core.Launcher.Contracts.ManagedAppVersion version) -> bool
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.operator <(Nvt.Core.Launcher.Contracts.ManagedAppVersion left, Nvt.Core.Launcher.Contracts.ManagedAppVersion right) -> bool
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.operator <=(Nvt.Core.Launcher.Contracts.ManagedAppVersion left, Nvt.Core.Launcher.Contracts.ManagedAppVersion right) -> bool
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.operator >(Nvt.Core.Launcher.Contracts.ManagedAppVersion left, Nvt.Core.Launcher.Contracts.ManagedAppVersion right) -> bool
+static Nvt.Core.Launcher.Contracts.ManagedAppVersion.operator >=(Nvt.Core.Launcher.Contracts.ManagedAppVersion left, Nvt.Core.Launcher.Contracts.ManagedAppVersion right) -> bool
+static Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity.Create(Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, string! fileName, long length, string! sha256) -> Nvt.Core.Launcher.Contracts.ManagedImmutableBootstrapIdentity!
+static Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity.Create(Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, long maximumExecutableBytes, Nvt.Core.Launcher.Contracts.ManagedAppVersion ownerAppVersion, string! ownerAdmissionIdentity, string! ownerReleaseManifestSha256, Nvt.Core.Launcher.Contracts.ManagedAppVersion launcherVersion, int protocolVersion, string! executableRelativePath, long size, string! sha256) -> Nvt.Core.Launcher.Contracts.ManagedLauncherIdentity!
+static Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot.Create(long maximumPackageBytes, int maximumReleaseNoteBytes, Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.DateTimeOffset publishedAt, Nvt.Core.Launcher.Contracts.UpdateCatalogPackagePath packagePath, long packageSize, string! packageSha256, string! releaseManifestSha256, string! releaseNotes, Nvt.Core.Launcher.Contracts.UpdateNotificationPolicy notificationPolicy) -> Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!
+static Nvt.Core.Launcher.Persistence.FileSystemVersionManagerWriteLease.TryAcquireAsync(string! statePath, System.TimeSpan waitTimeout, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult!>
+static Nvt.Core.Launcher.Persistence.LauncherBootstrapStateFile.DerivePath(string! versionManagerStatePath, string! pathSuffix) -> string!
 static Nvt.Core.Locale.CommonTextResources.For(Nvt.Core.Locale.CommonLanguage language) -> Nvt.Core.Locale.CommonTextResources!
 static Nvt.Core.LogConsole.ConsoleExportFormatter.FormatSelection(Nvt.Core.LogConsole.ConsoleProjection! projection, System.Collections.Immutable.ImmutableHashSet<long>! selection, Nvt.Core.LogConsole.ConsoleExportOptions? options = null) -> string!
 static Nvt.Core.LogConsole.ConsoleExportFormatter.FormatVisible(Nvt.Core.LogConsole.ConsoleProjection! projection, Nvt.Core.LogConsole.ConsoleExportOptions? options = null) -> string!
