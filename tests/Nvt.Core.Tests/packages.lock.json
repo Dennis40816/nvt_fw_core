@@ -165,6 +165,9 @@
       },
       "nvt.core": {
         "type": "Project"
+      },
+      "nvt.core.testsupport": {
+        "type": "Project"
       }
     }
   }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using Microsoft.Win32.SafeHandles;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -103,7 +104,7 @@ public sealed class InheritedManagedProcessLifetimeTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         using ManagedProcessLifetimeLease lease = Acquire(state, ManagedProcessLifetimeKind.Application);
         var start = new ProcessStartInfo();
         lease.ApplyInheritedContext(start);
@@ -113,7 +114,7 @@ public sealed class InheritedManagedProcessLifetimeTests
         {
             case "context": start.Environment[TransportFixture.Names.LifetimeContext] = "V1"; break;
             case "missing-path": start.Environment[TransportFixture.Names.LifetimeStatePath] = null; break;
-            case "different-path": start.Environment[TransportFixture.Names.LifetimeStatePath] = workspace.PathFor("other.json"); break;
+            case "different-path": start.Environment[TransportFixture.Names.LifetimeStatePath] = workspace.GetPath("other.json"); break;
             case "role": start.Environment[TransportFixture.Names.LifetimeKind] = nameof(ManagedProcessLifetimeKind.Launcher); break;
             case "role-case": start.Environment[TransportFixture.Names.LifetimeKind] = "application"; break;
             case "job": start.Environment[TransportFixture.Names.LifetimeJob] += ".extra"; break;
@@ -133,9 +134,9 @@ public sealed class InheritedManagedProcessLifetimeTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         using ManagedProcessLifetimeLease lease = Acquire(state, ManagedProcessLifetimeKind.Application);
-        using var arbitrary = new FileStream(workspace.PathFor("arbitrary.txt"), FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
+        using var arbitrary = new FileStream(workspace.GetPath("arbitrary.txt"), FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
         string duplicate = WindowsPipeHandles.Duplicate(arbitrary.SafeFileHandle.DangerousGetHandle());
         var start = new ProcessStartInfo();
         lease.ApplyInheritedContext(start);
@@ -156,11 +157,11 @@ public sealed class InheritedManagedProcessLifetimeTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         using ManagedProcessLifetimeLease lease = Acquire(state, kind);
         Assert.True(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, state, kind, lease.JobName));
         Assert.False(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, state, kind, lease.JobName.ToUpperInvariant()));
-        Assert.False(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, workspace.PathFor("other.json"), kind, lease.JobName));
+        Assert.False(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, workspace.GetPath("other.json"), kind, lease.JobName));
         Assert.False(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, state, kind, lease.JobName + "0"));
         Assert.False(ManagedProcessLifetimeLease.IsExpectedJobName(Protocol, state, kind, lease.JobName[..^1]));
         if (kind == ManagedProcessLifetimeKind.Bootstrap)
@@ -178,11 +179,11 @@ public sealed class InheritedManagedProcessLifetimeTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string path = workspace.PathFor("lease.lock");
+        string path = workspace.GetPath("lease.lock");
         using var stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
         Assert.True(ManagedLifetimeNativePath.IsExactLeaseHandle(stream.SafeFileHandle, path));
         Assert.True(ManagedLifetimeNativePath.IsExactLeaseHandle(stream.SafeFileHandle, path.ToUpperInvariant()));
-        Assert.False(ManagedLifetimeNativePath.IsExactLeaseHandle(stream.SafeFileHandle, workspace.PathFor("other.lock")));
+        Assert.False(ManagedLifetimeNativePath.IsExactLeaseHandle(stream.SafeFileHandle, workspace.GetPath("other.lock")));
     }
 
     private static InheritedManagedProcessLifetime Entry() => new(TransportFixture.Names, Protocol.JobNamePrefix);
