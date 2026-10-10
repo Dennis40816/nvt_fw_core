@@ -157,6 +157,6 @@ public sealed class TestWorkspace : IDisposable, IAsyncDisposable
     private static void WaitForRetry(TimeSpan duration)
     {
         using var signal = new ManualResetEventSlim();
-        _ = signal.Wait(duration);
+        _ = signal.WaitHandle.WaitOne(duration);
     }
 }

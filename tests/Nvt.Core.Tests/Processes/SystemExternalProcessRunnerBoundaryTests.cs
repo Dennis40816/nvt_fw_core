@@ -18,7 +18,7 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
         "TerminationStarted", "ReaderStopRequested", "Returning", "Detached", "ResourcesReleased", "ResourcesReleaseFailed",
     ];
     // Watchdog only. The production cleanup deadline is also 5 s, so a 5 s wait raced the runner's own release.
-    private static readonly TimeSpan ReleaseBound = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan _releaseBound = TimeSpan.FromSeconds(30);
 
     /// <summary>The fixed production mechanism retains eight slots, the three timing values, and a null observer.</summary>
     [Fact]
@@ -390,7 +390,7 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
         Assert.Equal(ExternalProcessCleanup.Complete, result.Cleanup);
         Assert.Empty(result.StandardOutput);
         Assert.Empty(result.StandardError);
-        await released.Task.WaitAsync(ReleaseBound, TestContext.Current.CancellationToken);
+        await released.Task.WaitAsync(_releaseBound, TestContext.Current.CancellationToken);
         Assert.Equal(0, capacity.InUse);
         lock (phases)
         {
@@ -498,7 +498,7 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
             Assert.Equal(-1, result.ExitCode);
             Assert.True(result.TimedOut);
             Assert.Equal(ExternalProcessCleanup.TerminationUnconfirmed, result.Cleanup);
-            await released.Task.WaitAsync(ReleaseBound, TestContext.Current.CancellationToken);
+            await released.Task.WaitAsync(_releaseBound, TestContext.Current.CancellationToken);
             Assert.Equal(0, capacity.InUse);
             Assert.Equal(1, Volatile.Read(ref terminationCalls));
         }
@@ -514,7 +514,7 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
                     {
                         process.Kill(entireProcessTree: true);
                         await process.WaitForExitAsync(TestContext.Current.CancellationToken)
-                            .WaitAsync(ReleaseBound, TestContext.Current.CancellationToken);
+                            .WaitAsync(_releaseBound, TestContext.Current.CancellationToken);
                     }
                 }
                 catch (ArgumentException)

@@ -144,7 +144,7 @@ public sealed class TestWorkspaceTests
     {
         var workspace = TestWorkspace.Create();
         string file = workspace.GetPath("nested/fixture.txt");
-        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        new DirectoryInfo(Path.GetDirectoryName(file)!).Create();
         await using (FileStream stream = File.Create(file))
         {
             await stream.WriteAsync("synthetic fixture"u8.ToArray(), TestContext.Current.CancellationToken);
@@ -161,7 +161,7 @@ public sealed class TestWorkspaceTests
     public async Task MissingRootIsAnIdempotentSuccess()
     {
         var workspace = TestWorkspace.Create();
-        Directory.Delete(workspace.RootPath);
+        new DirectoryInfo(workspace.RootPath).Delete();
         ((IDisposable)workspace).Dispose();
         await ((IAsyncDisposable)workspace).DisposeAsync();
     }
@@ -184,7 +184,7 @@ public sealed class TestWorkspaceTests
                 if (accessFailure) { throw new UnauthorizedAccessException("synthetic access failure"); }
                 throw new IOException("synthetic sharing failure");
             }
-            Directory.Delete(path, recursive: true);
+            new DirectoryInfo(path).Delete(recursive: true);
         }, waits.Add, static () => TimeSpan.Zero);
         await ((IAsyncDisposable)workspace).DisposeAsync();
         ((IDisposable)workspace).Dispose();
@@ -217,7 +217,7 @@ public sealed class TestWorkspaceTests
         Assert.Equal(10, attempts);
         Assert.Equal(9, waits);
         Assert.Same(failure, Assert.Throws<IOException>(((IDisposable)workspace).Dispose));
-        IOException repeated = await Assert.ThrowsAsync<IOException>(async () => await ((IAsyncDisposable)workspace).DisposeAsync());
+        IOException repeated = await Assert.ThrowsAsync<IOException>(() => ((IAsyncDisposable)workspace).DisposeAsync().AsTask());
         Assert.Same(failure, repeated);
         Assert.Equal(10, attempts);
         Assert.Equal(9, waits);
@@ -235,7 +235,7 @@ public sealed class TestWorkspaceTests
             duration => { Assert.Equal(TimeSpan.FromMilliseconds(50), duration); elapsed = TimeSpan.FromMilliseconds(500); },
             () => elapsed);
         TestWorkspace workspace = _subject;
-        IOException failure = await Assert.ThrowsAsync<IOException>(async () => await workspace.DisposeAsync());
+        IOException failure = await Assert.ThrowsAsync<IOException>(() => workspace.DisposeAsync().AsTask());
         Assert.Contains(owner.RootPath, failure.Message, StringComparison.Ordinal);
         Assert.Equal(1, attempts);
         Assert.True(Directory.Exists(owner.RootPath));

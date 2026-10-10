@@ -122,6 +122,12 @@ fault (not an aggregate), throws OperationCanceledException for a canceled task,
 synchronization context. The task must run on another thread. A task that needs the blocked thread to
 continue never completes.
 
+## TestFiles
+
+The File.ReadAll* and File.WriteAll* shortcuts are banned in every project. A test that needs a
+plain fixture file uses TestFiles.WriteAllBytes and TestFiles.ReadLinesAsync. Both go through streams.
+Use them only on paths inside a TestWorkspace.
+
 ## Baseline and deliberate differences
 
 The helpers replace `tests/Nvt.Core.Tests/Processes/ManualTimeProvider.cs` and

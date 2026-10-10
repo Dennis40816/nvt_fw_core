@@ -439,7 +439,7 @@ public sealed class ProcessLaunchGateBoundaryTests
         await ExitAsync(child);
         Assert.Equal(0, child.ExitCode);
         Assert.Equal(new[] { "synthetic", workspace.RootPath, "two words", "tail" },
-            await File.ReadAllLinesAsync(marker, TestContext.Current.CancellationToken));
+            await TestFiles.ReadLinesAsync(marker, TestContext.Current.CancellationToken));
     }
 
     /// <summary>Exercises PowerShell's separate quoted-argument behavior within its ten-minute checkpoint.</summary>
@@ -471,7 +471,7 @@ public sealed class ProcessLaunchGateBoundaryTests
         await child.WaitForExitAsync(TestContext.Current.CancellationToken)
             .WaitAsync(TimeSpan.FromMinutes(10), TestContext.Current.CancellationToken);
         Assert.Equal(0, child.ExitCode);
-        string[] actual = await File.ReadAllLinesAsync(marker, TestContext.Current.CancellationToken);
+        string[] actual = await TestFiles.ReadLinesAsync(marker, TestContext.Current.CancellationToken);
         Assert.SkipUnless(actual.SequenceEqual(QuotedArguments),
             "PowerShell did not preserve its separate argument parsing; the contained starter remains unchanged.");
         Assert.Equal(QuotedArguments, actual);
