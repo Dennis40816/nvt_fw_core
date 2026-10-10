@@ -60,10 +60,24 @@ $script:TestRules = @('timeWaitsInTests', 'elapsedAssertionsInTests', 'tempPathI
 $script:SyntaxRules = @('asyncVoid', 'blockingWait', 'suppressions', 'generationFields', 'nativeImportDuplicates', 'fakeClockDuplicates', 'workspaceDuplicates', 'suppressionScopes') + $script:TestRules
 
 function Invoke-Checked([string]$Exe, [string[]]$Arguments) {
-    if ($Exe -eq 'dotnet' -and $Arguments.Count -gt 0 -and $Arguments[0] -in @('build', 'msbuild')) { $Arguments = @($Arguments) + $script:MsbuildLimits }
-    $lines = @(& $Exe @Arguments 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw "$Exe exited $LASTEXITCODE`: $($lines -join [Environment]::NewLine)" }
-    return ($lines -join [Environment]::NewLine)
+    $resultFile = ''
+    if ($Exe -eq 'dotnet' -and $Arguments.Count -gt 0 -and $Arguments[0] -in @('build', 'msbuild')) {
+        $Arguments = @($Arguments) + $script:MsbuildLimits
+        # A -get* result goes to a file, so warnings that a target prints on a fresh tree cannot mix into the JSON.
+        if ($Arguments[0] -eq 'msbuild' -and @($Arguments | Where-Object { $_ -like '-get*' }).Count) {
+            $resultFile = Join-Path ([IO.Path]::GetTempPath()) "health-msbuild-$([guid]::NewGuid().ToString('N')).json"
+            $Arguments = @($Arguments) + "-getResultOutputFile:$resultFile"
+        }
+    }
+    try {
+        $lines = @(& $Exe @Arguments 2>&1)
+        if ($LASTEXITCODE -ne 0) { throw "$Exe exited $LASTEXITCODE`: $($lines -join [Environment]::NewLine)" }
+        if ($resultFile) { return (Get-Content -LiteralPath $resultFile -Raw) }
+        return ($lines -join [Environment]::NewLine)
+    }
+    finally {
+        if ($resultFile -and (Test-Path -LiteralPath $resultFile)) { Remove-Item -LiteralPath $resultFile -Force }
+    }
 }
 
 function Read-Baseline([string]$Text, [string]$Label) {
