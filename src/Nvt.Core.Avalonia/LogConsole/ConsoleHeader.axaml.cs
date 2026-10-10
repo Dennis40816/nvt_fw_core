@@ -4,7 +4,6 @@ using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using CommunityToolkit.Mvvm.Input;
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
