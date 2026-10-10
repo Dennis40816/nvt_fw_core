@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Transport;
+using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Processes;
 using Xunit;
 
@@ -38,7 +39,7 @@ public sealed class StableLauncherHandoffTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.Cancel();
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await Create(workspace.Root, workspace.PathFor("state.json")).TryStartLauncherAsync(cancellation.Token));
+            await Create(workspace.RootPath, workspace.GetPath("state.json")).TryStartLauncherAsync(cancellation.Token));
     }
 
     /// <summary>Legacy restart fails closed without an exact inherited Bootstrap identity.</summary>
@@ -46,7 +47,7 @@ public sealed class StableLauncherHandoffTests
     public async Task StableLauncherHandoffWithoutExpectedIdentityFailsClosed()
     {
         using var workspace = TestWorkspace.Create();
-        StableLauncherStartResult result = await Create(workspace.Root, workspace.PathFor("state.json"))
+        StableLauncherStartResult result = await Create(workspace.RootPath, workspace.GetPath("state.json"))
             .TryStartLauncherAsync(TestContext.Current.CancellationToken);
         Assert.Equal(new(StableLauncherStartOutcome.HandoffFailed), result);
     }
@@ -56,11 +57,11 @@ public sealed class StableLauncherHandoffTests
     public async Task StableLauncherHandoffPreCancellationDisposesOwnedLeaseExactlyOnce()
     {
         using var workspace = TestWorkspace.Create();
-        using var lease = Lease(workspace.Root);
+        using var lease = Lease(workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cancellation.Cancel();
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await Create(workspace.Root, workspace.PathFor("state.json")).StartAsync(workspace.Root, Identity(), lease, cancellation.Token));
+            await Create(workspace.RootPath, workspace.GetPath("state.json")).StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token));
         Assert.Equal(1, lease.DisposeCount);
     }
 
@@ -75,12 +76,12 @@ public sealed class StableLauncherHandoffTests
     public async Task InvalidOwnedAuthorityDisposesLeaseExactlyOnce(string mismatch)
     {
         using var workspace = TestWorkspace.Create();
-        string root = mismatch == "relative-root" ? "relative-root" : mismatch == "different-root" ? workspace.PathFor("other") : workspace.Root;
-        string executable = workspace.PathFor(mismatch == "executable" ? "other.exe" : TransportFixture.Descriptor.BootstrapExecutableFileName);
-        using var lease = new CountingLease(executable, mismatch == "working-directory" ? workspace.PathFor("other") : workspace.Root);
+        string root = mismatch == "relative-root" ? "relative-root" : mismatch == "different-root" ? workspace.GetPath("other") : workspace.RootPath;
+        string executable = workspace.GetPath(mismatch == "executable" ? "other.exe" : TransportFixture.Descriptor.BootstrapExecutableFileName);
+        using var lease = new CountingLease(executable, mismatch == "working-directory" ? workspace.GetPath("other") : workspace.RootPath);
         ManagedImmutableBootstrapIdentity? identity = mismatch == "missing-identity" ? null : mismatch == "filename"
             ? ManagedImmutableBootstrapIdentity.Create(TransportFixture.CreateDescriptor("Other.exe"), "Other.exe", 1, new string('a', 64)) : Identity();
-        ImmutableBootstrapStartResult result = await Create(workspace.Root, workspace.PathFor("state.json"))
+        ImmutableBootstrapStartResult result = await Create(workspace.RootPath, workspace.GetPath("state.json"))
             .StartAsync(root, identity!, lease, TestContext.Current.CancellationToken);
         Assert.Equal(ImmutableBootstrapStartIssue.Damaged, result.Issue);
         Assert.Null(result.Launch);
@@ -93,11 +94,11 @@ public sealed class StableLauncherHandoffTests
     public async Task CancellationAfterOwnedAcquisitionDisposesLeaseExactlyOnce()
     {
         using var workspace = TestWorkspace.Create();
-        using var lease = Lease(workspace.Root);
+        using var lease = Lease(workspace.RootPath);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var handoff = Create(workspace.Root, workspace.PathFor("state.json"), afterExecutableAcquired: cancellation.Cancel);
+        var handoff = Create(workspace.RootPath, workspace.GetPath("state.json"), afterExecutableAcquired: cancellation.Cancel);
         _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await handoff.StartAsync(workspace.Root, Identity(), lease, cancellation.Token));
+            await handoff.StartAsync(workspace.RootPath, Identity(), lease, cancellation.Token));
         Assert.Equal(1, lease.DisposeCount);
     }
 
@@ -107,10 +108,10 @@ public sealed class StableLauncherHandoffTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        using var lease = Lease(workspace.Root, valid: false);
-        var handoff = Create(workspace.Root, workspace.PathFor("state.json"), beforeProcessStart:
+        using var lease = Lease(workspace.RootPath, valid: false);
+        var handoff = Create(workspace.RootPath, workspace.GetPath("state.json"), beforeProcessStart:
             static _ => throw new InvalidOperationException("Injected start failure."));
-        ImmutableBootstrapStartResult start = await handoff.StartAsync(workspace.Root, Identity(), lease, TestContext.Current.CancellationToken);
+        ImmutableBootstrapStartResult start = await handoff.StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken);
         Assert.True(start.IsStarted);
         using IImmutableBootstrapLaunch launch = Assert.IsAssignableFrom<IImmutableBootstrapLaunch>(start.Launch);
         ImmutableBootstrapAdmissionResult result = await launch.WaitForAdmissionAsync(
@@ -128,10 +129,10 @@ public sealed class StableLauncherHandoffTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
-        using var lease = Lease(workspace.Root, valid: false);
-        ImmutableBootstrapStartResult start = await Create(workspace.Root, state)
-            .StartAsync(workspace.Root, Identity(), lease, TestContext.Current.CancellationToken);
+        string state = workspace.GetPath("state.json");
+        using var lease = Lease(workspace.RootPath, valid: false);
+        ImmutableBootstrapStartResult start = await Create(workspace.RootPath, state)
+            .StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken);
         Assert.True(start.IsStarted);
         using IImmutableBootstrapLaunch launch = Assert.IsAssignableFrom<IImmutableBootstrapLaunch>(start.Launch);
         InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(async () =>
@@ -158,13 +159,13 @@ public sealed class StableLauncherHandoffTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        string state = workspace.PathFor("state.json");
+        string state = workspace.GetPath("state.json");
         var protocol = new ManagedLifetimeProtocol(TransportFixture.Names, JobNamePrefix);
         using ManagedProcessLifetimeLease lifetime = ManagedProcessLifetimeLease.TryAcquire(protocol, state,
             Nvt.Core.Launcher.Coordination.ManagedProcessLifetimeKind.Bootstrap)
             ?? throw new InvalidOperationException("Bootstrap lifetime was not acquired.");
-        using var lease = Lease(workspace.Root);
-        ImmutableBootstrapStartResult result = await Create(workspace.Root, state).StartAsync(workspace.Root, Identity(), lease, TestContext.Current.CancellationToken);
+        using var lease = Lease(workspace.RootPath);
+        ImmutableBootstrapStartResult result = await Create(workspace.RootPath, state).StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken);
         Assert.Equal(ImmutableBootstrapStartIssue.Busy, result.Issue);
         Assert.Null(result.Launch);
         Assert.True(result.HasValidShape);
@@ -197,9 +198,9 @@ public sealed class StableLauncherHandoffTests
     public async Task OwnedIdentityAboveExplicitExecutableCeilingIsRejected()
     {
         using var workspace = TestWorkspace.Create();
-        using var lease = Lease(workspace.Root);
-        ImmutableBootstrapStartResult result = await Create(workspace.Root, workspace.PathFor("state.json"), maximumExecutableBytes: 1)
-            .StartAsync(workspace.Root, Identity(2), lease, TestContext.Current.CancellationToken);
+        using var lease = Lease(workspace.RootPath);
+        ImmutableBootstrapStartResult result = await Create(workspace.RootPath, workspace.GetPath("state.json"), maximumExecutableBytes: 1)
+            .StartAsync(workspace.RootPath, Identity(2), lease, TestContext.Current.CancellationToken);
         Assert.Equal(ImmutableBootstrapStartIssue.Damaged, result.Issue);
         Assert.Equal(1, lease.DisposeCount);
     }
@@ -240,7 +241,7 @@ public sealed class StableLauncherHandoffTests
         WindowsCustodyCapability.RequireFile(root);
         ManagedImmutableBootstrapIdentity identity = Measure(executable);
         int pid = 0;
-        var handoff = Create(root, workspace.PathFor("state.json"), identity, hasExited: process => { pid = process.Id; return false; });
+        var handoff = Create(root, workspace.GetPath("state.json"), identity, hasExited: process => { pid = process.Id; return false; });
         File.Move(executable, executable + ".missing");
         Assert.Equal(new(StableLauncherStartOutcome.HandoffFailed), await handoff.TryStartLauncherAsync(TestContext.Current.CancellationToken));
         File.Move(executable + ".missing", executable);
@@ -256,7 +257,7 @@ public sealed class StableLauncherHandoffTests
         RequireWindows();
         using var workspace = TestWorkspace.Create();
         string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Bootstrap");
-        string higherAncestor = workspace.PathFor("higher");
+        string higherAncestor = workspace.GetPath("higher");
         string managedRoot = Path.Combine(higherAncestor, "managed");
         _ = Directory.CreateDirectory(higherAncestor);
         Directory.Move(Path.GetDirectoryName(executable)!, managedRoot);
@@ -264,7 +265,7 @@ public sealed class StableLauncherHandoffTests
         WindowsCustodyCapability.RequireFile(managedRoot);
         int blocked = 0;
         int pid = 0;
-        var handoff = Create(managedRoot, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+        var handoff = Create(managedRoot, workspace.GetPath("state/version-manager.v1.json"), Measure(executable),
             beforeProcessStart: _ =>
             {
                 foreach (string path in new[] { managedRoot, higherAncestor })
@@ -305,7 +306,7 @@ public sealed class StableLauncherHandoffTests
         string root = Path.GetDirectoryName(executable)!;
         WindowsCustodyCapability.RequireFile(root);
         int pid = 0;
-        var handoff = Create(root, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+        var handoff = Create(root, workspace.GetPath("state/version-manager.v1.json"), Measure(executable),
             hasExited: process => { pid = process.Id; return true; }, getExitCode: static _ => 24);
         using var environment = new ProtocolEnvironmentScope(("CORE_TEST_PROBE_MODE", "silent-wait"));
         try
@@ -326,7 +327,7 @@ public sealed class StableLauncherHandoffTests
         string root = Path.GetDirectoryName(executable)!;
         WindowsCustodyCapability.RequireFile(root);
         bool hookRan = false;
-        var handoff = Create(root, workspace.PathFor("state/version-manager.v1.json"), Measure(executable),
+        var handoff = Create(root, workspace.GetPath("state/version-manager.v1.json"), Measure(executable),
             beforeProcessStart: _ =>
             {
                 hookRan = true;
@@ -354,7 +355,7 @@ public sealed class StableLauncherHandoffTests
         ManagedImmutableBootstrapIdentity exact = Measure(executable);
         string digest = lengthDelta == 0 ? (exact.Sha256[0] == 'a' ? "b" : "a") + exact.Sha256[1..] : exact.Sha256;
         ManagedImmutableBootstrapIdentity wrong = ManagedImmutableBootstrapIdentity.Create(TransportFixture.Descriptor, exact.FileName, exact.Length + lengthDelta, digest);
-        Assert.Equal(new(StableLauncherStartOutcome.HandoffFailed), await Create(root, workspace.PathFor("state.json"), wrong).TryStartLauncherAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(new(StableLauncherStartOutcome.HandoffFailed), await Create(root, workspace.GetPath("state.json"), wrong).TryStartLauncherAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>Cancellation inside final verification prevents native creation after custody I/O completes.</summary>
@@ -368,7 +369,7 @@ public sealed class StableLauncherHandoffTests
         WindowsCustodyCapability.RequireFile(root);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         bool verified = false;
-        var handoff = Create(root, workspace.PathFor("state.json"), Measure(executable), validateLauncherForStart: lease =>
+        var handoff = Create(root, workspace.GetPath("state.json"), Measure(executable), validateLauncherForStart: lease =>
         {
             cancellation.Cancel();
             verified = lease.TryValidateForStart();
@@ -390,7 +391,7 @@ public sealed class StableLauncherHandoffTests
         string root = Path.GetDirectoryName(executable)!;
         WindowsCustodyCapability.RequireFile(root);
         int pid = 0;
-        var handoff = Create(root, workspace.PathFor("state.json"), Measure(executable), hasExited: process =>
+        var handoff = Create(root, workspace.GetPath("state.json"), Measure(executable), hasExited: process =>
         {
             pid = process.Id;
             return failOnExitCode ? true : throw new Win32Exception(5);
@@ -408,8 +409,8 @@ public sealed class StableLauncherHandoffTests
         using var workspace = TestWorkspace.Create();
         string executable = ProcessProbe.CopyAndRename(workspace, "Fixture.Bootstrap");
         string root = Path.GetDirectoryName(executable)!;
-        string statePath = workspace.PathFor("state.json");
-        string marker = workspace.PathFor("owned-child.txt");
+        string statePath = workspace.GetPath("state.json");
+        string marker = workspace.GetPath("owned-child.txt");
         var lease = new CountingLease(executable, root);
         using var environment = new ProtocolEnvironmentScope(
             ("CORE_TEST_PROBE_MODE", "tree-root-wait"), ("CORE_TEST_PROBE_TREE_MARKER", marker));
@@ -452,11 +453,11 @@ public sealed class StableLauncherHandoffTests
     {
         RequireWindows();
         using var workspace = TestWorkspace.Create();
-        var lease = Lease(workspace.Root);
-        string statePath = workspace.PathFor("state.json");
-        var handoff = Create(workspace.Root, statePath, maximumIdentityCharacters: 1);
+        var lease = Lease(workspace.RootPath);
+        string statePath = workspace.GetPath("state.json");
+        var handoff = Create(workspace.RootPath, statePath, maximumIdentityCharacters: 1);
         ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
-            await handoff.StartAsync(workspace.Root, Identity(), lease, TestContext.Current.CancellationToken));
+            await handoff.StartAsync(workspace.RootPath, Identity(), lease, TestContext.Current.CancellationToken));
         Assert.Equal("identity", exception.ParamName);
         Assert.StartsWith("Inherited Bootstrap identity is oversized.", exception.Message, StringComparison.Ordinal);
         Assert.Equal(1, lease.DisposeCount);

@@ -259,6 +259,8 @@ Core ships one `Directory.Build.props` fragment, one `.editorconfig` and the ban
 | T4 | Test behavior, not source text or private members (`BindingFlags.NonPublic`). | Health check count |
 | T5 | A flaky test is a bug. Open an issue even when the retry passed. | Existing CI gate |
 
+The [testing conventions](testing.md) extend these rules with 14 numbered rules and the list of shared test helpers.
+
 ### Review process
 
 - The reviewer prompt asks for every site of a defect class, not the first one.

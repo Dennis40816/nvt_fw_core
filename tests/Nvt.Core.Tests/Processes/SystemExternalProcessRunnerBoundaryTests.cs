@@ -17,7 +17,8 @@ public sealed class SystemExternalProcessRunnerBoundaryTests
         "Started", "ExitSignaled", "TimeoutSignaled", "CancellationSignaled", "OutputHeldAfterExit",
         "TerminationStarted", "ReaderStopRequested", "Returning", "Detached", "ResourcesReleased", "ResourcesReleaseFailed",
     ];
-    private static readonly TimeSpan ReleaseBound = TimeSpan.FromSeconds(5);
+    // Watchdog only. The production cleanup deadline is also 5 s, so a 5 s wait raced the runner's own release.
+    private static readonly TimeSpan ReleaseBound = TimeSpan.FromSeconds(30);
 
     /// <summary>The fixed production mechanism retains eight slots, the three timing values, and a null observer.</summary>
     [Fact]
