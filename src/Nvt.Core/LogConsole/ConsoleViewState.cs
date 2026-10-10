@@ -142,6 +142,9 @@ public sealed record ConsoleRow(ConsoleRowId Id, LogLevel Level, string SourceId
 }
 
 /// <summary>The sole computed output used by display, copy, and export.</summary>
+// All owned leases are reachable exclusively through Rows.TextContent; other members are immutable metadata.
+// An internal row-order copy carrying every row once transfers those leases without retaining them again.
+// Such a transfer drops the original projection without disposing it; the copy becomes the sole lease owner.
 public sealed class ConsoleProjection : IDisposable
 {
     /// <summary>Gets the frozen revision.</summary>

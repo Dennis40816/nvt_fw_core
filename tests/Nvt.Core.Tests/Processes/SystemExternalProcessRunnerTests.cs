@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using Nvt.Core.Processes;
+using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Processes;
@@ -75,11 +76,11 @@ public sealed class SystemExternalProcessRunnerTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.pid");
+        string marker = workspace.GetPath("child.pid");
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
         var runner = CreateTreeRunner(parentReady);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, TimeSpan.FromSeconds(30));
+        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.RootPath, "tree-root-wait", marker, TimeSpan.FromSeconds(30));
 
         Task<ExternalProcessResult>? run = null;
         TestProcessIdentity? parentProcess = null;
@@ -134,13 +135,13 @@ public sealed class SystemExternalProcessRunnerTests
         }
 
         using var workspace = TestWorkspace.Create();
-        string marker = workspace.PathFor("child.pid");
-        var time = new ManualTimeProvider();
+        string marker = workspace.GetPath("child.pid");
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         TimeSpan timeout = TimeSpan.FromSeconds(10);
         var parentReady = new TaskCompletionSource<TestProcessIdentity>(TaskCreationOptions.RunContinuationsAsynchronously);
         var runner = CreateTreeRunner(parentReady, time);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.Root, "tree-root-wait", marker, timeout);
+        ExternalProcessStartInfo startInfo = CreateStartInfo(workspace.RootPath, "tree-root-wait", marker, timeout);
         Task<ExternalProcessResult>? run = null;
         TestProcessIdentity? parentProcess = null;
         TestProcessIdentity? childProcess = null;
@@ -228,7 +229,7 @@ public sealed class SystemExternalProcessRunnerTests
             Assert.Skip("Windows process execution is required.");
         }
 
-        var time = new ManualTimeProvider();
+        var time = new ManualTimeProvider(ProcessTestClock.Start);
         TimeSpan timeout = TimeSpan.FromSeconds(10);
         var outputCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var errorCaptured = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
