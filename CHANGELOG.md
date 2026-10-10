@@ -104,7 +104,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Fixed
 
-- Tests: the test probe's 30-second waiting modes now end when the test creates a release file, and the managed-start cleanup test runs on a manual clock. `ManagedStartDeadline` takes an internal `TimeProvider`. Production behavior and the public API do not change. Core test time drops by about 70 seconds (the sum of the three tests), and Issue #175 no longer depends on a real-time bound.
+- Tests: the test probe's 30-second waiting modes now end when the test creates a release file, and the managed-start cleanup test runs on a manual clock. `ManagedStartDeadline` takes an internal `TimeProvider`. The scanner oracle and corpus tests run their independent cases in parallel. Production behavior and the public API do not change. Summed test time drops by about 5 minutes, and Issue #175 no longer depends on a real-time bound.
 - MessageCenter: `ActivityItems`, `HasActivityItems` and `HasNoActivityItems` share one lazy provider capture and row projection per revision. Filter, debug disclosure, activity/diagnostic signals and language changes invalidate the cache before changed notifications, keeping rows and presence flags coherent while preserving notification order and observer isolation.
 
 ## 0.5.0 - 2026-10-08
