@@ -644,5 +644,16 @@ class Sample {
         self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "not a test-duplication rule")
 
 
+class CheckerHostSettingsTests(unittest.TestCase):
+    """The checker fixes the tool language and the MSBuild host limits for every host."""
+
+    def test_script_sets_language_and_msbuild_limits_once(self) -> None:
+        source = CHECKER.read_text(encoding="utf-8")
+        for line in ("$env:DOTNET_CLI_UI_LANGUAGE = 'en'", "$env:VSLANG = '1033'", "$env:PreferredUILang = 'en-US'",
+                     "$env:MSBUILDDISABLENODEREUSE = '1'", "$script:MsbuildLimits = @('-m:4', '-nodeReuse:false')"):
+            self.assertEqual(1, source.count(line), line)
+        self.assertIn("$Arguments[0] -in @('build', 'msbuild')", source)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,10 @@ enforcement uses the existing locked restore and host NuGet cache; it never rest
 compiled by that SDK and loads its `Roslyn/bincore` assemblies in an isolated
 context. Measurement version: `roslyn-physical-v1`.
 
+The checker sets `DOTNET_CLI_UI_LANGUAGE=en`, `VSLANG=1033` and `PreferredUILang=en-US` for every tool it starts, so
+compiler and format messages do not change with the host language. It runs `dotnet build` and `dotnet msbuild` with
+`-m:4 -nodeReuse:false`, and sets `MSBUILDDISABLENODEREUSE=1` so that `dotnet format` leaves no MSBuild node behind.
+
 ```powershell
 ./tools/repo-checks/repo-health.ps1 -Mode Measure -Repo core -Root . -OutputPath measurement.json
 ./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
