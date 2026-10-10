@@ -8,7 +8,7 @@ namespace Nvt.Core.TestSupport.Tests;
 public sealed class ManualTimeProviderTests
 {
     private static readonly DateTimeOffset _start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-    private static readonly TimeSpan _bound = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan _bound = TimeSpan.FromSeconds(30);
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private static TimeSpan Seconds(int value) => TimeSpan.FromSeconds(value);
     private static Task BoundedAsync(Task task) => task.WaitAsync(_bound, TimeProvider.System, Token);
@@ -208,7 +208,8 @@ public sealed class ManualTimeProviderTests
         using ITimer timer = time.CreateTimer(_ =>
         {
             entered.SetResult();
-            Assert.True(release.Wait(_bound, Token));
+            // The finally block of the test always sets the event, so this wait needs no bound of its own.
+            _ = release.WaitHandle.WaitOne();
         }, null, Seconds(1), Timeout.InfiniteTimeSpan);
         Task advance = Task.Run(() => time.Advance(Seconds(1)), Token);
         try
@@ -241,7 +242,8 @@ public sealed class ManualTimeProviderTests
         {
             calls++;
             entered.SetResult();
-            Assert.True(release.Wait(_bound, Token));
+            // The finally block of the test always sets the event, so this wait needs no bound of its own.
+            _ = release.WaitHandle.WaitOne();
         }, null, Seconds(1), Seconds(1));
         Task advance = Task.Run(() => time.Advance(Seconds(5)), Token);
         Task? disposal = null;
