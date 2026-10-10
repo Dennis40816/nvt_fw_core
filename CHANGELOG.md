@@ -95,7 +95,17 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- `Nvt.Core.TestSupport` gains `TaskBlock`: the one way to block on a task in a test hook that cannot await. It rethrows the original fault and does not use the caller's synchronization context.
+- `Nvt.Core.TestSupport` gains `RelativePerf`: performance thresholds that follow the machine (a calibration unit, a scale ratio, an allocation count) with a warm-up and a median of at least seven samples. Testing rule 3 and convention T1 now ask for such a test on hot paths and forbid absolute wall-clock limits.
+- Add Nvt.Core.TestSupport, a test-only net10.0 package sharing the Core version, with deterministic manual time, bounded temporary workspace cleanup, `SignalWait` (a signal with a watchdog that only prevents a hang), and `ChildProcessFixture` (a child process with an output limit, a watchdog and process-tree cleanup). Core Processes and Launcher Transport tests now consume the shared helpers. Deliberate behavior differences from the old Processes helpers are listed in the project README. It is not packed or published by the `core-v*` release; publishing is a follow-up.
+- Threading: `UiEventRunner` observes UI event operation failures on the calling context, handles operation-token cancellation, and contains primary and fallback reporter failures. NFC can compile the canonical source as internal with `NVT_CORE_SOURCE_CONSUMPTION` and verify its LF-byte SHA-256 using `tools/source-consumption/manifest.json`.
 - `Nvt.Core.Fonts` package 0.1.0: independent version and `core-fonts-v*` releases with font roles, Chinese fallback, Material Symbols, and font licenses.
+- Added the public API inventory for the non-Launcher `Nvt.Core` namespaces (`PublicAPI.Unshipped.txt`, 745 entries) and the consumer table in `docs/core/api-inventory.md`. The analyzer gate follows in a later change.
+- `Nvt.Core.Fonts` 0.1.1 adds the Inter font license (SIL Open Font License 1.1, version 3.19 text) as `licenses/Inter/LICENSE`. Package 0.1.0 did not carry it. The release tag is `core-fonts-v0.1.1`.
+
+### Fixed
+
+- MessageCenter: `ActivityItems`, `HasActivityItems` and `HasNoActivityItems` share one lazy provider capture and row projection per revision. Filter, debug disclosure, activity/diagnostic signals and language changes invalidate the cache before changed notifications, keeping rows and presence flags coherent while preserving notification order and observer isolation.
 
 ## 0.5.0 - 2026-10-08
 
@@ -122,6 +132,8 @@ Tag `core-v0.4.0` on commit `7bd42ce33eea26f3bd2eeacce958aa1cf701ccae` (#118). N
 - RuntimeQuery: `BeforeFirstFrameAndRuntime` runs one command before the first layout and at runtime. `InvocationHandler` tells the handler which timing called it (#117).
 
 ### Tools
+
+- `tools/repo-checks`: C# health enforcement checks fresh build/SARIF and format fingerprints, policy drift and evaluated project coverage. Core enrollment records existing debt; new occurrences fail and fixes lower the ledger.
 
 - `tools/gh-app`: the review ledger records the head sent to the owner. Merges check that the owner's approval came after it, and that any later changes come only from clean merges of the base branch (#108).
 - `tools/gh-app`: reads retry up to three attempts on unknown, 429 and 5xx failures. Writes never retry, except for the App token request, which runs before gh starts. `Push-GhAppBranch` refuses a `LocalBase` that HEAD does not contain (#116).

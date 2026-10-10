@@ -6,7 +6,7 @@
 
 `Nvt.Core.LogConsole` 提供 NFC、NFH、NFU 共用的非 UI console 模型。
 目標框架是 `net8.0`，沒有新增套件。
-Avalonia 控制項與共用 commands 會在 K2 實作。
+控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。
 
 ## 設計與來源
 
@@ -14,7 +14,7 @@ Avalonia 控制項與共用 commands 會在 K2 實作。
 行為參考是先前的 NFH console 與已核准的 console redesign proposal。
 NFH 量測包含產品投影與 UI 工作；不同 workload 不能作為直接的 UI 效能比較。
 此模組的效能測試只量測純投影，不能直接證明 UI 改善。
-本次沒有 UI 或產品邏輯。
+非 UI 資料層沒有 UI 或產品邏輯。
 
 ## 狀態結構
 
@@ -47,8 +47,8 @@ ExpandedIds 使用穩定 row ID。
 投影不將完整訊息複製成列字串。
 Counts 與空狀態不另外存成 state。
 宿主接受背景投影前，須確認快照、篩選與 presentation 輸入仍相同。
-K2 會讓選單與快捷鍵走相同 commands。
-K1 提供機制與不可變值，不另建一套 controller。
+Avalonia 控制器統一管理標題與工具列的 command 路由。
+非 UI 層提供不可變輸入與投影機制；列表虛擬化、列互動與鍵盤路由由 K2 的列表切片提供。
 
 ## 保留預算與生命週期
 
@@ -314,6 +314,149 @@ IncludeTime 與 IncludeLevel 預設開啟，彼此獨立。
 匯出與複製前，即使 console 已收合，宿主仍須 await `CaptureLatestAsync(cancellationToken)`，再投影該固定版本。
 Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 
+## Avalonia 控制器與工具列
+
+`Nvt.Core.Avalonia.LogConsole.ConsoleController` 是不可變篩選條件與檢視狀態的唯一寫入者。
+在 Core 已註冊的 `UiThread` 建立，傳入 app 擁有的 `LogStore`、不可變的
+`ConsoleSource` 目錄及選用的 `ConsoleProjectionOptions`。目錄放在
+`Options.SourceRegistry`；時間模式仍由 `Filter.TimeMode` 保存。時間模板、文化設定與
+絕對時間的時區都明確注入，使用期間不可修改傳入的文化設定。
+
+控制器先訂閱再擷取啟動快照，並啟用 store 通知。任意執行緒的通知合併成一個待執行的
+UI 工作；每次更新擷取有 lease 的快照，只呼叫一次 `ConsoleProjector.Project`。
+重映射原始事件選取、展開身分及去重切換時的暫停順序，再透過 `INotifyPropertyChanged`
+發布 `Projection`。所有統計直接取自投影。下一個 Background 優先序的 dispatcher 回合，
+在 binding 與排版採用新投影後釋放舊投影；持有內容以目前投影與一個待釋放投影為上限。
+發布前以 `LogStore.IsCurrent` 驗證快照 generation，因此 Clear 的 admission fence 也會拒絕
+writer reset 尚未發布時已排隊的 UI 更新。Dispose 立即停止目前的通知序列，等執行中的
+callback 返回後才釋放 lease；callback 內重入 dispatcher 也不會提早釋放借用的投影。
+
+列表借用 `Projection`，透過 `RequestViewState(state)` 回報不可變的意圖，不直接修改
+控制器輸入，也不 Dispose 借用的投影。`Pause(rowId, textOffset, pixelOffset)` 保存閱讀
+錨點，並透過新的非阻塞快照讀取 store 注入的時鐘，明確保存 Pause 當下的時間；
+`Resume()` 就是跳至最新的意圖。收合只改檢視狀態，保留跟隨模式。宿主離開頁面時
+呼叫 `Dispose()`，解除訂閱、取消排隊工作並釋放兩份投影；重複呼叫安全。Store 仍由 app
+擁有。控制器在建構時對整個 store 呼叫 `SetReady(true)`；`Dispose()` 不會還原先前
+的就緒狀態，其他訂閱者也會受到影響。宿主須納入這個持續生效的 store 通知狀態。
+
+工具列使用 `ToggleLevelCommand`（`LogLevel` 參數）、`ToggleOnlyMatchesCommand`、
+`ToggleDedupeCommand`、`SetTimeModeCommand`（`ConsoleTimeMode` 參數）、`ClearCommand`
+及 `ResetFiltersCommand`。`SetSelectedSources(ids)` 以 ordinal ID 選取，空集合代表所有
+來源。來源選單的 All sources 會勾選每個來源，也包含未來新增的來源。點擊已勾選來源，
+會從目前目錄排除該來源；後續點擊切換明確選取集合的成員。最後一個勾選來源不可取消，
+以保留空集合代表所有來源的既有契約；All sources 恢復不限來源的狀態。Detach 或替換
+Controller 時關閉並清空來源選單，釋放 binding，讓保留的舊項目 command 失效。
+來源選單開啟期間，投影目錄變更會透過同一個 builder 原地重建項目，保持 popup 開啟。
+View 直接以項目和投影比較來源成員，不另存來源目錄。不存在的來源 ID 顯示未勾選與零筆，
+名稱以 ID 作為 fallback。
+`SetSearchText(text)` 將純空白視為沒有搜尋條件。重設恢復預設篩選與去重，保留時間
+呈現及閱讀狀態。所有意圖與 Dispose 都必須在 UI 執行緒執行。匯出旗標由 `ExportOptions`
+保存，使用 `ToggleExportTimeCommand` 與 `ToggleExportLevelCommand` 切換。
+
+`ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
+取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。核准的 B
+配置在寬版把搜尋放在標題旁，等級與來源放在篩選列。960 DIP 以下含邊界時，搜尋與
+Only matches 移到篩選區第二行；Display 收納時間與去重，More 收納匯出與清除。標題高
+48 DIP；篩選區寬版高 48 DIP、窄版高 88 DIP。休止動作沒有底色或外框，等級按鈕使用
+語意圖示，Core tooltip 顯示完整原始筆數。共用圖示校正依渲染尺度更新，detach 時解除
+訂閱。只有 `Projection.IsEmpty` 時顯示空狀態。若 `Projection.EventCount == 0`，使用尚無事件
+的文案並隱藏 Reset filters；篩選後沒有符合項目時，顯示本地化篩選摘要與 Reset filters。
+Console 動作按鈕與選單項目以區域 DynamicResource 樣式，直接將字型 family、size、weight
+綁定 Core Body role，包含中文來源名稱；其他控制項保留既有字型角色。
+
+標題的 `Title` 預設為 Console。App 綁定 `CopySelectedCommand`、`CopyVisibleCommand`、
+`SaveLogCommand`；選單提供獨立的 Include time 與 Include level。標題選單的 binding
+直接跟隨標題的目前 Controller，避免 popup 關閉時中斷正在執行的 command。
+Clipboard、檔案 adapter、
+列導覽與列表渲染由宿主的互動與列表層負責。
+
+| Avalonia 型別 | 公開成員 |
+| --- | --- |
+| `ConsoleController` | 建構子 `(store, sources, options = null)`、`PropertyChanged`、`Filter`、`ViewState`、`Options`、`Projection`、`ExportOptions`、`RefreshError`、`ToggleLevelCommand`、`ToggleOnlyMatchesCommand`、`ToggleDedupeCommand`、`SetTimeModeCommand`、`ClearCommand`、`ResetFiltersCommand`、`ToggleExportTimeCommand`、`ToggleExportLevelCommand`、`SetSelectedSources`、`SetSearchText`、`RequestViewState`、`Pause`、`Resume`、`Dispose`。 |
+| `ConsoleHeader` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`、`Title` / `TitleProperty`、`CopySelectedCommand` / `CopySelectedCommandProperty`、`CopyVisibleCommand` / `CopyVisibleCommandProperty`、`SaveLogCommand` / `SaveLogCommandProperty`。 |
+| `ConsoleToolbar` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
+| `ConsoleEmptyState` | 建構子、自動產生的 `InitializeComponent(loadXaml = true)`、`Controller` / `ControllerProperty`。 |
+
+
+建構子會驗證 `RelativeTimeTemplate`，格式錯誤時以指向 `options` 的 `ArgumentException`
+拒絕輸入，並保留原本的 `FormatException` 作為原因。更新失敗時保留先前投影，透過唯讀
+`RefreshError` 發布例外；下一次成功接受的更新會清除此值。失敗的投影會釋放新取得的
+lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍會更新。
+控制器 Dispose 後，搜尋輸入與清除搜尋動作不再呼叫控制器。
+由 `SetFilter`（包含搜尋、來源與 command 輸入）及 `RequestViewState` 發出的通知，
+會將訂閱者例外同步傳回呼叫者。
+成功接受的更新先完成所有狀態變更，再依序通知 `ViewState`、`Projection`，以及有變更的
+`RefreshError`。更新通知會收集每個訂閱者的例外並完成整個通知序列，再將保留堆疊的重新
+拋出動作排入 UI dispatcher，進入 dispatcher 的未處理例外路徑。單一例外直接重新拋出；
+多個例外合併成一個 `AggregateException`。只有嘗試替換通知後才會釋放舊投影。
+失敗通知的 observer 丟出例外時，先前投影仍保留，後續更新也仍可執行。
+
+### 資源 keys
+
+`LogConsole/ConsoleResources.axaml` 定義英文預設值與結構尺寸，合併於
+`LogConsoleStyles.axaml`。控制項在區域載入不含預設資源的控制樣式；動態資源 binding
+僅在宿主未提供 key 時，才使用同一份字典的預設值。宿主可在 application、window 或
+console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換。
+宿主範本發生 `FormatException` 時，會改用內建英文範本。
+`MinimumWidth` 與 `NarrowBreakpoint` 是所有 console 區塊共用的唯一定義；
+組合高度會跟隨既有控制高度與 spacing 的動態 tokens。
+
+時間模式與等級標籤透過 keys 對應。控制器只提供篩選資料，`FilterSummary` 不再是公開 API；
+檢視從資源模板推導摘要。`Count` 接受標籤與原始筆數，`Sources.Selected` 與 `Dedupe.Count`
+接受筆數，`Empty.NoMatches` 接受篩選摘要。`Filter.Search` 接受搜尋原文與搜尋模式標籤，
+`Filter.Summary` 接受等級、來源、搜尋後綴與去重後綴；請保留有效的 composite placeholders。
+`Title` 是預設標題，宿主明確指定的標題優先。獨立注入的
+`ConsoleProjectionOptions.RelativeTimeTemplate` 仍負責格式化事件時間。
+
+| Key | 英文預設值／DIP 尺寸 |
+| --- | --- |
+| `Nvt.Console.MinimumWidth` | `640` |
+| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.Title` | `Console` |
+| `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
+| `Nvt.Console.Search.Name` | `Search console` |
+| `Nvt.Console.Search.Clear` | `Clear search` |
+| `Nvt.Console.OnlyMatches` | `Only matches` |
+| `Nvt.Console.Export` | `Export` |
+| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.Display` | `Display` |
+| `Nvt.Console.Display.Name` | `Display console` |
+| `Nvt.Console.More` | `More` |
+| `Nvt.Console.More.Name` | `More console actions` |
+| `Nvt.Console.Time.Name` | `Time display` |
+| `Nvt.Console.Time.Absolute` | `Absolute time` |
+| `Nvt.Console.Time.Relative` | `Relative time` |
+| `Nvt.Console.Time.Hidden` | `Hidden time` |
+| `Nvt.Console.CopySelected` | `Copy selected` |
+| `Nvt.Console.CopyVisible` | `Copy visible rows` |
+| `Nvt.Console.SaveLog` | `Save as .log` |
+| `Nvt.Console.IncludeTime` | `Include time` |
+| `Nvt.Console.IncludeLevel` | `Include level` |
+| `Nvt.Console.Clear` | `Clear console` |
+| `Nvt.Console.Sources.Name` | `Select sources` |
+| `Nvt.Console.Sources.All` | `All sources` |
+| `Nvt.Console.Sources.Selected` | `Sources ({0})` |
+| `Nvt.Console.Dedupe` | `Dedupe` |
+| `Nvt.Console.Dedupe.Count` | `Dedupe ×{0}` |
+| `Nvt.Console.Count` | `{0} · {1}` |
+| `Nvt.Console.Empty.NoEvents` | `No events yet` |
+| `Nvt.Console.Empty.NoMatches` | `No matching events · {0}` |
+| `Nvt.Console.ResetFilters` | `Reset filters` |
+| `Nvt.Console.Filter.NoLevels` | `no levels` |
+| `Nvt.Console.Filter.Search` | `; search ‘{0}’ ({1})` |
+| `Nvt.Console.Filter.MatchesOnly` | `matches only` |
+| `Nvt.Console.Filter.Highlight` | `highlight` |
+| `Nvt.Console.Filter.Dedupe` | `; dedupe` |
+| `Nvt.Console.Filter.Separator` | `, ` |
+| `Nvt.Console.Filter.Summary` | `{0}; {1}{2}{3}` |
+| `Nvt.Console.Level.Trace` | `Trace` |
+| `Nvt.Console.Level.Debug` | `Debug` |
+| `Nvt.Console.Level.Info` | `Info` |
+| `Nvt.Console.Level.Warn` | `Warn` |
+| `Nvt.Console.Level.Error` | `Error` |
+| `Nvt.Console.Level.Fatal` | `Fatal` |
+
 ## 公開 API
 
 完整 type 與 member 表見 [英文 Public API](LogConsole.md#public-api)。
@@ -332,7 +475,8 @@ Writer 排程使用一個 interlocked flag，published state 的 reference count
 `ContentOwner._contentGate` 只保護 reference lifetime，active read 先 pin 再於鎖外呼叫 app。
 快照以 Interlocked 確保只釋放一次，投影的每個 lease 也只釋放一次。
 `ConsoleLinkCache._cacheGate` 保護 cache，以及包含 live entry／group revisions 和 revision stamp 的單一 immutable state；同步時整體替換。其他 model state 不可變。
-宿主在單一執行緒替換 view state 並處理 commands。
+Avalonia 控制器在 Core 已註冊的 UI 執行緒替換篩選與 view state，並管理 commands。
+宿主與列表透過 `RequestViewState` 提交不可變意圖，不直接替換控制器狀態。
 
 Clock 使用 BCL `TimeProvider`，測試重用 Core 的 `Time.DelegateTimeProvider`。
 實作 baseline 的 Lifecycle 只有 CoalescedRefresh 與 UndoService，沒有可重用的 generation helper。
@@ -354,5 +498,7 @@ dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-UI virtualization、pointer coordinates、keyboard commands、accessibility 與視覺證據由 K2 驗證。
+Avalonia 標題、工具列與空狀態的 accessibility 及視覺證據已實作。
+UI virtualization、列的 pointer 互動、列 accessibility 與鍵盤路由由 K2 的列表切片負責；
+clipboard 與檔案 adapter 仍由 app 擁有。
 宿主採用是另外的變更，路徑政策、開啟、clipboard 與 spill-store 整合仍屬於 app。

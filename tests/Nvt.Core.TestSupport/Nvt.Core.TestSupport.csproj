@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageId>Nvt.Core.TestSupport</PackageId>
+    <Authors>Dennis Liu</Authors>
+    <Description>Deterministic manual time, temporary workspaces, signals with watchdogs, and child process fixtures for NVT tests.</Description>
+    <RepositoryUrl>https://github.com/Dennis40816/nvt_fw_core</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryCommit>$(SourceRevisionId)</RepositoryCommit>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Nvt.Core\Nvt.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Nvt.Core.TestSupport.Tests" />
+    <InternalsVisibleTo Include="Nvt.Core.Tests" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+    <None Update="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+</Project>

@@ -2,6 +2,45 @@
 
 # Threading
 
+## UiEventRunner
+
+[`UiEventRunner`](../../../src/Nvt.Core/Threading/UiEventRunner.cs) 是 `Nvt.Core.Threading` 中不依賴 UI 框架的 sealed helper，目標為 `net10.0`，僅使用 BCL。Host 提供主要與緊急回報函式；runner 不依賴 Avalonia，也不使用全域回報狀態。
+
+### 公開 API 與用法
+
+~~~csharp
+public UiEventRunner(Action<string, Exception> report, Action<string, Exception> fallbackReport);
+public void Run(string operation, Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+public Task RunAsync(string operation, Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+~~~
+
+同步事件處理函式可呼叫 `uiEvents.Run("CopyReport", token => CopyReportAsync(token), lifetimeToken)`。`Run` 委派給完整觀察結果的 `RunAsync`，在 delegate 交回尚未完成的工作時返回。兩者都在呼叫端執行緒與同步內容中開始，不將 action 排入背景執行緒；await 也保留該內容以回報失敗。
+
+- delegate 同步擲出的例外與 faulted task 都會將原始操作名稱及例外交給主要回報函式一次。
+- 僅當傳入的 token 已取消，且例外攜帶同一 token 時，取消才不回報。攜帶其他 token 的例外仍視為錯誤，即使兩個 token 都已取消。
+- 若操作把傳入的 token 與其他來源連結（例如加入逾時），取消例外會攜帶連結後的 token，runner 會回報它。請在操作內捕捉，並在傳入的 token 確實是被取消的那一個時，用 `cancellationToken.ThrowIfCancellationRequested()` 重新擲出。
+- 主要回報函式擲出例外時，fallback 會收到相同的操作名稱與原始操作例外一次。fallback 也擲出例外時，runner 會吞下該失敗。
+- 回報函式、操作名稱與 action 為 null 時，都在公開呼叫邊界同步擲出 `ArgumentNullException`。允許空操作名稱，並原樣傳給回報函式。
+- 操作本身負責 busy flag、取消來源、清理用的 `finally` 與成功狀態。觀察 task 完成不代表失敗的儲存或匯出成功。
+
+### 原始碼採用與來源
+
+此 helper 是 owner 於 2026-10-09 核准的 C# 健康度計畫第 7 節 H04 新增工作，並非從 app 凍結基準抽取。NFH 與 NFU 使用 Core 套件；NFC 複製 canonical 檔案並核對 SHA-256，不新增 Core 執行期相依。
+
+定義 `NVT_CORE_SOURCE_CONSUMPTION` 可讓相同型別以 `internal` 編譯，命名空間仍為 `Nvt.Core.Threading`。Consumer CI 必須拒絕同時編譯副本與參考套件（包含間接相依）。採用套件時移除副本與 symbol。[原始碼採用指南及 manifest](../../../tools/source-consumption/README.md) 說明複製、LF 保留、驗證與更新方式。
+
+### Runner 驗證
+
+[`UiEventRunnerTests`](../../../tests/Nvt.Core.Tests/Threading/UiEventRunnerTests.cs) 涵蓋成功、兩種失敗形式、token 一致性與取消狀態、回報函式失敗隔離、在呼叫端內容立即執行、`Run` 尚有未完成工作時返回，以及 null 檢查。佇列式同步內容記錄 Post 例外；訊號等待有時間上限，不使用固定 sleep。[獨立原始碼採用測試專案](../../../tests/Nvt.Core.SourceConsumption.Tests/) 不參考 Core，直接編譯連結檔案，驗證 internal 可見性、SHA-256 與位元組長度。
+
+~~~powershell
+./tools/source-consumption/New-SourceConsumptionManifest.ps1 -Check
+dotnet test tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Threading.UiEventRunnerTests"
+dotnet test tests/Nvt.Core.SourceConsumption.Tests/Nvt.Core.SourceConsumption.Tests.csproj --no-build
+~~~
+
+App 事件處理函式遷移與 consumer CI 整合由各自儲存庫完成。
+
 ## 0.9.0 前的不相容變更
 
 `UiThread.IsUiThreadThatRunsALoop` 已移除。
