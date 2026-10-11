@@ -1,6 +1,6 @@
 # Roadmap
 
-This file is the one place for Core's planned work. Status as of 2026-10-08.
+This file is the one place for Core's planned work. Status as of 2026-10-12.
 
 The owner asked on 2026-10-07 for one roadmap per repository, with Core adoption tracked as progress: 「我認為需要重新整理各專案 Todo 規劃，也要把整合 core 納入進度，要不然很難做 hotfix」 ("I think we need to reorganize each project's to-do plan and include Core integration in the progress; otherwise hotfixes are hard to do.")
 
@@ -89,6 +89,13 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Core package download at build time | 1.0.0 | Merged | [#61](https://github.com/Dennis40816/nvt_fw_core/pull/61) |
 | Doc-sync and handoff checks | 1.0.0 | Merged; warning mode | [#72](https://github.com/Dennis40816/nvt_fw_core/pull/72) |
 | Codex dispatch queue and Windows scheduler | 1.0.0 | Merged | [tools](tools/) |
+| Health enforcement: first baseline, ledger without `removeBy` dates (the schema follows in #208), bundle change in one pull request, `-Mode Adopt` | 1.0.0 | Merged | [#158](https://github.com/Dennis40816/nvt_fw_core/pull/158), [#198](https://github.com/Dennis40816/nvt_fw_core/pull/198), [#199](https://github.com/Dennis40816/nvt_fw_core/pull/199), [#202](https://github.com/Dennis40816/nvt_fw_core/pull/202) |
+| Debt ledger operation guide | 1.0.0 | Merged | [#207](https://github.com/Dennis40816/nvt_fw_core/pull/207), [guide](tools/repo-checks/ledger-operation.md) |
+| Health bundle: `schema.json` change (`removeBy` optional) | 1.0.0 | In review | [#208](https://github.com/Dennis40816/nvt_fw_core/pull/208) |
+| Health bundle: pin-only change, then each tool's pin synchronization | 1.0.0 | Planned, after #208 | [#197](https://github.com/Dennis40816/nvt_fw_core/issues/197) |
+| Verify the checker script against the pinned Core commit | 1.0.0 | Planned | [#185](https://github.com/Dennis40816/nvt_fw_core/issues/185) |
+| Health Verify job in CI | 1.0.0 | Planned; needs the owner's approval of the workflow file change | — |
+| Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Open | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
 
 **5. Shared UI classes**
 
@@ -105,7 +112,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138), [#146](https://github.com/Dennis40816/nvt_fw_core/pull/146) |
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar and list merged. Row interaction is in review | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list and row interaction merged. Accessibility peers are in review | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
 | `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
