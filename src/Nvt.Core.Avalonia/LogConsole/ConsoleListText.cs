@@ -12,12 +12,18 @@ internal static class ConsoleListText
     private static readonly ResourceDictionary _defaults = (ResourceDictionary)AvaloniaXamlLoader.Load(
         new Uri("avares://Nvt.Core.Avalonia/LogConsole/ConsoleListGeometry.axaml"));
 
+    internal static string Default(string key) => _defaults.TryGetValue(key, out var value) && value is string builtIn
+        ? builtIn : key[(key.LastIndexOf('.') + 1)..];
+    internal static string Template(ConsoleListView view, string key)
+    {
+        var text = UiResourceResolver.GetString(view, key);
+        return string.IsNullOrWhiteSpace(text) ? Default(key) : text;
+    }
+
     internal static string Format(ConsoleListView view, string key, params object[] arguments)
     {
-        var fallback = _defaults.TryGetValue(key, out var value) && value is string builtIn
-            ? builtIn : key[(key.LastIndexOf('.') + 1)..];
-        var text = UiResourceResolver.GetString(view, key);
-        if (string.IsNullOrWhiteSpace(text)) text = fallback;
+        var fallback = Default(key);
+        var text = Template(view, key);
         try { return string.Format(view.TimeOptions.Culture, text, arguments); }
         catch (FormatException) { return string.Format(view.TimeOptions.Culture, fallback, arguments); }
     }

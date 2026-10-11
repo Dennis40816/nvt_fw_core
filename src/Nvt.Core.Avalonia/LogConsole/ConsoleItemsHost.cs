@@ -109,10 +109,11 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         foreach (var id in _heights.Keys.Where(id => !retained.Contains(id)).ToArray()) _heights.Remove(id);
         foreach (var id in _realized.Keys.Where(id => !retained.Contains(id)).ToArray()) Recycle(id);
         // Rebind borrowed content before returning: the caller may immediately dispose the old leases.
-        foreach (var row in ItemsSource)
+        for (var index = 0; index < ItemsSource.Count; index++)
         {
+            var row = ItemsSource[index];
             _rowVisits++;
-            if (_realized.TryGetValue(row.Id, out var container)) container.Configure(row, view);
+            if (_realized.TryGetValue(row.Id, out var container)) container.Configure(row, view, index);
         }
         RebuildHeights();
         InvalidateMeasure();
@@ -193,7 +194,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
                     container = _pool.TryPop(out var recycled) ? recycled : new ConsoleRowPresenter();
                     _realized.Add(row.Id, container);
                     Children.Add(container);
-                    container.Configure(row, _view);
+                    container.Configure(row, _view, i);
                 }
                 container.Measure(new(width, double.PositiveInfinity));
                 if (_view.ViewState.ExpandedIds.Contains(row.Id)
@@ -245,8 +246,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var wasAtEnd = AtEnd;
         var readingPosition = CaptureReadingPosition();
         _heights.Clear();
-        foreach (var container in _realized.Values)
-            if (container.Row is { } row) container.Configure(row, _view);
+        for (var index = 0; index < ItemsSource.Count; index++)
+            if (_realized.TryGetValue(ItemsSource[index].Id, out var container)) container.Configure(ItemsSource[index], _view, index);
         RebuildHeights();
         if (PreservesReadingPosition) RestoreReadingPosition(readingPosition);
         else if (wasAtEnd) ScrollToEnd();

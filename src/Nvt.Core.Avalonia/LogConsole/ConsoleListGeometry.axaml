@@ -16,6 +16,11 @@
   <x:String x:Key="Nvt.Console.List.JumpToLatestMany">Jump to latest ({0} new messages)</x:String>
   <x:String x:Key="Nvt.Console.List.RetentionOne">Retention changed · {0} message evicted</x:String>
   <x:String x:Key="Nvt.Console.List.RetentionFormat">Retention changed · {0} messages evicted</x:String>
+  <x:String x:Key="Nvt.Console.List.Name">Console messages</x:String>
+  <x:String x:Key="Nvt.Console.List.Row.NameFormat">{Level}, {Time}, {Source}, {Message}, {Repeat}, {Links}</x:String>
+  <x:String x:Key="Nvt.Console.List.Row.RepeatFormat">repeated {0} times</x:String>
+  <x:String x:Key="Nvt.Console.List.Row.LinkOneFormat">{0} link</x:String>
+  <x:String x:Key="Nvt.Console.List.Row.LinksFormat">{0} links</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Trace">Trace</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Debug">Debug</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Info">Info</x:String>

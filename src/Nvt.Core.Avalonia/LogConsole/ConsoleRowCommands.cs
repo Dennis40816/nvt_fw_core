@@ -38,7 +38,7 @@ internal sealed class ConsoleRowCommands
     {
         if (_lifetime is not { Controller: var controller } || controller.Clipboard is null
             || !controller.IsPublishedStateCurrent) return false;
-        return controller.Projection.Rows.Any(row => row.MemberSequences.Any(controller.ViewState.Selection.Contains));
+        return controller.Projection.Rows.Any(row => ConsoleRowSelection.Contains(row, controller.ViewState));
     }
     private bool CopySelected()
     {
@@ -46,13 +46,13 @@ internal sealed class ConsoleRowCommands
         var version = controller.CommandStateVersion;
         using var projection = controller.CaptureCommandProjection();
         if (projection is null) return false;
-        var rows = projection.Rows.Where(row => row.MemberSequences.Any(controller.ViewState.Selection.Contains)).ToArray();
+        var rows = projection.Rows.Where(row => ConsoleRowSelection.Contains(row, controller.ViewState)).ToArray();
         if (rows.Length == 0) return false;
         var text = ConsoleCopyText.Rows(rows, controller.ExportOptions);
         using var current = controller.CaptureCommandProjection();
         if (current is null || !rows.All(row => current.Rows.Any(item => item.Id == row.Id
             && item.MemberSequences.SequenceEqual(row.MemberSequences)
-            && item.MemberSequences.Any(controller.ViewState.Selection.Contains)))
+            && ConsoleRowSelection.Contains(item, controller.ViewState)))
             || !controller.IsCommandStateCurrent(version, projection)) return false;
         controller.Clipboard.SetText(text);
         return true;

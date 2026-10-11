@@ -45,7 +45,7 @@
     <Setter Property="FocusAdorner">
       <Template>
         <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
+                Margin="{DynamicResource Nvt.Controls.InsetFocusRingMargin}" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
                 CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
       </Template>
     </Setter>

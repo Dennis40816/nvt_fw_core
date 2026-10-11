@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Avalonia;
+using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -64,6 +66,16 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     internal ConsoleTextPresenter MessageText => _message;
     internal TextBlock CountLabel => _count;
     internal TextBlock ArrowLabel => _arrow;
+    internal RowInput? AutomationInput => CheckAccess() && _input is { } input && input.View.AutomationAvailable
+        && input.View.Projection is { } projection && input.Index >= 0 && input.Index < projection.Rows.Length
+        && ReferenceEquals(projection.Rows[input.Index], input.Row) ? input : null;
+
+    protected override AutomationPeer OnCreateAutomationPeer()
+    {
+        var peer = new ConsoleRowAutomationPeer(this);
+        UpdateAutomationMetadata();
+        return peer;
+    }
 
     internal ConsoleRowPresenter()
     {
@@ -86,13 +98,13 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         return label;
     }
 
-    internal void Configure(ConsoleRow row, ConsoleListView view)
+    internal void Configure(ConsoleRow row, ConsoleListView view, int index = 0)
     {
         if (row.Level is LogLevel.Error or LogLevel.Fatal) Bind(BackgroundProperty, new DynamicResourceExtension("NfcDangerSurfaceBrush"));
         else ClearValue(BackgroundProperty);
         var links = row.LinkSpans is { } supplied ? new ConsoleLinkIndex(supplied, row.TextContent.Length)
             : view.Controller is null ? null : view.RowInteraction?.Links(row);
-        _input = new(row, view);
+        _input = new(row, view, index, links);
         _time.Text = ConsoleTimeFormatter.Format(row.Timestamp, view.Projection!.TimeBase, view.TimeMode,
             view.TimeOptions.RelativeTimeTemplate, view.TimeOptions.Culture, view.TimeOptions.AbsoluteTimeZone);
         var levelKey = $"Nvt.Console.List.Level.{row.Level}";
@@ -133,6 +145,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         _count.Measure(new(Geometry("RepeatWidth"), RowHeight));
         _arrow.Measure(new(Geometry("ArrowWidth"), RowHeight));
         _arrow.IsVisible = _message.Truncated;
+        (ControlAutomationPeer.FromElement(this) as ConsoleRowAutomationPeer)?.Refresh();
         return new(availableSize.Width, _expanded ? Math.Max(RowHeight, _message.DesiredSize.Height) : RowHeight);
     }
 
@@ -157,7 +170,28 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     internal void SetVisibleSlice(double start, double end) => _message.SetVisibleSlice(start, end);
     internal int TextOffsetAt(double pixel) => _message.TextOffsetAt(pixel);
     internal double PixelOffsetAt(int text, double fallback) => _message.PixelOffsetAt(text, fallback);
-    internal void RefreshInteraction() => _feedback.InvalidateVisual();
+    internal void RefreshInteraction()
+    {
+        _feedback.InvalidateVisual();
+        if (ControlAutomationPeer.FromElement(this) is not ConsoleRowAutomationPeer peer) return;
+        UpdateAutomationMetadata();
+        // Notify one complete presentation, without an intermediate message-free recycled name.
+        if (_input is null || _message.Presentation is not null) peer.Refresh();
+    }
+
+    private void UpdateAutomationMetadata()
+    {
+        if (AutomationInput is { } input)
+        {
+            AutomationProperties.SetPositionInSet(this, input.Index + 1);
+            AutomationProperties.SetSizeOfSet(this, input.View.Projection!.Rows.Length);
+        }
+        else
+        {
+            ClearValue(AutomationProperties.PositionInSetProperty);
+            ClearValue(AutomationProperties.SizeOfSetProperty);
+        }
+    }
 
     bool ICustomHitTest.HitTest(Point point)
     {
@@ -237,7 +271,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         {
             base.Render(context);
             if (owner._input is not { } input) return;
-            if (input.Row.MemberSequences.Any(input.View.ViewState.Selection.Contains))
+            if (ConsoleRowSelection.Contains(input.Row, input.View.ViewState))
                 context.FillRectangle(UiResourceResolver.GetBrush(owner, "NfcSelectionSurfaceBrush", Brushes.Transparent,
                     static color => new SolidColorBrush(color)), new Rect(Bounds.Size));
         }
@@ -257,18 +291,19 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
     }
 
     private bool IsToggleTarget(Point point) => point.X >= MessageStart
-        && (point.X < _message.Bounds.Right || point.X >= _arrow.Bounds.X
-            && point.X < _arrow.Bounds.Right + (Geometry("ArrowWidth") - Geometry("IconWidth")) / 2);
+        && (point.X < _message.Bounds.Right || point.X >= _count.Bounds.Right
+            && point.X < _count.Bounds.Right + Geometry("ArrowWidth") && point.Y >= 0 && point.Y < RowHeight);
 
     private static double Distance(Point a, Point b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
 
-    private sealed record RowInput(ConsoleRow Row, ConsoleListView View);
+    internal sealed record RowInput(ConsoleRow Row, ConsoleListView View, int Index, ConsoleLinkIndex? Links);
     private sealed record PointerGesture(IPointer Pointer, Point Start, LinkTarget? Target, KeyModifiers Modifiers);
 
     internal void Release()
     {
         CancelGesture();
         _input = null;
+        RefreshInteraction();
         _source.Release();
         _message.Release();
         ToolTip.SetTip(_source, null);

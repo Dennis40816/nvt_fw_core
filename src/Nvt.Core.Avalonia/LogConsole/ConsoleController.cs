@@ -24,6 +24,9 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private bool _refreshRequested;
     private bool _refreshRetryAvailable;
     private bool _disposed;
+    // _workGate records locked lifecycle queries; diagnostics read the counter with Volatile.
+    private int _lifecycleLockReads;
+    internal int LifecycleLockReads => Volatile.Read(ref _lifecycleLockReads);
     // _workGate protects the one command state version, including cross-thread store notifications.
     private long _stateVersion;
     internal long CommandStateVersion { get { lock (_workGate) return _stateVersion; } }
@@ -83,7 +86,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             _store.Changed -= StoreChanged;
             DispatcherOperation? pending;
-            lock (_workGate) { _disposed = true; pending = _pending; _pending = null; }
+            lock (_workGate) { Volatile.Write(ref _disposed, true); pending = _pending; _pending = null; }
             pending?.Abort();
             _current?.Dispose();
             throw;
@@ -284,7 +287,9 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private RelayCommand<T> Command<T>(Action<T> execute) where T : struct
         => new(value => { VerifyActive(); execute(value); }, _ => IsActive);
     // The controller accepts commands until Dispose. The lock publishes the flag to every thread that asks.
-    internal bool IsActive { get { lock (_workGate) return !_disposed; } }
+    internal bool IsActive { get { lock (_workGate) { _lifecycleLockReads++; return !_disposed; } } }
+    // The same disposal flag is published for automation reads without acquiring the scheduling gate.
+    internal bool AutomationActive => !Volatile.Read(ref _disposed);
     private void VerifyActive()
     {
         _dispatcher.VerifyAccess();
@@ -448,7 +453,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         lock (_workGate)
         {
             if (_disposed) return;
-            _disposed = true;
+            Volatile.Write(ref _disposed, true);
             _stateVersion++;
             pending = _pending;
             _pending = null;

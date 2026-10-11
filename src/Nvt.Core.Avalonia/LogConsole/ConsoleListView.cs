@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Threading;
@@ -57,6 +58,11 @@ public sealed class ConsoleListView : TemplatedControl
     internal ConsoleReadingAnchor? PendingReadingAnchor => _session?.ReadingAnchor;
     internal bool UserScrollPending => _session?.UserScrollPending == true;
     internal ConsoleRowInteraction? RowInteraction => _session?.Interaction;
+    internal ConsoleItemsHost? ItemsHost => _session is null ? null : _parts?.Host;
+    internal bool AutomationAvailable => CheckAccess() && _session is not null && (Controller?.AutomationActive ?? true);
+
+    /// <inheritdoc />
+    protected override AutomationPeer OnCreateAutomationPeer() => new ConsoleListAutomationPeer(this);
 
     internal void ScrollProgrammatically(Action scroll)
     {
