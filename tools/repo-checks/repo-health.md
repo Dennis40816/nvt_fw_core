@@ -51,9 +51,12 @@ entities have no date, so they never expire. Core's two ledgers carry no `remove
 LowerBaseline never moves, adds or removes a date. Adding, moving or removing a date is one JSON edit in a dedicated pull
 request with an owner decision. The checker does not compare a date with the base ref, so the owner's review
 of that pull request is the control.
-The bundle file `schema.json` still lists `removeBy` as required. The checker takes it out of that list in
-memory when it reads a baseline, because `schema.json` is a distributed file with a pinned hash. The file
-changes at the next pin synchronization.
+The bundle file `schema.json` does not list `removeBy` as required, so a finding without it is valid in
+every repository that has the new bundle. A repository with an older pin keeps the old schema, where
+`removeBy` is required, until its pin synchronization. The checker of this change needs the schema of this
+change: both move in the same synchronization. An application copies `repo-health.ps1` and the six bundle
+files in the same pull request. A new checker with an old schema rejects a finding that has no `removeBy`
+with `Invalid baseline document (schema)`.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's
@@ -157,14 +160,15 @@ needed: versions, valid layers, limits and package pins are fixed in the checker
 and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
 blob identity additionally checks an application's six files against coreCommit's
 canonical files. With BaseRef, an application's committed merge-base pin must agree;
-without it, the committed HEAD pin must agree. An application may move its pin in a
+without it (and without -CoreRoot), the committed HEAD pin must agree. An application may move its pin in a
 pull request only with -CoreRoot: the new pin must be a commit of that approved Core
 checkout (reachable from its HEAD) and descend from the pin it replaces, and the six
 copies must be that commit's files. Without -CoreRoot a moved pin is an error. The checker
 trusts the checkout that -CoreRoot names. The application's CI and its copy of `repo-health.ps1`
 decide which checkout that is, so the review of the pull request that changes them covers it.
-Core needs a full clone as well (a shallow one fails with `a full clone ... is required`). An app
-supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
+The Core checkout that -CoreRoot names needs a full clone (a shallow one fails with
+`a full clone of Core is required`). An app supplies -CoreRoot <local approved Core checkout> for the
+canonical object lookup.
 Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
 lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
 in the lock. With BaseRef it also requires every lock hash to equal the merge-base
