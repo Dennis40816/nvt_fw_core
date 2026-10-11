@@ -23,6 +23,8 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
     private readonly Dictionary<int, TextLayout> _visible = [];
     private readonly record struct VisibleRange(double Start, double End);
     private VisibleRange? _slice;
+    private LinkTarget? _hoveredTarget;
+    internal LinkTarget? HoveredTarget => _hoveredTarget;
     private double LineHeight => UiResourceResolver.GetDouble(this, "Nvt.Console.List.RowHeight");
     internal IReadOnlyList<Segment> Segments => _segments;
     internal IReadOnlyDictionary<int, TextLayout> VisibleLayouts => _visible;
@@ -52,12 +54,28 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
         return Math.Max(height, Math.Ceiling(length / Math.Max(1, width / Math.Max(1, size))) * height);
     }
 
-    internal void Configure(ConsoleRow row, bool expanded)
+    internal void Configure(ConsoleRow row, bool expanded, ConsoleLinkIndex? links = null)
     {
-        if (ReferenceEquals(_row, row) && _expanded == expanded) return;
-        _input = new(row, expanded);
+        if (ReferenceEquals(_row, row) && _expanded == expanded && ReferenceEquals(_input?.Links, links)) return;
+        _input = new(row, expanded, links);
         InvalidateMeasure();
         InvalidateVisual();
+    }
+
+    internal void SetHoveredTarget(LinkTarget? target)
+    {
+        if (_hoveredTarget == target) return;
+        _hoveredTarget = target;
+        InvalidateVisual();
+    }
+
+    internal ConsoleLinkSpan? HitLink(Point point)
+    {
+        if (_input?.Links is not { } links || _key is null || _segments.Count == 0
+            || !new Rect(Bounds.Size).Contains(point)) return null;
+        var segment = _segments[SegmentAt(point.Y)];
+        var hit = VisibleLayout(SegmentAt(point.Y)).HitTestPoint(new(point.X, point.Y - segment.Y));
+        return hit.IsInside ? links.HitTest(segment.Offset + hit.TextPosition) : null;
     }
 
     private TextLayout Layout(string text, double width, bool expanded, IBrush? brush = null) =>
@@ -165,9 +183,10 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
                     layout.HitTestTextRange(Math.Max(0, hit.Start - segment.Offset),
                         Math.Min(segment.Length, hit.Start + hit.Length - segment.Offset) - Math.Max(0, hit.Start - segment.Offset)))
                 .ToArray();
-            // Paint layers: search background, ordinary text, search foreground; link underline follows in a later slice.
+            // Paint layers: search background, ordinary text, link decoration, then search foreground.
             foreach (var hit in hits) context.FillRectangle(Resource<IBrush>("NfcWarningSurfaceBrush"), hit.Translate(new(0, segment.Y)));
             layout.Draw(context, new(0, segment.Y));
+            DrawLinks(context, layout, segment);
             if (hits.Length > 0)
             {
                 var text = area == ConsoleSearchArea.Source ? _row.SourceId
@@ -185,6 +204,30 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
         {
             _visible[i].Dispose();
             _visible.Remove(i);
+        }
+    }
+
+    private void DrawLinks(DrawingContext context, TextLayout layout, Segment segment)
+    {
+        if (_input?.Links is not { } links) return;
+        foreach (var link in links.Spans.Where(link => link.Start < segment.Offset + segment.Length
+            && link.Start + link.Length > segment.Offset))
+        {
+            var start = Math.Max(0, link.Start - segment.Offset);
+            var length = Math.Min(segment.Length, link.Start + link.Length - segment.Offset) - start;
+            var brush = Resource<IBrush>(_hoveredTarget == link.Target ? "NfcAccentBrush" : "NfcBorderSoftBrush");
+            foreach (var rect in layout.HitTestTextRange(start, length))
+            {
+                var underline = rect.Translate(new(0, segment.Y));
+                if (_hoveredTarget == link.Target)
+                {
+                    var text = _expanded ? Read(segment.Offset, segment.Length) : _row!.GetFirstLine().Text;
+                    using var hover = Layout(text, _key!.Width, _expanded, brush);
+                    using var hoverClip = context.PushClip(underline);
+                    hover.Draw(context, new(0, segment.Y));
+                }
+                context.DrawLine(new Pen(brush), underline.BottomLeft, underline.BottomRight);
+            }
         }
     }
 
@@ -215,7 +258,7 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
         return segment.Y + line * LineHeight + fallback % LineHeight;
     }
 
-    internal void Release() { _input = null; _key = null; _slice = null; _segments.Clear(); ClearLayouts(); }
+    internal void Release() { _input = null; _key = null; _slice = null; _hoveredTarget = null; _segments.Clear(); ClearLayouts(); }
     internal void ClearLayouts() { foreach (var layout in _visible.Values) layout.Dispose(); _visible.Clear(); }
     internal sealed record Segment(int Offset, int Length, double Y, double Height);
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -236,7 +279,7 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
     private void ResourcesUpdated(object? sender, EventArgs e) { InvalidateMeasure(); InvalidateVisual(); }
     private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) { InvalidateMeasure(); InvalidateVisual(); }
 
-    private sealed record RenderInput(ConsoleRow Row, bool Expanded);
+    private sealed record RenderInput(ConsoleRow Row, bool Expanded, ConsoleLinkIndex? Links);
     internal sealed record LayoutKey(ConsoleRowId RowId, long TextVersion, int Length, string SourceId, bool Expanded,
         double Width, double LineHeight, Typeface Typeface, double FontSize, ThemeVariant? ThemeVariant, IBrush Foreground);
 }
