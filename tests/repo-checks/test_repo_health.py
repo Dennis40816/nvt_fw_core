@@ -18,6 +18,10 @@ TEST_RULES = ("timeWaitsInTests", "elapsedAssertionsInTests", "tempPathInTests",
               "headlessSessionSetups", "childProcessInTests", "sameNameFakes")
 
 
+GENERATED_BLOCK = ("  <!-- BEGIN GENERATED HEALTH WARNING IDS -->\n{}"
+                   "  <!-- END GENERATED HEALTH WARNING IDS -->\n")
+
+
 class RepoHealthTests(GitRepositoryTests):
     def setUp(self) -> None:
         super().setUp()
@@ -30,7 +34,6 @@ class RepoHealthTests(GitRepositoryTests):
         clock = "function Get-HealthToday { return [DateTime]::UtcNow.Date }"
         self.assertEqual(1, source.count(clock))
         source = source.replace(clock, "function Get-HealthToday { return [DateTime]'2026-10-10' }")
-        source = source.replace("                Write-LedgerWarningIds $baseline", "                # fixture warning generator")
         schema_path = (REPOSITORY / "tools/repo-checks/csharp/schema.json").as_posix()
         source = source.replace("Join-Path $PSScriptRoot 'csharp/schema.json'", "'" + schema_path + "'")
         self.fixture_checker.write_text(source, encoding="utf-8")
@@ -39,6 +42,7 @@ class RepoHealthTests(GitRepositoryTests):
                    '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
                    '<TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
         self.write("src/Fixture/One.cs", "namespace N; class One {}\n")
+        self.write("eng/code-health/projects.props", "<Project>\n" + GENERATED_BLOCK.format("") + "</Project>\n")
 
     def set_today(self, date: str) -> None:
         source = self.fixture_checker.read_text(encoding="utf-8")
@@ -600,6 +604,307 @@ class Words { string s="class TestWorkspace {} Path.GetTempPath Directory.Delete
         self.assertEqual([], after["findings"])
         self.assertEqual(b["snapshotCommit"], after["snapshotCommit"])
         self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    # --- Adopt: debt that a rule change reveals, in a change that is synchronization-only ---
+
+    def revealed_excess(self, lines: int = 808) -> None:
+        """The ledger is enrolled on a clean tree. An excess then appears in the base commit, as a new rule reveals old debt."""
+        self.enroll()
+        self.hot(lines)
+        self.base = self.commit()
+
+    def test_adopt_registers_excess_in_a_synchronization_only_change(self) -> None:
+        self.revealed_excess()
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "800 -> 808")
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "Adopt passed; 1 entities")
+        after = json.loads((self.root / BASELINE).read_text())
+        self.assertEqual(1, len(after["entities"]))
+        self.assertEqual({"fileLines": 808}, after["entities"][0]["ceilings"])
+        self.assertEqual(["src/Fixture/One.cs"], after["entities"][0]["locations"])
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_adopt_refuses_excess_when_this_change_edits_a_source_file(self) -> None:
+        self.revealed_excess()
+        self.hot(809)
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "800 -> 809")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_excess_in_a_new_file(self) -> None:
+        self.revealed_excess()
+        self.hot(808, "Other", "src/Fixture/Other.cs")
+        self.git("add", "-A")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "800 -> 808")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_requires_a_base_ref(self) -> None:
+        self.revealed_excess()
+        self.assert_exit(2, self.run_health("Adopt"), "Adopt requires -BaseRef")
+
+    def test_adopt_registers_a_finding_in_a_synchronization_only_change(self) -> None:
+        self.enroll()
+        self.write("src/Fixture/One.cs", "class One { async void Revealed() {} }")
+        self.base = self.commit()
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "New fingerprint")
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "0 entities and 1 finding")
+        after = json.loads((self.root / BASELINE).read_text())
+        self.assertEqual(["asyncVoid"], [f["rule"] for f in after["findings"]])
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_adopt_refuses_a_finding_when_this_change_edits_a_source_file(self) -> None:
+        self.enroll()
+        self.write("src/Fixture/One.cs", "class One { async void Revealed() {} }")
+        self.base = self.commit()
+        self.write("src/Fixture/One.cs", "class One { async void Revealed() {} int edited; }")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "New fingerprint")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_does_not_let_growth_in_another_file_pass(self) -> None:
+        self.revealed_excess()
+        self.write("src/Fixture/Grown.cs", "namespace N; class Grown { async void Added() {} }")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "New fingerprint")
+        self.assertEqual([], json.loads((self.root / BASELINE).read_text())["entities"])
+
+    def test_adopt_refuses_a_type_when_one_of_its_partial_files_is_edited(self) -> None:
+        self.enroll()
+
+        def wide(first: int, count: int, tail: str = "") -> str:
+            return "namespace N;\npartial class Wide { " + "".join(f"int f{n}; " for n in range(first, first + count)) + "}\n" + tail
+
+        self.write("src/Fixture/A.cs", wide(0, 20))
+        self.write("src/Fixture/B.cs", wide(20, 15))
+        self.base = self.commit()
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "30 -> 35")
+        self.write("src/Fixture/B.cs", wide(20, 15, "// edited\n"))
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "30 -> 35")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+        self.write("src/Fixture/B.cs", wide(20, 15))
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "Adopt passed; 1 entities")
+
+    def test_a_ledger_entry_cannot_name_an_unchanged_file_for_a_changed_one(self) -> None:
+        self.write("src/Fixture/Calm.cs", "namespace N; class Calm {}\n")
+        self.enroll()
+        self.hot(900)
+        grown = next(e for e in self.measure()["entities"] if e["kind"] == "file" and e["values"].get("fileLines") == 900)
+        b = json.loads((self.root / BASELINE).read_text())
+        b["entities"].append({key: copy.deepcopy(grown[key]) for key in ("project", "kind", "symbol", "contentHash")}
+                             | {"locations": ["src/Fixture/Calm.cs"], "ceilings": {"fileLines": 900},
+                                "owner": "fixture", "issue": "fixture/1"})
+        self.write_baseline(b)
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "800 -> 900")
+
+    def test_a_ledger_finding_cannot_name_an_unchanged_file_for_a_changed_one(self) -> None:
+        self.write("src/Fixture/Calm.cs", "namespace N; class Calm {}\n")
+        self.enroll()
+        self.write("src/Fixture/One.cs", "class One { async void Added() {} }")
+        finding = next(f for f in self.measure()["findings"] if f["rule"] == "asyncVoid")
+        b = json.loads((self.root / BASELINE).read_text())
+        b["findings"].append({key: copy.deepcopy(finding[key]) for key in
+                              ("rule", "project", "member", "symbol", "syntaxHash", "count")}
+                             | {"path": "src/Fixture/Calm.cs", "owner": "fixture"})
+        self.write_baseline(b)
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "New fingerprint")
+
+    def test_adopt_refuses_a_file_with_a_non_ascii_name_that_this_change_edits(self) -> None:
+        self.enroll()
+        self.hot(808, "Wide", "src/Fixture/\u00dcn\u00ef.cs")
+        self.base = self.commit()
+        self.hot(809, "Wide", "src/Fixture/\u00dcn\u00ef.cs")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "800 -> 809")
+
+    def test_adopt_refuses_a_file_that_this_change_renames(self) -> None:
+        self.revealed_excess()
+        self.git("mv", "src/Fixture/One.cs", "src/Fixture/Moved.cs")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "800 -> 808")
+
+    def test_adopt_refuses_a_view_whose_base_type_this_change_edits(self) -> None:
+        self.enroll()
+        self.write("src/Fixture/Base.cs", "namespace N;\nabstract class Base {}\n")
+        self.write("src/Fixture/Derived.cs", "namespace N;\nclass Derived : Base {\n" + "// body\n" * 808 + "}\n")
+        self.base = self.commit()
+        self.write("src/Fixture/Base.cs", "namespace N;\nabstract class Base : Avalonia.Controls.UserControl {}\n")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "viewTypeLines")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_a_finding_whose_fingerprint_a_new_file_of_the_project_extends(self) -> None:
+        self.enroll()
+        attribute = 'using System.Diagnostics.CodeAnalysis;\nnamespace N;\n[SuppressMessage("X", "CA1234")] partial class Foo {}\n'
+        self.write("src/Fixture/A.cs", attribute)
+        self.base = self.commit()
+        self.write("src/Fixture/B.cs", attribute)
+        self.git("add", "-A")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "New fingerprint")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_registers_the_finding_when_the_project_is_untouched(self) -> None:
+        self.enroll()
+        attribute = 'using System.Diagnostics.CodeAnalysis;\nnamespace N;\n[SuppressMessage("X", "CA1234")] partial class Foo {}\n'
+        self.write("src/Fixture/A.cs", attribute)
+        self.base = self.commit()
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "0 entities and 1 finding")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_adopt_refuses_a_view_when_a_file_that_declares_its_base_type_leaves_the_project(self) -> None:
+        self.enroll()
+        project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>'
+        self.write("other/Other.csproj", project)
+        self.write("src/Fixture/Control.cs", "namespace N;\nclass Control {}\n")
+        self.write("src/Fixture/Uses.cs", "using Avalonia.Controls;\nnamespace N;\nclass Uses {}\n")
+        self.write("src/Fixture/Derived.cs", "namespace N;\nclass Derived : Control {\n" + "// body\n" * 808 + "}\n")
+        self.base = self.commit()
+        self.git("mv", "src/Fixture/Control.cs", "other/Control.cs")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "viewTypeLines")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_a_view_when_an_axaml_file_of_the_project_is_added(self) -> None:
+        self.enroll()
+        self.write("src/Fixture/Derived.cs", "namespace N;\npartial class Derived {\n" + "// body\n" * 808 + "}\n")
+        self.base = self.commit()
+        self.write("src/Fixture/Derived.axaml",
+                   '<UserControl xmlns="https://github.com/avaloniaui" '
+                   'xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="N.Derived"/>\n')
+        self.git("add", "-A")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_when_only_a_project_file_changes(self) -> None:
+        self.revealed_excess()
+        project = (self.root / "src/Fixture/Fixture.csproj").read_text()
+        self.write("src/Fixture/Fixture.csproj", project.replace("</Project>", "<ItemGroup><Compile Include=\"..\\Shared\\*.cs\" /></ItemGroup></Project>"))
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_a_csharp_file_in_a_documents_folder(self) -> None:
+        self.revealed_excess()
+        self.write("docs/Evil.cs", "namespace N; class Evil {}\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+
+    def test_adopt_accepts_a_change_of_synchronization_files_only(self) -> None:
+        self.revealed_excess()
+        self.write("docs/note.md", "# note\n")
+        self.write("eng/core-health/BannedSymbols.Common.txt", "T:System.Foo\n")
+        self.write("tools/repo-checks/repo-health.md", "copy\n")
+        self.git("add", "-A")
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "Adopt passed; 1 entities")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_adopt_accepts_only_the_generated_block_of_projects_props(self) -> None:
+        self.revealed_excess()
+        props = "eng/code-health/projects.props"
+        # The writer regenerates the block after Adopt, so a hand-written group inside it does not survive.
+        self.write(props, "<Project>\n" + GENERATED_BLOCK.format("  <PropertyGroup Condition=\"'$(MSBuildProjectName)' == 'Fixture'\">\n"
+                   "    <HealthBaselineWarningIds>CA1031</HealthBaselineWarningIds>\n  </PropertyGroup>\n") + "</Project>\n")
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "Adopt passed; 1 entities")
+        self.assertEqual("<Project>\n" + GENERATED_BLOCK.format("") + "</Project>\n", (self.root / props).read_text().replace("\r\n", "\n"))
+
+    def test_adopt_refuses_an_item_inside_the_generated_block(self) -> None:
+        self.revealed_excess()
+        self.write("eng/code-health/projects.props", "<Project>\n" + GENERATED_BLOCK.format(
+            "  <ItemGroup><Compile Include=\"x.cs\" /></ItemGroup>\n") + "</Project>\n")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_adopt_refuses_a_moved_generated_block(self) -> None:
+        block = GENERATED_BLOCK.format("")
+        self.write("eng/code-health/projects.props", "<Project>\n<!-- a -->\n" + block + "<!-- b -->\n</Project>\n")
+        self.revealed_excess()
+        self.write("eng/code-health/projects.props", "<Project>\n" + block + "<!-- a -->\n<!-- b -->\n</Project>\n")
+        before = (self.root / BASELINE).read_bytes()
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+        self.assertEqual(before, (self.root / BASELINE).read_bytes())
+
+    def test_a_hand_raised_finding_count_fails_in_a_synchronization_only_change(self) -> None:
+        self.enroll()
+        attribute = 'using System.Diagnostics.CodeAnalysis;\nnamespace N;\n[SuppressMessage("X", "CA1234")] partial class Foo {}\n'
+        self.write("src/Fixture/A.cs", attribute)
+        self.base = self.commit()
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "0 entities and 1 finding")
+        self.commit()
+        self.write("src/Fixture/B.cs", attribute)
+        self.base = self.commit()
+        b = json.loads((self.root / BASELINE).read_text())
+        self.assertEqual(1, len(b["findings"]))
+        self.assertEqual(1, b["findings"][0]["count"])
+        b["findings"][0]["count"] = 2
+        self.write_baseline(b)
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base))
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base))
+
+    def test_adopt_refuses_a_second_generated_block(self) -> None:
+        self.revealed_excess()
+        block = GENERATED_BLOCK.format("")
+        self.write("eng/code-health/projects.props", "<Project>\n" + block + "<ItemGroup><Compile Include=\"x.cs\" /></ItemGroup>\n" + block + "</Project>\n")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+
+    def test_adopt_refuses_a_change_outside_the_edited_text_of_projects_props(self) -> None:
+        self.revealed_excess()
+        self.write("eng/code-health/projects.props", "<Project>\n<!-- note -->\n" + GENERATED_BLOCK.format("") + "</Project>\n")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+
+    def test_adopt_refuses_when_the_root_is_a_sub_directory_of_the_repository(self) -> None:
+        self.enroll()
+        for name in ("global.json", BASELINE, "eng/code-health/projects.props", "src/Fixture/Fixture.csproj", "src/Fixture/One.cs"):
+            self.write("sub/" + name, (self.root / name).read_text())
+        self.base = self.commit()
+        result = subprocess.run(["pwsh", "-NoProfile", "-File", str(self.fixture_checker), "-Mode", "Adopt", "-Repo", "core",
+                                 "-Root", str(self.root / "sub"), "-BaseRef", self.base], env=self.env, capture_output=True, encoding="utf-8", timeout=90)
+        self.assert_exit(1, result, "-Root is not the repository root")
+
+    def test_adopt_accepts_a_markdown_file_with_a_non_ascii_name(self) -> None:
+        self.revealed_excess()
+        self.write("docs/\u00dcn\u00ef.md", "# note\n")
+        self.git("add", "-A")
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "Adopt passed; 1 entities")
+
+    def test_adopt_refuses_a_path_with_a_line_break(self) -> None:
+        # Git lists the deleted path "docs/a<LF>b.md". With the line break dropped it would read "docs/ab.md", a document.
+        # The name cannot exist in a Windows working tree, so the path goes into the base commit through the index.
+        self.revealed_excess()
+        blob = self.git("rev-parse", "HEAD:global.json").strip()
+        name = "docs/a\nb.md"
+        who = ("-c", "user.name=t", "-c", "user.email=t@example.invalid", "-c", "commit.gpgsign=false")
+        self.git("-c", "core.protectNTFS=false", "update-index", "--add", "--cacheinfo", f"100644,{blob},{name}")
+        self.git(*who, "commit", "-qm", "path with a line break")
+        base = self.git("rev-parse", "HEAD").strip()
+        self.git("-c", "core.protectNTFS=false", "update-index", "--force-remove", "--", name)
+        self.git(*who, "commit", "-qm", "remove it")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", base), "Adopt refused")
+
+    def test_adopt_refuses_a_csharp_file_in_the_checker_folder(self) -> None:
+        self.revealed_excess()
+        self.write("tools/repo-checks/Gen/Big.cs", "namespace N; class Big {}\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Adopt", "-BaseRef", self.base), "Adopt refused")
+
+    def test_adopt_leaves_existing_ceilings_and_counts_alone(self) -> None:
+        self.hot(808, "Known", "src/Fixture/One.cs")
+        b = self.enroll()
+        self.hot(808, "Known", "src/Fixture/One.cs")
+        self.write("src/Fixture/Two.cs", "namespace N; class Two { async void Revealed() {} }\n")
+        self.base = self.commit()
+        self.assert_exit(0, self.run_health("Adopt", "-BaseRef", self.base), "0 entities and 1 finding")
+        after = json.loads((self.root / BASELINE).read_text())
+        self.assertEqual(b["entities"], after["entities"])
+        self.assertEqual(b["findings"], after["findings"][:len(b["findings"])])
+        self.assertEqual(len(b["findings"]) + 1, len(after["findings"]))
+
+    def test_a_hand_raised_ceiling_in_an_unchanged_file_still_fails(self) -> None:
+        self.hot(808)
+        b = self.enroll()
+        b["entities"][0]["ceilings"]["fileLines"] = 900
+        self.write_baseline(b)
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "808 -> 900")
 
     def test_example_baseline_without_view_limit_is_not_expanded_by_lowering(self) -> None:
         b = self.enroll()
