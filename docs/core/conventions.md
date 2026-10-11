@@ -215,7 +215,7 @@ Core ships one `Directory.Build.props` fragment, one `.editorconfig` and the ban
 | `.editorconfig` | every rule the repository relies on has an explicit severity |
 | `Microsoft.CodeAnalysis.BannedApiAnalyzers` | RS0030 with the lists in rule R2 |
 | `Microsoft.VisualStudio.Threading.Analyzers` | VSTHRD100 error, VSTHRD002 and VSTHRD110 warning with an occurrence ratchet |
-| `Microsoft.CodeAnalysis.PublicApiAnalyzers` (Core only) | RS0016 and RS0017 error |
+| `Microsoft.CodeAnalysis.PublicApiAnalyzers` (Core's published projects) | RS0016 and RS0017 error. A new public member needs an entry in the project's `PublicAPI.Unshipped.txt` |
 | Repository health check (CI) | the counts of `async void`, state members per type, file and method size, partial files per type, suppressions and source-text assertions must not grow |
 | CI | `dotnet format --verify-no-changes`. In test projects use `GenerateDocumentationFile=false` instead of per-file `CS1591` pragmas |
 

@@ -17,7 +17,7 @@ Run the pack script's offline tests with PowerShell 7:
 pwsh -File ./scripts/tests/test-pack.ps1
 ```
 
-1. Set a new Core version in `Directory.Build.props`. In [CHANGELOG.md](../../CHANGELOG.md), move the "Unreleased" entries under the new version. Merge the reviewed source into `main`.
+1. Set a new Core version in `Directory.Build.props`. In [CHANGELOG.md](../../CHANGELOG.md), move the "Unreleased" entries under the new version. In each published project, move the approved entries from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt` and keep the order. Merge the reviewed source into `main`.
 2. Check out that commit with a clean working tree.
 3. Fetch the version tags and run the pack script with PowerShell 7:
 
