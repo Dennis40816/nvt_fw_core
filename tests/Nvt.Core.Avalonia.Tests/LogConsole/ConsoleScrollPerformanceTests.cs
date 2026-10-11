@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using System.Globalization;
 using Avalonia.Headless.XUnit;
 using Nvt.Core.TestSupport;
 using Xunit;
@@ -8,6 +9,7 @@ using Xunit.Sdk;
 namespace Nvt.Core.Avalonia.Tests.LogConsole;
 
 /// <summary>Measures user intent plus viewport layout on the shared headless session.</summary>
+[Collection(ConsolePerformanceIsolation.Name)]
 public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
 {
     // Reference median: 3,992.52 units for a full headless viewport traversal; allow a 2x margin (rounded up).
@@ -16,6 +18,9 @@ public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
     // Count row visits during height rebuilding, synchronization, measure/realization and arrangement.
     // Linear traversal doubles the work (2.0); allow 25% margin, independent of host scheduling.
     private const double DoublingRatio = 2.5;
+    // The calibration unit and the traversal are measured in pairs, so one burst of host load cannot shrink the unit
+    // while it inflates the traversal. The median of the pairs is the ratio.
+    private const int PairedRounds = 3;
     // Small identity/state records fit in 4 KiB; copying 10,000 row IDs allocates over 160 KiB.
     private const long ScrollAllocationLimit = 4096;
     // One invalidation plus one geometry correction; theme propagation permits one additional pass.
@@ -27,9 +32,15 @@ public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
     {
         using var scene = new ConsoleScrollScene(10_000);
         scene.Pause();
-        var unit = RelativePerf.CalibrationUnit();
-        var units = RelativePerf.InUnits(RelativePerf.MedianTime(scene.Traverse), unit);
-        output.WriteLine($"Traversal calibration ratio: {units:F2}; limit {ScrollCalibrationRatio}");
+        var rounds = new double[PairedRounds];
+        for (int round = 0; round < rounds.Length; round++)
+        {
+            var unit = RelativePerf.CalibrationUnit();
+            rounds[round] = RelativePerf.InUnits(RelativePerf.MedianTime(scene.Traverse), unit);
+        }
+        Array.Sort(rounds);
+        var units = rounds[rounds.Length / 2];
+        output.WriteLine($"Traversal calibration ratios (sorted): {string.Join(", ", rounds.Select(round => round.ToString("F2", CultureInfo.InvariantCulture)))}; median {units:F2}; limit {ScrollCalibrationRatio}");
         RequireScrollRatio(units);
     }
 
