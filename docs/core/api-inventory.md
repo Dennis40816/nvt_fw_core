@@ -2,7 +2,7 @@
 
 Core 0.9.0 keeps a reviewed list of every public `Nvt.Core` API in `src/Nvt.Core/PublicAPI.Unshipped.txt`. The 0.9.0 release step moves the approved entries to `PublicAPI.Shipped.txt`. The analyzer gate (RS0016/RS0017 as errors) follows in the last inventory slice, so a missing entry does not fail the build yet.
 
-This page covers every public namespace of `Nvt.Core`. `Nvt.Core.Avalonia`, `Nvt.Core.Fonts` and the TestSupport project follow in the last slice.
+This page covers every public namespace of the four published projects: `Nvt.Core`, `Nvt.Core.Avalonia`, `Nvt.Core.Fonts` and `Nvt.Core.TestSupport`. The analyzer gate (RS0016 and RS0017 as errors) is on for all four.
 
 ## How the entries were produced
 
@@ -47,6 +47,34 @@ Types and entries count the public API of the namespace. Consumers count source 
 
 `Nvt.Core.Files.Windows`, `Nvt.Core.Launcher.Verification` and `Nvt.Core.Launcher.Windows` have no public API.
 
+## Published UI, font and test-support projects
+
+The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to their project files:
+
+- `Nvt.Core.Avalonia`: 477 entries.
+- `Nvt.Core.Fonts`: 3 entries.
+- `Nvt.Core.TestSupport`: 50 entries.
+
+| Namespace | Types | Entries | In-repo consumers | External consumers | Verdict |
+|---|---:|---:|---|---|---|
+| `Nvt.Core.Avalonia.Dialogs` | 2 | 8 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Focus` | 3 | 11 | Avalonia tests (5) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Icons` | 1 | 72 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Inputs` | 1 | 36 | Avalonia tests (6) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.LogConsole` | 5 | 69 | Avalonia tests (17) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.MessageCenter` | 3 | 61 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Panels` | 2 | 51 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Primitives` | 3 | 28 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Progress` | 3 | 12 | Avalonia tests (5) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.ReportList` | 3 | 43 | Avalonia tests (6) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.RuntimeQuery` | 10 | 62 | Avalonia tests (10) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Shell` | 1 | 3 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Theme` | 5 | 17 | Avalonia tests (32) | NFH (7 files) | keep: NFH uses it |
+| `Nvt.Core.Avalonia.Threading` | 1 | 4 | Avalonia tests (8) | NFH (22 files) | keep: NFH uses it |
+| `Nvt.Core.Fonts` | 1 | 3 | Avalonia tests (1), Fonts tests (2) | NFH (1 files) | keep: NFH uses it |
+| `Nvt.Core.TestSupport` | 7 | 50 | Avalonia tests (1), TestSupport tests (8), Core tests (14) | none found | keep: the shared test helpers; the Core tests use them |
+| **Total** | **51** | **530** | | | |
+
 ## Types that only their own namespace and the Core tests reference
 
 45 of the 66 public types in the three namespaces below have no other consumer today. This is expected: they are the entry points and results of the Launcher host that NFC adopts later (the H06 contract in NFC). The list is input for the 0.9.0 sign-off. Nothing was internalized here. A type leaves the list when the host design shows that it needs the type or when the owner decides to remove it.
@@ -54,6 +82,16 @@ Types and entries count the public API of the namespace. Consumers count source 
 - `Nvt.Core.Launcher.Coordination` (15): `IManagedApplicationInitialization`, `IManagedApplicationStartupCoordinator`, `IManagedPackageSelection`, `IManagedRetentionPolicy`, `ManagedActivationCoordinator`, `ManagedApplicationStartupCoordinator`, `ManagedApplicationStartupResult`, `ManagedLauncherOutcome`, `ManagedLauncherResult`, `ManagedMutationCoordinator`, `ManagedMutationSnapshot`, `ManagedVersionSeedPolicy`, `VersionDeleteOperationIssue`, `VersionDeleteOperationResult`, `VersionInstallOperationResult`
 - `Nvt.Core.Launcher.Repository` (10): `ActiveLauncherAdmission`, `FileSystemInstalledLauncherRepository`, `FileSystemLauncherInstallationSelfTest`, `FileSystemManagedVersionRepository`, `ILauncherInstallationSelfTest`, `IManagedVersionAdmissionCodec`, `ImmutableBootstrapObservation`, `InstalledApplicationMetadata`, `LauncherInstallationSelfTestIssue`, `LauncherInstallationSelfTestResult`
 - `Nvt.Core.Launcher.Transport` (20): `AnonymousPipeManagedApplicationProcess`, `AnonymousPipeManagedLauncherProcess`, `IImmutableBootstrapHandoff`, `IImmutableBootstrapLaunch`, `IImmutableBootstrapLeaseHandoff`, `IStableLauncherHandoff`, `ImmutableBootstrapAdmissionOutcome`, `ImmutableBootstrapAdmissionResult`, `ImmutableBootstrapCompletionOutcome`, `ImmutableBootstrapCompletionResult`, `ImmutableBootstrapStartIssue`, `ImmutableBootstrapStartResult`, `ImmutableBootstrapWaitBudget`, `InheritedPipeApplicationReadySignal`, `LauncherBootstrapRuntimeServices`, `LauncherReadyInheritance`, `LauncherReadyInheritanceOutcome`, `StableLauncherHandoff`, `StableLauncherStartOutcome`, `StableLauncherStartResult`
+
+## The gate
+
+`eng/code-health/projects.props` sets `HealthPublicApi` for the four projects. The shared health props then add `Microsoft.CodeAnalysis.PublicApiAnalyzers` and the two API files, and `TreatWarningsAsErrors` makes RS0016 (an undeclared public symbol) and RS0017 (a removed symbol that is still listed) fail the build.
+
+- A new public member needs an entry in the project's `PublicAPI.Unshipped.txt` in the same pull request.
+- The release step moves the approved entries from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`.
+- A public member that goes away gets a `*REMOVED*` line in `PublicAPI.Unshipped.txt`, and a CHANGELOG entry under Breaking changes.
+
+The RS0026 rule (no more than one overload with optional parameters) also became an error for `SignalWait.WaitAsync`. The instance overload no longer has a default token, and a parameterless overload replaced the default.
 
 ## How to read the verdicts
 

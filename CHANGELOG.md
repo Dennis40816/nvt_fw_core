@@ -95,6 +95,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- Added the public API inventory for `Nvt.Core.Avalonia` (477 entries), `Nvt.Core.Fonts` (3) and `Nvt.Core.TestSupport` (50), and switched the analyzer gate on for the four published projects. A new public member now needs an entry in `PublicAPI.Unshipped.txt`, or the build fails with RS0016.
 - Added the public API inventory for the Launcher coordination, transport and repository namespaces (`PublicAPI.Unshipped.txt`, 394 entries). Every public `Nvt.Core` API is now listed. Enforcement follows in the last inventory step.
 - Added the public API inventory for the Launcher contracts, persistence and activation namespaces (`PublicAPI.Unshipped.txt`, 477 entries). Enforcement follows in the last inventory step.
 - `Nvt.Core.TestSupport` gains `TestFiles`: `WriteAllBytes` and `ReadLinesAsync` for plain fixture files, through streams, because the `File.ReadAll*` and `File.WriteAll*` shortcuts are banned.

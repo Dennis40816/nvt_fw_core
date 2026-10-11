@@ -34,7 +34,7 @@ public sealed class PublicApiTests
         Assert.Empty(child.GetConstructors());
         string[] clockMethods = ["Advance"];
         string[] workspaceMethods = ["Create", "Dispose", "DisposeAsync", "GetPath", "get_RootPath"];
-        string[] signalMethods = ["Set", "WaitAsync", "WaitAsync", "get_IsSet"];
+        string[] signalMethods = ["Set", "WaitAsync", "WaitAsync", "WaitAsync", "get_IsSet"];
         string[] childMethods = ["Dispose", "DisposeAsync", "KillTree", "Start", "WaitForExitAsync", "WaitForOutputAsync",
             "get_HasExited", "get_Output", "get_OutputTruncated", "get_ProcessId", "get_WatchdogExpired"];
         Assert.Equal(clockMethods, NewPublicMethods(clock));

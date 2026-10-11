@@ -37,6 +37,7 @@ A Release contains one nupkg, `SHA256SUMS`, and `SOURCE.md`.
 The package carries embedded fonts, the Core license, README, the license of each font family (Inter, Cascadia Mono, Noto Sans TC, Material Symbols), and the Material Symbols NOTICE.
 Version `0.1.1` adds the Inter license file. `0.1.0` did not carry it.
 Its only direct dependencies are `Avalonia` and `Avalonia.Fonts.Inter`.
+The public API is listed in `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` of the project. The build fails when a public member is added or removed without an entry. See the [API inventory](../api-inventory.md).
 See the [release procedure](../releasing.md) and [package download guide](../../../tools/core-packages/README.md).
 
 ## Roles and resource keys

@@ -15,6 +15,10 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core.TestProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.LinkedProbe' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport.Tests'">
     <HealthLayer>tooling</HealthLayer>
   </PropertyGroup>
+  <!-- Public API analysis (RS0016/RS0017) runs for the assemblies that Core publishes. A new public member needs an entry in the project's PublicAPI.Unshipped.txt. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core' Or '$(MSBuildProjectName)' == 'Nvt.Core.Avalonia' Or '$(MSBuildProjectName)' == 'Nvt.Core.Fonts' Or '$(MSBuildProjectName)' == 'Nvt.Core.TestSupport'">
+    <HealthPublicApi>true</HealthPublicApi>
+  </PropertyGroup>
   <!-- BEGIN GENERATED HEALTH WARNING IDS -->
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Nvt.Core'">
     <HealthBaselineWarningIds>CA1031;CA1307;CA2000;CA5392;IDE0005;IDE0330;IDE1006;RS0030;VSTHRD002;VSTHRD003;VSTHRD103;VSTHRD200</HealthBaselineWarningIds>
