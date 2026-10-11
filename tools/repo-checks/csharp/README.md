@@ -38,8 +38,9 @@ findings belong in the ledger, not mechanically in the seam manifest.
 
 The minimal lock has schemaVersion=1, coreCommit (40 lowercase hex), and files
 mapping the six distributed filenames to raw-byte SHA-256 (64 lowercase hex).
-The checker verifies Git blob identity at that revision in addition to the hashes,
-and protects the base/HEAD pin. Apps provide a local approved Core checkout with
+For an application the checker verifies Git blob identity at that revision in addition to
+the hashes, and protects the base/HEAD pin. Core instead compares each copy, its canonical file
+and the lock hash as the same bytes. Apps provide a local approved Core checkout with
 -CoreRoot; no network or Core runtime dependency is introduced. A pin change is a
 dedicated owner-reviewed synchronization and must preserve the previous baseline.
 The root managed markers are BEGIN/END CORE HEALTH MANAGED BLOCK comments; the
@@ -71,7 +72,7 @@ repo root, with the pin that the lock names now (the pin does not move in this c
 
 This is one pull request: the canonical file, the copy in `eng/core-health/`, the manifest and the lock hash.
 Core's `Verify` accepts it, because Core compares its copies with its own canonical files. After the pull
-request merges, a pin-only pull request moves `coreCommit` to the merge commit
+request merges, a pin synchronization pull request moves `coreCommit` to the merge commit
 (`New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>`). Then an application updates its pin as below.
 
 An application moves its pin in one pull request that changes `eng/core-health.lock.json`

@@ -158,7 +158,10 @@ canonical files. With BaseRef, an application's committed merge-base pin must ag
 without it, the committed HEAD pin must agree. An application may move its pin in a
 pull request only with -CoreRoot: the new pin must be a commit of that approved Core
 checkout (reachable from its HEAD) and descend from the pin it replaces, and the six
-copies must be that commit's files. Without -CoreRoot a moved pin is an error. An app
+copies must be that commit's files. Without -CoreRoot a moved pin is an error. The checker
+trusts the checkout that -CoreRoot names. The application's CI and its copy of `repo-health.ps1`
+decide which checkout that is, so the review of the pull request that changes them covers it.
+Core needs a full clone as well (a shallow one fails with `a full clone ... is required`). An app
 supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
 Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
 lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
@@ -173,10 +176,11 @@ Core is the source of the bundle, so it checks itself differently. Each `eng/cor
 canonical file in `tools/repo-checks/csharp` and its lock hash must be the same bytes. A Core pull
 request may change a bundle file in one change: the canonical file, the copy, the manifest and the
 lock hash together. The pin (`coreCommit`) may stay behind the tree, because a change cannot name
-its own commit. A Core pull request may move the pin, and only as a pin-only synchronization: the
-new pin is a commit of the history of HEAD, it is not older than the pin it replaces, and its six
-canonical files are the files of this tree. The control over a bundle change in Core is the owner
-review of that pull request. The steps are in `csharp/README.md`.
+its own commit. The pin is always a commit of the history of HEAD, so Core needs a full clone
+(`fetch-depth: 0`). A Core pull request may move the pin: the new pin is not older than the pin it
+replaces, and its six canonical files are the files of this tree. `-CoreRoot` is for applications
+and Core ignores it. The control over a bundle change in Core is the owner review of that pull
+request. The steps are in `csharp/README.md`.
 No network operation occurs. A pin change is a separately reviewed synchronization;
 first integrate the approved pin before using it as the base for adoption changes.
 
@@ -194,7 +198,7 @@ without changing a severity), or a dotnet_diagnostic.<ID>.severity of none, sile
 suggestion; warning and error stay allowed. The line reader follows Roslyn: it drops a
 leading BOM, accepts `=` or `:` as the separator, and ignores a trailing `#` or `;`
 comment. File names are matched case-insensitively. Only Core skips
-`tools/repo-checks/csharp/.editorconfig`, because only Core compares it with the pin. Per-project Debug, Release and other declared
+`tools/repo-checks/csharp/.editorconfig`, because it is the canonical file that Core compares with its copy. Per-project Debug, Release and other declared
 configurations must retain the shared settings, SDK WarningsAsErrors IDs, exact
 ledger warning exemptions and approved analyzer package references/assets/versions.
 NoWarn must equal the suppression ledger in every evaluated configuration.

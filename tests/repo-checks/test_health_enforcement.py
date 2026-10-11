@@ -207,7 +207,7 @@ try {{
         self.write('eng/core-health.lock.json',json.dumps({'schemaVersion':1,'coreCommit':commit,'files':files}))
         r=self.run_ps("$Mode='Enroll'; Test-BundleDrift")
         self.assertNotEqual(0,r.returncode)
-        self.assertIn('approved Core revision',r.stderr)
+        self.assertIn('differs from the canonical file',r.stderr)
 
     def test_unclassified_project_and_evaluated_overrides_fail(self):
         props={'MSBuildProjectName':'Fixture','HealthLayer':'infrastructure','HealthPublicApi':'','HealthBaselineWarningIds':'',
@@ -631,7 +631,7 @@ class Fixture {
         self.commit_all('copy only')
         r = self.verify_core()
         self.assertNotEqual(0, r.returncode)
-        self.assertIn('approved Core revision', r.stderr)
+        self.assertIn('differs from the canonical file', r.stderr)
 
     def test_core_rejects_a_canonical_file_that_differs_from_the_copy(self):
         pin = self.core_repo()
@@ -640,7 +640,7 @@ class Fixture {
         self.commit_all('canonical only')
         r = self.verify_core()
         self.assertNotEqual(0, r.returncode)
-        self.assertIn('approved Core revision', r.stderr)
+        self.assertIn('differs from the canonical file', r.stderr)
 
     def test_core_rejects_a_lock_hash_that_differs_from_the_files(self):
         pin = self.core_repo()
@@ -695,6 +695,34 @@ class Fixture {
         self.assertNotEqual(0, r.returncode)
         self.assertIn('not a commit of this history', r.stderr)
 
+    def test_core_rejects_a_committed_pin_that_is_not_in_its_history_without_a_base_ref(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_enroll_rejects_a_pin_that_is_not_in_its_history(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Enroll'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_rejects_a_pin_in_upper_case(self):
+        pin = self.core_repo()
+        self.lock_write(pin.upper())
+        self.commit_all('upper-case pin')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+
+    def test_core_ignores_core_root(self):
+        self.core_repo()
+        r = self.run_ps(f"$Mode = 'Verify'; $CoreRoot = '{self.root.as_posix()}/does-not-exist'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
     # --- An application moves its pin in one pull request when -CoreRoot proves it ---
 
     def core_checkout(self):
@@ -736,24 +764,24 @@ class Fixture {
         return self.run_ps(f"$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
 
     def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
-        core, first, second = self.application_pin_move()
+        core, _, _ = self.application_pin_move()
         r = self.verify_application(core)
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
     def test_application_pin_move_fails_without_core_root(self):
-        core, first, second = self.application_pin_move()
+        self.application_pin_move()
         r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
         self.assertNotEqual(0, r.returncode)
         self.assertIn('pin differs from base', r.stderr)
 
     def test_application_pin_move_fails_when_the_copy_is_not_the_files_of_the_new_pin(self):
-        core, first, second = self.application_pin_move(new_text='P:System.Environment.TickCount\n')
+        core, _, _ = self.application_pin_move(new_text='P:System.Environment.TickCount\n')
         r = self.verify_application(core)
         self.assertNotEqual(0, r.returncode)
         self.assertIn('approved Core revision', r.stderr)
 
     def test_application_pin_move_fails_when_the_new_pin_is_not_in_the_core_checkout(self):
-        core, first, second = self.application_pin_move(pin='d' * 40)
+        core, _, _ = self.application_pin_move(pin='d' * 40)
         r = self.verify_application(core)
         self.assertNotEqual(0, r.returncode)
         self.assertIn('not a commit of the Core checkout', r.stderr)
