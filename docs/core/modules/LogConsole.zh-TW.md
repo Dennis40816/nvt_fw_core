@@ -5,7 +5,7 @@
 # LogConsole
 
 `Nvt.Core.LogConsole` 提供 NFC、NFH、NFU 共用的非 UI console 模型。
-目標框架是 `net8.0`，沒有新增套件。
+目標框架是 `net10.0`，沒有新增套件。
 控制器、標題、工具列與空狀態位於 `Nvt.Core.Avalonia.LogConsole`。Avalonia 列表見[列表檢視](#列表檢視)；宿主 commands 負責投影與狀態。
 
 ## 設計與來源

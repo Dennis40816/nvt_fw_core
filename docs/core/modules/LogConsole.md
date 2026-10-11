@@ -5,7 +5,7 @@
 # LogConsole
 
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
-It targets `net8.0`.
+It targets `net10.0`.
 It adds no package.
 The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`. The Avalonia list is described under [List view](#list-view); host commands own projection and state.
 
