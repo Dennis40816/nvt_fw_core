@@ -6,7 +6,9 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
-## 0.9.0 - 2026-10-12
+## 0.9.0 - 2026-10-11
+
+Tag `core-v0.9.0` on commit `fb18767fab03b0eaef2547dc62fdaaa3f96fef91` (#191).
 
 Feature freeze. After this release only fixes follow until 1.0.0. The breaking changes below are all breaking changes since 0.5.0.
 
