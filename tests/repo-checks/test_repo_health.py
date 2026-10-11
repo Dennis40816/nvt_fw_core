@@ -26,6 +26,10 @@ class RepoHealthTests(GitRepositoryTests):
         source = source.replace("if ($Mode -notin @('Measure', 'EnrollTestDebt')) { Initialize-Enforcement $baseline }",
             "if ($baseline -and @($baseline.findings + $allowed.findings | Where-Object { $_.rule -notin $script:SyntaxRules }).Count) { throw 'HC_NOT_IMPLEMENTED: fixture has no diagnostic provider' }")
         source = source.replace("else { Measure-Health }", "else { Measure-Syntax }")
+        # Pin the removeBy clock, so the fixtures do not expire with the real date.
+        clock = "function Get-HealthToday { return [DateTime]::UtcNow.Date }"
+        self.assertEqual(1, source.count(clock))
+        source = source.replace(clock, "function Get-HealthToday { return [DateTime]'2026-10-10' }")
         source = source.replace("                Write-LedgerWarningIds $baseline", "                # fixture warning generator")
         schema_path = (REPOSITORY / "tools/repo-checks/csharp/schema.json").as_posix()
         source = source.replace("Join-Path $PSScriptRoot 'csharp/schema.json'", "'" + schema_path + "'")
@@ -35,6 +39,13 @@ class RepoHealthTests(GitRepositoryTests):
                    '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
                    '<TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>')
         self.write("src/Fixture/One.cs", "namespace N; class One {}\n")
+
+    def set_today(self, date: str) -> None:
+        source = self.fixture_checker.read_text(encoding="utf-8")
+        start = source.index("function Get-HealthToday { return [DateTime]'")
+        end = source.index("' }", start)
+        head = "function Get-HealthToday { return [DateTime]'"
+        self.fixture_checker.write_text(source[:start] + head + date + source[end:], encoding="utf-8")
 
     def run_health(self, mode: str = "Measure", *args: str) -> subprocess.CompletedProcess[str]:
         # Ordinary subprocesses use the current console; no detached window.
@@ -238,6 +249,55 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
                    '<TargetFramework>net10.0</TargetFramework><NoWarn>CA1031</NoWarn></PropertyGroup></Project>')
         symbols = {f["symbol"] for f in self.measure()["findings"] if f["rule"] == "suppressions"}
         self.assertIn("NoWarn:CA1031", symbols)
+
+    def test_finding_is_due_on_its_removeby_day_and_fails_after(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.enroll()
+        self.set_today("2026-10-14")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+        self.set_today("2026-10-15")
+        result = self.run_health("Verify", "-BaseRef", self.base)
+        self.assert_exit(1, result, "removeBy: 2026-10-14 -> 2026-10-15")
+        self.assertIn("src/Fixture/One.cs", result.stdout)
+
+    def test_expired_test_debt_finding_fails_verify(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        self.set_today("2026-11-01")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "removeBy: 2026-10-31 -> 2026-11-01")
+
+    def test_lower_baseline_is_not_blocked_by_an_expired_date(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.enroll()
+        self.set_today("2026-12-01")
+        self.write("src/Fixture/One.cs", "class One {}\n")
+        self.git("add", "-A")
+        self.assert_exit(0, self.run_health("LowerBaseline", "-BaseRef", self.base))
+        self.assertEqual([], json.loads((self.root / BASELINE).read_text())["findings"])
+
+    def test_many_expired_findings_print_a_summary_line(self) -> None:
+        for i in range(23):
+            self.write(f"src/Fixture/S{i}.cs", f"#pragma warning disable CA{1000 + i}\nclass S{i} {{}}\n")
+        self.enroll()
+        self.set_today("2026-10-15")
+        result = self.run_health("Verify", "-BaseRef", self.base)
+        self.assert_exit(1, result)
+        self.assertEqual(20, result.stdout.count("removeBy: 2026-10-14 -> 2026-10-15"))
+        self.assertRegex(result.stdout, r"removeBy: \d+ more findings of this ledger")
+
+    def test_impossible_calendar_date_in_test_debt_is_a_bad_ledger(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        path = self.root / TEST_DEBT
+        ledger = json.loads(path.read_text())
+        ledger["findings"][0]["removeBy"] = "2026-02-30"
+        path.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "invalid finding count/hash/date")
+
+    def test_impossible_calendar_date_is_a_bad_ledger(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        b = self.enroll()
+        b["findings"][0]["removeBy"] = "2026-13-45"
+        self.write_baseline(b)
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "invalid finding count/hash/date")
 
     def test_removing_a_tightened_optional_limit_is_a_raised_limit(self) -> None:
         b = self.enroll()
