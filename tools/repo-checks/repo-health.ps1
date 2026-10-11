@@ -347,22 +347,37 @@ function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
         if ($value -cne $expected -and -not $stronger) { throw "HC_DRIFT ${Path}:$lineNumber weaker protected override $key=$value (required $expected)" }
     }
 }
+function Test-GitAncestor([string]$Ancestor, [string]$Descendant) {
+    & git -C $Root merge-base --is-ancestor $Ancestor $Descendant 2>&1 | Out-Null
+    return ($LASTEXITCODE -eq 0)
+}
 function Test-BundleDrift {
     $lockPath = Join-Path $Root 'eng/core-health.lock.json'
     $lock = Read-HealthDocument ([IO.File]::ReadAllText($lockPath)) 'core-health.lock'
-    # A PR cannot replace the trusted pin. Pin updates require a separate synchronization change.
+    $isCore = ($Repo -eq 'core')
+    $trusted = $null
+    # An application's pull request cannot replace the trusted pin. Pin updates require a separate synchronization change.
+    # Core is the source of the bundle, so its pull request may change a bundle file and may move its own pin (see below).
     if ($BaseRef) {
         $base = Invoke-Checked 'git' @('merge-base', 'HEAD', $BaseRef)
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', "${base}:eng/core-health.lock.json")) 'core-health.lock'
-        if ($lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately' }
-        if (-not ($CoreRoot -or $Repo -eq 'core')) {
+        if (-not $isCore -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately' }
+        if (-not ($CoreRoot -or $isCore)) {
             # Lock-only mode has no canonical Core objects, so the trusted lock is the reference for the hashes.
             foreach ($name in $lock.files.Keys) { if ($lock.files[$name] -cne $trusted.files[$name]) { throw "HC_DRIFT eng/core-health.lock.json:1 hash of $name differs from base; integrate the reviewed synchronization separately" } }
         }
     }
     elseif ($Mode -ne 'Enroll') {
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', 'HEAD:eng/core-health.lock.json')) 'core-health.lock'
-        if ($lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
+        if (-not $isCore -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
+    }
+    # Core may leave the pin behind its tree, because a bundle change cannot name its own commit. A moved pin must be a
+    # pin-only synchronization: a commit of this history, not older than the pin it replaces, whose canonical files are
+    # the files of this tree.
+    $pinMoved = ($isCore -and $null -ne $trusted -and $lock.coreCommit -cne $trusted.coreCommit)
+    if ($pinMoved) {
+        if (-not (Test-GitAncestor $lock.coreCommit 'HEAD')) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin is not a commit of this history' }
+        if (-not (Test-GitAncestor $trusted.coreCommit $lock.coreCommit)) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin is older than the pin it replaces' }
     }
     $canonicalRoot = if ($CoreRoot) { [IO.Path]::GetFullPath($CoreRoot) } else { $Root }
     foreach ($name in $lock.files.Keys) {
@@ -371,16 +386,22 @@ function Test-BundleDrift {
         if ($bytes -contains 13 -or ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) { throw "HC_DRIFT $path`:1 LF/UTF-8 required" }
         $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
         if ($hash -cne $lock.files[$name]) { throw "HC_DRIFT $path`:1 SHA-256 differs from lock" }
-        # Without -CoreRoot an application has no canonical Core objects. Only Core itself compares with its own tree.
-        if (-not ($CoreRoot -or $Repo -eq 'core')) { continue }
         # Git blob identity is computed over raw bytes, without autocrlf filters.
-        $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
         $local = (Invoke-Checked 'git' @('hash-object', '--no-filters', $path)).Trim()
-        if ($canonical -cne $local) { throw "HC_DRIFT $path`:1 differs from approved Core revision" }
-        if ($Repo -eq 'core') {
+        if ($isCore) {
+            # Core is the source of the bundle: the copy, the canonical file and the lock are the same bytes.
             $working = (Invoke-Checked 'git' @('hash-object', '--no-filters', (Join-Path $Root "tools/repo-checks/csharp/$name"))).Trim()
-            if ($working -cne $canonical) { throw "HC_DRIFT tools/repo-checks/csharp/$name`:1 canonical tree differs from pin" }
+            if ($working -cne $local) { throw "HC_DRIFT $path`:1 differs from approved Core revision (tools/repo-checks/csharp/$name)" }
+            if ($pinMoved) {
+                $pinned = (Invoke-Checked 'git' @('-C', $Root, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
+                if ($pinned -cne $working) { throw "HC_DRIFT eng/core-health.lock.json:1 the pin moved to a commit whose $name differs from this tree" }
+            }
+            continue
         }
+        # Without -CoreRoot an application has no canonical Core objects.
+        if (-not $CoreRoot) { continue }
+        $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
+        if ($canonical -cne $local) { throw "HC_DRIFT $path`:1 differs from approved Core revision" }
     }
     $common = [IO.File]::ReadAllText((Join-Path $Root 'eng/core-health/.editorconfig'))
     Test-ManagedBlock $common (Read-EditorText (Join-Path $Root '.editorconfig'))

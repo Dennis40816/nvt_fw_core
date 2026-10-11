@@ -61,7 +61,20 @@ Solution; LowerBaseline cannot enroll. Generated HealthBaselineWarningIds must
 equal the build diagnostic ledger per project. VSTHRD100 remains error: apps must
 remove async void before enrollment can build. Public API enrollment remains H07d.
 
-To update the pin, review the canonical changes and run from the repo root:
+To change a bundle file in Core, edit the canonical file in `tools/repo-checks/csharp/` and run from the
+repo root, with the pin that the lock names now (the pin does not move in this change):
+
+```powershell
+./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <coreCommit of eng/core-health.lock.json>
+./tools/repo-checks/csharp/New-HealthBundle.ps1 -Check
+```
+
+This is one pull request: the canonical file, the copy in `eng/core-health/`, the manifest and the lock hash.
+Core's `Verify` accepts it, because Core compares its copies with its own canonical files. After the pull
+request merges, a pin-only pull request moves `coreCommit` to the merge commit
+(`New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>`). Then an application updates its pin as below.
+
+To update the pin of an application, review the canonical changes and run from the repo root:
 
 ```powershell
 ./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <approved-commit>

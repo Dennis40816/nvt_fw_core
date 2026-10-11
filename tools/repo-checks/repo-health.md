@@ -153,9 +153,9 @@ The lock is `{ "schemaVersion": 1, "coreCommit": "<40 lowercase hex>", "files":
 { "<each of the six filenames>": "<SHA-256 lowercase hex>" } }`. No policy.json is
 needed: versions, valid layers, limits and package pins are fixed in the checker
 and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
-blob identity additionally checks all six files against coreCommit's canonical
-files. Core also checks its working canonical tree. With BaseRef, the committed
-merge-base pin must agree; without it, the committed HEAD pin must agree. An app
+blob identity additionally checks an application's six files against coreCommit's
+canonical files. With BaseRef, an application's committed merge-base pin must agree;
+without it, the committed HEAD pin must agree. An app
 supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
 Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
 lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
@@ -164,7 +164,16 @@ lock, because the pin alone cannot detect a pull request that edits a bundle fil
 its lock hash together. Lock-only mode has no canonical Core objects, so a copy of the
 checker kept in the application repository is governed by code review, not by a
 self-check. Application CI must always pass -BaseRef: without it, a bundle file and its
-lock hash edited together are accepted. Core itself always compares with its own canonical tree.
+lock hash edited together are accepted.
+
+Core is the source of the bundle, so it checks itself differently. Each `eng/core-health` file, its
+canonical file in `tools/repo-checks/csharp` and its lock hash must be the same bytes. A Core pull
+request may change a bundle file in one change: the canonical file, the copy, the manifest and the
+lock hash together. The pin (`coreCommit`) may stay behind the tree, because a change cannot name
+its own commit. A Core pull request may move the pin, and only as a pin-only synchronization: the
+new pin is a commit of the history of HEAD, it is not older than the pin it replaces, and its six
+canonical files are the files of this tree. The control over a bundle change in Core is the owner
+review of that pull request. The steps are in `csharp/README.md`.
 No network operation occurs. A pin change is a separately reviewed synchronization;
 first integrate the approved pin before using it as the base for adoption changes.
 
