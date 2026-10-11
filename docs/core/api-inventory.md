@@ -51,7 +51,7 @@ Types and entries count the public API of the namespace. Consumers count source 
 
 The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to their project files:
 
-- `Nvt.Core.Avalonia`: 477 entries.
+- `Nvt.Core.Avalonia`: 490 entries.
 - `Nvt.Core.Fonts`: 3 entries.
 - `Nvt.Core.TestSupport`: 50 entries.
 
@@ -61,7 +61,7 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 | `Nvt.Core.Avalonia.Focus` | 3 | 11 | Avalonia tests (5) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Icons` | 1 | 72 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Inputs` | 1 | 36 | Avalonia tests (6) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
-| `Nvt.Core.Avalonia.LogConsole` | 5 | 69 | Avalonia tests (17) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.LogConsole` | 7 | 82 | Avalonia tests (27) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.MessageCenter` | 3 | 61 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Panels` | 2 | 51 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Primitives` | 3 | 28 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
