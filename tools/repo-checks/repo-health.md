@@ -40,6 +40,9 @@ The example baseline may omit `viewTypeLines`; its effective limit is 800 withou
 adding a field during LowerBaseline.
 Baseline entity ownership requires `owner`/`issue`; findings require
 `owner`/`removeBy`. Fixes must lower/delete debt in the same change.
+Verify also compares each finding's `removeBy` with today's date (UTC) in both ledgers. A finding is due on
+its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. LowerBaseline never moves
+a date. Moving a date is one JSON edit in a dedicated pull request with an owner decision.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's

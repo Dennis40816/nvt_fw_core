@@ -120,7 +120,7 @@ function Read-Baseline([string]$Text, [string]$Label) {
             if ($f -isnot [System.Collections.IDictionary] -or -not $f.Contains($key)) { throw "Bad baseline $Label`: finding missing $key" }
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad baseline $Label`: invalid finding $key" }
         }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or $f.removeBy -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "Bad baseline $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or -not (Test-IsoDate $f.removeBy)) { throw "Bad baseline $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad baseline $Label`: duplicate finding fingerprint" }
         # Diagnostic fingerprints, including bannedApi/RS0030, use exactly this
         # reader/key. H03 must populate them before enabling complete Verify.
@@ -129,6 +129,21 @@ function Read-Baseline([string]$Text, [string]$Label) {
     return $b
 }
 function Test-Count($Value) { return (($Value -is [int] -or $Value -is [long]) -and $Value -ge 0) }
+function Test-IsoDate($Value) {
+    $parsed = [DateTime]::MinValue
+    return $Value -is [string] -and [DateTime]::TryParseExact($Value, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$parsed)
+}
+# The one clock of the removeBy check. Tests replace this function to set the date.
+function Get-HealthToday { return [DateTime]::UtcNow.Date }
+# A finding is due on its removeBy day. It fails from the next day. ISO dates sort as text.
+function Test-RemoveByExpiry($Ledger, [string]$LedgerPath) {
+    $today = (Get-HealthToday).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+    foreach ($f in $Ledger.findings) {
+        if ([string]::CompareOrdinal($f.removeBy, $today) -lt 0) {
+            Write-Failure 'HC_STATE' $f 'removeBy' $f.removeBy $today "The removeBy date in $LedgerPath has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision."
+        }
+    }
+}
 function Get-Limit($Baseline, [string]$Metric) {
     if ($Baseline.limits.Contains($Metric)) { return $Baseline.limits[$Metric] }
     return $script:Limits[$Metric]
@@ -647,7 +662,7 @@ function Read-TestDebt([string]$Text, [string]$Label) {
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad test-debt $Label`: invalid finding $key" }
         }
         if ($f.rule -cnotin $script:TestRules) { throw "Bad test-debt $Label`: $($f.rule) is not a test-duplication rule" }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or $f.removeBy -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or -not (Test-IsoDate $f.removeBy)) { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad test-debt $Label`: duplicate finding fingerprint" }
     }
     return $d
@@ -1369,6 +1384,10 @@ try {
             if ($LASTEXITCODE -eq 0) { $allowedDebt = Read-TestDebt (Invoke-Checked 'git' @('-C', $script:GitRoot, 'show', "${allowedCommit}:$testDebtGit")) "${allowedCommit}:$testDebtGit" }
             $testDebt = if (Test-Path -LiteralPath $testDebtFull -PathType Leaf) { Read-TestDebt ([IO.File]::ReadAllText($testDebtFull)) $TestDebtPath } else { $null }
             Compare-TestDebtLedger $allowedDebt $testDebt
+            if ($Mode -eq 'Verify') {
+                Test-RemoveByExpiry $baseline $BaselinePath
+                if ($null -ne $testDebt) { Test-RemoveByExpiry $testDebt $TestDebtPath }
+            }
 
         }
         # H03 provider initialization (fixture tests substitute providers here).
