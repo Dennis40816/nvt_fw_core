@@ -347,8 +347,8 @@ function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
         if ($value -cne $expected -and -not $stronger) { throw "HC_DRIFT ${Path}:$lineNumber weaker protected override $key=$value (required $expected)" }
     }
 }
-function Test-GitAncestor([string]$Ancestor, [string]$Descendant) {
-    & git -C $Root merge-base --is-ancestor $Ancestor $Descendant 2>&1 | Out-Null
+function Test-GitAncestor([string]$Ancestor, [string]$Descendant, [string]$Repository = $Root) {
+    & git -C $Repository merge-base --is-ancestor $Ancestor $Descendant 2>&1 | Out-Null
     return ($LASTEXITCODE -eq 0)
 }
 function Test-BundleDrift {
@@ -356,12 +356,12 @@ function Test-BundleDrift {
     $lock = Read-HealthDocument ([IO.File]::ReadAllText($lockPath)) 'core-health.lock'
     $isCore = ($Repo -eq 'core')
     $trusted = $null
-    # An application's pull request cannot replace the trusted pin. Pin updates require a separate synchronization change.
+    # An application's pull request cannot replace the trusted pin, unless -CoreRoot proves the new pin (see below).
     # Core is the source of the bundle, so its pull request may change a bundle file and may move its own pin (see below).
     if ($BaseRef) {
         $base = Invoke-Checked 'git' @('merge-base', 'HEAD', $BaseRef)
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', "${base}:eng/core-health.lock.json")) 'core-health.lock'
-        if (-not $isCore -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately' }
+        if (-not $isCore -and -not $CoreRoot -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from base; integrate the reviewed synchronization separately, or pass -CoreRoot to prove it' }
         if (-not ($CoreRoot -or $isCore)) {
             # Lock-only mode has no canonical Core objects, so the trusted lock is the reference for the hashes.
             foreach ($name in $lock.files.Keys) { if ($lock.files[$name] -cne $trusted.files[$name]) { throw "HC_DRIFT eng/core-health.lock.json:1 hash of $name differs from base; integrate the reviewed synchronization separately" } }
@@ -369,7 +369,7 @@ function Test-BundleDrift {
     }
     elseif ($Mode -ne 'Enroll') {
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', 'HEAD:eng/core-health.lock.json')) 'core-health.lock'
-        if (-not $isCore -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
+        if (-not $isCore -and -not $CoreRoot -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
     }
     # Core may leave the pin behind its tree, because a bundle change cannot name its own commit. A moved pin must be a
     # pin-only synchronization: a commit of this history, not older than the pin it replaces, whose canonical files are
@@ -378,6 +378,14 @@ function Test-BundleDrift {
     if ($pinMoved) {
         if (-not (Test-GitAncestor $lock.coreCommit 'HEAD')) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin is not a commit of this history' }
         if (-not (Test-GitAncestor $trusted.coreCommit $lock.coreCommit)) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin is older than the pin it replaces' }
+    }
+    # An application may move its pin when the approved Core checkout (-CoreRoot) proves the new pin: the new pin is a
+    # commit of that checkout and descends from the pin it replaces. The blob check below then proves that the six
+    # copies are the files of that commit.
+    if (-not $isCore -and $CoreRoot -and $null -ne $trusted -and $lock.coreCommit -cne $trusted.coreCommit) {
+        $coreFull = [IO.Path]::GetFullPath($CoreRoot)
+        if (-not (Test-GitAncestor $lock.coreCommit 'HEAD' $coreFull)) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin is not a commit of the Core checkout' }
+        if (-not (Test-GitAncestor $trusted.coreCommit $lock.coreCommit $coreFull)) { throw 'HC_DRIFT eng/core-health.lock.json:1 the pin does not descend from the pin it replaces' }
     }
     $canonicalRoot = if ($CoreRoot) { [IO.Path]::GetFullPath($CoreRoot) } else { $Root }
     foreach ($name in $lock.files.Keys) {

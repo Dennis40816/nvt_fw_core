@@ -695,6 +695,85 @@ class Fixture {
         self.assertNotEqual(0, r.returncode)
         self.assertIn('not a commit of this history', r.stderr)
 
+    # --- An application moves its pin in one pull request when -CoreRoot proves it ---
+
+    def core_checkout(self):
+        """A separate Core checkout with two commits. Returns (path, first commit, second commit)."""
+        temp = tempfile.TemporaryDirectory(dir=Path(__file__).parent, prefix='.h03-core-')
+        self.addCleanup(temp.cleanup)
+        core = Path(temp.name).resolve()
+        env = os.environ | {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.test',
+                            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.test'}
+
+        def run(*args):
+            return subprocess.check_output(['git', '-C', str(core), *args], env=env, text=True).strip()
+
+        run('init', '-q', '-b', 'main')
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', core / 'tools/repo-checks/csharp')
+        run('add', '.')
+        run('commit', '-qm', 'first')
+        first = run('rev-parse', 'HEAD')
+        (core / 'tools/repo-checks/csharp/BannedSymbols.Common.txt').write_text('P:System.DateTime.Now\n', encoding='utf-8', newline='\n')
+        run('add', '.')
+        run('commit', '-qm', 'second')
+        return core, first, run('rev-parse', 'HEAD')
+
+    def application_pin_move(self, new_text='P:System.DateTime.Now\n', pin=None):
+        """Application at the first commit; a pull request moves the pin to `pin` (default: second commit)."""
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the first commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', new_text)
+        self.lock_write(pin or second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin synchronization')
+        return core, first, second
+
+    def verify_application(self, core):
+        return self.run_ps(f"$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
+
+    def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
+        core, first, second = self.application_pin_move()
+        r = self.verify_application(core)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_application_pin_move_fails_without_core_root(self):
+        core, first, second = self.application_pin_move()
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('pin differs from base', r.stderr)
+
+    def test_application_pin_move_fails_when_the_copy_is_not_the_files_of_the_new_pin(self):
+        core, first, second = self.application_pin_move(new_text='P:System.Environment.TickCount\n')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('approved Core revision', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_not_in_the_core_checkout(self):
+        core, first, second = self.application_pin_move(pin='d' * 40)
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of the Core checkout', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_older(self):
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the second commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        shutil.copyfile(ROOT / 'tools/repo-checks/csharp/BannedSymbols.Common.txt', self.root / 'eng/core-health/BannedSymbols.Common.txt')
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin moved back')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('does not descend from the pin it replaces', r.stderr)
+
     def test_an_application_still_cannot_move_its_pin_in_a_pull_request(self):
         self.app_repo()
         self.git('checkout', '-q', '-b', 'pr')

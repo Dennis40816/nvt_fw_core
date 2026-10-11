@@ -155,7 +155,10 @@ needed: versions, valid layers, limits and package pins are fixed in the checker
 and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
 blob identity additionally checks an application's six files against coreCommit's
 canonical files. With BaseRef, an application's committed merge-base pin must agree;
-without it, the committed HEAD pin must agree. An app
+without it, the committed HEAD pin must agree. An application may move its pin in a
+pull request only with -CoreRoot: the new pin must be a commit of that approved Core
+checkout (reachable from its HEAD) and descend from the pin it replaces, and the six
+copies must be that commit's files. Without -CoreRoot a moved pin is an error. An app
 supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
 Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
 lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256

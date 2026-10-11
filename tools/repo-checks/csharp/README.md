@@ -74,6 +74,14 @@ Core's `Verify` accepts it, because Core compares its copies with its own canoni
 request merges, a pin-only pull request moves `coreCommit` to the merge commit
 (`New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>`). Then an application updates its pin as below.
 
+An application moves its pin in one pull request that changes `eng/core-health.lock.json`
+(`coreCommit` and the hashes) and the copies in `eng/core-health/` (copy all six files of the new Core
+commit, byte for byte). CI must run `Verify` with `-BaseRef origin/main` and with `-CoreRoot` set to a
+Core checkout that is at the approved commit or later. The checker then accepts the pin move when the new
+pin is a commit of that checkout, descends from the old pin and its six files equal the copies. The copy of
+`repo-health.ps1` is not in the lock: it moves in the same pull request and the review covers it.
+Without `-CoreRoot` (a lock-only run) a moved pin is an error.
+
 To update the pin of an application, review the canonical changes and run from the repo root:
 
 ```powershell
