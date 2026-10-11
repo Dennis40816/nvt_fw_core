@@ -6,6 +6,7 @@ Python 3.10 or later supports their type syntax.
 [Shared C# health policy bundle](csharp/README.md) provides the canonical props, EditorConfig, banned symbols, schema, and manifest.
 
 See [C# syntax health ratchet](repo-health.md) for the SDK Roslyn checker and baseline modes.
+See [Operating the debt ledger](ledger-operation.md) before you refactor code that carries debt.
 
 The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.
