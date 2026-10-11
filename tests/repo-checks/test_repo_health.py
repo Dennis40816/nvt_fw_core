@@ -306,7 +306,7 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         self.base = self.commit()
         self.write("src/Fixture/Two.cs", "#pragma warning disable CA1235\nclass Two {}\n")
         self.git("add", "-A")
-        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base))
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "New fingerprint")
 
     def test_a_ledger_without_dates_passes_against_a_base_with_dates(self) -> None:
         self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
@@ -320,7 +320,7 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         b = self.enroll()
         b["findings"][0]["removeBy"] = None
         self.write_baseline(b)
-        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base))
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "invalid finding count/hash/date")
 
     def test_enrolled_test_debt_has_no_removeby_and_never_expires(self) -> None:
         self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")

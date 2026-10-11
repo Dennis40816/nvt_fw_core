@@ -46,7 +46,7 @@ on its `removeBy` day and fails from the next day with `HC_STATE`, naming the fi
 expired findings of a ledger and then one summary line with the count. A `removeBy` that is present and is
 not a real calendar date is a bad ledger (exit 2). A finding without `removeBy` never expires. Structural
 entities have no date, so they never expire. Core's two ledgers carry no `removeBy`.
-LowerBaseline never moves or adds a date. Adding or moving a date is one JSON edit in a dedicated pull
+LowerBaseline never moves, adds or removes a date. Adding, moving or removing a date is one JSON edit in a dedicated pull
 request with an owner decision. The checker does not compare a date with the base ref, so the owner's review
 of that pull request is the control.
 The bundle file `schema.json` still lists `removeBy` as required. The checker takes it out of that list in
