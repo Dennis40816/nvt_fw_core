@@ -52,7 +52,8 @@ public sealed class ChoiceBehaviorTests
         RadioButton[] radios = [new() { Content = "First", IsChecked = true }, new() { Content = "Second" }, new() { Content = "Third" }];
         var panel = new StackPanel
         {
-            Margin = new global::Avalonia.Thickness(24), Spacing = 8,
+            Margin = new global::Avalonia.Thickness(24),
+            Spacing = 8,
             Orientation = horizontal ? Orientation.Horizontal : Orientation.Vertical,
         };
         foreach (RadioButton radio in radios) panel.Children.Add(radio);
@@ -93,11 +94,14 @@ public sealed class ChoiceBehaviorTests
         var independent = new RadioButton { Content = "Independent", IsChecked = true };
         var namedFirst = new RadioButton { Content = "Named first", GroupName = "Review", IsChecked = true };
         var namedSecond = new RadioButton { Content = "Named second", GroupName = "Review" };
-        var panel = new StackPanel { Children =
+        var panel = new StackPanel
+        {
+            Children =
         {
             new StackPanel { Children = { first, second, namedFirst } },
             new StackPanel { Children = { independent, namedSecond } },
-        } };
+        }
+        };
         Window host = Create(panel);
         try
         {

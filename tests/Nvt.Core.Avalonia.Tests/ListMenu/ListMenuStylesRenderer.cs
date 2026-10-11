@@ -162,8 +162,13 @@ public sealed partial class ListMenuStylesRenderer(ITestOutputHelper output)
     {
         TemplatedControl item = family == 0 ? new ListBoxItem { Content = "Sample item" }
             : family == 1 ? new ComboBoxItem { Content = "Sample item" }
-            : new MenuItem { Header = "_Open sample", InputGesture = new KeyGesture(global::Avalonia.Input.Key.O, KeyModifiers.Control),
-                ToggleType = MenuItemToggleType.CheckBox, IsChecked = state.Selected };
+            : new MenuItem
+            {
+                Header = "_Open sample",
+                InputGesture = new KeyGesture(global::Avalonia.Input.Key.O, KeyModifiers.Control),
+                ToggleType = MenuItemToggleType.CheckBox,
+                IsChecked = state.Selected
+            };
         item.Tag = state;
         item.Margin = new Thickness(8, 0);
         item.VerticalAlignment = VerticalAlignment.Center;
@@ -180,12 +185,16 @@ public sealed partial class ListMenuStylesRenderer(ITestOutputHelper output)
             item.Tag = new ItemState(text, Selected: selected);
             list.Items.Add(item);
         }
-        return Surface(new StackPanel { Spacing = 12, Children =
+        return Surface(new StackPanel
+        {
+            Spacing = 12,
+            Children =
         {
             Label(compact ? "COMPACT / 24 DIP" : "MULTI-SELECTION / 32 DIP", 11),
             list,
             Label("The host supplies the surface.", 11),
-        }}, 16);
+        }
+        }, 16);
     }
 
     private static StackPanel MenuPreview()
@@ -207,8 +216,14 @@ public sealed partial class ListMenuStylesRenderer(ITestOutputHelper output)
 
     private static TextBlock Label(string text, double size, bool strong = false, bool accent = false)
     {
-        var label = new TextBlock { Text = text, FontSize = size, FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal,
-            VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        var label = new TextBlock
+        {
+            Text = text,
+            FontSize = size,
+            FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap
+        };
         label.Bind(TextBlock.ForegroundProperty, new DynamicResourceExtension(accent ? "NfcAccentStrongBrush" : strong ? "NfcTextBrush" : "NfcTextSecondaryBrush"));
         return label;
     }

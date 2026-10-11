@@ -50,59 +50,59 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         {
             Show(host);
             foreach (bool dark in new[] { false, true, false })
-            foreach (ThemeShape shape in new[] { ThemeShape.Pill, ThemeShape.Square })
-            {
-                host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                Flush(host);
-                foreach ((string soft, string core) in Tokens)
-                    Assert.Equal(ResourceColor(button, core), ResourceColor(button, "Nvt.Toggle." + soft));
-                Color rest = ResourceColor(button, "Nvt.Toggle.TransparentBrush");
-                Assert.Equal(0, rest.A);
-                Assert.NotEqual(rest, ResourceColor(button, "Nvt.Toggle.SoftCheckedBrush"));
-                foreach (ToggleState state in States.Concat(
-                [
-                    new ToggleState("Disabled feedback", Hover: true, Pressed: true, Disabled: true, Focus: true),
+                foreach (ThemeShape shape in new[] { ThemeShape.Pill, ThemeShape.Square })
+                {
+                    host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    Flush(host);
+                    foreach ((string soft, string core) in Tokens)
+                        Assert.Equal(ResourceColor(button, core), ResourceColor(button, "Nvt.Toggle." + soft));
+                    Color rest = ResourceColor(button, "Nvt.Toggle.TransparentBrush");
+                    Assert.Equal(0, rest.A);
+                    Assert.NotEqual(rest, ResourceColor(button, "Nvt.Toggle.SoftCheckedBrush"));
+                    foreach (ToggleState state in States.Concat(
+                    [
+                        new ToggleState("Disabled feedback", Hover: true, Pressed: true, Disabled: true, Focus: true),
                     new ToggleState("Disabled checked feedback", Checked: true, Hover: true, Pressed: true, Disabled: true, Focus: true),
                     new ToggleState("Checked focus", Checked: true, Focus: true),
                 ]))
-                {
-                    SetState(button, state);
-                    Flush(host);
-                    (string background, string foreground) = Expected(state);
-                    Assert.Equal(ResourceColor(button, background), ColorOf(button.Background));
-                    Assert.Equal(ResourceColor(button, foreground), ColorOf(button.Foreground));
-                    Assert.Equal(ColorOf(button.Background), ColorOf(Part(button, "ToggleBody").Background));
-                    Assert.Equal(32, button.Bounds.Height);
-                    Assert.Equal(new Thickness(12, 0), button.Padding);
-                    Assert.Equal(new Thickness(0), button.BorderThickness);
-                    Assert.Equal(0, ColorOf(button.BorderBrush).A);
-                    Assert.Equal(1, button.Opacity);
-                    Assert.Equal(state.Pressed && !state.Disabled ? Matrix.CreateScale(.98, .98) : Matrix.Identity,
-                        button.RenderTransform?.Value ?? Matrix.Identity);
-                    Assert.False(button.ClipToBounds);
-                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 6), button.CornerRadius);
-                    Border ring = Part(button, "ToggleFocusRing");
-                    Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 10), ring.CornerRadius);
-                    TextBlock[] content = button.GetVisualDescendants().OfType<TextBlock>().ToArray();
-                    Assert.Equal(icon ? 2 : 1, content.Length);
-                    foreach (TextBlock text in content)
                     {
-                        Assert.Equal(ColorOf(button.Foreground), ColorOf(text.Foreground));
-                        if (state.Disabled) continue;
-                        foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush" })
+                        SetState(button, state);
+                        Flush(host);
+                        (string background, string foreground) = Expected(state);
+                        Assert.Equal(ResourceColor(button, background), ColorOf(button.Background));
+                        Assert.Equal(ResourceColor(button, foreground), ColorOf(button.Foreground));
+                        Assert.Equal(ColorOf(button.Background), ColorOf(Part(button, "ToggleBody").Background));
+                        Assert.Equal(32, button.Bounds.Height);
+                        Assert.Equal(new Thickness(12, 0), button.Padding);
+                        Assert.Equal(new Thickness(0), button.BorderThickness);
+                        Assert.Equal(0, ColorOf(button.BorderBrush).A);
+                        Assert.Equal(1, button.Opacity);
+                        Assert.Equal(state.Pressed && !state.Disabled ? Matrix.CreateScale(.98, .98) : Matrix.Identity,
+                            button.RenderTransform?.Value ?? Matrix.Identity);
+                        Assert.False(button.ClipToBounds);
+                        Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 6), button.CornerRadius);
+                        Border ring = Part(button, "ToggleFocusRing");
+                        Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
+                        Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 10), ring.CornerRadius);
+                        TextBlock[] content = button.GetVisualDescendants().OfType<TextBlock>().ToArray();
+                        Assert.Equal(icon ? 2 : 1, content.Length);
+                        foreach (TextBlock text in content)
                         {
-                            Color fill = ColorOf(button.Background);
-                            Color backdrop = fill.A == 0 ? ResourceColor(button, surface) : fill;
-                            double ratio = ToggleStylesTests.Contrast(ColorOf(text.Foreground), backdrop);
-                            Assert.True(ratio >= 4.5, $"{dark}/{shape}/{state.Name}/{text.Text}: {ratio:F3}:1");
-                            if (shape == ThemeShape.Pill && surface == "NfcSurfaceSubtleBrush")
-                                output.WriteLine($"{(dark ? "Dark" : "Light")} {state.Name}: {ratio:F3}:1");
+                            Assert.Equal(ColorOf(button.Foreground), ColorOf(text.Foreground));
+                            if (state.Disabled) continue;
+                            foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush" })
+                            {
+                                Color fill = ColorOf(button.Background);
+                                Color backdrop = fill.A == 0 ? ResourceColor(button, surface) : fill;
+                                double ratio = ToggleStylesTests.Contrast(ColorOf(text.Foreground), backdrop);
+                                Assert.True(ratio >= 4.5, $"{dark}/{shape}/{state.Name}/{text.Text}: {ratio:F3}:1");
+                                if (shape == ThemeShape.Pill && surface == "NfcSurfaceSubtleBrush")
+                                    output.WriteLine($"{(dark ? "Dark" : "Light")} {state.Name}: {ratio:F3}:1");
+                            }
                         }
                     }
                 }
-            }
         }
         finally { host.Close(); }
     }
@@ -280,7 +280,8 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         symbol.Bind(TextBlock.FontFamilyProperty, new DynamicResourceExtension("Nvt.Font.Icon.Family"));
         button.Content = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 8,
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
             Children = { symbol, new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center } },
         };
         return button;

@@ -38,7 +38,10 @@ internal static class ChoiceTestHost
         var host = new Window
         {
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
-            Width = width, Height = height, Content = content, Tag = new HostOptions(snapshot, !styles),
+            Width = width,
+            Height = height,
+            Content = content,
+            Tag = new HostOptions(snapshot, !styles),
         };
         var tokens = new Uri("avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml");
         host.Resources.MergedDictionaries.Add(new ResourceInclude(tokens) { Source = tokens });

@@ -40,41 +40,41 @@ public sealed class ButtonThemeTests
     public void ActionStatesResolveMappedColors(string primitive, string role)
     {
         foreach (bool dark in new[] { false, true })
-        foreach (bool toggle in new[] { false, true })
-        {
-            var text = new TextBlock { Text = "Action" };
-            Button button = CreateButton(primitive, role, toggle, text);
-            Window host = CreateHost(button, dark);
-            try
+            foreach (bool toggle in new[] { false, true })
             {
-                Show(host);
-                Color restText = Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color;
-                foreach (string state in new[] { "rest", "hover", "pressed", "disabled", "disabledHover", "disabledPressed", "checked", "checkedHover", "checkedPressed", "disabledChecked", "disabledCheckedHover", "disabledCheckedPressed" })
+                var text = new TextBlock { Text = "Action" };
+                Button button = CreateButton(primitive, role, toggle, text);
+                Window host = CreateHost(button, dark);
+                try
                 {
-                    if (!toggle && state.Contains("Checked", StringComparison.OrdinalIgnoreCase))
+                    Show(host);
+                    Color restText = Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color;
+                    foreach (string state in new[] { "rest", "hover", "pressed", "disabled", "disabledHover", "disabledPressed", "checked", "checkedHover", "checkedPressed", "disabledChecked", "disabledCheckedHover", "disabledCheckedPressed" })
                     {
-                        continue;
-                    }
+                        if (!toggle && state.Contains("Checked", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
 
-                    SetState(button, state);
-                    (string background, string border, string foreground) = ExpectedColors(role, state, dark);
-                    AssertBrush(button, background, button.Background);
-                    AssertBrush(button, border, button.BorderBrush);
-                    AssertBrush(button, foreground, button.Foreground);
-                    Border frame = Frame(button);
-                    AssertBrush(button, background, frame.Background);
-                    AssertBrush(button, border, frame.BorderBrush);
-                    AssertBrush(button, foreground, text.Foreground);
-                    Assert.Equal(1, button.Opacity);
-                    if (!button.IsEnabled) Assert.NotEqual(restText, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
-                    Assert.Equal(new Thickness(1), button.BorderThickness);
-                    Border overlay = Assert.Single(button.GetVisualDescendants().OfType<Border>(), b => b.Name == "PrimaryPressedBorder");
-                    Assert.Equal(role == "actionPrimary" && state.Contains("pressed", StringComparison.OrdinalIgnoreCase) && button.IsEnabled, overlay.IsVisible);
-                    Assert.Equal(new Thickness(2), overlay.BorderThickness);
+                        SetState(button, state);
+                        (string background, string border, string foreground) = ExpectedColors(role, state, dark);
+                        AssertBrush(button, background, button.Background);
+                        AssertBrush(button, border, button.BorderBrush);
+                        AssertBrush(button, foreground, button.Foreground);
+                        Border frame = Frame(button);
+                        AssertBrush(button, background, frame.Background);
+                        AssertBrush(button, border, frame.BorderBrush);
+                        AssertBrush(button, foreground, text.Foreground);
+                        Assert.Equal(1, button.Opacity);
+                        if (!button.IsEnabled) Assert.NotEqual(restText, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
+                        Assert.Equal(new Thickness(1), button.BorderThickness);
+                        Border overlay = Assert.Single(button.GetVisualDescendants().OfType<Border>(), b => b.Name == "PrimaryPressedBorder");
+                        Assert.Equal(role == "actionPrimary" && state.Contains("pressed", StringComparison.OrdinalIgnoreCase) && button.IsEnabled, overlay.IsVisible);
+                        Assert.Equal(new Thickness(2), overlay.BorderThickness);
+                    }
                 }
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>Preserves the shared dimensions, pill geometry, clipping and owned templates.</summary>
@@ -88,46 +88,46 @@ public sealed class ButtonThemeTests
     public void RolesKeepLayoutAndTextContracts(string primitive, string padding, double border, double radius)
     {
         foreach (bool dark in new[] { false, true })
-        foreach (bool toggle in new[] { false, true })
-        {
-            var text = new TextBlock { Text = "A long action label" };
-            Button button = CreateButton("", primitive, toggle, text);
-            Window host = CreateHost(button, dark);
-            try
+            foreach (bool toggle in new[] { false, true })
             {
-                Show(host);
-                Assert.Equal(32, button.MinHeight);
-                Assert.Equal(32, button.Height);
-                Assert.Equal(Thickness.Parse(padding), button.Padding);
-                Assert.Equal(new Thickness(border), button.BorderThickness);
-                Assert.Equal(new CornerRadius(radius), button.CornerRadius);
-                Assert.Equal(button.Padding, Frame(button).Padding);
-                Assert.Equal(button.CornerRadius, Frame(button).CornerRadius);
-                Assert.True(button.ClipToBounds);
-                Assert.Equal(HorizontalAlignment.Center, button.HorizontalContentAlignment);
-                Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
-                Assert.Null(button.Theme);
-                Assert.Null(button.FocusAdorner);
-                ContentPresenter presenter = Assert.Single(button.GetVisualDescendants().OfType<ContentPresenter>());
-                Assert.Null(presenter.Name);
-                Assert.Same(text, presenter.Content);
-                Assert.Same(Frame(button), presenter.Parent);
-                if (primitive == "actionIconButton")
+                var text = new TextBlock { Text = "A long action label" };
+                Button button = CreateButton("", primitive, toggle, text);
+                Window host = CreateHost(button, dark);
+                try
                 {
-                    Assert.Equal(32, button.Width);
+                    Show(host);
+                    Assert.Equal(32, button.MinHeight);
                     Assert.Equal(32, button.Height);
-                    Assert.Equal(32, button.MinWidth);
-                    Assert.Equal(new Size(32, 32), button.Bounds.Size);
+                    Assert.Equal(Thickness.Parse(padding), button.Padding);
+                    Assert.Equal(new Thickness(border), button.BorderThickness);
+                    Assert.Equal(new CornerRadius(radius), button.CornerRadius);
+                    Assert.Equal(button.Padding, Frame(button).Padding);
+                    Assert.Equal(button.CornerRadius, Frame(button).CornerRadius);
+                    Assert.True(button.ClipToBounds);
+                    Assert.Equal(HorizontalAlignment.Center, button.HorizontalContentAlignment);
+                    Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
+                    Assert.Null(button.Theme);
+                    Assert.Null(button.FocusAdorner);
+                    ContentPresenter presenter = Assert.Single(button.GetVisualDescendants().OfType<ContentPresenter>());
+                    Assert.Null(presenter.Name);
+                    Assert.Same(text, presenter.Content);
+                    Assert.Same(Frame(button), presenter.Parent);
+                    if (primitive == "actionIconButton")
+                    {
+                        Assert.Equal(32, button.Width);
+                        Assert.Equal(32, button.Height);
+                        Assert.Equal(32, button.MinWidth);
+                        Assert.Equal(new Size(32, 32), button.Bounds.Size);
+                    }
+                    else
+                    {
+                        Assert.Equal(TextWrapping.NoWrap, text.TextWrapping);
+                        Assert.Equal(TextTrimming.CharacterEllipsis, text.TextTrimming);
+                        Assert.Equal(1, text.MaxLines);
+                    }
                 }
-                else
-                {
-                    Assert.Equal(TextWrapping.NoWrap, text.TextWrapping);
-                    Assert.Equal(TextTrimming.CharacterEllipsis, text.TextTrimming);
-                    Assert.Equal(1, text.MaxLines);
-                }
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>Checks passive status colors, modifiers and layout without inventing interactive states.</summary>
@@ -193,53 +193,53 @@ public sealed class ButtonThemeTests
     public void KeyboardFocusShowsOnlyTheRoleRing(string primitive, string role, string ringKey, double radius)
     {
         foreach (bool dark in new[] { false, true })
-        foreach (bool toggle in new[] { false, true })
-        foreach (string state in new[] { "rest", "hover", "checked", "checkedHover" })
-        {
-            if (!toggle && state.StartsWith("checked", StringComparison.Ordinal)) continue;
-            var before = new Grid { Focusable = true, Height = 20 };
-            Button button = CreateButton(primitive, role, toggle, new TextBlock { Text = "Action" });
-            Window host = CreateHost(new StackPanel { Children = { before, button } }, dark);
-            try
-            {
-                Show(host);
-                AdornerLayer.GetAdornerLayer(button)!.DefaultFocusAdorner =
-                    new FuncTemplate<Control>(() => new Border());
-                Assert.Null(button.FocusAdorner);
-                SetState(button, state);
-                IBrush? background = button.Background;
-                IBrush? foreground = button.Foreground;
-                IBrush? border = button.BorderBrush;
-                Assert.True(button.Focus(NavigationMethod.Pointer));
-                Assert.DoesNotContain(":focus-visible", button.Classes);
-                Assert.Null(button.FocusAdorner);
-                Assert.Empty(Rings(button));
-                Assert.True(before.Focus());
-                host.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                host.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                Dispatcher.UIThread.RunJobs();
-                host.UpdateLayout();
-                Assert.Same(button, host.FocusManager!.GetFocusedElement());
-                Assert.Contains(":focus-visible", button.Classes);
-                Assert.NotNull(button.FocusAdorner);
-                Border ring = Assert.Single(Rings(button));
-                AssertBrush(button, ringKey, ring.BorderBrush);
-                Assert.Equal(new Thickness(2), ring.BorderThickness);
-                Assert.Equal(new Thickness(-4), ring.Margin);
-                Assert.Equal(new CornerRadius(radius), ring.CornerRadius);
-                Assert.False(ring.IsHitTestVisible);
-                Assert.False(AdornerLayer.GetIsClipEnabled(ring));
-                Assert.Equal(button.Bounds.Width + 8, ring.Bounds.Width, 5);
-                Assert.Equal(button.Bounds.Height + 8, ring.Bounds.Height, 5);
-                Assert.Same(background, button.Background);
-                Assert.Same(foreground, button.Foreground);
-                Assert.Same(border, button.BorderBrush);
-                Assert.True(before.Focus(NavigationMethod.Pointer));
-                Assert.Null(button.FocusAdorner);
-                Assert.Empty(Rings(button));
-            }
-            finally { host.Close(); }
-        }
+            foreach (bool toggle in new[] { false, true })
+                foreach (string state in new[] { "rest", "hover", "checked", "checkedHover" })
+                {
+                    if (!toggle && state.StartsWith("checked", StringComparison.Ordinal)) continue;
+                    var before = new Grid { Focusable = true, Height = 20 };
+                    Button button = CreateButton(primitive, role, toggle, new TextBlock { Text = "Action" });
+                    Window host = CreateHost(new StackPanel { Children = { before, button } }, dark);
+                    try
+                    {
+                        Show(host);
+                        AdornerLayer.GetAdornerLayer(button)!.DefaultFocusAdorner =
+                            new FuncTemplate<Control>(() => new Border());
+                        Assert.Null(button.FocusAdorner);
+                        SetState(button, state);
+                        IBrush? background = button.Background;
+                        IBrush? foreground = button.Foreground;
+                        IBrush? border = button.BorderBrush;
+                        Assert.True(button.Focus(NavigationMethod.Pointer));
+                        Assert.DoesNotContain(":focus-visible", button.Classes);
+                        Assert.Null(button.FocusAdorner);
+                        Assert.Empty(Rings(button));
+                        Assert.True(before.Focus());
+                        host.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                        host.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                        Dispatcher.UIThread.RunJobs();
+                        host.UpdateLayout();
+                        Assert.Same(button, host.FocusManager!.GetFocusedElement());
+                        Assert.Contains(":focus-visible", button.Classes);
+                        Assert.NotNull(button.FocusAdorner);
+                        Border ring = Assert.Single(Rings(button));
+                        AssertBrush(button, ringKey, ring.BorderBrush);
+                        Assert.Equal(new Thickness(2), ring.BorderThickness);
+                        Assert.Equal(new Thickness(-4), ring.Margin);
+                        Assert.Equal(new CornerRadius(radius), ring.CornerRadius);
+                        Assert.False(ring.IsHitTestVisible);
+                        Assert.False(AdornerLayer.GetIsClipEnabled(ring));
+                        Assert.Equal(button.Bounds.Width + 8, ring.Bounds.Width, 5);
+                        Assert.Equal(button.Bounds.Height + 8, ring.Bounds.Height, 5);
+                        Assert.Same(background, button.Background);
+                        Assert.Same(foreground, button.Foreground);
+                        Assert.Same(border, button.BorderBrush);
+                        Assert.True(before.Focus(NavigationMethod.Pointer));
+                        Assert.Null(button.FocusAdorner);
+                        Assert.Empty(Rings(button));
+                    }
+                    finally { host.Close(); }
+                }
     }
 
     /// <summary>Checks compiled brushes, sizes, fonts and glyphs against every frozen token value.</summary>
@@ -313,24 +313,24 @@ public sealed class ButtonThemeTests
     public void StringContentUsesSingleLineEllipsis(bool toggle)
     {
         foreach (bool dark in new[] { false, true })
-        foreach (string role in new[] { "actionPrimary", "actionNeutral", "actionDanger", "actionGhost", "actionIconButton", "chipAction" })
-        {
-            Button button = CreateButton("", role, toggle, new TextBlock());
-            button.Content = "Save 儲存 with a long label";
-            if (role != "actionIconButton") button.Width = 100;
-            Window host = CreateHost(button, dark);
-            try
+            foreach (string role in new[] { "actionPrimary", "actionNeutral", "actionDanger", "actionGhost", "actionIconButton", "chipAction" })
             {
-                Show(host);
-                TextBlock label = Assert.Single(button.GetVisualDescendants().OfType<TextBlock>());
-                Assert.Equal(TextWrapping.NoWrap, label.TextWrapping);
-                Assert.Equal(TextTrimming.CharacterEllipsis, label.TextTrimming);
-                Assert.Equal(1, label.MaxLines);
-                Assert.True(button.ClipToBounds);
-                Assert.True(Assert.Single(label.TextLayout.TextLines).HasCollapsed);
+                Button button = CreateButton("", role, toggle, new TextBlock());
+                button.Content = "Save 儲存 with a long label";
+                if (role != "actionIconButton") button.Width = 100;
+                Window host = CreateHost(button, dark);
+                try
+                {
+                    Show(host);
+                    TextBlock label = Assert.Single(button.GetVisualDescendants().OfType<TextBlock>());
+                    Assert.Equal(TextWrapping.NoWrap, label.TextWrapping);
+                    Assert.Equal(TextTrimming.CharacterEllipsis, label.TextTrimming);
+                    Assert.Equal(1, label.MaxLines);
+                    Assert.True(button.ClipToBounds);
+                    Assert.True(Assert.Single(label.TextLayout.TextLines).HasCollapsed);
+                }
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>Motion lasts 120 ms for colors; pressed feedback and both reduced-motion scopes are immediate.</summary>
@@ -344,30 +344,30 @@ public sealed class ButtonThemeTests
     public void ColorTransitionsRespectPressedAndReducedMotion(string role)
     {
         foreach (bool dark in new[] { false, true })
-        foreach (bool toggle in new[] { false, true })
-        {
-            Button button = CreateButton("", role, toggle, new TextBlock { Text = "Action" });
-            Window host = CreateHost(button, dark);
-            host.Classes.Remove("reducedMotion");
-            try
+            foreach (bool toggle in new[] { false, true })
             {
-                Show(host);
-                Assert.NotNull(button.Transitions);
-                Assert.Equal(3, button.Transitions.Count);
-                Assert.All(button.Transitions, transition => Assert.Equal(TimeSpan.FromMilliseconds(120), Assert.IsType<BrushTransition>(transition).Duration));
-                SetState(button, "pressed");
-                Assert.Null(button.Transitions);
-                AssertBrush(button, ExpectedColors(role, "pressed", dark).Background, button.Background);
-                SetState(button, "rest");
-                Assert.NotNull(button.Transitions);
-                host.Classes.Add("reducedMotion");
-                Assert.Null(button.Transitions);
+                Button button = CreateButton("", role, toggle, new TextBlock { Text = "Action" });
+                Window host = CreateHost(button, dark);
                 host.Classes.Remove("reducedMotion");
-                button.Classes.Add("reducedMotion");
-                Assert.Null(button.Transitions);
+                try
+                {
+                    Show(host);
+                    Assert.NotNull(button.Transitions);
+                    Assert.Equal(3, button.Transitions.Count);
+                    Assert.All(button.Transitions, transition => Assert.Equal(TimeSpan.FromMilliseconds(120), Assert.IsType<BrushTransition>(transition).Duration));
+                    SetState(button, "pressed");
+                    Assert.Null(button.Transitions);
+                    AssertBrush(button, ExpectedColors(role, "pressed", dark).Background, button.Background);
+                    SetState(button, "rest");
+                    Assert.NotNull(button.Transitions);
+                    host.Classes.Add("reducedMotion");
+                    Assert.Null(button.Transitions);
+                    host.Classes.Remove("reducedMotion");
+                    button.Classes.Add("reducedMotion");
+                    Assert.Null(button.Transitions);
+                }
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>The ring follows each rectangular corner and live radius changes with its four-pixel outset.</summary>

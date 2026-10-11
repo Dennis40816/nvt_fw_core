@@ -43,17 +43,17 @@ public sealed class FormStylesTests
             FormsTestHost.Show(host);
             object? template = control.Template;
             foreach (bool dark in new[] { false, true })
-            foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
-            {
-                host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                Flush(host);
-                Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 6), FormsTestHost.Body(control).CornerRadius);
-                Assert.Equal(32, control.Bounds.Height);
-                Assert.Same(template, control.Template);
-                if (control is NumericUpDown)
-                    Assert.Equal(control.CornerRadius, Part<ButtonSpinner>(control, "PART_Spinner").CornerRadius);
-            }
+                foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
+                {
+                    host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    Flush(host);
+                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 6), FormsTestHost.Body(control).CornerRadius);
+                    Assert.Equal(32, control.Bounds.Height);
+                    Assert.Same(template, control.Template);
+                    if (control is NumericUpDown)
+                        Assert.Equal(control.CornerRadius, Part<ButtonSpinner>(control, "PART_Spinner").CornerRadius);
+                }
         }
         finally { host.Close(); }
     }
@@ -304,8 +304,12 @@ public sealed class FormStylesTests
     [InlineData(true, true)]
     public void NumericFocusRingFollowsSpinnerPlacement(bool left, bool visible)
     {
-        var numeric = new NumericUpDown { Value = 42, ShowButtonSpinner = visible,
-            ButtonSpinnerLocation = left ? Location.Left : Location.Right };
+        var numeric = new NumericUpDown
+        {
+            Value = 42,
+            ShowButtonSpinner = visible,
+            ButtonSpinnerLocation = left ? Location.Left : Location.Right
+        };
         Window host = FormsTestHost.Create(new StackPanel { Margin = new Thickness(24), Children = { numeric } });
         try
         {

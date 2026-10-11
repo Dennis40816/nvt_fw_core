@@ -20,7 +20,10 @@ internal static class FormSheets
 {
     internal static TextBlock Label(string text, double size = 13) => new()
     {
-        Text = text, FontSize = size, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap,
+        Text = text,
+        FontSize = size,
+        VerticalAlignment = VerticalAlignment.Center,
+        TextWrapping = TextWrapping.Wrap,
     };
 
     internal static void Render(string name, string description, Func<Control> build, ITestOutputHelper output,
@@ -28,60 +31,60 @@ internal static class FormSheets
     {
         string? destination = Environment.GetEnvironmentVariable("NVT_FORMS_IMAGES_DIR");
         foreach (bool dark in comparison ? new[] { false } : new[] { false, true })
-        foreach (ThemeShape shape in textOnly || comparison ? new[] { ThemeShape.Pill } : new[] { ThemeShape.Pill, ThemeShape.Square })
-        {
-            var section = new Border { Padding = new Thickness(24), Child = build() };
-            section.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
-            var root = new Border
+            foreach (ThemeShape shape in textOnly || comparison ? new[] { ThemeShape.Pill } : new[] { ThemeShape.Pill, ThemeShape.Square })
             {
-                Padding = new Thickness(32),
-                Child = new StackPanel
+                var section = new Border { Padding = new Thickness(24), Child = build() };
+                section.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
+                var root = new Border
                 {
-                    Spacing = 20,
-                    Children =
+                    Padding = new Thickness(32),
+                    Child = new StackPanel
+                    {
+                        Spacing = 20,
+                        Children =
                     {
                         Label($"CORE / {name.ToUpperInvariant()} / {(textOnly ? "FONT ROLES" : shape.ToString().ToUpperInvariant())} / {(dark ? "DARK" : "LIGHT")}", 24),
                         Label(description), section,
                         Label("100% scale / synthetic examples / 32 DIP rows / keyboard focus: 2 DIP ring + 2 DIP gap", 11),
                     },
-                },
-            };
-            Window host = FormsTestHost.Create(root, dark, core: !comparison, width: 1200, height: 2600);
-            try
-            {
-                ThemeShapes.SetShape(host.Resources, shape);
-                if (comparison)
-                    foreach (TemplatedControl control in root.GetVisualDescendants().OfType<TemplatedControl>())
-                        if (control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Name == "FluentReferencePane"))
-                            control.Theme = (global::Avalonia.Styling.ControlTheme)host.FindResource(control.GetType())!;
-                FormsTestHost.Show(host);
-                Restore(root);
-                Flush(host);
-                host.Height = Math.Ceiling(root.DesiredSize.Height);
-                Flush(host);
-                Assert.Equal(1, host.RenderScaling);
-                foreach (Control control in root.GetVisualDescendants().OfType<Control>())
+                    },
+                };
+                Window host = FormsTestHost.Create(root, dark, core: !comparison, width: 1200, height: 2600);
+                try
                 {
-                    if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0
-                        || control.GetVisualAncestors().OfType<Viewbox>().Any()) continue;
-                    Point point = control.TranslatePoint(default, host)!.Value;
-                    Assert.True(point.X >= 0 && point.Y >= 0 && point.X + control.Bounds.Width <= host.Width + 1
-                        && point.Y + control.Bounds.Height <= host.Height + 1, $"{name}/{control.Name}: {point}, {control.Bounds}");
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    if (comparison)
+                        foreach (TemplatedControl control in root.GetVisualDescendants().OfType<TemplatedControl>())
+                            if (control.GetVisualAncestors().OfType<StackPanel>().Any(panel => panel.Name == "FluentReferencePane"))
+                                control.Theme = (global::Avalonia.Styling.ControlTheme)host.FindResource(control.GetType())!;
+                    FormsTestHost.Show(host);
+                    Restore(root);
+                    Flush(host);
+                    host.Height = Math.Ceiling(root.DesiredSize.Height);
+                    Flush(host);
+                    Assert.Equal(1, host.RenderScaling);
+                    foreach (Control control in root.GetVisualDescendants().OfType<Control>())
+                    {
+                        if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0
+                            || control.GetVisualAncestors().OfType<Viewbox>().Any()) continue;
+                        Point point = control.TranslatePoint(default, host)!.Value;
+                        Assert.True(point.X >= 0 && point.Y >= 0 && point.X + control.Bounds.Width <= host.Width + 1
+                            && point.Y + control.Bounds.Height <= host.Height + 1, $"{name}/{control.Name}: {point}, {control.Bounds}");
+                    }
+                    using var frame = host.CaptureRenderedFrame();
+                    Assert.NotNull(frame);
+                    Assert.Equal(1200, frame.PixelSize.Width);
+                    if (string.IsNullOrWhiteSpace(destination)) continue;
+                    Directory.CreateDirectory(destination);
+                    string file = comparison ? $"{name}-before-light.png" : textOnly ? $"{name}-{(dark ? "dark" : "light")}.png"
+                        : $"{name}-{shape.ToString().ToLowerInvariant()}-{(dark ? "dark" : "light")}.png";
+                    string path = System.IO.Path.Combine(destination, file);
+                    frame.Save(path, PngBitmapEncoderOptions.Default);
+                    Assert.True(new FileInfo(path).Length <= 1_000_000, file);
+                    output.WriteLine($"{file}: {frame.PixelSize}, {new FileInfo(path).Length} bytes");
                 }
-                using var frame = host.CaptureRenderedFrame();
-                Assert.NotNull(frame);
-                Assert.Equal(1200, frame.PixelSize.Width);
-                if (string.IsNullOrWhiteSpace(destination)) continue;
-                Directory.CreateDirectory(destination);
-                string file = comparison ? $"{name}-before-light.png" : textOnly ? $"{name}-{(dark ? "dark" : "light")}.png"
-                    : $"{name}-{shape.ToString().ToLowerInvariant()}-{(dark ? "dark" : "light")}.png";
-                string path = System.IO.Path.Combine(destination, file);
-                frame.Save(path, PngBitmapEncoderOptions.Default);
-                Assert.True(new FileInfo(path).Length <= 1_000_000, file);
-                output.WriteLine($"{file}: {frame.PixelSize}, {new FileInfo(path).Length} bytes");
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     internal static void Restore(Control root)
@@ -143,8 +146,14 @@ internal static class FormSheets
             row.Children.Add(Label(state.Name));
             for (int column = 1; column <= 2; column++)
             {
-                var tab = new TabItem { Header = column == 1 ? "Details" : "Overview", IsSelected = column == 2,
-                    Tag = state, HorizontalAlignment = HorizontalAlignment.Left, Width = 180 };
+                var tab = new TabItem
+                {
+                    Header = column == 1 ? "Details" : "Overview",
+                    IsSelected = column == 2,
+                    Tag = state,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Width = 180
+                };
                 Grid.SetColumn(tab, column);
                 row.Children.Add(tab);
             }
@@ -192,8 +201,11 @@ internal static class FormSheets
             var panel = new StackPanel { Spacing = 16, Name = column == 0 ? "FluentReferencePane" : "CorePreviewPane" };
             panel.Children.Add(Label(column == 0 ? "Default Fluent" : "Core Astra", 16));
             if (tabs)
-                panel.Children.Add(new TabControl { ItemsSource = new[] { new TabItem { Header = "Overview", Content = "Overview content" },
-                    new TabItem { Header = "Details" }, new TabItem { Header = "Disabled", IsEnabled = false } } });
+                panel.Children.Add(new TabControl
+                {
+                    ItemsSource = new[] { new TabItem { Header = "Overview", Content = "Overview content" },
+                    new TabItem { Header = "Details" }, new TabItem { Header = "Disabled", IsEnabled = false } }
+                });
             else
                 foreach (string kind in new[] { "textbox", "numericupdown", "combobox" })
                     panel.Children.Add(FormsTestHost.Sample(kind, new("Rest")));
