@@ -19,7 +19,8 @@ Build outputs (bin, obj, artifacts, .git) are excluded; generated filename suffi
 are NOT excluded. State includes init and positional-record properties; observable
 backing fields are counted once, partial properties by symbol once.
 H03 validates schema, evaluated project coverage, build/SARIF/format and provenance.
-Measure is syntax-only. Verify, LowerBaseline and Enroll require a solution.
+Measure is syntax-only. Verify, LowerBaseline, Adopt and Enroll require a solution.
+Adopt registers debt that a rule change reveals, when the whole change is synchronization-only (see repo-health.md).
 Test-duplication rules (timeWaitsInTests, elapsedAssertionsInTests, tempPathInTests,
 sourceTextReadsInTests, headlessSessionSetups, childProcessInTests, sameNameFakes) have their own
 ledger, eng/code-health/test-debt.json. EnrollTestDebt (syntax only) creates it once; after that
@@ -55,6 +56,10 @@ $env:PreferredUILang = 'en-US'
 $env:MSBUILDDISABLENODEREUSE = '1'
 $script:MsbuildLimits = @('-m:4', '-nodeReuse:false')
 $script:Version = 'roslyn-physical-v1'
+# The merge-base commit that the ledger is compared with. Empty until Verify, LowerBaseline or Adopt sets it.
+$script:AllowedCommit = ''
+# True when every changed path is a synchronization path (see Test-SynchronizationPath). Set after the changed paths are known.
+$script:SynchronizationOnly = $false
 $script:Limits = @{ fileLines = 800; methodLines = 80; partialFiles = 8; stateMembers = 30; axamlCodeBehindLines = 150; viewTypeLines = 800 }
 # Test-duplication rules keep their own ledger (eng/code-health/test-debt.json), apart from the main baseline.
 $script:TestRules = @('timeWaitsInTests', 'elapsedAssertionsInTests', 'tempPathInTests', 'sourceTextReadsInTests', 'headlessSessionSetups', 'childProcessInTests', 'sameNameFakes')
@@ -204,6 +209,66 @@ function Write-Failure([string]$Code, $Entity, [string]$Metric, $Old, $New, [str
     Write-Output "Contributing change: ${contributor}:${contributingLine}."
     $script:Failures++
 }
+function Get-GeneratedBlockRest([string]$Text) {
+    # The text outside the generated warning-ID block, or $null when the file does not hold exactly one block whose
+    # inside is what Write-LedgerWarningIds writes: per-project groups that set HealthBaselineWarningIds and nothing else.
+    $normal = $Text -replace "`r`n", "`n"
+    $begin = '  <!-- BEGIN GENERATED HEALTH WARNING IDS -->'
+    $end = '  <!-- END GENERATED HEALTH WARNING IDS -->'
+    $shape = '(?s)\A(?<before>.*?)' + [regex]::Escape($begin) + "`n(?<inner>.*?)" + [regex]::Escape($end) + '(?<after>.*)\z'
+    $m = [regex]::Match($normal, $shape)
+    if (-not $m.Success) { return $null }
+    $before = $m.Groups['before'].Value
+    $after = $m.Groups['after'].Value
+    if (($before + $after + $m.Groups['inner'].Value) -cmatch 'GENERATED HEALTH WARNING IDS') { return $null }
+    $group = '(  <PropertyGroup Condition="\x27\$\(MSBuildProjectName\)\x27 == \x27[A-Za-z0-9_.\-]+\x27">\n    <HealthBaselineWarningIds>[A-Za-z0-9;]+</HealthBaselineWarningIds>\n  </PropertyGroup>\n)*'
+    if ($m.Groups['inner'].Value -cnotmatch ('\A' + $group + '\z')) { return $null }
+    # The two sides stay apart, so moving the block to another position in the file is a difference.
+    return ($before.TrimEnd() + "`n<<generated block>>`n" + $after.TrimEnd())
+}
+function Test-OrdinalEqual([string]$Left, [string]$Right) {
+    # -ceq compares with the current culture, which ignores some characters (a NUL, a soft hyphen, a zero-width space).
+    # A path or a file text that a decision rests on is compared ordinally.
+    return [string]::Equals($Left, $Right, [StringComparison]::Ordinal)
+}
+function Test-OrdinalIn([string]$Value, [string[]]$List) {
+    return ([Array]::IndexOf($List, $Value) -ge 0)
+}
+function Test-GeneratedBlockOnly([string]$Path) {
+    # projects.props is imported by every project. Only the content of its generated warning-ID block may differ from the base.
+    if (-not $script:AllowedCommit) { return $false }
+    & git -C $Root cat-file -e "$($script:AllowedCommit):$Path" 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $nowPath = Join-Path $Root $Path
+    if (-not (Test-Path -LiteralPath $nowPath -PathType Leaf)) { return $false }
+    $baseRest = Get-GeneratedBlockRest ((& git -C $Root show "$($script:AllowedCommit):$Path") -join "`n")
+    $nowRest = Get-GeneratedBlockRest ([IO.File]::ReadAllText($nowPath))
+    return ($null -ne $baseRest -and $null -ne $nowRest -and (Test-OrdinalEqual $baseRest $nowRest))
+}
+function Test-SynchronizationPath([string]$Path) {
+    # A path that cannot change what the checker measures: the bundle copies and their lock, the ledgers, the checker
+    # and its tests and documents. Everything else (C#, AXAML, project, props and targets files, and any file that a
+    # project globs) can, so a change that touches it is not a synchronization.
+    if ($Path -match '[\r\n]') { return $false }
+    if (Test-OrdinalIn $Path @('eng/core-health.lock.json', 'eng/code-health/baseline.json', 'eng/code-health/test-debt.json')) { return $true }
+    if (Test-OrdinalEqual $Path 'eng/code-health/projects.props') { return (Test-GeneratedBlockOnly $Path) }
+    if ($Path -clike '*.md') { return $true }
+    if ($Path -clike 'tests/repo-checks/*.py') { return $true }
+    if (-not ($Path -clike 'eng/core-health/*' -or $Path -clike 'tools/repo-checks/*')) { return $false }
+    # Inside the bundle directories only the bundle files and the checker's own script, ban-list and Python files are
+    # allowed. A list of known names and extensions fails closed: a nested global.json, nuget.config, lock file or
+    # analyzer settings file is refused. The lock hash and the Core comparison guard the bundle files' bytes.
+    $bundleFiles = @(
+        'eng/core-health/Directory.Build.props', 'eng/core-health/.editorconfig', 'eng/core-health/schema.json',
+        'tools/repo-checks/csharp/Directory.Build.props', 'tools/repo-checks/csharp/.editorconfig', 'tools/repo-checks/csharp/schema.json',
+        'tools/repo-checks/csharp/bundle-manifest.json', 'tools/repo-checks/doc-sync.core.json')
+    if (Test-OrdinalIn $Path $bundleFiles) { return $true }
+    return (Test-OrdinalIn ([IO.Path]::GetExtension($Path)) @('.ps1', '.py', '.txt'))
+}
+function Get-NonSynchronizationPaths {
+    # A path that git printed with other text glued to it matches nothing, so the check fails closed.
+    return @($script:ChangedPaths | Where-Object { -not (Test-SynchronizationPath $_) })
+}
 function Compare-Debt($Allowed, $Current, [string]$ValueField, [bool]$RequireLower) {
     foreach ($metric in $(if ($ValueField -eq 'ceilings') { $script:Limits.Keys } else { @() })) {
         # Compare effective limits: omitting an optional limit restores its default, which can raise it.
@@ -223,6 +288,9 @@ function Compare-Debt($Allowed, $Current, [string]$ValueField, [bool]$RequireLow
             $value = $e[$ValueField][$metric]
             # Compare excess, so compliant new entities do not consume debt.
             if ([Math]::Max(0, $value - $limit) -gt [Math]::Max(0, $old - $limit)) {
+                # In a synchronization-only change no source, project or props file differs from the base, so an excess
+                # that the base ledger lacks was revealed by the checker (see Adopt). Verify compares it with the measurement next.
+                if ($ValueField -eq 'ceilings' -and $script:SynchronizationOnly -and $old -eq $limit) { continue }
                 Write-Failure 'HC_STATE' $e $metric $old $value 'New/growing excess or raised ceiling is forbidden.'
             }
         }
@@ -234,7 +302,11 @@ function Compare-Debt($Allowed, $Current, [string]$ValueField, [bool]$RequireLow
     foreach ($f in $Current.findings) {
         $key = Finding-Key $f
         $old = if ($oldFindings.ContainsKey($key)) { $oldFindings[$key].count } else { 0 }
-        if ($f.count -gt $old) { Write-Failure 'HC_DIAGNOSTIC' $f $f.rule $old $f.count 'New fingerprint; deleting another finding cannot offset it.' }
+        if ($f.count -gt $old) {
+            # The evaluated project settings (member MSBuild) are never registered this way.
+            if ($ValueField -eq 'ceilings' -and $script:SynchronizationOnly -and $old -eq 0 -and $f.member -cne 'MSBuild') { continue }
+            Write-Failure 'HC_DIAGNOSTIC' $f $f.rule $old $f.count 'New fingerprint; deleting another finding cannot offset it.'
+        }
     }
     if ($RequireLower) {
         foreach ($old in $Allowed.entities) {
@@ -599,7 +671,7 @@ function Test-FormatExit([int]$ExitCode, $Findings, $Baseline) {
     }
 }
 function Initialize-Enforcement($Baseline) {
-    if (-not $Solution -or -not (Test-Path -LiteralPath (Join-Path $Root $Solution) -PathType Leaf)) { throw 'Solution is required for Enroll/Verify/LowerBaseline' }
+    if (-not $Solution -or -not (Test-Path -LiteralPath (Join-Path $Root $Solution) -PathType Leaf)) { throw 'Solution is required for Enroll/Verify/LowerBaseline/Adopt' }
     Test-BundleDrift
     $script:Seams = Read-HealthDocument ([IO.File]::ReadAllText((Join-Path $Root 'eng/code-health/seam-owners.json'))) 'seam-owners'
     $script:HealthProjects = Get-ProjectCoverage $Baseline
@@ -662,6 +734,44 @@ function Get-EnrollOwner {
     if ($Owner.Trim()) { return $Owner.Trim() }
     if ($Repo -ceq 'core') { return 'NVT CORE' }
     return $Repo.ToUpperInvariant()
+}
+function Add-AdoptedDebt($Baseline, $Measurement) {
+    # Registers debt that a rule change reveals: the measured value is above its limit and the ledger has no ceiling for
+    # it. The caller has checked that the change is synchronization-only, so no source file differs from the base.
+    $adoptOwner = Get-EnrollOwner
+    $entities = 0
+    $findings = 0
+    $messages = [Collections.Generic.List[string]]::new()
+    $ledgerFindings = [Collections.Generic.Dictionary[string,hashtable]]::new([StringComparer]::Ordinal)
+    foreach ($f in $Baseline.findings) { $ledgerFindings[(Finding-Key $f)] = $f }
+    $entityMatches = Match-Entities $Baseline.entities $Measurement.entities
+    for ($i = 0; $i -lt $Measurement.entities.Count; $i++) {
+        $m = $Measurement.entities[$i]
+        $over = @{}
+        foreach ($metric in $m.values.Keys) {
+            if ($m.values[$metric] -le (Get-Limit $Baseline $metric)) { continue }
+            if ($entityMatches.ContainsKey($i) -and $Baseline.entities[$entityMatches[$i]].ceilings.Contains($metric)) { continue }
+            $over[$metric] = $m.values[$metric]
+        }
+        if ($over.Count -eq 0) { continue }
+        if ($entityMatches.ContainsKey($i)) { foreach ($metric in $over.Keys) { $Baseline.entities[$entityMatches[$i]].ceilings[$metric] = $over[$metric] } }
+        else { $Baseline.entities += [ordered]@{ project = $m.project; kind = $m.kind; symbol = $m.symbol; locations = @($m.locations); contentHash = $m.contentHash; ceilings = $over; owner = $adoptOwner; issue = 'health-refactor/adopted' } }
+        $entities++
+        $messages.Add("HC_STATE $($m.locations[0]):1 Adopt registered $(($over.Keys | Sort-Object | ForEach-Object { "$_ $($over[$_])" }) -join ', '); entity $($m.project):$($m.symbol)")
+    }
+    foreach ($f in $Measurement.findings) {
+        $key = Finding-Key $f
+        # A fingerprint that the ledger already has keeps its count: Adopt never raises an existing one.
+        if ($ledgerFindings.ContainsKey($key) -or $f.member -ceq 'MSBuild') { continue }
+        $entry = [ordered]@{}
+        foreach ($field in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$field] = $f[$field] }
+        $entry['owner'] = $adoptOwner
+        $Baseline.findings += $entry
+        $ledgerFindings[$key] = $entry
+        $findings++
+        $messages.Add("HC_DIAGNOSTIC $($f.path):1 Adopt registered $($f.rule) $($f.count); $($f.member)")
+    }
+    return @{ entities = $entities; findings = $findings; messages = $messages }
 }
 function Enroll-Baseline($Measurement, [string]$Path) {
     $enrollOwner = Get-EnrollOwner
@@ -1416,7 +1526,8 @@ $script:HealthProjects = @()
 $script:FormatRuns = @()
 $exitCode = 2
 try {
-    if ($Mode -notin @('Measure', 'Verify', 'LowerBaseline', 'Enroll', 'EnrollTestDebt') -or $Repo -notin @('core', 'nfc', 'nfh', 'nfu')) { throw 'Invalid Mode or Repo' }
+    if ($Mode -notin @('Measure', 'Verify', 'LowerBaseline', 'Adopt', 'Enroll', 'EnrollTestDebt') -or $Repo -notin @('core', 'nfc', 'nfh', 'nfu')) { throw 'Invalid Mode or Repo' }
+    if ($Mode -eq 'Adopt' -and -not $BaseRef.Trim()) { throw 'Adopt requires -BaseRef: debt is registered only when the whole change is synchronization-only' }
     $Root = [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Root))
     if (-not (Test-Path -LiteralPath $Root -PathType Container)) { throw "Missing root $Root" }
     Push-Location -LiteralPath $Root
@@ -1447,9 +1558,20 @@ try {
             if (-not $baselineFull.StartsWith($script:GitRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'BaselinePath must be within the Git repository' }
             $baselineGit = [IO.Path]::GetRelativePath($script:GitRoot, $baselineFull).Replace('\','/')
             $allowedCommit = if ($BaseRef.Trim()) { Invoke-Checked 'git' @('-C', $script:GitRoot, 'merge-base', 'HEAD', $BaseRef) } else { $script:Snapshot }
+            $script:AllowedCommit = $allowedCommit
             $allowed = Read-Baseline (Invoke-Checked 'git' @('-C', $script:GitRoot, 'show', "${allowedCommit}:$baselineGit")) "${allowedCommit}:$baselineGit"
             $baseline = Read-Baseline ([IO.File]::ReadAllText($baselineFull)) $BaselinePath
-            $script:ChangedPaths = @((Invoke-Checked 'git' @('-C', $Root, 'diff', '--name-only', '--relative', $allowedCommit, '--')) -split '\r?\n')
+            # NUL separated and unquoted: a quoted or escaped name would never match a path, and the file would count as unchanged.
+            # Standard output only: a warning that git prints on standard error must not become part of a path.
+            # PowerShell splits the output at line breaks, so the pieces are joined with LF again: a path that holds a line
+            # break keeps it, and Test-SynchronizationPath refuses it. No --relative: a path outside -Root must be seen too.
+            $changedOutput = & git -C $Root -c core.quotepath=false diff --name-only -z --no-renames $allowedCommit -- 2>$null
+            if ($LASTEXITCODE -ne 0) { throw "git diff exited $LASTEXITCODE" }
+            $script:ChangedPaths = @((@($changedOutput) -join "`n") -split "`0" | Where-Object { $_ })
+            $nonSynchronization = @(Get-NonSynchronizationPaths)
+            # Changed paths and the checker's relative paths agree only when -Root is the repository root.
+            $rootIsRepository = [string]::Equals([IO.Path]::GetFullPath($Root).TrimEnd('\', '/'), $script:GitRoot.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)
+            $script:SynchronizationOnly = ($rootIsRepository -and $nonSynchronization.Count -eq 0)
             Compare-Debt $allowed $baseline 'ceilings' $false
             $testDebtFull = [IO.Path]::GetFullPath((Join-Path $Root $TestDebtPath))
             if (-not $testDebtFull.StartsWith($script:GitRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'TestDebtPath must be within the Git repository' }
@@ -1488,6 +1610,18 @@ try {
             $exitCode = 0
         }
         else {
+            $adopted = $null
+            if ($Mode -eq 'Adopt') {
+                if (-not $rootIsRepository) {
+                    Write-Output "HC_STATE ${BaselinePath}:1 Adopt refused: -Root is not the repository root, so a change outside it would not be seen."
+                    $script:Failures++
+                }
+                elseif (-not $script:SynchronizationOnly) {
+                    Write-Output "HC_STATE $($nonSynchronization[0]):1 Adopt refused: this change touches $($nonSynchronization.Count) path(s) that are not synchronization files; the first is shown. Adopt registers revealed debt only when no source, project or props file differs from the base."
+                    $script:Failures++
+                }
+                elseif ($script:Failures -eq 0) { $adopted = Add-AdoptedDebt $baseline $measurement }
+            }
             Compare-Debt $baseline $measurement 'values' ($Mode -eq 'Verify')
             Compare-TestDebtMeasurement $testDebt $measurement ($Mode -eq 'Verify')
             if ($script:Failures -gt 0) { $exitCode = 1 }
@@ -1511,6 +1645,17 @@ try {
                 Write-LedgerWarningIds $baseline
                 Lower-TestDebt $testDebt $measurement $testDebtFull
                 Write-Output 'HC_STATE baseline:1 LowerBaseline passed; only existing debt was deleted or lowered.'
+                $exitCode = 0
+            }
+            elseif ($Mode -eq 'Adopt') {
+                foreach ($line in $adopted.messages) { Write-Output $line }
+                if ($adopted.entities -or $adopted.findings) {
+                    $json = ConvertTo-Json -InputObject $baseline -Depth 100
+                    [void](Read-Baseline $json $BaselinePath)
+                    [IO.File]::WriteAllText($baselineFull, $json + [Environment]::NewLine)
+                    Write-LedgerWarningIds $baseline
+                }
+                Write-Output "HC_STATE baseline:1 Adopt passed; $($adopted.entities) entities and $($adopted.findings) finding fingerprints registered. Run Verify next."
                 $exitCode = 0
             }
             else { Write-Output 'HC_STATE syntax:1 Verify passed (syntax, build, SARIF, format, provenance and evaluated project coverage).'; $exitCode = 0 }

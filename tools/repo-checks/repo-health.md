@@ -14,16 +14,17 @@ compiler and format messages do not change with the host language. It runs `dotn
 ./tools/repo-checks/repo-health.ps1 -Mode Measure -Repo core -Root . -OutputPath measurement.json
 ./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
 ./tools/repo-checks/repo-health.ps1 -Mode LowerBaseline -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
+./tools/repo-checks/repo-health.ps1 -Mode Adopt -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
 ```
 
 `Repo` accepts `core`, `nfc`, `nfh`, `nfu`. Measure defaults to JSON on stdout;
 `OutFile` aliases `OutputPath`. The default baseline is
 `eng/code-health/baseline.json`; override it with `BaselinePath`.
-Verify and LowerBaseline require a committed baseline and Solution. Enroll is the
+Verify, LowerBaseline and Adopt require a committed baseline and Solution. Enroll is the
 only production enrollment mode: it requires all providers to succeed, refuses any
 existing baseline, and writes debt owned by NVT CORE with no due date. It also
-generates the marked HealthBaselineWarningIds block in projects.props. No mode
-automatically refreshes or raises debt. An absent baseline at the merge base fails
+generates the marked HealthBaselineWarningIds block in projects.props. Only Adopt adds
+to an existing ledger, and only the debt that the Adopt section below allows. An absent baseline at the merge base fails
 closed: first enrollment must be integrated before checking subsequent PRs against
 that base. Measure remains syntax-only; it cannot satisfy the CI gate. Exit codes: **0** pass, **1** debt findings, **2**
 tool/input error (including parse errors and unavailable stages).
@@ -40,7 +41,8 @@ The example baseline may omit `viewTypeLines`; its effective limit is 800 withou
 adding a field during LowerBaseline.
 Baseline entity ownership requires `owner`/`issue`; findings require `owner`.
 `removeBy` is optional on a finding (owner decision of 2026-10-11: debt has no deadline). Fixes must
-lower/delete debt in the same change. Debt cannot be added and its count cannot grow, with or without a date.
+lower/delete debt in the same change. Debt cannot be added and its count cannot grow, with or without a date. The one exception is
+Adopt in a synchronization-only change (see "Adopt" below).
 When a finding has a `removeBy`, Verify compares it with today's date (UTC) in both ledgers. A finding is due
 on its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
 expired findings of a ledger and then one summary line with the count. A `removeBy` that is present and is
@@ -94,7 +96,7 @@ use evaluated Release DefineConstants and ResolveReferences. H02's semantic
 candidate metrics still use SDK framework references and same-project source;
 they do not prove complete semantic R1–R12 compliance.
 
-Verify/LowerBaseline/Enroll validate the local schema, bundle provenance, managed
+Verify/LowerBaseline/Adopt/Enroll validate the local schema, bundle provenance, managed
 EditorConfig and evaluated project settings, create artifacts/code-health, remove
 stale named outputs, then run:
 
@@ -212,6 +214,71 @@ Enroll once after the owner has approved the current-tree evidence:
 ./tools/repo-checks/repo-health.ps1 -Mode Enroll -Repo core -Root . -Solution Nvt.Core.sln
 ```
 
+### Adopt: debt that a rule change reveals
+
+A pin synchronization can bring a checker that measures more than the old one, for example a
+code-only Avalonia view above 800 lines. The measured excess has no ledger entry, and neither
+Enroll (it refuses an existing ledger) nor LowerBaseline (it never adds) can register it.
+
+`-Mode Adopt -BaseRef <ref>` registers it under one condition: **the change is synchronization-only**.
+Every path that git reports as changed against the merge base must be one of these:
+
+- `eng/core-health.lock.json`, `eng/code-health/baseline.json` and `eng/code-health/test-debt.json`,
+- `eng/code-health/projects.props`, and then only the inside of the generated warning-ID block. The
+  file must hold exactly one block, every group inside it must be a `PropertyGroup` for one project
+  that sets only `HealthBaselineWarningIds`, and the rest of the file must equal the base, because
+  every project imports it,
+- under `eng/core-health/` and `tools/repo-checks/`, the bundle files by exact name
+  (`Directory.Build.props`, `.editorconfig`, `schema.json` and `bundle-manifest.json`, `doc-sync.core.json`),
+  and any `.ps1`, `.py` or `.txt` file. Any other file there is refused, for example a C#, AXAML,
+  project, props, targets, `.globalconfig`, `.json` (such as a nested `global.json` or `stylecop.json`),
+  `nuget.config` or lock file. The lock hash and the Core comparison guard the bundle files' bytes,
+- any `tests/repo-checks/*.py`, and any `*.md`.
+
+No other path may differ from the base. The reason is that the measurement then reads the same
+sources, projects and imports as the base. An excess that the base ledger lacks was revealed by the checker or by the
+bundle, not caused by this change. This replaces any per-file reasoning: a base type in another file, a
+linked file, an AXAML mapping and a fingerprint that merges several files cannot matter when no source differs.
+
+- A single other changed path, for example one edited test or one new class, refuses Adopt. Run Adopt in a
+  pull request of its own, before the code changes.
+- The root `.editorconfig` and a root `Directory.Build.props` are not synchronization paths. A change of the
+  bundle `.editorconfig` makes the managed block of the root `.editorconfig` change too, so that pin
+  synchronization cannot use Adopt in one pull request. The bundle `.editorconfig` has not changed since
+  the bundle was added.
+- The `*.md`, `.ps1`, `.py` and `.txt` rules assume that no project globs those files. A project that
+  compiles or embeds one of them must not be listed here.
+- A path that git prints with other text glued to it matches nothing, so the check fails closed. A path
+  that holds a line break is refused.
+- Git lists the changed paths of the whole repository. When `-Root` is not the repository root, Adopt
+  is refused and Verify accepts no growth, because a change outside `-Root` would not be seen. The
+  "Contributing change" line then names a repository-relative path.
+- A finding of the evaluated project (member `MSBuild`: `NoWarn` and similar) is never registered this way.
+- A fingerprint that the ledger already has keeps its count. A measured increase of it fails.
+- Adopt only adds. It never raises a ceiling or a count that the ledger has, and Verify does not
+  accept such a raise in a synchronization-only change either. It writes the measured value as the
+  ceiling, with the Enroll owner and the issue `health-refactor/adopted`. When it registered something, it
+  also refreshes the generated warning-ID block.
+- In the pull request that also moves an application's pin, run Adopt with `-CoreRoot` as well:
+  Adopt runs the bundle check first, and that check accepts a moved pin only when `-CoreRoot`
+  proves it (the pin is a commit of that checkout and descends from the pin it replaces).
+- It writes nothing when any other failure remains, and it requires `-BaseRef`.
+
+Verify applies the same condition after it reads the ledger: growth against the base ledger is
+accepted only in a synchronization-only change. Verify still requires the ledger to equal the
+measurement, so a hand-raised ceiling fails with `run LowerBaseline`. Verify cannot tell Adopt output
+from a hand edit that equals the measurement, so the owner reviews the added entries at the Files
+changed tab of `eng/code-health/baseline.json`. LowerBaseline applies the same check, and then writes
+the measured values. A hand-written new entry in a synchronization-only change is therefore accepted by
+LowerBaseline and rewritten with the measured value, as Adopt would write it.
+
+Two limits fail closed and refuse an Adopt that would be legitimate: a base `projects.props` with a BOM or a
+lone CR compares unequal, and a `-Root` that is a symbolic link or an 8.3 name does not equal the
+repository root.
+
+Adopt runs after the build and format stages. A failure of those stages stops it first. New analyzer
+warning IDs without a ledger entry and format findings cannot be adopted with it.
+
 ### Test-duplication ledger
 
 The seven test rules above (`timeWaitsInTests` to `sameNameFakes`) answer to the testing
@@ -260,7 +327,7 @@ methods) is an error in the bundle `.editorconfig`. Lambdas converted to void
 delegates are counted in the ledger but do not fail the build.
 
 The ledger stores H02 structural excess and syntax findings plus analyzer and
-format debt. Entities use issue health-refactor/2026-10-31; findings have no removeBy,
+format debt. Entities use issue health-refactor/2026-10-31 (Adopt writes health-refactor/adopted); findings have no removeBy,
 all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
 against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only

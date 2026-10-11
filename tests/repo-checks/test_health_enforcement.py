@@ -190,6 +190,61 @@ try {{
         r = self.check_editor('  [*.cs]  \nroot = true\n')
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
+    def test_only_synchronization_paths_allow_adoption(self):
+        r = self.run_ps("""
+$allowed = @('eng/core-health.lock.json', 'eng/core-health/Directory.Build.props', 'eng/core-health/.editorconfig',
+    'eng/core-health/schema.json', 'eng/core-health/BannedSymbols.Common.txt', 'tools/repo-checks/repo-health.ps1',
+    'tools/repo-checks/csharp/schema.json', 'tools/repo-checks/csharp/Directory.Build.props', 'tools/repo-checks/doc_sync.py',
+    'tools/repo-checks/doc-sync.core.json', 'eng/code-health/baseline.json', 'eng/code-health/test-debt.json',
+    'tests/repo-checks/test_x.py', 'docs/guide.md', 'README.md')
+foreach ($p in $allowed) { if (-not (Test-SynchronizationPath $p)) { Write-Output "should allow $p"; exit 7 } }
+$refused = @('src/Fixture/One.cs', 'src/Fixture/Fixture.csproj', 'Directory.Build.props', 'docs/Evil.cs', 'tests/repo-checks/Fixture.cs',
+    'eng/code-health/other.json', 'global.json', '.editorconfig',
+    'tools/repo-checks/Gen/Big.cs', 'tools/repo-checks/Gen/Gen.csproj', 'eng/core-health/X.cs', 'eng/core-health/Other.props',
+    'eng/core-health/sub/Directory.Build.props', 'tools/repo-checks/csharp/sub/.editorconfig', 'eng/core-health/Dir.Targets',
+    'eng/core-health/sub/global.json', 'tools/repo-checks/nuget.config', 'tools/repo-checks/packages.lock.json',
+    'tools/repo-checks/stylecop.json', 'eng/core-health/other.json', 'tools/repo-checks/.globalconfig',
+    "src/A.cs`nwarning: LF will be replaced by CRLF", "warning: x`nsrc/A.cs", "docs/a`nb.md", "eng/core-health/ok.txt`nsrc/Big.cs")
+foreach ($p in $refused) { if (Test-SynchronizationPath $p) { Write-Output "should refuse [$p]"; exit 8 } }
+$script:ChangedPaths = @('docs/guide.md', 'src/A.cs', "eng/core-health.lock.json`nwarning: LF will be replaced by CRLF")
+if (@(Get-NonSynchronizationPaths).Count -ne 2) { exit 9 }
+""")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_generated_block_must_hold_only_per_project_warning_ids(self):
+        r = self.run_ps(r"""
+$group = "  <PropertyGroup Condition=`"'`$(MSBuildProjectName)' == 'Nvt.Core'`">`n    <HealthBaselineWarningIds>CA1031;RS0030</HealthBaselineWarningIds>`n  </PropertyGroup>`n"
+$begin = '  <!-- BEGIN GENERATED HEALTH WARNING IDS -->'
+$end = '  <!-- END GENERATED HEALTH WARNING IDS -->'
+function Block($inside) { return "<Project>`n$begin`n$inside$end`n</Project>`n" }
+if ($null -eq (Get-GeneratedBlockRest (Block ''))) { Write-Output 'empty block refused'; exit 7 }
+if ($null -eq (Get-GeneratedBlockRest (Block ($group + $group)))) { Write-Output 'groups refused'; exit 7 }
+if ($null -eq (Get-GeneratedBlockRest ((Block $group) -replace "`n", "`r`n"))) { Write-Output 'CRLF refused'; exit 7 }
+$refused = @{
+    item = (Block "  <ItemGroup><Compile Include=`"x.cs`" /></ItemGroup>`n")
+    property = (Block "  <PropertyGroup><DefineConstants>X</DefineConstants></PropertyGroup>`n")
+    extraProperty = (Block ($group -replace '</PropertyGroup>', "    <NoWarn>CS0000</NoWarn>`n  </PropertyGroup>"))
+    badIds = (Block ($group -replace 'CA1031;RS0030', 'CA1031</HealthBaselineWarningIds><Import Project="x.props" /><HealthBaselineWarningIds>'))
+    secondBlock = ((Block $group) + (Block ''))
+    wrapped = ("<Project>`n$begin`n$begin`n$group$end`n$end`n</Project>`n")
+    noBlock = "<Project>`n</Project>`n"
+}
+foreach ($name in $refused.Keys) { if ($null -ne (Get-GeneratedBlockRest $refused[$name])) { Write-Output "should refuse $name"; exit 8 } }
+foreach ($ignorable in @([string][char]0, [string][char]0xAD, [string][char]0x200B)) {
+    # Characters that a culture comparison ignores must still make two files differ.
+    $x = Get-GeneratedBlockRest (Block $group)
+    $y = Get-GeneratedBlockRest ((Block $group) -replace '<Project>', ('<Project>' + $ignorable))
+    if (Test-OrdinalEqual $x $y) { Write-Output "ignorable character $([int][char]$ignorable) is ignored"; exit 10 }
+}
+foreach ($p in @("eng/core-health.lock$([char]0xAD).json", "eng/code-health/base$([char]0x200B)line.json", "tools/repo-checks/x.p$([char]0xAD)y")) {
+    if (Test-SynchronizationPath $p) { Write-Output "should refuse [$p]"; exit 11 }
+}
+$a = Get-GeneratedBlockRest (Block $group)
+$b = Get-GeneratedBlockRest ("<Project>`n<ItemGroup />`n$begin`n$group$end`n</Project>`n")
+if ($a -ceq $b) { Write-Output 'outside text must differ'; exit 9 }
+""")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
     def test_bundle_file_drift_fails_even_with_changed_hash(self):
         # A self-consistent PR hash cannot approve altered canonical bytes.
         subprocess.run(['git','init','-q',str(self.root)],check=True)
@@ -760,12 +815,18 @@ class Fixture {
         self.git('commit', '-qm', 'pin synchronization')
         return core, first, second
 
-    def verify_application(self, core):
-        return self.run_ps(f"$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
+    def verify_application(self, core, mode='Verify'):
+        return self.run_ps(f"$Repo = 'nfc'; $Mode = '{mode}'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
 
     def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
         core, _, _ = self.application_pin_move()
         r = self.verify_application(core)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_adopt_accepts_the_moved_pin_when_core_root_proves_it(self):
+        # Adopt runs the same bundle check through Initialize-Enforcement, so the pin-moving pull request can run it.
+        core, _, _ = self.application_pin_move()
+        r = self.verify_application(core, 'Adopt')
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
     def test_application_pin_move_fails_without_core_root(self):
