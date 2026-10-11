@@ -99,8 +99,9 @@ of UI language, then resolved with SDK Roslyn to a banned documentation ID. Repo
 print HC_DIAGNOSTIC file:line, symbol, member and old/new counts. Build error rules
 (including VSTHRD100 and CS4014) cannot be grandfathered or suppressed by generated
 warning IDs. Apps must migrate their async void handlers before build/enrollment;
-a syntax baseline cannot exempt an analyzer error. HealthPublicApi stays unset
-in Core until H07d; H03 does not generate API inventory files.
+a syntax baseline cannot exempt an analyzer error. HealthPublicApi is set for
+Core's four published projects in eng/code-health/projects.props (H07d). Each
+project keeps its own PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt.
 
 Analyzer warnings repeated by format after prospective edits reuse fresh SARIF
 occurrences in source order, independently gated by the build ledger. They are not

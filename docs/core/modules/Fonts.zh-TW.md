@@ -37,6 +37,7 @@ Release 包含單一 nupkg、`SHA256SUMS` 與 `SOURCE.md`。
 套件保留內嵌字型、Core 授權、README、各字型家族的授權（Inter、Cascadia Mono、Noto Sans TC、Material Symbols）與 Material Symbols NOTICE。
 `0.1.1` 版加入 Inter 授權檔，`0.1.0` 版沒有。
 直接相依套件只有 `Avalonia` 與 `Avalonia.Fonts.Inter`。
+公開 API 列在專案的 `PublicAPI.Shipped.txt` 與 `PublicAPI.Unshipped.txt`。新增或移除公開成員卻沒有對應條目時，建置會失敗。詳見 [API 清單](../api-inventory.md)。
 詳見 [發行程序](../releasing.md) 與 [套件下載指南](../../../tools/core-packages/README.zh-TW.md)。
 
 ## 角色與資源鍵
