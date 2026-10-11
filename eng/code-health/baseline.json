@@ -502,20 +502,6 @@
       }
     },
     {
-      "contentHash": "9983f295cc6f6dcdc1b32a6028c8a324ed955cf3fe720f68f78a2b39f9f13c58",
-      "project": "Nvt.Core.Avalonia.Tests",
-      "issue": "health-refactor/2026-10-31",
-      "owner": "NVT CORE",
-      "symbol": "file:Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests",
-      "locations": [
-        "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-      ],
-      "kind": "file",
-      "ceilings": {
-        "fileLines": 1113
-      }
-    },
-    {
       "contentHash": "c02138eb5f524b03ae66e6afa232d2fcf40c53abbe2b1f7ed558085fcd1afcb7",
       "project": "Nvt.Core.Avalonia.Tests",
       "issue": "health-refactor/2026-10-31",
@@ -628,20 +614,6 @@
       }
     },
     {
-      "contentHash": "ce33d843f887eb91b7d963f457397795d7910b3dd71f2fb490e9de67af32abc0",
-      "project": "Nvt.Core.Tests",
-      "issue": "health-refactor/2026-10-31",
-      "owner": "NVT CORE",
-      "symbol": "file:Nvt.Core.Tests.MessageCenter.ExportWorkflowTests;Nvt.Core.Tests.MessageCenter.ExportWorkflowTests.ExportCall;Nvt.Core.Tests.MessageCenter.ExportWorkflowTests.ExportHost;Nvt.Core.Tests.MessageCenter.ExportWorkflowTests.PickerGate;Nvt.Core.Tests.MessageCenter.ExportWorkflowTests.WriteGate",
-      "locations": [
-        "tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs"
-      ],
-      "kind": "file",
-      "ceilings": {
-        "fileLines": 1047
-      }
-    },
-    {
       "contentHash": "17864c796c89cf281d6cd6f68b33f28feaa3069ffef46964ea983e790bc8746b",
       "project": "Nvt.Core.Tests",
       "issue": "health-refactor/2026-10-31",
@@ -653,20 +625,6 @@
       "kind": "member",
       "ceilings": {
         "methodLines": 115
-      }
-    },
-    {
-      "contentHash": "f4ee87f775c8f889f27d4214a6ba188d3255107aace954b808341a355ba8c8df",
-      "project": "Nvt.Core.Tests",
-      "issue": "health-refactor/2026-10-31",
-      "owner": "NVT CORE",
-      "symbol": "file:Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests;Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.CaptureSignalReader;Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.PhaseRecorder;Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.TerminationSeam;Nvt.Core.Tests.Processes.SystemExternalProcessRunnerLifetimeTests.ThrowingDisposal",
-      "locations": [
-        "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
-      ],
-      "kind": "file",
-      "ceilings": {
-        "fileLines": 1359
       }
     },
     {
