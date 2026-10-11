@@ -38,8 +38,11 @@ internal static class ToggleTestHost
         var host = new Window
         {
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
-            Width = width, Height = height, Content = content,
-            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"), FontSize = 13,
+            Width = width,
+            Height = height,
+            Content = content,
+            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"),
+            FontSize = 13,
         };
         host.Styles.Add(new FluentTheme());
         Include(host, "avares://Nvt.Core.Avalonia/Theme/ButtonStyles.axaml");
@@ -79,7 +82,8 @@ internal static class ToggleTestHost
     {
         var button = new StateToggleButton
         {
-            Content = label, HorizontalAlignment = HorizontalAlignment.Center,
+            Content = label,
+            HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
         button.Classes.Add(role);

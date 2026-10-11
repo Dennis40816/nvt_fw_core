@@ -117,59 +117,59 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
     public void KeyboardAndPointerInputWorkForEveryRole(bool dark, bool square)
     {
         foreach (string role in Roles.Append("toggleSoft"))
-        foreach (bool selected in new[] { false, true })
-        {
-            var before = new Grid { Focusable = true, Height = 20 };
-            ToggleButton button = Sample(role, new ToggleState("Rest", Checked: selected));
-            Control control = role == "toggleSegment" ? Group((StateToggleButton)button, Button(role)) : button;
-            var stack = new StackPanel { Margin = new Thickness(16), Spacing = 16, Children = { before, control } };
-            Window host = Create(stack, dark);
-            try
+            foreach (bool selected in new[] { false, true })
             {
-                ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
-                Show(host);
-                Assert.True(button.Focus(NavigationMethod.Pointer));
-                Assert.False(Part(button, "ToggleFocusRing").IsVisible);
-                Assert.True(before.Focus());
-                host.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                host.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
-                Flush(host);
-                Assert.Same(button, host.FocusManager!.GetFocusedElement());
-                Border ring = Part(button, "ToggleFocusRing");
-                Assert.True(ring.IsVisible);
-                Assert.Null(button.FocusAdorner);
-                Assert.Single(button.GetVisualDescendants().OfType<Border>(), border => border.Name == "ToggleFocusRing");
-                Assert.Equal(new Thickness(-4), ring.Margin);
-                Assert.Equal(new Thickness(2), ring.BorderThickness);
-                Assert.False(ring.IsHitTestVisible);
-                Border body = Part(button, "ToggleBody");
-                Assert.Equal(body.Bounds.Width + 8, ring.Bounds.Width);
-                Assert.Equal(body.Bounds.Height + 8, ring.Bounds.Height);
-                Point bodyPoint = body.TranslatePoint(default, button)!.Value;
-                Point ringPoint = ring.TranslatePoint(default, button)!.Value;
-                Assert.Equal(4, bodyPoint.X - ringPoint.X);
-                Assert.Equal(4, bodyPoint.Y - ringPoint.Y);
-                Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
-                button.Classes.Add("danger");
-                Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
-                foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
-                    Assert.True(Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface)) >= 3);
-                host.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
-                host.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
-                Flush(host);
-                Assert.Equal(!selected, button.IsChecked);
-                if (IsSwitch(role)) VerifyKnob(button, !selected);
-                Point center = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), host)!.Value;
-                host.MouseDown(center, MouseButton.Left);
-                host.MouseUp(center, MouseButton.Left);
-                Flush(host);
-                Assert.Equal(selected, button.IsChecked);
-                if (IsSwitch(role)) VerifyKnob(button, selected);
-                button.IsEnabled = false;
-                Assert.False(ring.IsVisible);
+                var before = new Grid { Focusable = true, Height = 20 };
+                ToggleButton button = Sample(role, new ToggleState("Rest", Checked: selected));
+                Control control = role == "toggleSegment" ? Group((StateToggleButton)button, Button(role)) : button;
+                var stack = new StackPanel { Margin = new Thickness(16), Spacing = 16, Children = { before, control } };
+                Window host = Create(stack, dark);
+                try
+                {
+                    ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+                    Show(host);
+                    Assert.True(button.Focus(NavigationMethod.Pointer));
+                    Assert.False(Part(button, "ToggleFocusRing").IsVisible);
+                    Assert.True(before.Focus());
+                    host.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    host.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+                    Flush(host);
+                    Assert.Same(button, host.FocusManager!.GetFocusedElement());
+                    Border ring = Part(button, "ToggleFocusRing");
+                    Assert.True(ring.IsVisible);
+                    Assert.Null(button.FocusAdorner);
+                    Assert.Single(button.GetVisualDescendants().OfType<Border>(), border => border.Name == "ToggleFocusRing");
+                    Assert.Equal(new Thickness(-4), ring.Margin);
+                    Assert.Equal(new Thickness(2), ring.BorderThickness);
+                    Assert.False(ring.IsHitTestVisible);
+                    Border body = Part(button, "ToggleBody");
+                    Assert.Equal(body.Bounds.Width + 8, ring.Bounds.Width);
+                    Assert.Equal(body.Bounds.Height + 8, ring.Bounds.Height);
+                    Point bodyPoint = body.TranslatePoint(default, button)!.Value;
+                    Point ringPoint = ring.TranslatePoint(default, button)!.Value;
+                    Assert.Equal(4, bodyPoint.X - ringPoint.X);
+                    Assert.Equal(4, bodyPoint.Y - ringPoint.Y);
+                    Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
+                    button.Classes.Add("danger");
+                    Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
+                    foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
+                        Assert.True(Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface)) >= 3);
+                    host.KeyPress(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                    host.KeyRelease(Key.Space, RawInputModifiers.None, PhysicalKey.Space, null);
+                    Flush(host);
+                    Assert.Equal(!selected, button.IsChecked);
+                    if (IsSwitch(role)) VerifyKnob(button, !selected);
+                    Point center = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), host)!.Value;
+                    host.MouseDown(center, MouseButton.Left);
+                    host.MouseUp(center, MouseButton.Left);
+                    Flush(host);
+                    Assert.Equal(selected, button.IsChecked);
+                    if (IsSwitch(role)) VerifyKnob(button, selected);
+                    button.IsEnabled = false;
+                    Assert.False(ring.IsVisible);
+                }
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>Checks real render scaling, resizing, and switch inset parity without exporting additional images.</summary>
@@ -195,24 +195,24 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
             Show(host);
             Restore(row);
             foreach (double width in new[] { 640d, 720d, 960d })
-            foreach (double scaling in new[] { 1d, 1.25, 1.5, 2 })
-            {
-                host.Width = width;
-                host.SetRenderScaling(scaling);
-                Flush(host);
-                ToggleStylesRenderer.CheckBounds(host);
-                foreach (ToggleButton button in row.GetVisualDescendants().OfType<ToggleButton>())
+                foreach (double scaling in new[] { 1d, 1.25, 1.5, 2 })
                 {
-                    string role = button is ToggleSwitch ? "nativeSwitch" : button.Classes.First();
-                    Assert.Equal(40, button.Bounds.Height);
-                    Assert.Equal(0, button.BorderThickness.Left);
-                    if (IsSwitch(role)) VerifyKnob(button, true);
+                    host.Width = width;
+                    host.SetRenderScaling(scaling);
+                    Flush(host);
+                    ToggleStylesRenderer.CheckBounds(host);
+                    foreach (ToggleButton button in row.GetVisualDescendants().OfType<ToggleButton>())
+                    {
+                        string role = button is ToggleSwitch ? "nativeSwitch" : button.Classes.First();
+                        Assert.Equal(40, button.Bounds.Height);
+                        Assert.Equal(0, button.BorderThickness.Left);
+                        if (IsSwitch(role)) VerifyKnob(button, true);
+                    }
+                    using var frame = host.CaptureRenderedFrame();
+                    Assert.NotNull(frame);
+                    Assert.Equal((int)(width * scaling), frame.PixelSize.Width);
+                    Assert.Equal((int)(160 * scaling), frame.PixelSize.Height);
                 }
-                using var frame = host.CaptureRenderedFrame();
-                Assert.NotNull(frame);
-                Assert.Equal((int)(width * scaling), frame.PixelSize.Width);
-                Assert.Equal((int)(160 * scaling), frame.PixelSize.Height);
-            }
         }
         finally { host.Close(); }
     }

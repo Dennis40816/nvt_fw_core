@@ -32,9 +32,15 @@ internal static class DividerTestHost
     internal static Window Create(Control content, bool dark = false, bool styles = true,
         double width = 600, double height = 360, bool defaultThemes = true)
     {
-        var host = new Window { Content = content, Width = width, Height = height,
+        var host = new Window
+        {
+            Content = content,
+            Width = width,
+            Height = height,
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
-            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"), FontSize = 13 };
+            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"),
+            FontSize = 13
+        };
         var fluent = new FluentTheme();
         host.Styles.Add(fluent);
         if (styles)

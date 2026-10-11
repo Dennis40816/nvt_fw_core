@@ -39,46 +39,46 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
             Assert.All(buttons, button => Assert.Equal(new CornerRadius(999), button.CornerRadius));
             var templates = buttons.Select(button => button.Template).ToArray();
             foreach (bool nextDark in new[] { dark, !dark, dark })
-            foreach (bool square in new[] { true, false, true, false })
-            {
-                host.RequestedThemeVariant = nextDark ? ThemeVariant.Dark : ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
-                Flush(host);
-                Assert.Equal(new CornerRadius(square ? 6 : 999), group.CornerRadius);
-                for (int index = 0; index < buttons.Length; index++)
+                foreach (bool square in new[] { true, false, true, false })
                 {
-                    ToggleButton button = buttons[index];
-                    bool isSwitch = button is ToggleSwitch || button.Classes.Contains("toggleSwitch");
-                    Assert.Same(templates[index], button.Template);
-                    Assert.True(button.GetDiagnostic(TemplatedControl.CornerRadiusProperty).Priority is BindingPriority.Style or BindingPriority.StyleTrigger);
-                    Assert.Equal(new CornerRadius(!square ? 999 : 6), button.CornerRadius);
-                    foreach (ToggleState state in States)
+                    host.RequestedThemeVariant = nextDark ? ThemeVariant.Dark : ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+                    Flush(host);
+                    Assert.Equal(new CornerRadius(square ? 6 : 999), group.CornerRadius);
+                    for (int index = 0; index < buttons.Length; index++)
                     {
-                        SetState(button, state);
-                        Flush(host);
-                        Border body = Part(button, "ToggleBody");
-                        Assert.Equal(button.CornerRadius, body.CornerRadius);
-                        Border ring = Part(button, "ToggleFocusRing");
-                        Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
-                        if (state.Focus)
+                        ToggleButton button = buttons[index];
+                        bool isSwitch = button is ToggleSwitch || button.Classes.Contains("toggleSwitch");
+                        Assert.Same(templates[index], button.Template);
+                        Assert.True(button.GetDiagnostic(TemplatedControl.CornerRadiusProperty).Priority is BindingPriority.Style or BindingPriority.StyleTrigger);
+                        Assert.Equal(new CornerRadius(!square ? 999 : 6), button.CornerRadius);
+                        foreach (ToggleState state in States)
                         {
-                            Assert.True(ring.IsVisible);
-                            Assert.Equal(body.Bounds.Width + 8, ring.Bounds.Width);
-                            Assert.Equal(body.Bounds.Height + 8, ring.Bounds.Height);
-                        }
-                        if (isSwitch)
-                        {
-                            Assert.Equal(square ? 6 : 999, body.CornerRadius.TopLeft);
-                            Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
-                            if (state.Checked) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
-                        }
-                        else if (state.Checked && !state.Disabled)
-                        {
-                            Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(button.Foreground));
+                            SetState(button, state);
+                            Flush(host);
+                            Border body = Part(button, "ToggleBody");
+                            Assert.Equal(button.CornerRadius, body.CornerRadius);
+                            Border ring = Part(button, "ToggleFocusRing");
+                            Assert.Equal(new CornerRadius(!square ? 999 : 10), ring.CornerRadius);
+                            if (state.Focus)
+                            {
+                                Assert.True(ring.IsVisible);
+                                Assert.Equal(body.Bounds.Width + 8, ring.Bounds.Width);
+                                Assert.Equal(body.Bounds.Height + 8, ring.Bounds.Height);
+                            }
+                            if (isSwitch)
+                            {
+                                Assert.Equal(square ? 6 : 999, body.CornerRadius.TopLeft);
+                                Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
+                                if (state.Checked) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
+                            }
+                            else if (state.Checked && !state.Disabled)
+                            {
+                                Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(button.Foreground));
+                            }
                         }
                     }
                 }
-            }
             Assert.Single(host.Resources.MergedDictionaries);
         }
         finally { host.Close(); }

@@ -65,9 +65,9 @@ public sealed class DividerContractTests(ITestOutputHelper output)
         {
             Show(host);
             foreach (string file in StyleFiles)
-            foreach (Match match in Regex.Matches(ThemeContractTests.ReadExtracted(file).ToString(),
-                @"\{DynamicResource (N(?:vt|fc)[^}]+)\}", RegexOptions.CultureInvariant))
-                _ = Resource(bar, match.Groups[1].Value);
+                foreach (Match match in Regex.Matches(ThemeContractTests.ReadExtracted(file).ToString(),
+                    @"\{DynamicResource (N(?:vt|fc)[^}]+)\}", RegexOptions.CultureInvariant))
+                    _ = Resource(bar, match.Groups[1].Value);
             Assert.Equal(6d, Resource(bar, "Nvt.Progress.Height"));
             Assert.Equal(3d, Resource(bar, "Nvt.Progress.ThinHeight"));
             Assert.Equal(10d, Resource(bar, "Nvt.Progress.ThickHeight"));
@@ -98,19 +98,19 @@ public sealed class DividerContractTests(ITestOutputHelper output)
             Show(host);
             var templates = (expander.Template, bar.Template, splitter.Template);
             foreach (bool dark in new[] { true, false })
-            foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill })
-            {
-                host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                Flush(host);
-                double radius = shape == ThemeShape.Square ? 6 : 999;
-                Assert.Equal(new CornerRadius(radius), Header(expander).CornerRadius);
-                Assert.Equal(new CornerRadius(radius), splitter.CornerRadius);
-                Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 1 : 999), bar.CornerRadius);
-                Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 2 : 999), Part<Border>(splitter, "SplitterFocusRing").CornerRadius);
-                Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 1 : 3), Part<Border>(bar, "ProgressBarRoot").CornerRadius);
-                Assert.Equal(templates, (expander.Template, bar.Template, splitter.Template));
-            }
+                foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill })
+                {
+                    host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    Flush(host);
+                    double radius = shape == ThemeShape.Square ? 6 : 999;
+                    Assert.Equal(new CornerRadius(radius), Header(expander).CornerRadius);
+                    Assert.Equal(new CornerRadius(radius), splitter.CornerRadius);
+                    Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 1 : 999), bar.CornerRadius);
+                    Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 2 : 999), Part<Border>(splitter, "SplitterFocusRing").CornerRadius);
+                    Assert.Equal(new CornerRadius(shape == ThemeShape.Square ? 1 : 3), Part<Border>(bar, "ProgressBarRoot").CornerRadius);
+                    Assert.Equal(templates, (expander.Template, bar.Template, splitter.Template));
+                }
             var palette = new ResourceDictionary
             {
                 ["Nvt.Progress.Height"] = 8d,

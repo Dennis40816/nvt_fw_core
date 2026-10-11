@@ -23,19 +23,26 @@ public sealed partial class DividerStylesRenderer
         RedesignSheets.Render("NVT_DIVIDER_IMAGES_DIR", "gridsplitter", "6 DIP hit targets / vertical 4 x 24 DIP grip / horizontal 24 x 4 DIP grip",
             SplitterSheet, Restore, output);
         RedesignSheets.Render("NVT_DIVIDER_IMAGES_DIR", "separator", "Not affected by shape / Light and Dark / soft and strong / horizontal and vertical",
-            () => new StackPanel { Spacing = 24, Children =
+            () => new StackPanel
+            {
+                Spacing = 24,
+                Children =
             {
                 Label("LIGHT", 13, true), SeparatorSheet(),
                 new ThemeVariantScope { RequestedThemeVariant = ThemeVariant.Dark,
                     Child = Surface("Dark", "Not affected by shape", SeparatorSheet()) },
-            } }, _ => { }, output, single: true);
+            }
+            }, _ => { }, output, single: true);
     }
 
     private static Control RedesignExpanders()
     {
         Grid matrix = ExpanderSheet();
         foreach (RowDefinition row in matrix.RowDefinitions.Skip(1)) row.Height = new GridLength(132);
-        var siblings = new StackPanel { Spacing = 8, Children =
+        var siblings = new StackPanel
+        {
+            Spacing = 8,
+            Children =
         {
             new Expander { Header = "Input checks", IsExpanded = true, Content = new StackPanel { Spacing = 8, Children =
             {
@@ -44,9 +51,17 @@ public sealed partial class DividerStylesRenderer
                 new CheckBox { Content = "Check metadata", IsChecked = true },
             } } },
             new Expander { Header = "Output checks", Content = new TextBlock { Text = "Review the generated summary." } },
-        } };
-        var nested = new Expander { Header = "Validation stages", IsExpanded = true, Content = siblings, Width = 540,
-            HorizontalAlignment = HorizontalAlignment.Left, Classes = { "section" } };
+        }
+        };
+        var nested = new Expander
+        {
+            Header = "Validation stages",
+            IsExpanded = true,
+            Content = siblings,
+            Width = 540,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Classes = { "section" }
+        };
         return new StackPanel { Spacing = 24, Children = { matrix, Label("44 DIP section / two nested siblings / 8 DIP sibling spacing", 13, true), nested } };
     }
 
@@ -63,8 +78,14 @@ public sealed partial class DividerStylesRenderer
             Add(rows, Label(names[row], 13), row + 1, 0);
             for (int column = 0; column < 3; column++)
             {
-                var bar = new ProgressBar { Value = row == 2 ? 100 : row == 4 ? 0 : 42, IsEnabled = row != 3,
-                    IsIndeterminate = row == 1, VerticalAlignment = VerticalAlignment.Center, Classes = { "reducedMotion" } };
+                var bar = new ProgressBar
+                {
+                    Value = row == 2 ? 100 : row == 4 ? 0 : 42,
+                    IsEnabled = row != 3,
+                    IsIndeterminate = row == 1,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Classes = { "reducedMotion" }
+                };
                 if (column != 1) bar.Classes.Add(column == 0 ? "thin" : "thick");
                 Add(rows, bar, row + 1, column + 1);
             }

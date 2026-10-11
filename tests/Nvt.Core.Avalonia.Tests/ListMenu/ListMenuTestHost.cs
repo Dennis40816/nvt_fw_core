@@ -37,9 +37,11 @@ internal static class ListMenuTestHost
         Application.Current!.Styles.Add(fluent);
         var host = new Window
         {
-            Width = width, Height = height,
+            Width = width,
+            Height = height,
             RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light,
-            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"), FontSize = 13,
+            FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter"),
+            FontSize = 13,
         };
         host.Closed += (_, _) => Application.Current.Styles.Remove(fluent);
         host.Styles.Add(new FluentTheme());
