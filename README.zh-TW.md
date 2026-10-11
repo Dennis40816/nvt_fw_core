@@ -93,6 +93,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.ReportList`：[ReportList](docs/core/modules/ReportList.zh-TW.md)
 - `Nvt.Core.Shell`：[Shell](docs/core/modules/Shell.zh-TW.md)
 - `Nvt.Core.MessageCenter`：[MessageCenter](docs/core/modules/MessageCenter.zh-TW.md)
+- `Nvt.Core.LogConsole`：[LogConsole](docs/core/modules/LogConsole.zh-TW.md)
 
 ## 誰維護
 
