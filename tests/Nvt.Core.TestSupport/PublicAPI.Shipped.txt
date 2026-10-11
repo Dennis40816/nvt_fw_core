@@ -1,1 +1,51 @@
 #nullable enable
+Nvt.Core.TestSupport.ChildProcessFixture
+Nvt.Core.TestSupport.ChildProcessFixture.Dispose() -> void
+Nvt.Core.TestSupport.ChildProcessFixture.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Nvt.Core.TestSupport.ChildProcessFixture.HasExited.get -> bool
+Nvt.Core.TestSupport.ChildProcessFixture.KillTree() -> void
+Nvt.Core.TestSupport.ChildProcessFixture.Output.get -> string!
+Nvt.Core.TestSupport.ChildProcessFixture.OutputTruncated.get -> bool
+Nvt.Core.TestSupport.ChildProcessFixture.ProcessId.get -> int
+Nvt.Core.TestSupport.ChildProcessFixture.WaitForExitAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+Nvt.Core.TestSupport.ChildProcessFixture.WaitForOutputAsync(string! text, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Nvt.Core.TestSupport.ChildProcessFixture.WatchdogExpired.get -> bool
+Nvt.Core.TestSupport.ManualTimeProvider
+Nvt.Core.TestSupport.ManualTimeProvider.Advance(System.TimeSpan delta) -> void
+Nvt.Core.TestSupport.ManualTimeProvider.ManualTimeProvider(System.DateTimeOffset start) -> void
+Nvt.Core.TestSupport.RelativePerf
+Nvt.Core.TestSupport.SignalWait
+Nvt.Core.TestSupport.SignalWait.IsSet.get -> bool
+Nvt.Core.TestSupport.SignalWait.Set() -> bool
+Nvt.Core.TestSupport.SignalWait.SignalWait(string! name, System.TimeSpan? watchdog = null, System.TimeProvider? clock = null) -> void
+Nvt.Core.TestSupport.SignalWait.WaitAsync() -> System.Threading.Tasks.Task!
+Nvt.Core.TestSupport.SignalWait.WaitAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Nvt.Core.TestSupport.TaskBlock
+Nvt.Core.TestSupport.TestFiles
+Nvt.Core.TestSupport.TestWorkspace
+Nvt.Core.TestSupport.TestWorkspace.Dispose() -> void
+Nvt.Core.TestSupport.TestWorkspace.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Nvt.Core.TestSupport.TestWorkspace.GetPath(string! relativePath) -> string!
+Nvt.Core.TestSupport.TestWorkspace.RootPath.get -> string!
+const Nvt.Core.TestSupport.ChildProcessFixture.DefaultMaxOutputCharacters = 65536 -> int
+const Nvt.Core.TestSupport.RelativePerf.DefaultWarmups = 1 -> int
+const Nvt.Core.TestSupport.RelativePerf.MinimumSamples = 7 -> int
+override Nvt.Core.TestSupport.ManualTimeProvider.CreateTimer(System.Threading.TimerCallback! callback, object? state, System.TimeSpan dueTime, System.TimeSpan period) -> System.Threading.ITimer!
+override Nvt.Core.TestSupport.ManualTimeProvider.GetTimestamp() -> long
+override Nvt.Core.TestSupport.ManualTimeProvider.GetUtcNow() -> System.DateTimeOffset
+override Nvt.Core.TestSupport.ManualTimeProvider.LocalTimeZone.get -> System.TimeZoneInfo!
+override Nvt.Core.TestSupport.ManualTimeProvider.TimestampFrequency.get -> long
+static Nvt.Core.TestSupport.ChildProcessFixture.Start(string! fileName, System.Collections.Generic.IEnumerable<string!>? arguments = null, string? workingDirectory = null, System.TimeSpan? watchdog = null, int maxOutputCharacters = 65536, System.TimeProvider? clock = null) -> Nvt.Core.TestSupport.ChildProcessFixture!
+static Nvt.Core.TestSupport.RelativePerf.CalibrationUnit(int samples = 7, System.TimeProvider? clock = null) -> System.TimeSpan
+static Nvt.Core.TestSupport.RelativePerf.InUnits(System.TimeSpan elapsed, System.TimeSpan unit) -> double
+static Nvt.Core.TestSupport.RelativePerf.MedianAllocatedBytes(System.Action! work, int samples = 7, int warmups = 1) -> long
+static Nvt.Core.TestSupport.RelativePerf.MedianTime(System.Action! work, int samples = 7, int warmups = 1, System.TimeProvider? clock = null) -> System.TimeSpan
+static Nvt.Core.TestSupport.RelativePerf.ScaleRatio(System.Action! smaller, System.Action! larger, int samples = 7, int warmups = 1, System.TimeProvider? clock = null) -> double
+static Nvt.Core.TestSupport.SignalWait.WaitAsync(System.Threading.Tasks.Task! task, string! name, System.TimeSpan? watchdog = null, System.TimeProvider? clock = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static Nvt.Core.TestSupport.TaskBlock.UntilComplete(System.Threading.Tasks.Task! task) -> void
+static Nvt.Core.TestSupport.TaskBlock.UntilComplete<T>(System.Threading.Tasks.Task<T>! task) -> T
+static Nvt.Core.TestSupport.TestFiles.ReadLinesAsync(string! path, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string![]!>!
+static Nvt.Core.TestSupport.TestFiles.WriteAllBytes(string! path, byte[]! bytes) -> void
+static Nvt.Core.TestSupport.TestWorkspace.Create() -> Nvt.Core.TestSupport.TestWorkspace!
+static readonly Nvt.Core.TestSupport.ChildProcessFixture.DefaultWatchdog -> System.TimeSpan
+static readonly Nvt.Core.TestSupport.SignalWait.DefaultWatchdog -> System.TimeSpan

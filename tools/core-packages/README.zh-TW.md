@@ -77,8 +77,8 @@ SHA-256 必須是 64 個小寫十六進位字元。
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nvt.Core" Version="0.5.0" />
-  <PackageReference Include="Nvt.Core.Avalonia" Version="0.5.0" />
+  <PackageReference Include="Nvt.Core" Version="0.9.0" />
+  <PackageReference Include="Nvt.Core.Avalonia" Version="0.9.0" />
   <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
 </ItemGroup>
 ```

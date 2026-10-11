@@ -40,7 +40,7 @@ public sealed partial class ConsoleHeader : UserControl
     }
     private void SearchChanged(object? sender, TextChangedEventArgs args)
     {
-        if (sender is TextBox search && Controller is { } controller && controller.ResetFiltersCommand.CanExecute(null)
+        if (sender is TextBox search && Controller is { } controller && controller.IsActive
             && search.Text != controller.Filter.SearchText)
             controller.SetSearchText(search.Text);
     }
