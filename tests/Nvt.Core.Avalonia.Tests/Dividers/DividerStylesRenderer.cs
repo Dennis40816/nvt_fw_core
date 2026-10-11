@@ -110,8 +110,12 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
 
     private static Grid ExpanderSheet()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("120,*,*,*,*"), ColumnSpacing = 14,
-            RowDefinitions = new RowDefinitions("28,96,96,96,96,96,96") };
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("120,*,*,*,*"),
+            ColumnSpacing = 14,
+            RowDefinitions = new RowDefinitions("28,96,96,96,96,96,96")
+        };
         string[] headings = ["State", "Default / closed", "Default / open", "Section / closed", "Section / open"];
         for (int column = 0; column < headings.Length; column++) Add(grid, Label(headings[column], 11, true), 0, column);
         for (int index = 0; index < VisibleStates.Length; index++)
@@ -132,18 +136,28 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
 
     private static Expander Disclosure(DividerState state, bool section = false, bool expanded = false, bool up = false)
     {
-        var expander = new Expander { Header = "Details", Content = Label("Synthetic details", 11), IsExpanded = expanded,
+        var expander = new Expander
+        {
+            Header = "Details",
+            Content = Label("Synthetic details", 11),
+            IsExpanded = expanded,
             ExpandDirection = up ? ExpandDirection.Up : ExpandDirection.Down,
-            VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, section ? 4 : 10, 0, 0),
-            Tag = new ExpanderSnapshot(state) };
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, section ? 4 : 10, 0, 0),
+            Tag = new ExpanderSnapshot(state)
+        };
         if (section) expander.Classes.Add("section");
         return expander;
     }
 
     private static Grid ProgressSheet()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("170,*,*"), ColumnSpacing = 28,
-            RowDefinitions = new RowDefinitions("28,42,42,42,42,42,42,42,42") };
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("170,*,*"),
+            ColumnSpacing = 28,
+            RowDefinitions = new RowDefinitions("28,42,42,42,42,42,42,42,42")
+        };
         Add(grid, Label("Role / state", 11, true), 0, 0);
         Add(grid, Label("Determinate", 11, true), 0, 1);
         Add(grid, Label("Indeterminate", 11, true), 0, 2);
@@ -176,8 +190,12 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
 
     private static Grid SeparatorSheet()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 28,
-            RowDefinitions = new RowDefinitions("24,80") };
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*,*,*"),
+            ColumnSpacing = 28,
+            RowDefinitions = new RowDefinitions("24,80")
+        };
         string[] titles = ["Horizontal / soft", "Horizontal / strong", "Vertical / soft", "Vertical / strong"];
         for (int column = 0; column < 4; column++)
         {
@@ -203,8 +221,12 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
 
     private static Grid SplitterSheet()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("100,*,*,*,*,*"), ColumnSpacing = 28,
-            RowDefinitions = new RowDefinitions("28,68,32") };
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("100,*,*,*,*,*"),
+            ColumnSpacing = 28,
+            RowDefinitions = new RowDefinitions("28,68,32")
+        };
         Add(grid, Label("State", 11, true), 0, 0);
         Add(grid, Label("Vertical", 11), 1, 0);
         Add(grid, Label("Horizontal", 11), 2, 0);
@@ -238,9 +260,16 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
         var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 24 };
         Add(columns, before, 0, 0);
         Add(columns, after, 0, 1);
-        return new Border { Padding = new Thickness(24), Child = new StackPanel { Spacing = 20,
-            Children = { Label("Core / the same controls before and after", 24, true),
-                Label("Actual Fluent templates on the left. Core styles on the right. Light theme, scale 1.0, synthetic labels.", 13), columns } } };
+        return new Border
+        {
+            Padding = new Thickness(24),
+            Child = new StackPanel
+            {
+                Spacing = 20,
+                Children = { Label("Core / the same controls before and after", 24, true),
+                Label("Actual Fluent templates on the left. Core styles on the right. Light theme, scale 1.0, synthetic labels.", 13), columns }
+            }
+        };
     }
 
     private static Border Preview(string title)
@@ -272,8 +301,13 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
             panel.Children.Add(row);
         }
         panel.Children.Add(Label("Separator / soft and strong", 13, true));
-        var separators = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*"), ColumnSpacing = 24, Height = 24,
-            Children = { new Separator(), new Separator { Classes = { "strong" } } } };
+        var separators = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*"),
+            ColumnSpacing = 24,
+            Height = 24,
+            Children = { new Separator(), new Separator { Classes = { "strong" } } }
+        };
         Grid.SetColumn(separators.Children[1], 1);
         panel.Children.Add(separators);
         panel.Children.Add(Label("GridSplitter / every state", 13, true));
@@ -307,16 +341,27 @@ public sealed partial class DividerStylesRenderer(ITestOutputHelper output)
 
     private static Border Surface(string heading, string description, Control content)
     {
-        var root = new Border { Padding = new Thickness(24), Child = new StackPanel { Spacing = 16,
-            Children = { new StackPanel { Spacing = 6, Children = { Label(heading, 16, true), Label(description, 13) } }, content } } };
+        var root = new Border
+        {
+            Padding = new Thickness(24),
+            Child = new StackPanel
+            {
+                Spacing = 16,
+                Children = { new StackPanel { Spacing = 6, Children = { Label(heading, 16, true), Label(description, 13) } }, content }
+            }
+        };
         root.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
         return root;
     }
 
     private static TextBlock Label(string text, int size, bool strong = false)
     {
-        var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center,
-            FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal };
+        var label = new TextBlock
+        {
+            Text = text,
+            VerticalAlignment = VerticalAlignment.Center,
+            FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal
+        };
         label.Bind(TextBlock.FontFamilyProperty, new DynamicResourceExtension("NfcUiFontFamily"));
         label.Bind(TextBlock.FontSizeProperty, new DynamicResourceExtension($"NfcFontSize{size}"));
         label.Bind(TextBlock.ForegroundProperty, new DynamicResourceExtension(strong ? "NfcTextStrongBrush" : "NfcTextSecondaryBrush"));

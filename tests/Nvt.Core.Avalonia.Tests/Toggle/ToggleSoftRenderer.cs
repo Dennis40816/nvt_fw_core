@@ -34,7 +34,8 @@ public sealed class ToggleSoftRenderer(ITestOutputHelper output)
             columns.Children.Add(square);
             var sheet = new StackPanel
             {
-                Margin = new Thickness(24), Spacing = 24,
+                Margin = new Thickness(24),
+                Spacing = 24,
                 Children =
                 {
                     Label($"toggleSoft · {(dark ? "Dark" : "Light")} · 32 DIP · 100% scale", 20),
@@ -96,8 +97,10 @@ public sealed class ToggleSoftRenderer(ITestOutputHelper output)
             Add(rows, ToggleSoftTests.SampleContent(state, false), index + 1, 1);
             Add(rows, new StackPanel
             {
-                Orientation = Orientation.Horizontal, Spacing = 16,
-                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center,
+                Orientation = Orientation.Horizontal,
+                Spacing = 16,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Center,
                 Children =
                 {
                     ToggleSoftTests.SampleContent(state, true),
@@ -118,7 +121,9 @@ public sealed class ToggleSoftRenderer(ITestOutputHelper output)
     {
         var label = new TextBlock
         {
-            Text = text, FontSize = size, Height = size == 20 ? 32 : size == 16 ? 24 : 16,
+            Text = text,
+            FontSize = size,
+            Height = size == 20 ? 32 : size == 16 ? 24 : 16,
             VerticalAlignment = VerticalAlignment.Center,
         };
         label.Bind(TextBlock.FontFamilyProperty, new DynamicResourceExtension("NfcUiFontFamily"));

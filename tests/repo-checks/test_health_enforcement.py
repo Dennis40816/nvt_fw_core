@@ -207,7 +207,7 @@ try {{
         self.write('eng/core-health.lock.json',json.dumps({'schemaVersion':1,'coreCommit':commit,'files':files}))
         r=self.run_ps("$Mode='Enroll'; Test-BundleDrift")
         self.assertNotEqual(0,r.returncode)
-        self.assertIn('approved Core revision',r.stderr)
+        self.assertIn('differs from the canonical file',r.stderr)
 
     def test_unclassified_project_and_evaluated_overrides_fail(self):
         props={'MSBuildProjectName':'Fixture','HealthLayer':'infrastructure','HealthPublicApi':'','HealthBaselineWarningIds':'',
@@ -578,6 +578,238 @@ class Fixture {
         r = self.run_ps(f"$Repo = 'nfc'; $Mode = 'Enroll'; $CoreRoot = $Root; Test-BundleDrift")
         self.assertNotEqual(0, r.returncode)
         self.assertIn('approved Core revision', r.stderr)
+
+    # --- Core is the source of the bundle: a bundle file changes in one pull request (issue 197) ---
+
+    def core_repo(self):
+        """A Core tree whose lock names the commit of its own bundle files. Returns the pin."""
+        self.git('init', '-q', '-b', 'main')
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', self.root / 'tools/repo-checks/csharp')
+        self.write('.editorconfig', (ROOT / '.editorconfig').read_text())
+        self.git('add', '.')
+        self.git('commit', '-qm', 'bundle files')
+        pin = self.git('rev-parse', 'HEAD')
+        self.lock_write(pin)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'lock')
+        return pin
+
+    def change_bundle_file(self, pin, text='P:System.DateTime.Now\n'):
+        """Change the canonical file and its copy, and the lock hash. The pin stays."""
+        for path in ('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'eng/core-health/BannedSymbols.Common.txt'):
+            self.write(path, text)
+        self.lock_write(pin)
+
+    def commit_all(self, message):
+        self.git('add', '.')
+        self.git('commit', '-qm', message)
+        return self.git('rev-parse', 'HEAD')
+
+    def verify_core(self, base='main'):
+        return self.run_ps(f"$Mode = 'Verify'; $BaseRef = '{base}'; Test-BundleDrift")
+
+    def test_core_accepts_a_bundle_change_in_one_pull_request(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.change_bundle_file(pin)
+        self.commit_all('bundle change')
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_accepts_the_stale_pin_of_a_merged_bundle_change(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        self.commit_all('bundle change, merged')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_copy_that_differs_from_the_canonical_file(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(pin)
+        self.commit_all('copy only')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('differs from the canonical file', r.stderr)
+
+    def test_core_rejects_a_canonical_file_that_differs_from_the_copy(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.commit_all('canonical only')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('differs from the canonical file', r.stderr)
+
+    def test_core_rejects_a_lock_hash_that_differs_from_the_files(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        for path in ('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'eng/core-health/BannedSymbols.Common.txt'):
+            self.write(path, 'P:System.DateTime.Now\n')
+        self.commit_all('files without the lock hash')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('SHA-256 differs from lock', r.stderr)
+
+    def test_core_accepts_a_pin_only_synchronization(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write(merged)
+        self.commit_all('pin only')
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_pin_that_is_older_than_the_pin_it_replaces(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.lock_write(merged)
+        self.commit_all('pin synchronized')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write(pin)
+        self.commit_all('pin moved back')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('older than the pin it replaces', r.stderr)
+
+    def test_core_rejects_a_pin_whose_files_differ_from_the_tree(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.change_bundle_file(merged, 'P:System.Environment.TickCount\n')
+        self.commit_all('another change and a pin that has the first one')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the pin moved to a commit whose BannedSymbols.Common.txt', r.stderr)
+
+    def test_core_rejects_a_pin_that_is_not_a_commit_of_its_history(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_rejects_a_committed_pin_that_is_not_in_its_history_without_a_base_ref(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_enroll_rejects_a_pin_that_is_not_in_its_history(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Enroll'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_rejects_a_pin_in_upper_case(self):
+        pin = self.core_repo()
+        self.lock_write(pin.upper())
+        self.commit_all('upper-case pin')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+
+    def test_core_ignores_core_root(self):
+        self.core_repo()
+        r = self.run_ps(f"$Mode = 'Verify'; $CoreRoot = '{self.root.as_posix()}/does-not-exist'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    # --- An application moves its pin in one pull request when -CoreRoot proves it ---
+
+    def core_checkout(self):
+        """A separate Core checkout with two commits. Returns (path, first commit, second commit)."""
+        temp = tempfile.TemporaryDirectory(dir=Path(__file__).parent, prefix='.h03-core-')
+        self.addCleanup(temp.cleanup)
+        core = Path(temp.name).resolve()
+        env = os.environ | {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.test',
+                            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.test'}
+
+        def run(*args):
+            return subprocess.check_output(['git', '-C', str(core), *args], env=env, text=True).strip()
+
+        run('init', '-q', '-b', 'main')
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', core / 'tools/repo-checks/csharp')
+        run('add', '.')
+        run('commit', '-qm', 'first')
+        first = run('rev-parse', 'HEAD')
+        (core / 'tools/repo-checks/csharp/BannedSymbols.Common.txt').write_text('P:System.DateTime.Now\n', encoding='utf-8', newline='\n')
+        run('add', '.')
+        run('commit', '-qm', 'second')
+        return core, first, run('rev-parse', 'HEAD')
+
+    def application_pin_move(self, new_text='P:System.DateTime.Now\n', pin=None):
+        """Application at the first commit; a pull request moves the pin to `pin` (default: second commit)."""
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the first commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', new_text)
+        self.lock_write(pin or second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin synchronization')
+        return core, first, second
+
+    def verify_application(self, core):
+        return self.run_ps(f"$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
+
+    def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
+        core, _, _ = self.application_pin_move()
+        r = self.verify_application(core)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_application_pin_move_fails_without_core_root(self):
+        self.application_pin_move()
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('pin differs from base', r.stderr)
+
+    def test_application_pin_move_fails_when_the_copy_is_not_the_files_of_the_new_pin(self):
+        core, _, _ = self.application_pin_move(new_text='P:System.Environment.TickCount\n')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('approved Core revision', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_not_in_the_core_checkout(self):
+        core, _, _ = self.application_pin_move(pin='d' * 40)
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of the Core checkout', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_older(self):
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the second commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        shutil.copyfile(ROOT / 'tools/repo-checks/csharp/BannedSymbols.Common.txt', self.root / 'eng/core-health/BannedSymbols.Common.txt')
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin moved back')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('does not descend from the pin it replaces', r.stderr)
+
+    def test_an_application_still_cannot_move_its_pin_in_a_pull_request(self):
+        self.app_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.lock_write('c' * 40)
+        self.commit_all('pin moved')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('pin differs from base', r.stderr)
 
 
 @unittest.skipIf(os.environ.get('HEALTH_SKIP_HOST_TESTS') == '1', 'HEALTH_SKIP_HOST_TESTS=1: requires host cache/build')

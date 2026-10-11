@@ -457,8 +457,12 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
     [InlineData(true, true)]
     public void FocusGeometrySurvivesScrollingResizingAndDpi(bool dark, bool square)
     {
-        var list = new ListBox { ItemsSource = Enumerable.Range(1, 30).Select(index => $"Sample {index}").ToArray(), Height = 96,
-            VerticalAlignment = VerticalAlignment.Top };
+        var list = new ListBox
+        {
+            ItemsSource = Enumerable.Range(1, 30).Select(index => $"Sample {index}").ToArray(),
+            Height = 96,
+            VerticalAlignment = VerticalAlignment.Top
+        };
         var before = new Button { Content = "Before" };
         Window host = Create(new StackPanel { Children = { before, list } }, dark, height: 180);
         try
@@ -466,32 +470,32 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
             ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
             Show(host);
             foreach (double width in new[] { 320d, 720d })
-            foreach (double scaling in new[] { 1d, 1.25, 2 })
-            {
-                host.Width = width;
-                host.SetRenderScaling(scaling);
-                Flush(host);
-                var first = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(0));
-                Assert.True(first.Focus(NavigationMethod.Tab));
-                Key(host, global::Avalonia.Input.Key.End);
-                Assert.Equal(29, list.SelectedIndex);
-                var last = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(29));
-                Assert.True(before.Focus());
-                Assert.True(last.Focus(NavigationMethod.Tab));
-                Flush(host);
-                Border ring = Part(last, "ListFocusRing");
-                Assert.True(ring.IsVisible);
-                Assert.Equal(32, last.Bounds.Height);
-                Assert.Equal(last.Bounds.Width - 4, ring.Bounds.Width);
-                Assert.Equal(28, ring.Bounds.Height);
-                Point point = ring.TranslatePoint(default, list)!.Value;
-                Assert.True(point.Y >= 0 && point.Y + ring.Bounds.Height <= list.Bounds.Height);
-                using var frame = host.CaptureRenderedFrame();
-                Assert.NotNull(frame);
-                Assert.Equal((int)(width * scaling), frame.PixelSize.Width);
-                Key(host, global::Avalonia.Input.Key.Home);
-                Assert.Equal(0, list.SelectedIndex);
-            }
+                foreach (double scaling in new[] { 1d, 1.25, 2 })
+                {
+                    host.Width = width;
+                    host.SetRenderScaling(scaling);
+                    Flush(host);
+                    var first = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(0));
+                    Assert.True(first.Focus(NavigationMethod.Tab));
+                    Key(host, global::Avalonia.Input.Key.End);
+                    Assert.Equal(29, list.SelectedIndex);
+                    var last = Assert.IsType<ListBoxItem>(list.ContainerFromIndex(29));
+                    Assert.True(before.Focus());
+                    Assert.True(last.Focus(NavigationMethod.Tab));
+                    Flush(host);
+                    Border ring = Part(last, "ListFocusRing");
+                    Assert.True(ring.IsVisible);
+                    Assert.Equal(32, last.Bounds.Height);
+                    Assert.Equal(last.Bounds.Width - 4, ring.Bounds.Width);
+                    Assert.Equal(28, ring.Bounds.Height);
+                    Point point = ring.TranslatePoint(default, list)!.Value;
+                    Assert.True(point.Y >= 0 && point.Y + ring.Bounds.Height <= list.Bounds.Height);
+                    using var frame = host.CaptureRenderedFrame();
+                    Assert.NotNull(frame);
+                    Assert.Equal((int)(width * scaling), frame.PixelSize.Width);
+                    Key(host, global::Avalonia.Input.Key.Home);
+                    Assert.Equal(0, list.SelectedIndex);
+                }
         }
         finally { host.Close(); }
     }

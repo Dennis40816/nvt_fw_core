@@ -38,8 +38,9 @@ findings belong in the ledger, not mechanically in the seam manifest.
 
 The minimal lock has schemaVersion=1, coreCommit (40 lowercase hex), and files
 mapping the six distributed filenames to raw-byte SHA-256 (64 lowercase hex).
-The checker verifies Git blob identity at that revision in addition to the hashes,
-and protects the base/HEAD pin. Apps provide a local approved Core checkout with
+For an application the checker verifies Git blob identity at that revision in addition to
+the hashes, and protects the base/HEAD pin. Core instead compares each copy, its canonical file
+and the lock hash as the same bytes. Apps provide a local approved Core checkout with
 -CoreRoot; no network or Core runtime dependency is introduced. A pin change is a
 dedicated owner-reviewed synchronization and must preserve the previous baseline.
 The root managed markers are BEGIN/END CORE HEALTH MANAGED BLOCK comments; the
@@ -61,7 +62,28 @@ Solution; LowerBaseline cannot enroll. Generated HealthBaselineWarningIds must
 equal the build diagnostic ledger per project. VSTHRD100 remains error: apps must
 remove async void before enrollment can build. Public API enrollment remains H07d.
 
-To update the pin, review the canonical changes and run from the repo root:
+To change a bundle file in Core, edit the canonical file in `tools/repo-checks/csharp/` and run from the
+repo root, with the pin that the lock names now (the pin does not move in this change):
+
+```powershell
+./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <coreCommit of eng/core-health.lock.json>
+./tools/repo-checks/csharp/New-HealthBundle.ps1 -Check
+```
+
+This is one pull request: the canonical file, the copy in `eng/core-health/`, the manifest and the lock hash.
+Core's `Verify` accepts it, because Core compares its copies with its own canonical files. After the pull
+request merges, a pin synchronization pull request moves `coreCommit` to the merge commit
+(`New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>`). Then an application updates its pin as below.
+
+An application moves its pin in one pull request that changes `eng/core-health.lock.json`
+(`coreCommit` and the hashes) and the copies in `eng/core-health/` (copy all six files of the new Core
+commit, byte for byte). CI must run `Verify` with `-BaseRef origin/main` and with `-CoreRoot` set to a
+Core checkout that is at the approved commit or later. The checker then accepts the pin move when the new
+pin is a commit of that checkout, descends from the old pin and its six files equal the copies. The copy of
+`repo-health.ps1` is not in the lock: it moves in the same pull request and the review covers it.
+Without `-CoreRoot` (a lock-only run) a moved pin is an error.
+
+To update the pin of an application, review the canonical changes and run from the repo root:
 
 ```powershell
 ./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <approved-commit>

@@ -36,8 +36,8 @@ public sealed class ChoiceContractTests
                 AssertResource(element.Attribute("Value")?.Value ?? element.Value);
         }
         foreach (XElement style in source.Descendants(ThemeContractTests.Presentation + "Style"))
-        foreach (string selector in style.Attribute("Selector")!.Value.Split(','))
-            Assert.Matches(@"^\s*(?:CheckBox|RadioButton|\.reducedMotion (?:CheckBox|RadioButton))(?:[\s:.]|$)", selector);
+            foreach (string selector in style.Attribute("Selector")!.Value.Split(','))
+                Assert.Matches(@"^\s*(?:CheckBox|RadioButton|\.reducedMotion (?:CheckBox|RadioButton))(?:[\s:.]|$)", selector);
         using Stream stream = typeof(ChoiceContractTests).Assembly.GetManifestResourceStream("Nvt.Core.Avalonia.Tests.Theme.Source.ThemeTokens.xml")!;
         Assert.Single(XDocument.Load(stream).Descendants(), element => element.Attribute("Source")?.Value == "avares://Nvt.Core.Avalonia/Theme/ChoiceTokens.axaml");
 
@@ -104,35 +104,35 @@ public sealed class ChoiceContractTests
             host.Resources.MergedDictionaries[host.Resources.MergedDictionaries.IndexOf(palette)] = Palette(Colors.Navy, Colors.White);
             Verify(Colors.Navy, Colors.White);
             foreach (bool dark in new[] { true, false })
-            foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
-            {
-                host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                Flush(host);
-                for (int index = 0; index < controls.Length; index++)
+                foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
                 {
-                    ToggleButton control = controls[index];
-                    Assert.Same(templates[index], control.Template);
-                    Assert.Equal(new CornerRadius(control is RadioButton ? 999 : 6), Part<Border>(control, "ChoiceIndicator").CornerRadius);
-                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 10), Part<Border>(control, "ChoiceFocusRing").CornerRadius);
+                    host.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    Flush(host);
+                    for (int index = 0; index < controls.Length; index++)
+                    {
+                        ToggleButton control = controls[index];
+                        Assert.Same(templates[index], control.Template);
+                        Assert.Equal(new CornerRadius(control is RadioButton ? 999 : 6), Part<Border>(control, "ChoiceIndicator").CornerRadius);
+                        Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 10), Part<Border>(control, "ChoiceFocusRing").CornerRadius);
+                    }
                 }
-            }
         }
         finally { host.Close(); }
 
         void Verify(Color fill, Color mark)
         {
             foreach (ToggleButton control in controls)
-            foreach (ChoiceState state in Interactions.Where(state => !state.Disabled))
-            {
-                SetState(control, state with { Checked = control.Tag is ChoiceState original ? original.Checked : true });
-                Flush(host);
-                Assert.Equal(fill, ColorOf(Part<Border>(control, "ChoiceIndicator").Background));
-                Assert.Equal(mark, ColorOf(Part<Ellipse>(control, "ChoiceDot").Fill));
-                Assert.Equal(mark, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
-                Assert.Equal(mark, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
-                Assert.Equal(ResourceColor(control, "Nvt.Controls.ChoiceForegroundBrush"), ColorOf(control.Foreground));
-            }
+                foreach (ChoiceState state in Interactions.Where(state => !state.Disabled))
+                {
+                    SetState(control, state with { Checked = control.Tag is ChoiceState original ? original.Checked : true });
+                    Flush(host);
+                    Assert.Equal(fill, ColorOf(Part<Border>(control, "ChoiceIndicator").Background));
+                    Assert.Equal(mark, ColorOf(Part<Ellipse>(control, "ChoiceDot").Fill));
+                    Assert.Equal(mark, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
+                    Assert.Equal(mark, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
+                    Assert.Equal(ResourceColor(control, "Nvt.Controls.ChoiceForegroundBrush"), ColorOf(control.Foreground));
+                }
         }
 
         static ResourceDictionary Palette(Color fill, Color mark) => new()

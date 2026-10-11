@@ -73,38 +73,38 @@ public sealed class ControlRedesignTests
             ListMenuTestHost.Show(host);
             var template = control.Template;
             foreach (bool dark in new[] { false, true })
-            foreach (ThemeShape shape in new[] { ThemeShape.Pill, ThemeShape.Square, ThemeShape.Pill })
-            {
-                host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                ListMenuTestHost.Flush(host);
-                Control part = Assert.Single(control.GetVisualDescendants().OfType<Control>(), value => value.Name == partName);
-                CornerRadius radius = part is Border border ? border.CornerRadius : Assert.IsType<ContentPresenter>(part).CornerRadius;
-                Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? pill : square), radius);
-                Assert.Same(template, control.Template);
-                if (control is CheckBox or RadioButton)
+                foreach (ThemeShape shape in new[] { ThemeShape.Pill, ThemeShape.Square, ThemeShape.Pill })
                 {
-                    Border indicator = Part<Border>(control, "ChoiceIndicator");
-                    Assert.Equal(new CornerRadius(control is RadioButton ? 999 : 6), indicator.CornerRadius);
-                    Assert.Equal(new Size(20, 20), indicator.Bounds.Size);
-                }
-                if (control is Expander expander)
-                {
-                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 8 : 6), Part<Border>(control, "ExpanderContainer").CornerRadius);
-                    foreach (ExpandDirection direction in new[] { ExpandDirection.Down, ExpandDirection.Up })
+                    host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    ListMenuTestHost.Flush(host);
+                    Control part = Assert.Single(control.GetVisualDescendants().OfType<Control>(), value => value.Name == partName);
+                    CornerRadius radius = part is Border border ? border.CornerRadius : Assert.IsType<ContentPresenter>(part).CornerRadius;
+                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? pill : square), radius);
+                    Assert.Same(template, control.Template);
+                    if (control is CheckBox or RadioButton)
                     {
-                        expander.ExpandDirection = direction;
-                        ListMenuTestHost.Flush(host);
-                        ToggleButton header = Part<ToggleButton>(control, "ExpanderHeader");
-                        Border content = Part<Border>(control, "ExpanderContent");
-                        double gap = direction == ExpandDirection.Down
-                            ? content.Bounds.Top - header.Bounds.Bottom : header.Bounds.Top - content.Bounds.Bottom;
-                        Assert.Equal(6, gap);
+                        Border indicator = Part<Border>(control, "ChoiceIndicator");
+                        Assert.Equal(new CornerRadius(control is RadioButton ? 999 : 6), indicator.CornerRadius);
+                        Assert.Equal(new Size(20, 20), indicator.Bounds.Size);
                     }
+                    if (control is Expander expander)
+                    {
+                        Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 8 : 6), Part<Border>(control, "ExpanderContainer").CornerRadius);
+                        foreach (ExpandDirection direction in new[] { ExpandDirection.Down, ExpandDirection.Up })
+                        {
+                            expander.ExpandDirection = direction;
+                            ListMenuTestHost.Flush(host);
+                            ToggleButton header = Part<ToggleButton>(control, "ExpanderHeader");
+                            Border content = Part<Border>(control, "ExpanderContent");
+                            double gap = direction == ExpandDirection.Down
+                                ? content.Bounds.Top - header.Bounds.Bottom : header.Bounds.Top - content.Bounds.Bottom;
+                            Assert.Equal(6, gap);
+                        }
+                    }
+                    if (control is ListBoxItem or MenuItem)
+                        Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 4), Part<Border>(control, control is MenuItem ? "MenuFocusRing" : "ListFocusRing").CornerRadius);
                 }
-                if (control is ListBoxItem or MenuItem)
-                    Assert.Equal(new CornerRadius(shape == ThemeShape.Pill ? 999 : 4), Part<Border>(control, control is MenuItem ? "MenuFocusRing" : "ListFocusRing").CornerRadius);
-            }
         }
         finally { host.Close(); }
     }
