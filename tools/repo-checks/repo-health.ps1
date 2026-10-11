@@ -4,7 +4,8 @@
 C# health enforcement; syntax measurement contract roslyn-physical-v1. No package restore.
 The embedded host uses the global.json-selected SDK's Roslyn, in an isolated ALC.
 Narrow discovery choices (also in repo-health.md): unresolved async lambdas remain
-candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget;
+candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
+a code-only Avalonia view above it;
 clock candidates are TimeProvider descendants or Fake/Manual/Test*Clock,
 Fake/Manual/Test*TimeProvider, ClockState; workspace lifecycle candidates contain
 both Directory.CreateDirectory and Directory.Delete with a Path.GetTempPath call.
@@ -765,6 +766,32 @@ public static class HealthSyntaxHost
         return string.Join(".", parts);
     }
     static bool Callable(SyntaxNode n) => n is BaseMethodDeclarationSyntax || n is AccessorDeclarationSyntax || n is LocalFunctionStatementSyntax;
+    // A code-only view derives from an Avalonia view base type, directly or through a base type of the same project.
+    // It counts for viewTypeLines only above the budget, so a small view adds no entity and no app needs a one-time registration.
+    // The checker has no Avalonia assemblies, so an Avalonia base type is an error type and matches by simple name.
+    // The names are the Avalonia.Controls types that app views derive from. An unresolved name counts only in a project
+    // whose source mentions Avalonia. A resolved base type must be in the Avalonia namespace.
+    static readonly HashSet<string> ViewBases = new(StringComparer.Ordinal) { "Control", "UserControl", "TemplatedControl", "ContentControl", "ItemsControl", "Window", "Panel", "Decorator", "Border", "Grid", "StackPanel", "DockPanel", "WrapPanel", "Canvas", "Button", "ToggleButton", "ListBox", "TextBox", "ScrollViewer", "Viewbox", "ComboBox", "TabControl", "Slider", "ProgressBar", "CheckBox", "RadioButton" };
+    const int ViewLineBudget = 800;
+    static bool MentionsAvalonia(SyntaxTree tree)
+    {
+        var root = tree.GetRoot();
+        // `global::Avalonia.Controls` is an alias-qualified name, so the prefix is removed before the test.
+        static string Plain(SyntaxNode n) => n.ToString().Replace("global::", "");
+        return root.DescendantNodes().OfType<UsingDirectiveSyntax>().Any(d => { var n = d.Name == null ? null : Plain(d.Name); return n == "Avalonia" || (n != null && n.StartsWith("Avalonia.", StringComparison.Ordinal)); })
+            || root.DescendantNodes().OfType<QualifiedNameSyntax>().Any(q => Plain(q).StartsWith("Avalonia.", StringComparison.Ordinal));
+    }
+    static bool DerivesFromViewBase(INamedTypeSymbol symbol, bool avaloniaInProject)
+    {
+        for (var b = symbol.BaseType; b != null; b = b.BaseType)
+        {
+            if (!ViewBases.Contains(b.Name)) continue;
+            if (b.TypeKind == TypeKind.Error) { if (avaloniaInProject) return true; continue; }
+            string ns = b.ContainingNamespace?.ToDisplayString() ?? "";
+            if (ns == "Avalonia" || ns.StartsWith("Avalonia.", StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
     static string Member(SyntaxNode n)
     {
         var owner = n.Ancestors().FirstOrDefault(Callable);
@@ -992,6 +1019,8 @@ public static class HealthSyntaxHost
         var types = new Dictionary<string,Entity>(StringComparer.Ordinal);
         var state = new Dictionary<string,HashSet<string>>(StringComparer.Ordinal);
         var typeText = new Dictionary<string,List<string>>(StringComparer.Ordinal);
+        var codeViews = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<string> avaloniaProjects = null;
         var imports = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
         var discovery = new List<object>();
         var fakes = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
@@ -1041,6 +1070,8 @@ public static class HealthSyntaxHost
                 }
                 if (!e.locations.Contains(u.Path)) { e.locations.Add(u.Path); e.locationLines[u.Path] = Line(u.Tree,t); e.values["partialFiles"]++; }
                 typeText[key].Add(Normal(t));
+                avaloniaProjects ??= units.Where(x => MentionsAvalonia(x.Tree)).Select(x => x.Project).ToHashSet(StringComparer.Ordinal);
+                if (u.Model.GetDeclaredSymbol(t) is INamedTypeSymbol viewSymbol && DerivesFromViewBase(viewSymbol, avaloniaProjects.Contains(u.Project))) codeViews.Add(key);
                 // Sum declaration spans, not whole files or nested sibling types.
                 e.values["viewTypeLines"] = e.values.GetValueOrDefault("viewTypeLines") + SpanLines(u.Tree,t);
                 foreach (var f in t.ChildNodes().OfType<FieldDeclarationSyntax>())
@@ -1178,7 +1209,8 @@ public static class HealthSyntaxHost
         {
             var e = pair.Value; e.values["stateMembers"] = state[pair.Key].Count;
             e.contentHash = Hash(string.Join("\n",typeText[pair.Key].OrderBy(s => s,StringComparer.Ordinal)));
-            if (!views.Contains(pair.Key)) e.values.Remove("viewTypeLines");
+            bool oversizedCodeView = codeViews.Contains(pair.Key) && e.values.GetValueOrDefault("viewTypeLines") > ViewLineBudget;
+            if (!views.Contains(pair.Key) && !oversizedCodeView) e.values.Remove("viewTypeLines");
         }
         foreach (var group in fakes.Values.Where(g => g.Select(f => f.path).Distinct(StringComparer.Ordinal).Count()>1)) findings.AddRange(group);
         int nativeExcess = 0, nativeGroups = 0;
