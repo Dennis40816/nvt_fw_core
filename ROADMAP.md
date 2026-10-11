@@ -29,7 +29,7 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.3.0 | 2026-10-07 | Everything merged after 0.2.0, released early for NFC | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.3.0) |
 | 0.4.0 | 2026-10-08 | RuntimeQuery exit confirmation and the startup-and-runtime phase for NFC, plus shared icon names | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.4.0) |
 | 0.5.0 | 2026-10-08 | Toggle button roles and shared pill shapes | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.5.0) |
-| 0.9.0 | 2026-10-12 | Feature freeze. Every public API is reviewed and listed. After it, only fixes. | Planned |
+| 0.9.0 | 2026-10-11 | Feature freeze. Every public API is reviewed and listed. After it, only fixes. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.0) |
 | 1.0.0 | 2026-10-15 | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
 | Fonts 0.1.1 | 2026-10-10 | Independent font package. `core-fonts-v0.1.0` came first and `0.1.1` adds the Inter license. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-fonts-v0.1.1) |
 
