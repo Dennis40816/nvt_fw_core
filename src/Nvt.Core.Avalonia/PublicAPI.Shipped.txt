@@ -1,1 +1,478 @@
 #nullable enable
+Nvt.Core.Avalonia.Dialogs.ConfirmDialog
+Nvt.Core.Avalonia.Dialogs.ConfirmDialog.ConfirmDialog() -> void
+Nvt.Core.Avalonia.Dialogs.ConfirmDialog.ConfirmDialog(string! title, string! message, string! confirmText, string! cancelText, bool emphasizeCancel = false, string? confirmTip = null, string? cancelTip = null) -> void
+Nvt.Core.Avalonia.Dialogs.ConfirmDialog.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.Dialogs.WarningDialog
+Nvt.Core.Avalonia.Dialogs.WarningDialog.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.Dialogs.WarningDialog.WarningDialog() -> void
+Nvt.Core.Avalonia.Dialogs.WarningDialog.WarningDialog(string! title, string! message) -> void
+Nvt.Core.Avalonia.Focus.FocusOnRevealBehavior
+Nvt.Core.Avalonia.Focus.FocusToolTipBehavior
+Nvt.Core.Avalonia.Focus.ToolTipTextWrapping
+Nvt.Core.Avalonia.Icons.NvtIcons
+Nvt.Core.Avalonia.Inputs.NumberScrubber
+Nvt.Core.Avalonia.Inputs.NumberScrubber.FormatString.get -> string!
+Nvt.Core.Avalonia.Inputs.NumberScrubber.FormatString.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.IsMixed.get -> bool
+Nvt.Core.Avalonia.Inputs.NumberScrubber.IsMixed.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.IsReadOnly.get -> bool
+Nvt.Core.Avalonia.Inputs.NumberScrubber.IsReadOnly.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Maximum.get -> decimal
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Maximum.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Minimum.get -> decimal
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Minimum.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.NumberScrubber() -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.RequireAltForWheel.get -> bool
+Nvt.Core.Avalonia.Inputs.NumberScrubber.RequireAltForWheel.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubHint.get -> string?
+Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubHint.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubPixelsPerStep.get -> double
+Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubPixelsPerStep.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.SmallChange.get -> decimal
+Nvt.Core.Avalonia.Inputs.NumberScrubber.SmallChange.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.SnapToStep.get -> bool
+Nvt.Core.Avalonia.Inputs.NumberScrubber.SnapToStep.set -> void
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Value.get -> decimal
+Nvt.Core.Avalonia.Inputs.NumberScrubber.Value.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ClearCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ConsoleController(Nvt.Core.LogConsole.LogStore! store, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSource!> sources, Nvt.Core.LogConsole.ConsoleProjectionOptions? options = null) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Dispose() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ExportOptions.get -> Nvt.Core.LogConsole.ConsoleExportOptions!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Filter.get -> Nvt.Core.LogConsole.ConsoleFilter!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Options.get -> Nvt.Core.LogConsole.ConsoleProjectionOptions!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Pause(Nvt.Core.LogConsole.ConsoleRowId? rowId = null, int textOffset = 0, double pixelOffset = 0) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Projection.get -> Nvt.Core.LogConsole.ConsoleProjection!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.PropertyChanged -> System.ComponentModel.PropertyChangedEventHandler?
+Nvt.Core.Avalonia.LogConsole.ConsoleController.RefreshError.get -> System.Exception?
+Nvt.Core.Avalonia.LogConsole.ConsoleController.RequestViewState(Nvt.Core.LogConsole.ConsoleViewState! state) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ResetFiltersCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Resume() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.SetSearchText(string? text) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.SetSelectedSources(System.Collections.Generic.IEnumerable<string!>! sources) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.SetTimeModeCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ToggleDedupeCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ToggleExportLevelCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ToggleExportTimeCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ToggleLevelCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ToggleOnlyMatchesCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.ViewState.get -> Nvt.Core.LogConsole.ConsoleViewState!
+Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState
+Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState.ConsoleEmptyState() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
+Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState.Controller.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.ConsoleHeader() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Controller.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopySelectedCommand.get -> System.Windows.Input.ICommand?
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopySelectedCommand.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopyVisibleCommand.get -> System.Windows.Input.ICommand?
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopyVisibleCommand.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.SaveLogCommand.get -> System.Windows.Input.ICommand?
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.SaveLogCommand.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Title.get -> string!
+Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Title.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ConsoleListView() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.JumpToLatest() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.get -> Nvt.Core.LogConsole.ConsoleProjection?
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeMode.get -> Nvt.Core.LogConsole.ConsoleTimeMode
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeMode.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptions.get -> Nvt.Core.LogConsole.ConsoleProjectionOptions!
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptions.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewState.get -> Nvt.Core.LogConsole.ConsoleViewState!
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewState.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewStateRequested -> System.EventHandler<Nvt.Core.LogConsole.ConsoleViewState!>?
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ConsoleToolbar() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.DiagnosticsExportFailedLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.DiagnosticsExportedLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.FormatMessageCenterAccessibleName(int count) -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.FormatSessionActivitySummary(int count) -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.FormatSystemDiagnosticAnnouncement(int count) -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.HideDebugActivityLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.RefreshDiagnosticsLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.RefreshingDiagnosticsLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.ShowDebugActivityLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction
+Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction.ExportFailed = 3 -> Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction
+Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction.ExportSucceeded = 2 -> Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction
+Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction.Opened = 0 -> Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction
+Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction.RefreshRequested = 1 -> Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ActiveBadgeCount.get -> int
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ActivityItems.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.MessageCenter.MessageCenterActivityItem!>!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ApplyLanguageChanged() -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.CloseCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.DebugActivityActionLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ExportAsync(string! destinationPath, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ExportContextGeneration.get -> long
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ExportStatus.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ExportStatus.set -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ExportWithPickerAsync(System.Func<System.Threading.Tasks.Task<string?>!>! pickPathAsync, System.Func<bool>! isViewContextCurrent) -> System.Threading.Tasks.Task!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasActiveDiagnostics.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasActivityItems.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasExportFailure.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasExportFailure.set -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasNoActiveDiagnostics.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.HasNoActivityItems.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsDebugActivityExpanded.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsErrorActivitySelected.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsExportContextCurrent(long generation) -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsImportantActivitySelected.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsOpen.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsRefreshInProgress.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsRefreshInProgress.set -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsRunReportsSelected.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsSystemInformationSelected.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.IsWarningActivitySelected.get -> bool
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.MessageCenterAccessibleName.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.MessageCenterViewModel(Nvt.Core.MessageCenter.IMessageCenterProvider! provider, System.Func<Nvt.Core.Avalonia.MessageCenter.IMessageCenterText!>! textProvider, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! refresh, System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! export, System.Action! closeReport, System.Action<Nvt.Core.Avalonia.MessageCenter.MessageCenterInteraction>! interaction) -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.NotifyActivityChanged() -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.NotifyDiagnosticsChanged() -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.OpenCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.OpenRunReportsCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.RefreshActionLabel.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.RefreshCommand.get -> CommunityToolkit.Mvvm.Input.IAsyncRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ReportExportFailure() -> void
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.SelectedActivityFilter.get -> Nvt.Core.MessageCenter.MessageActivityFilter
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.SessionActivitySummary.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ShowErrorActivityCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ShowImportantActivityCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ShowRunReportsCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ShowSystemInformationCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ShowWarningActivityCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.SystemStatusAnnouncement.get -> string!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.Text.get -> Nvt.Core.Avalonia.MessageCenter.IMessageCenterText!
+Nvt.Core.Avalonia.MessageCenter.MessageCenterViewModel.ToggleDebugActivityCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.Panels.CollapsiblePanel
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.CollapsiblePanel() -> void
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.DefaultExpanded.get -> bool
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.DefaultExpanded.set -> void
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.HeaderRight.get -> object?
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.HeaderRight.set -> void
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsCollapsible.get -> bool
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsCollapsible.set -> void
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsExpanded.get -> bool
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsExpanded.set -> void
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.Title.get -> string!
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.Title.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell
+Nvt.Core.Avalonia.Panels.WorkspaceShell.FooterContent.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.FooterContent.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.HeaderRight.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.HeaderRight.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftColumnWidth.get -> Avalonia.Controls.GridLength
+Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftColumnWidth.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftContent.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftContent.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.RightColumnWidth.get -> Avalonia.Controls.GridLength
+Nvt.Core.Avalonia.Panels.WorkspaceShell.RightColumnWidth.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.RightContent.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.RightContent.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.Subtitle.get -> string!
+Nvt.Core.Avalonia.Panels.WorkspaceShell.Subtitle.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.SummaryContent.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.SummaryContent.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.Title.get -> string!
+Nvt.Core.Avalonia.Panels.WorkspaceShell.Title.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.ToolbarContent.get -> object?
+Nvt.Core.Avalonia.Panels.WorkspaceShell.ToolbarContent.set -> void
+Nvt.Core.Avalonia.Panels.WorkspaceShell.WorkspaceShell() -> void
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.BalanceLastRow.get -> bool
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.BalanceLastRow.set -> void
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.BalancedWrapPanel() -> void
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.ItemSpacing.get -> double
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.ItemSpacing.set -> void
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.LineSpacing.get -> double
+Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.LineSpacing.set -> void
+Nvt.Core.Avalonia.Primitives.InfoLabel
+Nvt.Core.Avalonia.Primitives.InfoLabel.InfoLabel() -> void
+Nvt.Core.Avalonia.Primitives.InfoLabel.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.Primitives.InfoLabel.Text.get -> string!
+Nvt.Core.Avalonia.Primitives.InfoLabel.Text.set -> void
+Nvt.Core.Avalonia.Primitives.InfoLabel.Tip.get -> string!
+Nvt.Core.Avalonia.Primitives.InfoLabel.Tip.set -> void
+Nvt.Core.Avalonia.Primitives.InfoLabel.TipTargetClass.get -> string?
+Nvt.Core.Avalonia.Primitives.InfoLabel.TipTargetClass.set -> void
+Nvt.Core.Avalonia.Primitives.SectionFrame
+Nvt.Core.Avalonia.Primitives.SectionFrame.SectionFrame() -> void
+Nvt.Core.Avalonia.Primitives.SectionFrame.Title.get -> string!
+Nvt.Core.Avalonia.Primitives.SectionFrame.Title.set -> void
+Nvt.Core.Avalonia.Progress.LoadingSurface
+Nvt.Core.Avalonia.Progress.LoadingSurface.LoadingSurface() -> void
+Nvt.Core.Avalonia.Progress.ProgressIndicator
+Nvt.Core.Avalonia.Progress.ProgressIndicator.Progress.get -> Nvt.Core.Progress.ProgressUpdate?
+Nvt.Core.Avalonia.Progress.ProgressIndicator.Progress.set -> void
+Nvt.Core.Avalonia.Progress.ProgressIndicator.ProgressIndicator() -> void
+Nvt.Core.Avalonia.Progress.UiProgress<T>
+Nvt.Core.Avalonia.Progress.UiProgress<T>.Report(T value) -> void
+Nvt.Core.Avalonia.Progress.UiProgress<T>.UiProgress(System.Action<T>! publish) -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels
+Nvt.Core.Avalonia.ReportList.ReportListLabels.AllItemsLoaded.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.AllItemsLoaded.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.LoadMore.get -> System.Func<int, int, string!>!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.LoadMore.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.NextPage.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.NextPage.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.NoItems.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.NoItems.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.PagedStatus.get -> System.Func<int, int, string!>!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.PagedStatus.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.PreviousPage.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.PreviousPage.init -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.ReportListLabels(string! NoItems, string! PreviousPage, string! NextPage, string! AllItemsLoaded, System.Func<int, int, int, string!>! WindowStatus, System.Func<int, int, string!>! PagedStatus, System.Func<int, int, string!>! LoadMore) -> void
+Nvt.Core.Avalonia.ReportList.ReportListLabels.WindowStatus.get -> System.Func<int, int, int, string!>!
+Nvt.Core.Avalonia.ReportList.ReportListLabels.WindowStatus.init -> void
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.EnsureInitialPage() -> void
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.HasMoreItems.get -> bool
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.Items.get -> System.Collections.ObjectModel.ReadOnlyObservableCollection<object!>!
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.LoadMoreCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.LoadMoreLabel.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.PageStatus.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.RemainingCount.get -> int
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.TotalCount.get -> int
+Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.VisibleCount.get -> int
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.HasMultiplePages.get -> bool
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.HasNextPage.get -> bool
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.HasPreviousPage.get -> bool
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.Items.get -> System.Collections.ObjectModel.ReadOnlyObservableCollection<object!>!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.NextPageCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.NextPageLabel.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.PageCount.get -> int
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.PageIndex.get -> int
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.PageStatus.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.PreviousPageCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.PreviousPageLabel.get -> string!
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.ShowItemAt(int index) -> void
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.TotalCount.get -> int
+Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.VisibleCount.get -> int
+Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation
+Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation.CurrentPage.get -> string!
+Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation.Pages.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation.SwitchPage(string! name) -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitRequest
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitRequest.Confirmed.get -> bool
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitRequest.Confirmed.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitRequest.RuntimeQueryExitRequest(bool Confirmed) -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult.Closing = 0 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult.NeedsConfirmation = 1 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult.Rejected = 2 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.CaptureScreenshot.get -> System.Func<string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult!>!>?
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.CaptureScreenshot.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.Close.get -> System.Action!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.Close.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.DecideExit.get -> System.Func<Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult>!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.DecideExit.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.DecideExitRequest.get -> System.Func<Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitRequest!, Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult>?
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.DecideExitRequest.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.GetCommands.get -> System.Func<System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryCommand!>!>!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.GetCommands.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.GetMainWindow.get -> System.Func<Avalonia.Controls.Window?>!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.GetMainWindow.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.HelpText.get -> string?
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.HelpText.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.Navigation.get -> Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.Navigation.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.RuntimeQueryGenericCommandOptions(string! ToolName, string! ToolVersion, System.Func<System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryCommand!>!>! GetCommands, System.Func<Avalonia.Controls.Window?>! GetMainWindow, Nvt.Core.Avalonia.RuntimeQuery.IRuntimeQueryNavigation! Navigation, System.Func<Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryExitResult>! DecideExit, System.Action! Close) -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.ToolName.get -> string!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.ToolName.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.ToolVersion.get -> string!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions.ToolVersion.init -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommands
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryHost
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryHost.RuntimeQueryHost(System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryIpcServer!>! factory) -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryHost.Start() -> void
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryHost.StopAsync() -> System.Threading.Tasks.Task!
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult.NeedsConfirmation = 1 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult.Rejected = 2 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult.Switched = 0 -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryPageResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.Error.get -> Nvt.Core.RuntimeQuery.RuntimeQueryError?
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.FileSize.get -> long
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.PixelHeight.get -> int
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.PixelWidth.get -> int
+Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryUiThread
+Nvt.Core.Avalonia.Shell.PageHost
+Nvt.Core.Avalonia.Theme.ThemeRestFill
+Nvt.Core.Avalonia.Theme.ThemeRestFill.None = 1 -> Nvt.Core.Avalonia.Theme.ThemeRestFill
+Nvt.Core.Avalonia.Theme.ThemeRestFill.Soft = 0 -> Nvt.Core.Avalonia.Theme.ThemeRestFill
+Nvt.Core.Avalonia.Theme.ThemeRestFills
+Nvt.Core.Avalonia.Theme.ThemeShape
+Nvt.Core.Avalonia.Theme.ThemeShape.Pill = 0 -> Nvt.Core.Avalonia.Theme.ThemeShape
+Nvt.Core.Avalonia.Theme.ThemeShape.Square = 1 -> Nvt.Core.Avalonia.Theme.ThemeShape
+Nvt.Core.Avalonia.Theme.ThemeShapes
+Nvt.Core.Avalonia.Theme.UiResourceResolver
+Nvt.Core.Avalonia.Threading.UiThread
+const Nvt.Core.Avalonia.Icons.NvtIcons.Add = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.AddCircle = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.AreaChart = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ArrowDownward = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Block = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.BugReport = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.CallSplit = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Cancel = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Check = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ChevronLeft = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ChevronRight = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Close = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Construction = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ContentCopy = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ContentPaste = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ContentPasteOff = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.CropSquare = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.DataObject = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Delete = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Download = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.DriveFileMove = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Edit = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Error = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ExpandLess = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.ExpandMore = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FilterAlt = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FilterAltOff = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FilterNone = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FitScreen = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Folder = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FolderOpen = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FormatListBulleted = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Fullscreen = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.FullscreenExit = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.History = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Info = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Layers = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Maximize = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Menu = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Merge = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Minimize = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.MoreHoriz = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.MoreVert = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.NotificationsOff = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.OpenInNew = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Palette = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Pause = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.PlayArrow = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.PushPin = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Refresh = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Remove = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Repeat = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.RestartAlt = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Restore = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.RotateRight = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Save = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Search = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Settings = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Shield = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Shuffle = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.SkipNext = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.SkipPrevious = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Stop = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Straighten = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Troubleshoot = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Undo = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Upload = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Videocam = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Visibility = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.VisibilityOff = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Warning = "" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.CaptureUnavailable = "CAPTURE_UNAVAILABLE" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.ExitRejected = "EXIT_REJECTED" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.FileExists = "FILE_EXISTS" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.InvalidArguments = "INVALID_ARGUMENTS" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.NoMainWindow = "NO_MAIN_WINDOW" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.PageRejected = "PAGE_REJECTED" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.UnknownPage = "UNKNOWN_PAGE" -> string!
+const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.UserConfirmationRequired = "USER_CONFIRMATION_REQUIRED" -> string!
+override Nvt.Core.Avalonia.Panels.CollapsiblePanel.OnInitialized() -> void
+override Nvt.Core.Avalonia.Panels.CollapsiblePanel.OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs! change) -> void
+override Nvt.Core.Avalonia.Progress.ProgressIndicator.OnPropertyChanged(Avalonia.AvaloniaPropertyChangedEventArgs! change) -> void
+override Nvt.Core.Avalonia.Progress.ProgressIndicator.StyleKeyOverride.get -> System.Type!
+static Nvt.Core.Avalonia.Focus.FocusOnRevealBehavior.GetIsEnabled(Avalonia.AvaloniaObject! element) -> bool
+static Nvt.Core.Avalonia.Focus.FocusOnRevealBehavior.SetIsEnabled(Avalonia.AvaloniaObject! element, bool value) -> void
+static Nvt.Core.Avalonia.Focus.FocusToolTipBehavior.GetIsEnabled(Avalonia.AvaloniaObject! element) -> bool
+static Nvt.Core.Avalonia.Focus.FocusToolTipBehavior.SetIsEnabled(Avalonia.AvaloniaObject! element, bool value) -> void
+static Nvt.Core.Avalonia.Focus.ToolTipTextWrapping.Register() -> void
+static Nvt.Core.Avalonia.Focus.ToolTipTextWrapping.Unregister() -> void
+static Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel.Create<T>(System.Collections.Generic.IReadOnlyList<T>! items, int pageSize, Nvt.Core.Avalonia.ReportList.ReportListLabels! labels, bool loadInitialPage = true) -> Nvt.Core.Avalonia.ReportList.ReportPagedListViewModel!
+static Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel.Create<T>(System.Collections.Generic.IReadOnlyList<T>! items, int pageSize, Nvt.Core.Avalonia.ReportList.ReportListLabels! labels, bool loadInitialPage = true) -> Nvt.Core.Avalonia.ReportList.ReportWindowedListViewModel!
+static Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommands.Create(Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericCommandOptions! options) -> System.Collections.Generic.IReadOnlyList<Nvt.Core.RuntimeQuery.RuntimeQueryCommand!>!
+static Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.Failure(string! code, string! message) -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult!
+static Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult.Success(int pixelWidth, int pixelHeight, long fileSize) -> Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryScreenshotResult!
+static Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryUiThread.Wrap(System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryRequest?, string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>! handler, System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryFailure, string?, Nvt.Core.RuntimeQuery.RuntimeQueryError!>! error) -> System.Func<Nvt.Core.RuntimeQuery.RuntimeQueryRequest?, string!, System.Threading.CancellationToken, System.Threading.Tasks.Task<Nvt.Core.RuntimeQuery.RuntimeQueryResponseEnvelope!>!>!
+static Nvt.Core.Avalonia.Shell.PageHost.EnsureContent(Avalonia.Controls.ContentControl! host, bool shouldLoad, object! content) -> void
+static Nvt.Core.Avalonia.Shell.PageHost.MaterializeContent(Avalonia.Controls.ContentControl! host, object! dataContext) -> void
+static Nvt.Core.Avalonia.Theme.ThemeRestFills.SetRestFill(Avalonia.Controls.IResourceDictionary! resources, Nvt.Core.Avalonia.Theme.ThemeRestFill fill) -> void
+static Nvt.Core.Avalonia.Theme.ThemeShapes.SetShape(Avalonia.Controls.IResourceDictionary! resources, Nvt.Core.Avalonia.Theme.ThemeShape shape) -> void
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.GetBrush(Avalonia.Controls.Control! owner, string! key, Avalonia.Media.IBrush! fallback, System.Func<Avalonia.Media.Color, Avalonia.Media.ISolidColorBrush!>! brushFactory) -> Avalonia.Media.IBrush!
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.GetColor(Avalonia.Controls.Control! owner, string! key, Avalonia.Media.Color fallback = default(Avalonia.Media.Color)) -> Avalonia.Media.Color
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.GetCornerRadius(Avalonia.Controls.Control! owner, string! key, Avalonia.CornerRadius fallback) -> Avalonia.CornerRadius
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.GetDouble(Avalonia.Controls.Control! owner, string! key, double fallback = 0) -> double
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.GetThickness(Avalonia.Controls.Control! owner, string! key, Avalonia.Thickness fallback) -> Avalonia.Thickness
+static Nvt.Core.Avalonia.Theme.UiResourceResolver.TryGetColor(Avalonia.Controls.Control! owner, string! key, out Avalonia.Media.Color color) -> bool
+static Nvt.Core.Avalonia.Threading.UiThread.IsCurrent(out Avalonia.Threading.Dispatcher? dispatcher, out Avalonia.Application? application) -> bool
+static Nvt.Core.Avalonia.Threading.UiThread.RegisterRunningDispatcher(Avalonia.Threading.Dispatcher! dispatcher) -> void
+static Nvt.Core.Avalonia.Threading.UiThread.TryGetRunningDispatcher(out Avalonia.Threading.Dispatcher? dispatcher) -> bool
+static readonly Nvt.Core.Avalonia.Focus.FocusOnRevealBehavior.IsEnabledProperty -> Avalonia.AttachedProperty<bool>!
+static readonly Nvt.Core.Avalonia.Focus.FocusToolTipBehavior.IsEnabledProperty -> Avalonia.AttachedProperty<bool>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.FormatStringProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.IsMixedProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.IsReadOnlyProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.MaximumProperty -> Avalonia.StyledProperty<decimal>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.MinimumProperty -> Avalonia.StyledProperty<decimal>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.RequireAltForWheelProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubHintProperty -> Avalonia.StyledProperty<string?>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.ScrubPixelsPerStepProperty -> Avalonia.StyledProperty<double>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.SmallChangeProperty -> Avalonia.StyledProperty<decimal>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.SnapToStepProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Inputs.NumberScrubber.ValueProperty -> Avalonia.StyledProperty<decimal>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleEmptyState.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopySelectedCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopyVisibleCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.SaveLogCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.TitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ProjectionProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleProjection?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeModeProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleTimeMode>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptionsProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleProjectionOptions!>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewStateProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleViewState!>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.DefaultExpandedProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.HeaderRightProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsCollapsibleProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsExpandedProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.TitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.FooterContentProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.HeaderRightProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftColumnWidthProperty -> Avalonia.StyledProperty<Avalonia.Controls.GridLength>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.LeftContentProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.RightColumnWidthProperty -> Avalonia.StyledProperty<Avalonia.Controls.GridLength>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.RightContentProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.SubtitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.SummaryContentProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.TitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Panels.WorkspaceShell.ToolbarContentProperty -> Avalonia.StyledProperty<object?>!
+static readonly Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.BalanceLastRowProperty -> Avalonia.StyledProperty<bool>!
+static readonly Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.ItemSpacingProperty -> Avalonia.StyledProperty<double>!
+static readonly Nvt.Core.Avalonia.Primitives.BalancedWrapPanel.LineSpacingProperty -> Avalonia.StyledProperty<double>!
+static readonly Nvt.Core.Avalonia.Primitives.InfoLabel.TextProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Primitives.InfoLabel.TipProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Primitives.InfoLabel.TipTargetClassProperty -> Avalonia.StyledProperty<string?>!
+static readonly Nvt.Core.Avalonia.Primitives.SectionFrame.TitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.Progress.ProgressIndicator.ProgressProperty -> Avalonia.StyledProperty<Nvt.Core.Progress.ProgressUpdate?>!

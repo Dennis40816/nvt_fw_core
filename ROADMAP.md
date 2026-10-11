@@ -28,9 +28,10 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.2.0 | 2026-10-07 | Everything merged after 0.1.0 | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.2.0) |
 | 0.3.0 | 2026-10-07 | Everything merged after 0.2.0, released early for NFC | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.3.0) |
 | 0.4.0 | 2026-10-08 | RuntimeQuery exit confirmation and the startup-and-runtime phase for NFC, plus shared icon names | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.4.0) |
-| 0.9.0 | 2026-10-13 | Feature freeze. After it, only fixes. | Planned |
+| 0.5.0 | 2026-10-08 | Toggle button roles and shared pill shapes | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.5.0) |
+| 0.9.0 | 2026-10-12 | Feature freeze. Every public API is reviewed and listed. After it, only fixes. | Planned |
 | 1.0.0 | 2026-10-15 | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
-| Fonts 0.1.0 | — | Independent font package and `core-fonts-v0.1.0` tag; required for the 1.0.0 scope | Packaging in progress |
+| Fonts 0.1.1 | 2026-10-10 | Independent font package. `core-fonts-v0.1.0` came first and `0.1.1` adds the Inter license. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-fonts-v0.1.1) |
 
 NFC meets the 1.0.0 condition when its 1.3.x trunk uses Core and the owner confirms its screens in a development build (owner decision 2026-10-07). Core 1.0.0 does not wait for an NFC customer release.
 
@@ -100,13 +101,13 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Report list paging templates | 1.0.0 | Merged | [#103](https://github.com/Dennis40816/nvt_fw_core/pull/103) |
 | Message Center presentation view model | 1.0.0 | Merged | [#100](https://github.com/Dennis40816/nvt_fw_core/pull/100) |
 | RuntimeQuery generic commands: help, ping, focus, page, screenshot, exit | 1.0.0 | Merged | [#102](https://github.com/Dennis40816/nvt_fw_core/pull/102) |
-| Basic controls, set 1: tooltip wrapping, text and number input, combo box, toggle switch, tab control | 1.0.0 | Planned (NFH ports) | — |
+| Basic controls, set 1: tooltip wrapping, text and number input, combo box, toggle switch, tab control | 1.0.0 | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#135](https://github.com/Dennis40816/nvt_fw_core/pull/135), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138) |
 | Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
-| Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Planned | — |
+| Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138), [#146](https://github.com/Dennis40816/nvt_fw_core/pull/146) |
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Design proposal merged; the control is in progress | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar and list merged. Row interaction is in review | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
-| `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Packaging in progress | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
+| `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
 **6. Launcher**
 
@@ -131,7 +132,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Test probe for process tests | 1.0.0 | Merged | [Test probe](tests/Nvt.Core.TestProbe/README.md) |
 | Core-linked test child for Launcher process tests | 1.0.0 | Merged | [#105](https://github.com/Dennis40816/nvt_fw_core/pull/105) |
 | GitHub App module with the review ledger | 1.0.0 | Merged | [#104](https://github.com/Dennis40816/nvt_fw_core/pull/104), [#108](https://github.com/Dennis40816/nvt_fw_core/pull/108) |
-| Public API review before 0.9.0 | 0.9.0 | In progress | — |
+| Public API review before 0.9.0 | 0.9.0 | Merged | [#161](https://github.com/Dennis40816/nvt_fw_core/pull/161), [#179](https://github.com/Dennis40816/nvt_fw_core/pull/179), [#189](https://github.com/Dennis40816/nvt_fw_core/pull/189), [#190](https://github.com/Dennis40816/nvt_fw_core/pull/190), [inventory](docs/core/api-inventory.md) |
 
 ### After 1.0.0
 
