@@ -765,6 +765,16 @@ public static class HealthSyntaxHost
         return string.Join(".", parts);
     }
     static bool Callable(SyntaxNode n) => n is BaseMethodDeclarationSyntax || n is AccessorDeclarationSyntax || n is LocalFunctionStatementSyntax;
+    // A code-only view derives from an Avalonia view base type, directly or through a base type of the same project.
+    // It counts for viewTypeLines only above the budget, so a small view adds no entity and no app needs a one-time registration.
+    static readonly HashSet<string> ViewBases = new(StringComparer.Ordinal) { "Control", "UserControl", "TemplatedControl", "Window", "Panel", "Decorator" };
+    const int ViewLineBudget = 800;
+    static bool DerivesFromViewBase(INamedTypeSymbol symbol)
+    {
+        for (var b = symbol.BaseType; b != null; b = b.BaseType)
+            if (ViewBases.Contains(b.Name) && (b.TypeKind == TypeKind.Error || b.ContainingNamespace?.ToDisplayString().StartsWith("Avalonia", StringComparison.Ordinal) == true)) return true;
+        return false;
+    }
     static string Member(SyntaxNode n)
     {
         var owner = n.Ancestors().FirstOrDefault(Callable);
@@ -992,6 +1002,7 @@ public static class HealthSyntaxHost
         var types = new Dictionary<string,Entity>(StringComparer.Ordinal);
         var state = new Dictionary<string,HashSet<string>>(StringComparer.Ordinal);
         var typeText = new Dictionary<string,List<string>>(StringComparer.Ordinal);
+        var codeViews = new HashSet<string>(StringComparer.Ordinal);
         var imports = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
         var discovery = new List<object>();
         var fakes = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
@@ -1041,6 +1052,7 @@ public static class HealthSyntaxHost
                 }
                 if (!e.locations.Contains(u.Path)) { e.locations.Add(u.Path); e.locationLines[u.Path] = Line(u.Tree,t); e.values["partialFiles"]++; }
                 typeText[key].Add(Normal(t));
+                if (u.Model.GetDeclaredSymbol(t) is INamedTypeSymbol viewSymbol && DerivesFromViewBase(viewSymbol)) codeViews.Add(key);
                 // Sum declaration spans, not whole files or nested sibling types.
                 e.values["viewTypeLines"] = e.values.GetValueOrDefault("viewTypeLines") + SpanLines(u.Tree,t);
                 foreach (var f in t.ChildNodes().OfType<FieldDeclarationSyntax>())
@@ -1178,7 +1190,8 @@ public static class HealthSyntaxHost
         {
             var e = pair.Value; e.values["stateMembers"] = state[pair.Key].Count;
             e.contentHash = Hash(string.Join("\n",typeText[pair.Key].OrderBy(s => s,StringComparer.Ordinal)));
-            if (!views.Contains(pair.Key)) e.values.Remove("viewTypeLines");
+            bool oversizedCodeView = codeViews.Contains(pair.Key) && e.values.GetValueOrDefault("viewTypeLines") > ViewLineBudget;
+            if (!views.Contains(pair.Key) && !oversizedCodeView) e.values.Remove("viewTypeLines");
         }
         foreach (var group in fakes.Values.Where(g => g.Select(f => f.path).Distinct(StringComparer.Ordinal).Count()>1)) findings.AddRange(group);
         int nativeExcess = 0, nativeGroups = 0;
