@@ -98,7 +98,7 @@ internal sealed class ConsoleRowPresenter : Panel, ICustomHitTest
         return label;
     }
 
-    internal void Configure(ConsoleRow row, ConsoleListView view, int index = 0)
+    internal void Configure(ConsoleRow row, ConsoleListView view, int index)
     {
         if (row.Level is LogLevel.Error or LogLevel.Fatal) Bind(BackgroundProperty, new DynamicResourceExtension("NfcDangerSurfaceBrush"));
         else ClearValue(BackgroundProperty);

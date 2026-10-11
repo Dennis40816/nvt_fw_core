@@ -81,11 +81,12 @@ public sealed class ConsoleVisualEvidenceTests
         using var scene = new ConsoleInteractionScene(count: 1);
         var row = scene.Row(1);
         const double ApprovedTargetHeight = 20;
-        const double ExistingControlTargetHeight = 24;
-        var minimum = Resource<double>(row, "NfcSpace24");
+        const double ExistingControlTargetHeight = 32;
+        var minimum = Resource<double>(row, "NfcControlHeight");
         var width = Resource<double>(row, "Nvt.Console.List.ArrowWidth");
         _output.WriteLine($"Expand target {width} x {row.Bounds.Height} DIP; existing controls use {minimum} DIP; height shortfall {minimum - row.Bounds.Height} DIP.");
-        Assert.True(width >= minimum);
+        Assert.Equal(24, width);
+        Assert.True(row.Bounds.Height < minimum);
         Assert.Equal(ExistingControlTargetHeight, minimum);
         Assert.Equal(ApprovedTargetHeight, row.Bounds.Height);
     }
@@ -96,7 +97,6 @@ public sealed class ConsoleVisualEvidenceTests
     [InlineData(23.999, 19.999, true)]
     [InlineData(-0.001, 10, false)]
     [InlineData(24, 10, false)]
-    [InlineData(12, -0.001, false)]
     [InlineData(12, 20, false)]
     public void ArrowTarget_PointerBoundary_TogglesOnlyInsideColumn(double x, double y, bool accepted)
     {
@@ -111,6 +111,23 @@ public sealed class ConsoleVisualEvidenceTests
         _output.WriteLine($"Arrow-column pointer ({x}, {y}) DIP from ({columnLeft}, 0): accepted {accepted}");
         Assert.Equal(accepted, scene.Controller.ViewState.ExpandedIds.Contains(row.RowId!.Value));
     }
+    [AvaloniaFact]
+    public void ArrowTarget_BottomDipOfPreviousRow_DoesNotExpandNextRow()
+    {
+        using var scene = new ConsoleInteractionScene(count: 2);
+        var previous = scene.Row(1);
+        var next = scene.Row(2);
+        Assert.Equal(previous.Bounds.Bottom, next.Bounds.Top);
+        var point = next.TranslatePoint(new Point(next.CountLabel.Bounds.Right + 12, -0.001), scene.Window)!.Value;
+
+        scene.Window.MouseDown(point, MouseButton.Left);
+        scene.Window.MouseUp(point, MouseButton.Left);
+
+        Assert.Contains(previous.RowId!.Value, scene.Controller.ViewState.ExpandedIds);
+        Assert.DoesNotContain(next.RowId!.Value, scene.Controller.ViewState.ExpandedIds);
+        Assert.Equal([1L], scene.Controller.ViewState.Selection);
+    }
+
     [AvaloniaTheory]
     [InlineData(19.999, false)]
     [InlineData(20, true)]

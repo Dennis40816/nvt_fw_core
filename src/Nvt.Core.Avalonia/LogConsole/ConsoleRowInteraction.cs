@@ -48,9 +48,12 @@ internal sealed class ConsoleRowInteraction
         if (!CanInteract || intent is null || _view.Projection is not { } projection) return;
         var row = intent.Row;
         var origin = _focus?.Anchor ?? row.MemberSequences[0];
-        var state = _view.AttachmentSession!.CaptureReadingState();
+        var moveFocus = intent.Selection == ConsoleSelectionAction.Replace;
+        var state = intent.Selection == ConsoleSelectionAction.Preserve
+            ? _view.ViewState : _view.AttachmentSession!.CaptureReadingState();
         var selected = row.MemberSequences.ToImmutableHashSet();
-        if (intent.Selection == ConsoleSelectionAction.Add) selected = state.Selection.Union(row.MemberSequences);
+        if (intent.Selection == ConsoleSelectionAction.Preserve) selected = state.Selection;
+        else if (intent.Selection == ConsoleSelectionAction.Add) selected = state.Selection.Union(row.MemberSequences);
         else if (intent.Selection == ConsoleSelectionAction.Remove) selected = state.Selection.Except(row.MemberSequences);
         else if (intent.Modifiers.HasFlag(KeyModifiers.Shift))
         {
@@ -63,14 +66,15 @@ internal sealed class ConsoleRowInteraction
         else if (intent.Modifiers.HasFlag(KeyModifiers.Control))
             selected = ConsoleRowSelection.Contains(row, state)
                 ? state.Selection.Except(row.MemberSequences) : state.Selection.Union(row.MemberSequences);
-        _focus = new(row.MemberSequences[0], intent.Modifiers.HasFlag(KeyModifiers.Shift) ? origin : row.MemberSequences[0]);
+        if (moveFocus)
+            _focus = new(row.MemberSequences[0], intent.Modifiers.HasFlag(KeyModifiers.Shift) ? origin : row.MemberSequences[0]);
         var expanded = state.ExpandedIds;
         if (intent.Toggle)
             expanded = expanded.Contains(row.Id) ? expanded.Remove(row.Id) : expanded.Add(row.Id);
         else if (intent.Expanded is { } requested)
             expanded = requested ? expanded.Add(row.Id) : expanded.Remove(row.Id);
         _view.Request(state with { Selection = selected, ExpandedIds = expanded });
-        FocusRow(row, intent.Method);
+        if (moveFocus) FocusRow(row, intent.Method);
         foreach (var container in _host.Children.OfType<ConsoleRowPresenter>()) container.RefreshInteraction();
     }
 
@@ -226,4 +230,4 @@ internal sealed class ConsoleRowInteraction
         ConsoleSelectionAction Selection = ConsoleSelectionAction.Replace, bool? Expanded = null);
 }
 
-internal enum ConsoleSelectionAction { Replace, Add, Remove }
+internal enum ConsoleSelectionAction { Replace, Add, Remove, Preserve }

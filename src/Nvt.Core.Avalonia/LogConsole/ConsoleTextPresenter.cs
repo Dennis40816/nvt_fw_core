@@ -109,7 +109,7 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
             ClearLayouts();
             _segments.Clear();
             _key = key;
-            var preview = area == ConsoleSearchArea.Source ? new ConsoleFirstLine(_row.SourceId, false) : ConsoleRowName.FirstLine(_row);
+            var preview = area == ConsoleSearchArea.Source ? new ConsoleFirstLine(_row.SourceId, false) : _row.GetFirstLine();
             var truncated = preview.HasMoreContent;
             if (area == ConsoleSearchArea.Message && !truncated)
             {

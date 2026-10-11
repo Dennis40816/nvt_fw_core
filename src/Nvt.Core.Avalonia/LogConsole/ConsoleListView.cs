@@ -55,6 +55,7 @@ public sealed class ConsoleListView : TemplatedControl
     public void JumpToLatest() => Request(ViewState.Resume());
 
     internal Session? AttachmentSession => _session;
+    internal Parts? TemplateParts => _parts;
     internal ConsoleReadingAnchor? PendingReadingAnchor => _session?.ReadingAnchor;
     internal bool UserScrollPending => _session?.UserScrollPending == true;
     internal ConsoleRowInteraction? RowInteraction => _session?.Interaction;
@@ -301,9 +302,13 @@ public sealed class ConsoleListView : TemplatedControl
                     : _view.ViewState.Follow is ConsoleFollow.Paused paused
                         ? preservePosition ? ((ConsoleFollow.Paused)CaptureReadingState().Follow).Anchor : paused.Anchor : null;
                 _parts.Host.Synchronize(_view);
-                _parts.Jump.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused;
-                _parts.Retention.IsVisible = _view.ViewState.Follow is ConsoleFollow.Paused
-                    && _view.Projection is { EvictedCount: > 0 };
+                var jump = _view.ViewState.Follow is ConsoleFollow.Paused;
+                var retention = jump && _view.Projection is { EvictedCount: > 0 };
+                // The visible template parts are children of the list peer, like the rows.
+                if (_parts.Jump.IsVisible != jump || _parts.Retention.IsVisible != retention)
+                    _parts.Host.NoteChildSetChanged();
+                _parts.Jump.IsVisible = jump;
+                _parts.Retention.IsVisible = retention;
                 UpdateText();
                 Schedule();
             }

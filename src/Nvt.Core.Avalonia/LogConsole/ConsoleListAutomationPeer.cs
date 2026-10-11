@@ -16,11 +16,21 @@ internal sealed class ConsoleListAutomationPeer(ConsoleListView view) : ControlA
     protected override string GetNameCore() => IsAvailable ? ConsoleListText.Format(view, "Nvt.Console.List.Name") : string.Empty;
     protected override object? GetProviderCore(Type providerType)
         => IsAvailable && (providerType == typeof(ISelectionProvider) || providerType == typeof(IScrollProvider)) ? this : null;
-    // Bypass ControlAutomationPeer's visual-child cache: template/overscan visuals are not the list tree.
+    // Build on demand: rows are indirect visual children and template visibility can change independently.
     protected override IReadOnlyList<AutomationPeer> GetOrCreateChildrenCore()
-        => IsAvailable && view.ItemsHost is { } host
-            ? host.Children.OfType<ConsoleRowPresenter>().OrderBy(row => row.AutomationInput?.Index)
-                .Select(CreatePeerForElement).OfType<AutomationPeer>().ToArray() : [];
+    {
+        if (!IsAvailable || view.ItemsHost is not { } host) return [];
+        var children = host.Children.OfType<ConsoleRowPresenter>().OrderBy(row => row.AutomationInput?.Index)
+            .Select(CreatePeerForElement).OfType<AutomationPeer>().ToList();
+        if (view.TemplateParts is { } parts)
+        {
+            if (parts.Jump.IsEffectivelyVisible && CreatePeerForElement(parts.Jump) is { } jump) children.Add(jump);
+            if (parts.Retention.IsEffectivelyVisible && CreatePeerForElement(parts.Retention) is { } retention) children.Add(retention);
+        }
+        return children;
+    }
+    internal void InvalidateRealizedChildren() => InvalidateChildren();
+
     public IReadOnlyList<AutomationPeer> GetSelection()
         => GetOrCreateChildrenCore().Where(peer => peer.GetProvider<ISelectionItemProvider>()?.IsSelected == true).ToArray();
 

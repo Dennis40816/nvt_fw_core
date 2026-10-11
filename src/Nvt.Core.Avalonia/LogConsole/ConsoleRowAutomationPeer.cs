@@ -41,8 +41,8 @@ internal sealed class ConsoleRowAutomationPeer : ControlAutomationPeer, ISelecti
     public void Select() => Interact(ConsoleSelectionAction.Replace);
     public void AddToSelection() => Interact(ConsoleSelectionAction.Add);
     public void RemoveFromSelection() => Interact(ConsoleSelectionAction.Remove);
-    public void Expand() { if (CanExpand && ExpandCollapseState != ExpandCollapseState.Expanded) Interact(ConsoleSelectionAction.Replace, true); }
-    public void Collapse() { if (CanExpand && ExpandCollapseState != ExpandCollapseState.Collapsed) Interact(ConsoleSelectionAction.Replace, false); }
+    public void Expand() { if (CanExpand && ExpandCollapseState != ExpandCollapseState.Expanded) Interact(ConsoleSelectionAction.Preserve, true); }
+    public void Collapse() { if (CanExpand && ExpandCollapseState != ExpandCollapseState.Collapsed) Interact(ConsoleSelectionAction.Preserve, false); }
     private void Interact(ConsoleSelectionAction selection, bool? expanded = null)
     {
         if (Input is { } input) input.View.RowInteraction?.Automate(input.Row, selection, expanded);

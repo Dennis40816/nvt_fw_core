@@ -559,11 +559,11 @@ clipboard 與檔案 adapter 仍由 app 擁有。
 | `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` | `跳至最新（{0} 則新訊息）` |
 | `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
 | `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` | `保留範圍已變更 · 已淘汰 {0} 則訊息` |
-| `Nvt.Console.List.Name` | `Console messages` |
-| `Nvt.Console.List.Row.NameFormat` | `{Level}, {Time}, {Source}, {Message}, {Repeat}, {Links}` |
-| `Nvt.Console.List.Row.RepeatFormat` | `repeated {0} times` |
-| `Nvt.Console.List.Row.LinkOneFormat` | `{0} link` |
-| `Nvt.Console.List.Row.LinksFormat` | `{0} links` |
+| `Nvt.Console.List.Name` | `Console messages` | `主控台訊息` |
+| `Nvt.Console.List.Row.NameFormat` | `{Level}, {Time}, {Source}, {Message}, {Repeat}, {Links}` | `{Level}，{Time}，{Source}，{Message}，{Repeat}，{Links}` |
+| `Nvt.Console.List.Row.RepeatFormat` | `repeated {0} times` | `重複 {0} 次` |
+| `Nvt.Console.List.Row.LinkOneFormat` | `{0} link` | `{0} 個連結` |
+| `Nvt.Console.List.Row.LinksFormat` | `{0} links` | `{0} 個連結` |
 | `Nvt.Console.List.Level.Trace` | `Trace` | `追蹤` |
 | `Nvt.Console.List.Level.Debug` | `Debug` | `偵錯` |
 | `Nvt.Console.List.Level.Info` | `Info` | `資訊` |
@@ -667,15 +667,30 @@ Detach 釋放列選單 commands 的 delegates 與 subscribers；Dispose 也釋�
 Enter／Space 切換展開，Ctrl+C 複製，Escape 先關閉列選單，再清除選取；Ctrl+End 要求 Resume。
 Shift+F10 與 Menu 鍵開啟目前列選單。操作透過 commands，不攔截 TextBox 文字編輯或工具列快捷鍵。
 已實現列使用 Core 只在鍵盤焦點顯示的 Focus B adorner，不加入 Tab 順序；回收焦點列時回到列表入口。
-Automation 樹包含 List peer，以及已實現列的 ListItem peers，包含 host 的實現緩衝範圍。
-未實現列與列內繪製控制項不列為 automation children。列表提供可多選且不強制選取的 selection
+Peer 採延遲建立：只有輔助科技提出要求後才存在。Automation 樹包含 List peer，以及已實現列的
+ListItem peers，包含 host 的實現緩衝範圍；其後接可見的模板「跳到最新」按鈕與保留範圍通知。
+隱藏的模板控制項不列入樹。未實現列與列內繪製控制項不列為 automation children。
+`GetChildren` 每次呼叫都建立清單，不快取子節點。實現列變更或模板控制項的可見性變更時，
+每個完成的 layout pass 最多發出一次 children invalidation，而且只通知 view 已有的 peer。列表提供可多選且不強制選取的 selection
 pattern 與垂直捲動；列提供 selection pattern，可展開列另提供 expand/collapse pattern。
 去重列只要任一保留成員被選取，就視為已選取。選取與展開操作共用滑鼠／鍵盤的 command 路徑，
 經由 `ViewStateRequested` 與 `RequestViewState` 要求更新呼叫端擁有的狀態。
+Pattern 展開與收合只改變 `ExpandedIds`，保留選取、閱讀錨點、following 與鍵盤焦點。
+Pattern AddToSelection 與 RemoveFromSelection 改變選取，但不移動焦點或範圍起點；
+Pattern Select 以該列取代選取並將焦點移到該列，選取結果與滑鼠點擊相同。
+Pattern 的選取變更與其他選取變更一樣會暫停跟隨。Enter 與 Space 保留既有選取／展開行為。
 
 `Nvt.Console.List.Name` 提供列表名稱。`Nvt.Console.List.Row.NameFormat` 排列具名片段
 `{Level}`、`{Time}`、`{Source}`、`{Message}`、`{Repeat}` 與 `{Links}`，預設依序為等級、時間、
-來源、訊息、重複與連結。翻譯可調整片段順序與分隔文字；省略片段時也省略其前方的分隔文字。
+來源、訊息、重複與連結。翻譯可調整片段順序與分隔文字。
+模板語法由區分大小寫的具名片段與 literal 文字組成。片段前的每段 literal（包括開頭文字與
+兩片段間的文字）屬於其緊接右側的片段：該片段非空時原樣保留，即使先前沒有輸出任何片段；
+該片段為空時兩者一併省略。尾端 literal 屬於模板最後一個片段，僅在該片段非空時保留；
+更前方的非空片段不會保留最後空片段的尾文字。因此隱藏時間時，`{Level}, {Time}, {Source}`
+產生 `Info, app`，`{Level} ({Time})` 產生 `Info`；時間存在時後者產生 `Info (12:00:00.000)`。
+只有 literal 的模板完整保留。literal 中的 `{{` 輸出 `{`，`}}` 輸出 `}`。
+未知片段名稱或不平衡的單一大括號使整個模板退回內建英文模板。
+翻譯不應在可能缺席的片段兩側放成對標點：隱藏時間時，`({Time}) {Level}` 產生 `) Info`。
 等級使用 `Nvt.Console.List.Level.*`，重複使用 `Nvt.Console.List.Row.RepeatFormat`，
 連結數使用 `Nvt.Console.List.Row.LinkOneFormat` 或 `Nvt.Console.List.Row.LinksFormat`。
 列表文字沿用宿主 resource override 與英文 fallback；無效的名稱模板退回內建具名模板。
@@ -694,16 +709,17 @@ Host 綁定 presenter 時傳入投影索引，位置與集合大小直接以索�
 只對真正改變的名稱、選取及展開值送出通知。View detach 或 controller Dispose 後，peer 回傳中性值。
 位置與集合大小的 automation properties 在 peer 建立時初始化，之後只有 presenter 存在 peer 時，
 才隨 input 變更更新；釋放時清除 metadata。沒有 peer 的一般實現與回收不寫入 automation property。
-文字通知在 layout 完成後送出。
+文字通知在繪製 measure 發布文字後、於 presenter 的 measure pass 內送出。
 生命週期檢查以 volatile read 讀取 controller 既有的 disposal flag，不進入排程鎖。
 
 Focus B 使用既有內縮焦點環 margin，使 viewport 邊緣的焦點環維持在列內。Layout 使用 Avalonia
 render-scaling seam：列邊界遵循 layout rounding，焦點筆畫保留 DIP 厚度。非整數裝置像素筆畫
 使用反鋸齒，其外側 raster 範圍向上取整。密集列的展開目標涵蓋完整預留箭頭欄，
 包括置中 glyph 的左右空間：寬 24 DIP、高 20 DIP。20 DIP 高度是 K2b 已核准的列高。
-既有互動控制項使用 24 DIP，所以這個目標矮 4 DIP，也是第一個低於 24 DIP 的互動目標。
-這個差距是明確記錄的例外，不是 Core 規則。在焦點列按 Enter 與列 peer 的展開 pattern
-效果相同，因此沒有任何功能必須點中箭頭。提高到 24 DIP 會改變整個 Console 的列高，
+既有互動控制項使用 `NfcControlHeight`（32 DIP），所以這個目標矮 12 DIP；其高度也低於
+24 DIP。Core 沒有對此寫下最低值，所以這是明確記錄的例外。在焦點列按 Enter 與
+列 peer 的展開 pattern 都能改變展開狀態（選取／焦點效果的差異如上所述），
+因此沒有任何功能必須點中箭頭。提高到 24 DIP 會改變整個 Console 的列高，
 需要另行核准列幾何變更。
 Headless peer 測試無法證明原生 UIA／AT-SPI 或 Narrator／NVDA 的輸出。
 

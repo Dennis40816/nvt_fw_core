@@ -29,7 +29,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     internal int LifecycleLockReads => Volatile.Read(ref _lifecycleLockReads);
     // _workGate protects the one command state version, including cross-thread store notifications.
     private long _stateVersion;
-    internal long CommandStateVersion { get { lock (_workGate) return _stateVersion; } }
+    internal long CommandStateVersion => ReadLifecycle().Version;
     // All presentation fields and retired leases are UI-thread-only.
     private int _commandProjectionCaptures;
     internal int CommandProjectionCaptures => _commandProjectionCaptures;
@@ -258,8 +258,8 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
 
     internal bool IsCommandStateCurrent(long version, ConsoleProjection projection)
     {
-        lock (_workGate)
-            if (_disposed || _stateVersion != version) return false;
+        var lifecycle = ReadLifecycle();
+        if (!lifecycle.Active || lifecycle.Version != version) return false;
         // Snapshot capture performs no content reads. History can publish before Changed reaches us.
         LogSnapshot snapshot;
         try { snapshot = _store.CaptureSnapshot(); }
@@ -271,8 +271,11 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         using (snapshot)
         {
             lock (_workGate)
+            {
+                _lifecycleLockReads++;
                 return !_disposed && _stateVersion == version && snapshot.Version == projection.Version
                     && snapshot.Generation == projection.Generation && _store.IsCurrent(projection.Generation);
+            }
         }
     }
 
@@ -287,7 +290,15 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private RelayCommand<T> Command<T>(Action<T> execute) where T : struct
         => new(value => { VerifyActive(); execute(value); }, _ => IsActive);
     // The controller accepts commands until Dispose. The lock publishes the flag to every thread that asks.
-    internal bool IsActive { get { lock (_workGate) { _lifecycleLockReads++; return !_disposed; } } }
+    internal bool IsActive => ReadLifecycle().Active;
+    private (bool Active, long Version) ReadLifecycle()
+    {
+        lock (_workGate)
+        {
+            _lifecycleLockReads++;
+            return (!_disposed, _stateVersion);
+        }
+    }
     // The same disposal flag is published for automation reads without acquiring the scheduling gate.
     internal bool AutomationActive => !Volatile.Read(ref _disposed);
     private void VerifyActive()

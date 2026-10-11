@@ -4,6 +4,7 @@ using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Headless.XUnit;
 using Nvt.Core.Avalonia.LogConsole;
+using Nvt.Core.LogConsole;
 using Xunit;
 using static Nvt.Core.Avalonia.Tests.LogConsole.ConsoleAccessibilitySupport;
 
@@ -68,6 +69,8 @@ public sealed class ConsoleAutomationNameTests
     [InlineData("")]
     [InlineData("{Unknown}")]
     [InlineData("{Message")]
+    [InlineData("{Message} }")]
+    [InlineData("{Message} {Level")]
     public void Name_InvalidHostFormat_UsesEnglishFallback(string format)
     {
         using var scene = new ConsoleInteractionScene(count: 1, message: "message");
@@ -92,5 +95,81 @@ public sealed class ConsoleAutomationNameTests
         scene.Key(global::Avalonia.Input.Key.Enter);
         Assert.EndsWith(ConsoleCopyText.Message(scene.Row(1).Row!), Peer(scene.Row(1)).GetName(), StringComparison.Ordinal);
         Assert.Equal(ConsoleCopyText.MaximumCharacters + "Info, 12:00:00.000, app, ".Length, Peer(scene.Row(1)).GetName().Length);
+    }
+
+    [AvaloniaFact]
+    public void Name_LeadingLiteral_KeepsOpeningPunctuation()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "[{Level}] {Message}";
+        Assert.Equal("[Info] message", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_TrailingLiteral_KeepsClosingPunctuation()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "{Level} ({Time})";
+        Assert.Equal("Info (12:00:00.000)", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_OnlyTrailingLiteral_DoesNotUseEnglishFallback()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "{Level}!";
+        Assert.Equal("Info!", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_AbsentRightFragment_DropsItsSeparator()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.View.TimeMode = ConsoleTimeMode.Hidden;
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "{Level}, {Time}, {Source}";
+        Assert.Equal("Info, app", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_AbsentFinalFragment_DropsItsPrefixAndSuffix()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.View.TimeMode = ConsoleTimeMode.Hidden;
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "{Level} ({Time})";
+        Assert.Equal("Info", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_FirstPresentFragment_KeepsItsAttachedLiteral()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.View.TimeMode = ConsoleTimeMode.Hidden;
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "({Time}) {Level}";
+        Assert.Equal(") Info", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_EscapedBraces_EmitLiteralBraces()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "{{{Level}}} {{message}}";
+        Assert.Equal("{Info} {message}", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_WholeTemplateLiteral_IsKept()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "Console {{message}}.";
+        Assert.Equal("Console {message}.", Peer(scene.Row(1)).GetName());
+    }
+
+    [AvaloniaFact]
+    public void Name_TraditionalChineseTemplate_KeepsFullWidthPunctuation()
+    {
+        using var scene = new ConsoleInteractionScene(count: 1, message: "message");
+        scene.Window.Resources["Nvt.Console.List.Row.NameFormat"] = "【{Level}】{Message}（{Source}）";
+        scene.Window.Resources["Nvt.Console.List.Level.Info"] = "資訊";
+        Assert.Equal("【資訊】message（app）", Peer(scene.Row(1)).GetName());
     }
 }

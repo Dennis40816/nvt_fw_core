@@ -7,8 +7,6 @@ namespace Nvt.Core.Avalonia.LogConsole;
 
 internal static class ConsoleRowName
 {
-    internal static ConsoleFirstLine FirstLine(ConsoleRow row) => row.GetFirstLine();
-
     // The only name composer. The message is a plain value published by the painting layout.
     internal static string Build(ConsoleRowPresenter.RowInput input, string message)
     {
@@ -30,24 +28,38 @@ internal static class ConsoleRowName
         return Compose(template, fragments) ?? Compose(ConsoleListText.Default("Nvt.Console.List.Row.NameFormat"), fragments)!;
     }
 
-    // Literals preceding an omitted fragment are omitted too; translations may reorder named fragments.
+    // Prefix/inter-fragment literals bind right; a suffix binds the final fragment. Escaped braces are literal.
     private static string? Compose(string template, Dictionary<string, string> fragments)
     {
         var text = new StringBuilder();
+        var literal = new StringBuilder();
         var offset = 0;
+        var hasFragment = false;
+        var lastPresent = false;
         while (offset < template.Length)
         {
-            var start = template.IndexOf('{', offset);
-            if (start < 0) return null;
-            var end = template.IndexOf('}', start + 1);
-            if (end < 0 || !fragments.TryGetValue(template[(start + 1)..end], out var fragment)) return null;
-            if (fragment.Length > 0)
+            var character = template[offset++];
+            if (character is not ('{' or '}')) { literal.Append(character); continue; }
+            if (offset < template.Length && template[offset] == character)
             {
-                if (text.Length > 0) text.Append(template.AsSpan(offset, start - offset));
+                literal.Append(character);
+                offset++;
+                continue;
+            }
+            if (character == '}') return null;
+            var end = template.IndexOf('}', offset);
+            if (end < 0 || !fragments.TryGetValue(template[offset..end], out var fragment)) return null;
+            hasFragment = true;
+            lastPresent = fragment.Length > 0;
+            if (lastPresent)
+            {
+                text.Append(literal);
                 text.Append(fragment);
             }
+            literal.Clear();
             offset = end + 1;
         }
+        if (!hasFragment || lastPresent) text.Append(literal);
         return text.ToString();
     }
 }

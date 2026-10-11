@@ -77,29 +77,46 @@ public sealed class ConsoleAutomationStateTests
     }
 
     [AvaloniaTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void Expansion_PeerAction_MatchesEnterRequest(bool expand)
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    public void Expansion_PeerAction_ChangesOnlyExpandedIdsAndKeepsFocus(bool expand, bool following)
     {
-        using var peerScene = new ConsoleInteractionScene(count: 1, message: "first\nsecond");
-        using var keyboardScene = new ConsoleInteractionScene(count: 1, message: "first\nsecond");
-        PrepareExpansion(peerScene, expand); PrepareExpansion(keyboardScene, expand);
+        using var scene = new ConsoleInteractionScene(message: "first\nsecond");
+        scene.Click(1);
+        PreparePeerExpansion(scene, expand, following);
+        var original = scene.View.ViewState;
+        var focused = scene.Window.FocusManager!.GetFocusedElement();
+        var focusEntry = scene.View.RowInteraction!.FocusedEntry;
         var requests = new List<ConsoleViewState>();
-        peerScene.View.ViewStateRequested += (_, state) => requests.Add(state);
-        ChangeExpansion(Peer(peerScene.Row(1)), expand);
-        keyboardScene.Key(Key.Enter);
-        Assert.Equal(keyboardScene.Controller.ViewState.ExpandedIds, peerScene.Controller.ViewState.ExpandedIds);
-        Assert.Equal(keyboardScene.Controller.ViewState.Selection, peerScene.Controller.ViewState.Selection);
+        scene.View.ViewStateRequested += (_, state) => requests.Add(state);
+
+        ChangeExpansion(Peer(scene.Row(3)), expand);
+        ConsoleInteractionWindow.Pump(scene.Window);
+
         var requested = Assert.Single(requests);
-        Assert.Equal(peerScene.Controller.ViewState.Selection, requested.Selection);
-        Assert.Equal(peerScene.Controller.ViewState.ExpandedIds, requested.ExpandedIds);
-        Assert.IsType<ConsoleFollow.Paused>(requested.Follow);
-        Assert.Equal(expand ? ExpandCollapseState.Expanded : ExpandCollapseState.Collapsed, Peer(peerScene.Row(1)).ExpandCollapseState);
+        Assert.Same(original.Selection, requested.Selection);
+        Assert.Equal([1L, 2L], requested.Selection.Order());
+        Assert.Same(original.Follow, requested.Follow);
+        Assert.Equal(original with { ExpandedIds = requested.ExpandedIds }, requested);
+        Assert.Equal(expand, requested.ExpandedIds.Contains(new(3)));
+        Assert.Equal(expand ? ExpandCollapseState.Expanded : ExpandCollapseState.Collapsed, Peer(scene.Row(3)).ExpandCollapseState);
+        Assert.Same(focused, scene.Window.FocusManager.GetFocusedElement());
+        Assert.Equal(focusEntry, scene.View.RowInteraction.FocusedEntry);
     }
-    private static void PrepareExpansion(ConsoleInteractionScene scene, bool expand)
+    private static void PreparePeerExpansion(ConsoleInteractionScene scene, bool expand, bool following)
     {
-        if (!expand) scene.Key(Key.Enter);
+        var state = scene.Controller.ViewState;
+        scene.Controller.RequestViewState(state with
+        {
+            Selection = [1, 2],
+            ExpandedIds = expand ? [] : [new(3)],
+            Follow = following ? state.Resume().Follow : state.Follow,
+        });
+        ConsoleInteractionWindow.Pump(scene.Window);
     }
+
     private static void ChangeExpansion(ConsoleRowAutomationPeer peer, bool expand)
     {
         if (expand) peer.Expand(); else peer.Collapse();
@@ -209,5 +226,94 @@ public sealed class ConsoleAutomationStateTests
         peer.PropertyChanged += (_, args) => changes.Add(args);
         presenter.Configure(scene.Controller.Projection.Rows[0], scene.View, 0);
         Assert.Empty(changes);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(true, new long[] { 1, 2, 3 })]
+    [InlineData(false, new long[] { 1, 2 })]
+    public void Selection_AddOrRemove_KeepsKeyboardFocus(bool add, long[] expected)
+    {
+        using var scene = new ConsoleInteractionScene(message: "message");
+        scene.Click(1);
+        scene.Controller.RequestViewState(scene.Controller.ViewState with { Selection = add ? [1, 2] : [1, 2, 3] });
+        ConsoleInteractionWindow.Pump(scene.Window);
+        var focused = scene.Window.FocusManager!.GetFocusedElement();
+        var requests = new List<ConsoleViewState>();
+        scene.View.ViewStateRequested += (_, state) => requests.Add(state);
+
+        Act(Peer(scene.Row(3)), add ? ConsoleSelectionAction.Add : ConsoleSelectionAction.Remove);
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Equal(expected, Assert.Single(requests).Selection.Order());
+        Assert.Same(focused, scene.Window.FocusManager.GetFocusedElement());
+        Assert.Equal(1L, scene.View.RowInteraction!.FocusedEntry);
+    }
+
+    [AvaloniaFact]
+    public void Select_PeerAction_MovesFocusLikePointerClick()
+    {
+        using var scene = new ConsoleInteractionScene(message: "message");
+        scene.Click(1);
+
+        Peer(scene.Row(3)).Select();
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Same(scene.Row(3), scene.Window.FocusManager!.GetFocusedElement());
+        Assert.Equal(3L, scene.View.RowInteraction!.FocusedEntry);
+        Assert.Equal([3L], scene.View.ViewState.Selection);
+    }
+
+    [AvaloniaFact]
+    public void Expansion_EnterOnFocusedRow_ReplacesSelectionAndPauses()
+    {
+        using var scene = new ConsoleInteractionScene(message: "first\nsecond");
+        scene.Click(3);
+        scene.Controller.RequestViewState(scene.Controller.ViewState.Resume() with { Selection = [1, 2], ExpandedIds = [] });
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Empty(scene.View.ViewState.ExpandedIds);
+        scene.SendKey(Key.Enter);
+
+        Assert.Equal([3L], scene.View.ViewState.Selection);
+        Assert.Contains(new(3), scene.View.ViewState.ExpandedIds);
+        Assert.IsType<ConsoleFollow.Paused>(scene.View.ViewState.Follow);
+        Assert.Same(scene.Row(3), scene.Window.FocusManager!.GetFocusedElement());
+    }
+
+    [AvaloniaTheory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void LifecycleRead_EachLockedAccessor_IsRejectedByReadGuard(int accessor)
+    {
+        using var scene = new ConsoleInteractionScene();
+        var reads = scene.Controller.LifecycleLockReads;
+
+        ReadLifecycleAccessor(scene.Controller, accessor);
+
+        Assert.Throws<global::Xunit.Sdk.EqualException>(() => AssertLifecycleReads(scene.Controller, reads));
+        Assert.Equal(reads + 1, scene.Controller.LifecycleLockReads);
+    }
+    [AvaloniaFact]
+    public void LifecycleRead_CurrentVersionCheck_CountsBothLockEntries()
+    {
+        using var scene = new ConsoleInteractionScene();
+        var version = scene.Controller.CommandStateVersion;
+        var reads = scene.Controller.LifecycleLockReads;
+
+        _ = scene.Controller.IsCommandStateCurrent(version, scene.Controller.Projection);
+
+        Assert.Equal(reads + 2, scene.Controller.LifecycleLockReads);
+    }
+    private static void ReadLifecycleAccessor(ConsoleController controller, int accessor)
+    {
+        switch (accessor)
+        {
+            case 0: _ = controller.IsActive; break;
+            case 1: _ = controller.CommandStateVersion; break;
+            case 2: _ = controller.IsCommandStateCurrent(-1, controller.Projection); break;
+            case 3: _ = controller.IsPublishedStateCurrent; break;
+        }
     }
 }

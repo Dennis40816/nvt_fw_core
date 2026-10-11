@@ -52,7 +52,7 @@ public sealed class ConsoleAutomationContentTests
         try
         {
             var presenter = new ConsoleRowPresenter();
-            presenter.Configure(projection.Rows[0], view);
+            presenter.Configure(projection.Rows[0], view, 0);
             var reads = content.ReadCount;
 
             var peer = Peer(presenter);
