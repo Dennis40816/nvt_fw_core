@@ -95,6 +95,7 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- Added the public API inventory for the Launcher coordination, transport and repository namespaces (`PublicAPI.Unshipped.txt`, 394 entries). Every public `Nvt.Core` API is now listed. Enforcement follows in the last inventory step.
 - Added the public API inventory for the Launcher contracts, persistence and activation namespaces (`PublicAPI.Unshipped.txt`, 477 entries). Enforcement follows in the last inventory step.
 - `Nvt.Core.TestSupport` gains `TestFiles`: `WriteAllBytes` and `ReadLinesAsync` for plain fixture files, through streams, because the `File.ReadAll*` and `File.WriteAll*` shortcuts are banned.
 - `Nvt.Core.TestSupport` gains `TaskBlock`: the one way to block on a task in a test hook that cannot await. It rethrows the original fault and does not use the caller's synchronization context.
