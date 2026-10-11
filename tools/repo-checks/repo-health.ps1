@@ -116,11 +116,13 @@ function Read-Baseline([string]$Text, [string]$Label) {
     }
     $seen.Clear()
     foreach ($f in $b.findings) {
-        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner', 'removeBy')) {
+        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner')) {
             if ($f -isnot [System.Collections.IDictionary] -or -not $f.Contains($key)) { throw "Bad baseline $Label`: finding missing $key" }
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad baseline $Label`: invalid finding $key" }
         }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or -not (Test-IsoDate $f.removeBy)) { throw "Bad baseline $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$') { throw "Bad baseline $Label`: invalid finding count/hash/date" }
+        # removeBy is optional. A finding without it has no due date. A value that is present must be a real calendar date.
+        if ($f.Contains('removeBy') -and -not (Test-IsoDate $f.removeBy)) { throw "Bad baseline $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad baseline $Label`: duplicate finding fingerprint" }
         # Diagnostic fingerprints, including bannedApi/RS0030, use exactly this
         # reader/key. H03 must populate them before enabling complete Verify.
@@ -136,9 +138,10 @@ function Test-IsoDate($Value) {
 # The one clock of the removeBy check. Tests replace this function to set the date.
 function Get-HealthToday { return [DateTime]::UtcNow.Date }
 # A finding is due on its removeBy day. It fails from the next day. ISO dates sort as text.
+# A finding without removeBy has no due date and never expires.
 function Test-RemoveByExpiry($Ledger, [string]$LedgerPath) {
     $today = (Get-HealthToday).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
-    $expired = @($Ledger.findings | Where-Object { [string]::CompareOrdinal($_.removeBy, $today) -lt 0 })
+    $expired = @($Ledger.findings | Where-Object { $_.Contains('removeBy') -and [string]::CompareOrdinal($_.removeBy, $today) -lt 0 })
     # List the first 20, then one summary line, so a ledger with thousands of due findings stays readable.
     $listed = [Math]::Min($expired.Count, 20)
     for ($i = 0; $i -lt $listed; $i++) {
@@ -252,6 +255,11 @@ function Read-HealthDocument([string]$Text, [string]$Definition) {
     $schemaPath = Join-Path $PSScriptRoot 'csharp/schema.json'
     if (-not (Test-Path -LiteralPath $schemaPath)) { $schemaPath = Join-Path $PSScriptRoot 'schema.json' }
     $schema = ConvertFrom-Json -AsHashtable ([IO.File]::ReadAllText($schemaPath))
+    # removeBy is optional since the owner decision of 2026-10-11. schema.json is a distributed bundle file with a pinned
+    # hash, so it keeps removeBy in the required list. The checker takes it out of that list in memory, until a pin
+    # synchronization changes the file.
+    $findingDefinition = $schema.'$defs'.'baseline-finding'
+    $findingDefinition.required = @($findingDefinition.required | Where-Object { $_ -cne 'removeBy' })
     $validation = @{ '$schema' = $schema.'$schema'; '$defs' = $schema.'$defs'; '$ref' = "#/`$defs/$Definition" }
     if (-not (Test-Json -Json $Text -Schema ($validation | ConvertTo-Json -Depth 100) -ErrorAction SilentlyContinue)) { throw "Invalid $Definition document (schema)" }
     return (ConvertFrom-Json -AsHashtable -Depth 100 $Text)
@@ -634,7 +642,7 @@ function Enroll-Baseline($Measurement, [string]$Path) {
         foreach ($metric in $e.values.Keys) { if ($e.values[$metric] -gt $script:Limits[$metric]) { $ceilings[$metric] = $e.values[$metric] } }
         if ($ceilings.Count) { $b.entities += @{ project = $e.project; kind = $e.kind; symbol = $e.symbol; locations = $e.locations; contentHash = $e.contentHash; ceilings = $ceilings; owner = $enrollOwner; issue = 'health-refactor/2026-10-31' } }
     }
-    foreach ($f in $Measurement.findings) { $entry = @{ owner = $enrollOwner; removeBy = '2026-10-31' }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
+    foreach ($f in $Measurement.findings) { $entry = @{ owner = $enrollOwner }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
     $json = ConvertTo-Json -Depth 100 $b
     [void](Read-HealthDocument $json 'baseline')
     [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent))
@@ -662,12 +670,13 @@ function Read-TestDebt([string]$Text, [string]$Label) {
     if ($d.findings -isnot [array]) { throw "Bad test-debt $Label`: findings must be an array" }
     $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($f in $d.findings) {
-        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner', 'removeBy')) {
+        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner')) {
             if ($f -isnot [System.Collections.IDictionary] -or -not $f.Contains($key)) { throw "Bad test-debt $Label`: finding missing $key" }
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad test-debt $Label`: invalid finding $key" }
         }
         if ($f.rule -cnotin $script:TestRules) { throw "Bad test-debt $Label`: $($f.rule) is not a test-duplication rule" }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or -not (Test-IsoDate $f.removeBy)) { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$') { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
+        if ($f.Contains('removeBy') -and -not (Test-IsoDate $f.removeBy)) { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad test-debt $Label`: duplicate finding fingerprint" }
     }
     return $d
@@ -714,7 +723,7 @@ function Enroll-TestDebt($Measurement, [string]$Path) {
     $enrollOwner = Get-EnrollOwner
     $entries = @()
     foreach ($f in @($Measurement.testFindings | Sort-Object { Finding-Key $_ })) {
-        $entry = @{ owner = $enrollOwner; removeBy = '2026-10-31' }
+        $entry = @{ owner = $enrollOwner }
         foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }
         $entries += $entry
     }

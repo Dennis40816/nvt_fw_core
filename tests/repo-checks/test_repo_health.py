@@ -262,8 +262,73 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
 
     def test_expired_test_debt_finding_fails_verify(self) -> None:
         self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        path = self.root / TEST_DEBT
+        ledger = json.loads(path.read_text())
+        ledger["findings"][0]["removeBy"] = "2026-10-31"
+        path.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
         self.set_today("2026-11-01")
         self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "removeBy: 2026-10-31 -> 2026-11-01")
+
+    def strip_removeby(self, path: str) -> None:
+        ledger = json.loads((self.root / path).read_text())
+        for finding in ledger["findings"]:
+            finding.pop("removeBy", None)
+        self.write(path, json.dumps(ledger, indent=2) + "\n")
+
+    def test_finding_without_removeby_never_expires(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.enroll()
+        self.strip_removeby(BASELINE)
+        self.set_today("2030-01-01")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_only_the_dated_finding_of_a_mixed_ledger_expires(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.write("src/Fixture/Two.cs", "#pragma warning disable CA1235\nclass Two {}\n")
+        b = self.enroll()
+        undated = [f for f in b["findings"] if f["path"].endswith("One.cs")]
+        dated = [f for f in b["findings"] if f["path"].endswith("Two.cs")]
+        self.assertTrue(undated and dated)
+        for finding in undated:
+            del finding["removeBy"]
+        self.write_baseline(b)
+        self.set_today("2026-10-15")
+        result = self.run_health("Verify", "-BaseRef", self.base)
+        self.assert_exit(1, result)
+        self.assertEqual(len(dated), result.stdout.count("removeBy: 2026-10-14 -> 2026-10-15"))
+        self.assertNotIn("One.cs", result.stdout)
+        self.assertNotRegex(result.stdout, r"removeBy: \d+ more findings")
+
+    def test_new_debt_is_still_rejected_when_the_ledger_has_no_dates(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.enroll()
+        self.strip_removeby(BASELINE)
+        self.base = self.commit()
+        self.write("src/Fixture/Two.cs", "#pragma warning disable CA1235\nclass Two {}\n")
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_a_ledger_without_dates_passes_against_a_base_with_dates(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        self.enroll()
+        self.strip_removeby(BASELINE)
+        self.git("add", "-A")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_a_null_removeby_is_a_bad_ledger(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
+        b = self.enroll()
+        b["findings"][0]["removeBy"] = None
+        self.write_baseline(b)
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base))
+
+    def test_enrolled_test_debt_has_no_removeby_and_never_expires(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        ledger = json.loads((self.root / TEST_DEBT).read_text())
+        self.assertEqual(1, len(ledger["findings"]))
+        self.assertNotIn("removeBy", ledger["findings"][0])
+        self.set_today("2030-01-01")
+        self.assert_exit(0, self.run_health("Verify", "-BaseRef", self.base))
 
     def test_lower_baseline_is_not_blocked_by_an_expired_date(self) -> None:
         self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")

@@ -21,7 +21,7 @@ compiler and format messages do not change with the host language. It runs `dotn
 `eng/code-health/baseline.json`; override it with `BaselinePath`.
 Verify and LowerBaseline require a committed baseline and Solution. Enroll is the
 only production enrollment mode: it requires all providers to succeed, refuses any
-existing baseline, and writes debt owned by NVT CORE, due 2026-10-31. It also
+existing baseline, and writes debt owned by NVT CORE with no due date. It also
 generates the marked HealthBaselineWarningIds block in projects.props. No mode
 automatically refreshes or raises debt. An absent baseline at the merge base fails
 closed: first enrollment must be integrated before checking subsequent PRs against
@@ -38,15 +38,20 @@ unique content hashes are reserved before remaining unique symbols; locations
 disambiguate partial files with the same symbols. Ambiguous identities fail closed.
 The example baseline may omit `viewTypeLines`; its effective limit is 800 without
 adding a field during LowerBaseline.
-Baseline entity ownership requires `owner`/`issue`; findings require
-`owner`/`removeBy`. Fixes must lower/delete debt in the same change.
-Verify also compares each finding's `removeBy` with today's date (UTC) in both ledgers. A finding is due on
-its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
-expired findings of a ledger and then one summary line with the count. A `removeBy` that is not a real
-calendar date is a bad ledger (exit 2). Structural entities have no date, so they never expire.
-LowerBaseline never moves a date. Moving a date is one JSON edit in a dedicated pull request with an owner
-decision. The checker does not compare a date with the base ref, so the owner's review of that pull request
-is the control.
+Baseline entity ownership requires `owner`/`issue`; findings require `owner`.
+`removeBy` is optional on a finding (owner decision of 2026-10-11: debt has no deadline). Fixes must
+lower/delete debt in the same change. Debt cannot be added and its count cannot grow, with or without a date.
+When a finding has a `removeBy`, Verify compares it with today's date (UTC) in both ledgers. A finding is due
+on its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
+expired findings of a ledger and then one summary line with the count. A `removeBy` that is present and is
+not a real calendar date is a bad ledger (exit 2). A finding without `removeBy` never expires. Structural
+entities have no date, so they never expire. Core's two ledgers carry no `removeBy`.
+LowerBaseline never moves or adds a date. Adding or moving a date is one JSON edit in a dedicated pull
+request with an owner decision. The checker does not compare a date with the base ref, so the owner's review
+of that pull request is the control.
+The bundle file `schema.json` still lists `removeBy` as required. The checker takes it out of that list in
+memory when it reads a baseline, because `schema.json` is a distributed file with a pinned hash. The file
+changes at the next pin synchronization.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's
@@ -206,8 +211,7 @@ A file is a test file when its path has a `tests` or `test` folder or a folder e
 - `-Mode EnrollTestDebt -Solution <sln>` writes the ledger once. It evaluates the projects
   (so a file linked into two test projects counts for each, as in Verify) but does not build.
   Without `-Solution` it attributes by the nearest project file, which can disagree with
-  Verify. It refuses to overwrite a ledger. Owner and removeBy follow Enroll (removeBy
-  `2026-10-31`).
+  Verify. It refuses to overwrite a ledger. The owner follows Enroll. The ledger has no `removeBy`.
 - Verify fails with `New test duplication` when a fingerprint appears or its count grows.
   It also fails with `run LowerBaseline` when a recorded fingerprint shrinks and the ledger
   was not lowered. LowerBaseline lowers the ledger and never adds to it.
@@ -230,7 +234,7 @@ block from the ledger. Core's own enrollment used the seed
 
 `-Owner <name>` sets the owner written to entities and findings. Without it, Core
 uses `NVT CORE` and any other `-Repo` uses its upper-case name (nfc becomes NFC).
-Issue and removeBy stay shared (`health-refactor/2026-10-31`, `2026-10-31`).
+The issue stays shared (`health-refactor/2026-10-31`). Enroll writes no `removeBy`.
 Verify checks owner and issue only as non-empty strings, so a hand edit is not
 rejected, but `-Owner` is the supported way.
 
@@ -240,8 +244,8 @@ methods) is an error in the bundle `.editorconfig`. Lambdas converted to void
 delegates are counted in the ledger but do not fail the build.
 
 The ledger stores H02 structural excess and syntax findings plus analyzer and
-format debt. Entities use issue health-refactor/2026-10-31; findings use removeBy
-2026-10-31, all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
+format debt. Entities use issue health-refactor/2026-10-31; findings have no removeBy,
+all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
 against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only
 loading supports provider tests, and never executes enrollment or verification.
