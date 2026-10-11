@@ -39,9 +39,9 @@ public sealed class ConsoleCommandReentrancyTests
         using var content = new ConsoleMeasureContent("message");
         using var scene = new ConsoleInteractionScene(content: content);
         scene.Controller.SetSearchText("message");
-        // CanExecute, execution capture, formatting, then the final validation capture.
+        // Availability reads no content: execution capture, formatting, then the final validation capture.
         content.OnRead = () => content.OnRead = () => content.OnRead = () =>
-            content.OnRead = () => scene.Controller.SetSelectedSources(["dxf"]);
+            scene.Controller.SetSelectedSources(["dxf"]);
         scene.Controller.RowCommands.Create(ConsoleRowAction.CopyRow, new(1)).Execute(null);
         Assert.Empty(scene.Adapters.Copied);
         Assert.Equal(["dxf"], scene.Controller.Filter.SelectedSources);
@@ -63,9 +63,9 @@ public sealed class ConsoleCommandReentrancyTests
         using var content = new ConsoleMeasureContent("message");
         using var scene = new ConsoleInteractionScene(content: content);
         scene.Controller.SetSearchText("message");
-        // Source formatting reads no content: the third search read is final validation.
+        // Availability and source formatting read no content: the second search read is final validation.
         content.OnRead = () => content.OnRead = () =>
-            content.OnRead = () => scene.Controller.SetSelectedSources(["dxf"]);
+            scene.Controller.SetSelectedSources(["dxf"]);
         scene.Controller.RowCommands.Create(ConsoleRowAction.CopySource, new(1)).Execute(null);
         Assert.Empty(scene.Adapters.Copied);
         Assert.Equal(["dxf"], scene.Controller.Filter.SelectedSources);

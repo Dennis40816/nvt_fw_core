@@ -333,6 +333,11 @@ callback 返回後才釋放 lease；callback 內重入 dispatcher 也不會提�
 狀態 fence 拒絕投影時，會重新排入要求的更新，且只自動重試一次；清理通知不會補充
 重試額度。Command 驗證在擷取快照前後都檢查控制器生命週期；store 關閉會取消
 驗證，不交付任何內容給 app adapter。
+命令可用性（選單項目與複製命令的 `CanExecute`）讀取已發布的 `Projection` 與 `ViewState`，
+不擷取任何內容，所以一次 refresh 或一次選單建立都不會多算一次投影。store 領先已發布投影
+的短暫期間，可用性可能為 true。執行命令時會以新擷取重新驗證，狀態已變就不交付任何內容。
+`ConsoleListView` 的 `Projection` 與 `ViewState` 必須來自指派給 `Controller` 的同一個控制器，
+不一致會讓命令作用在檢視沒有顯示的列上。
 
 列表借用 `Projection`，透過 `RequestViewState(state)` 回報不可變的意圖，不直接修改
 控制器輸入，也不 Dispose 借用的投影。`Pause(rowId, textOffset, pixelOffset)` 保存閱讀

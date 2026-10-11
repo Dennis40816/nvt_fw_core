@@ -17,9 +17,10 @@ public sealed class ConsoleCommandValidationTests
         Assert.True(command.CanExecute(null));
         scene.Controller.SetSelectedSources(["dxf"]);
         command.Execute(null);
-        Assert.False(command.CanExecute(null));
         Assert.Empty(scene.Adapters.Copied);
         Assert.Contains(scene.Controller.Projection.Rows, row => row.Id == new ConsoleRowId(1));
+        ConsoleInteractionWindow.Pump(scene.Window);
+        Assert.False(command.CanExecute(null));
     }
 
     [AvaloniaFact]
@@ -30,9 +31,10 @@ public sealed class ConsoleCommandValidationTests
         Assert.True(command.CanExecute(null));
         scene.Controller.SetSearchText("missing");
         command.Execute(null);
-        Assert.False(command.CanExecute(null));
         Assert.Empty(scene.Adapters.Opened);
         Assert.NotEmpty(scene.Controller.Projection.Rows);
+        ConsoleInteractionWindow.Pump(scene.Window);
+        Assert.False(command.CanExecute(null));
     }
 
     [AvaloniaFact]
@@ -43,9 +45,10 @@ public sealed class ConsoleCommandValidationTests
         Assert.True(command.CanExecute(null));
         scene.Controller.ToggleLevelCommand.Execute(LogLevel.Info);
         command.Execute(null);
-        Assert.False(command.CanExecute(null));
         Assert.Empty(scene.Adapters.Copied);
         Assert.NotEmpty(scene.Controller.Projection.Rows);
+        ConsoleInteractionWindow.Pump(scene.Window);
+        Assert.False(command.CanExecute(null));
     }
 
     [AvaloniaFact]
@@ -70,9 +73,10 @@ public sealed class ConsoleCommandValidationTests
         Assert.True(command.CanExecute(null));
         scene.Controller.SetSelectedSources(["dxf"]);
         command.Execute(null);
-        Assert.False(command.CanExecute(null));
         Assert.Empty(scene.Adapters.Copied);
         Assert.NotEmpty(scene.Controller.Projection.Rows);
+        ConsoleInteractionWindow.Pump(scene.Window);
+        Assert.False(command.CanExecute(null));
     }
 
     [AvaloniaFact]

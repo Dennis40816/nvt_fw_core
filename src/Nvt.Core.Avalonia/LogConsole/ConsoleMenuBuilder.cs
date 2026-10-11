@@ -138,7 +138,7 @@ internal static class ConsoleMenuBuilder
 
         private bool CanToggleSource()
         {
-            if (_lifetime is not { Controller: var controller } || !controller.ResetFiltersCommand.CanExecute(null)) return false;
+            if (_lifetime is not { Controller: var controller } || !controller.IsActive) return false;
             if (_sourceId is null) return true;
             var selected = Selected(controller);
             return !selected.Contains(_sourceId) || selected.Count > 1;

@@ -207,21 +207,46 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         ToggleExportLevelCommand = Command(() => SetExportOptions(_exportOptions with { IncludeLevel = !_exportOptions.IncludeLevel }));
     }
 
-    internal ConsoleLinkIndex GetLinks(ConsoleRow row) => _linkCache!.GetLinks(_current.Snapshot, row);
+    // After Dispose the cache is gone. A view that is still attached falls back to the spans the row carries.
+    internal ConsoleLinkIndex GetLinks(ConsoleRow row)
+        => _linkCache?.GetLinks(_current.Snapshot, row) ?? UncachedLinks(row);
 
     internal ConsoleLinkIndex GetCommandLinks(ConsoleRow row)
     {
+        if (_linkCache is not { } cache) return UncachedLinks(row);
         using var snapshot = _store.CaptureSnapshot();
-        return _linkCache!.GetLinks(snapshot, row);
+        return cache.GetLinks(snapshot, row);
+    }
+
+    private static ConsoleLinkIndex UncachedLinks(ConsoleRow row) => new(row.LinkSpans ?? [], row.TextContent.Length);
+
+    // Availability gate for commands: no snapshot and no projection. It is false after Dispose, after Clear advanced
+    // the admission generation of the published projection, and after the app-owned store shut down.
+    internal bool IsPublishedStateCurrent
+    {
+        get
+        {
+            _dispatcher.VerifyAccess();
+            if (!IsActive) return false;
+            try { return _store.IsCurrent(_projection.Generation); }
+            catch (ObjectDisposedException error) when (error.ObjectName == typeof(LogStore).FullName) { return false; }
+        }
     }
 
     internal ConsoleProjection? CaptureCommandProjection()
     {
         _dispatcher.VerifyAccess();
-        if (!IsActive()) return null;
+        if (!IsActive) return null;
         var version = CommandStateVersion;
         _commandProjectionCaptures++;
-        using var snapshot = _store.CaptureSnapshot();
+        LogSnapshot snapshotLease;
+        try { snapshotLease = _store.CaptureSnapshot(); }
+        catch (ObjectDisposedException error) when (error.ObjectName == typeof(LogStore).FullName)
+        {
+            // App-owned store shutdown cancels validation.
+            return null;
+        }
+        using var snapshot = snapshotLease;
         var projection = ConsoleProjector.Project(snapshot, _filter, _viewState, Options);
         if (IsCommandStateCurrent(version, projection)) return projection;
         projection.Dispose();
@@ -255,14 +280,15 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         public void Dispose() { Projection.Dispose(); Snapshot.Dispose(); }
     }
 
-    private RelayCommand Command(Action execute) => new(() => { VerifyActive(); execute(); }, IsActive);
+    private RelayCommand Command(Action execute) => new(() => { VerifyActive(); execute(); }, () => IsActive);
     private RelayCommand<T> Command<T>(Action<T> execute) where T : struct
-        => new(value => { VerifyActive(); execute(value); }, _ => IsActive());
-    private bool IsActive() { lock (_workGate) return !_disposed; }
+        => new(value => { VerifyActive(); execute(value); }, _ => IsActive);
+    // The controller accepts commands until Dispose. The lock publishes the flag to every thread that asks.
+    internal bool IsActive { get { lock (_workGate) return !_disposed; } }
     private void VerifyActive()
     {
         _dispatcher.VerifyAccess();
-        ObjectDisposedException.ThrowIf(!IsActive(), this);
+        ObjectDisposedException.ThrowIf(!IsActive, this);
     }
     private void SetFilter(ConsoleFilter filter)
     {
@@ -330,7 +356,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
             if (_viewState.Follow is ConsoleFollow.Paused && _projection.Deduplicate != next.Deduplicate)
                 next = ConsoleProjectionTransfer.WithPausedOrder(next, remapped);
             // Clear advances admission generation before the writer publishes its reset.
-            if (!IsActive() || !_store.IsCurrent(snapshot.Generation)) return;
+            if (!IsActive || !_store.IsCurrent(snapshot.Generation)) return;
             _linkCache!.Synchronize(snapshot);
             _retired = _current;
             _current = new(next, snapshot);
@@ -372,10 +398,10 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     }
     private void Notify(string name, List<Exception>? notificationErrors = null)
     {
-        if (!IsActive()) return;
+        if (!IsActive) return;
         var args = new PropertyChangedEventArgs(name);
         PublishNotifications((PropertyChanged?.GetInvocationList().Cast<PropertyChangedEventHandler>() ?? [])
-            .Select(handler => (Action)(() => handler(this, args))), notificationErrors, IsActive, notificationErrors is not null);
+            .Select(handler => (Action)(() => handler(this, args))), notificationErrors, () => IsActive, notificationErrors is not null);
     }
 
     private void PublishNotifications(IEnumerable<Action> notifications, List<Exception>? notificationErrors = null,
@@ -400,7 +426,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             if (--_notificationDepth == 0)
             {
-                if (IsActive()) Schedule(false);
+                if (IsActive) Schedule(false);
                 else ReleaseProjections();
             }
         }

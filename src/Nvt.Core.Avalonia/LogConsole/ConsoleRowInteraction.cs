@@ -74,7 +74,7 @@ internal sealed class ConsoleRowInteraction
         return -1;
     }
 
-    private bool CanInteract => _view.Controller?.ResetFiltersCommand.CanExecute(null) ?? true;
+    private bool CanInteract => _view.Controller?.IsActive ?? true;
 
     private void KeyDown(object? sender, KeyEventArgs e)
     {

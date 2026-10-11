@@ -97,7 +97,7 @@ public sealed class ConsoleStateFenceTests
     }
 
     [AvaloniaFact]
-    public void CopyCanExecuteCancelsShutdownDuringSearchRead()
+    public void CopyExecuteCancelsShutdownDuringSearchRead()
     {
         using var fixture = new ConsoleTestStore();
         using var content = new ConsoleMeasureContent("message");
@@ -108,7 +108,7 @@ public sealed class ConsoleStateFenceTests
         var command = controller.RowCommands.Create(ConsoleRowAction.CopyMessage, new(1));
         controller.SetSearchText("message");
         content.OnRead = () => { controller.Dispose(); fixture.Store.Dispose(); };
-        Assert.False(command.CanExecute(null));
+        command.Execute(null);
         Assert.Empty(adapters.Copied);
     }
 

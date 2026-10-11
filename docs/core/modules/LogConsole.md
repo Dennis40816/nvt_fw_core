@@ -396,6 +396,13 @@ A state-fence rejection requeues the requested refresh with a single automatic r
 cleanup notifications do not replenish that retry. Command validation checks controller
 lifetime before and after snapshot acquisition. Store shutdown cancels validation and
 delivers nothing to app adapters.
+Command availability (menu items and the `CanExecute` of the copy commands) reads the
+published `Projection` and `ViewState` and captures nothing, so a refresh or a menu build
+costs no projection. Availability can be true for a moment while the store is ahead of the
+published projection. Executing a command validates against a fresh capture and delivers
+nothing when the state changed. `ConsoleListView.Projection` and `ViewState` must come from
+the controller assigned to `Controller`; a mismatch makes the commands act on rows the view
+does not show.
 
 The list borrows `Projection` and reports immutable intents through
 `RequestViewState(state)`. It does not dispose that projection or mutate controller

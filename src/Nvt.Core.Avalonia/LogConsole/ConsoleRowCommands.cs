@@ -36,9 +36,9 @@ internal sealed class ConsoleRowCommands
 
     private bool CanCopySelection()
     {
-        if (_lifetime is not { Controller: var controller } || controller.Clipboard is null) return false;
-        using var projection = controller.CaptureCommandProjection();
-        return projection is not null && projection.Rows.Any(row => row.MemberSequences.Any(controller.ViewState.Selection.Contains));
+        if (_lifetime is not { Controller: var controller } || controller.Clipboard is null
+            || !controller.IsPublishedStateCurrent) return false;
+        return controller.Projection.Rows.Any(row => row.MemberSequences.Any(controller.ViewState.Selection.Contains));
     }
     private bool CopySelected()
     {
@@ -60,12 +60,13 @@ internal sealed class ConsoleRowCommands
 
     internal string? Reason(ConsoleRowAction action, ConsoleRowId id, LinkTarget? target = null)
     {
-        if (_lifetime is not { Controller: var controller }) return "Controller is disposed";
+        if (_lifetime is not { Controller: var controller } || !controller.IsActive) return "Controller is disposed";
         var version = controller.CommandStateVersion;
-        using var projection = controller.CaptureCommandProjection();
-        var reason = Reason(controller, action, projection?.Rows.FirstOrDefault(row => row.Id == id), target);
-        return projection is not null && controller.IsCommandStateCurrent(version, projection)
-            ? reason : "Console state changed";
+        if (!controller.IsPublishedStateCurrent) return "Console state changed";
+        var reason = Reason(controller, action, controller.Projection.Rows.FirstOrDefault(row => row.Id == id), target, controller.GetLinks);
+        // Content readers and app adapters ran above. Availability is the published state, so only a change of the
+        // state while they ran, or a shutdown, cancels the answer; Execute validates against a fresh capture.
+        return controller.CommandStateVersion == version && controller.IsPublishedStateCurrent ? reason : "Console state changed";
     }
 
     // The presenter hit-tests links from its already published row; hover only asks the app adapter.
@@ -75,11 +76,12 @@ internal sealed class ConsoleRowCommands
         return controller.LinkOpener is null ? "Link opening is unavailable" : controller.LinkOpener.GetUnavailableReason(target);
     }
 
-    private static string? Reason(ConsoleController controller, ConsoleRowAction action, ConsoleRow? row, LinkTarget? target)
+    private static string? Reason(ConsoleController controller, ConsoleRowAction action, ConsoleRow? row, LinkTarget? target,
+        Func<ConsoleRow, ConsoleLinkIndex> getLinks)
     {
         if (row is null) return "Row is no longer visible";
         if (action == ConsoleRowAction.OpenLink && target is not null
-            && !(row.LinkSpans ?? controller.GetCommandLinks(row).Spans).Any(link => link.Target == target))
+            && !(row.LinkSpans ?? getLinks(row).Spans).Any(link => link.Target == target))
             return "Link is no longer in this row";
         return action switch
         {
@@ -97,7 +99,7 @@ internal sealed class ConsoleRowCommands
         var version = controller.CommandStateVersion;
         using var projection = controller.CaptureCommandProjection();
         var row = projection?.Rows.FirstOrDefault(row => row.Id == id);
-        if (Reason(controller, action, row, target) is not null || row is null
+        if (Reason(controller, action, row, target, controller.GetCommandLinks) is not null || row is null
             || !controller.IsCommandStateCurrent(version, projection!)) return false;
         switch (action)
         {

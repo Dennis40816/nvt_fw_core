@@ -17,6 +17,10 @@ public sealed class ConsoleListView : TemplatedControl
     public static readonly StyledProperty<ConsoleController?> ControllerProperty =
         AvaloniaProperty.Register<ConsoleListView, ConsoleController?>(nameof(Controller));
     /// <summary>Gets or sets the app-owned controller. Projection and ViewState remain host inputs.</summary>
+    /// <remarks>
+    /// <see cref="Projection"/> and <see cref="ViewState"/> must come from this controller. A mismatch makes the commands
+    /// act on rows the view does not show.
+    /// </remarks>
     public ConsoleController? Controller { get => GetValue(ControllerProperty); set => SetValue(ControllerProperty, value); }
     /// <summary>Defines <see cref="Projection"/>.</summary>
     public static readonly StyledProperty<ConsoleProjection?> ProjectionProperty =
