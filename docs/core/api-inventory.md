@@ -73,7 +73,7 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 | `Nvt.Core.Avalonia.Threading` | 1 | 4 | Avalonia tests (8) | NFH (22 files) | keep: NFH uses it |
 | `Nvt.Core.Fonts` | 1 | 3 | Avalonia tests (1), Fonts tests (2) | NFH (1 files) | keep: NFH uses it |
 | `Nvt.Core.TestSupport` | 7 | 50 | Avalonia tests (1), TestSupport tests (8), Core tests (14) | none found | keep: the shared test helpers; the Core tests use them |
-| **Total** | **51** | **530** | | | |
+| **Total** | **53** | **543** | | | |
 
 ## Types that only their own namespace and the Core tests reference
 
