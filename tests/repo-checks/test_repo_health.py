@@ -270,6 +270,20 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
                 self.code_view(805, base=base, using="using Avalonia.Controls;\n")
                 self.assertEqual({"N.Plain": 805}, self.view_lines())
 
+    def test_a_global_alias_qualified_avalonia_name_counts_as_a_mention(self) -> None:
+        self.code_view(805, base="global::Avalonia.Controls.Control")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+        self.code_view(805, base="Control", using="using global::Avalonia.Controls;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_a_using_alias_of_an_avalonia_view_base_is_found(self) -> None:
+        self.code_view(805, base="V", using="using V = Avalonia.Controls.UserControl;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_scroll_viewer_is_a_view_base(self) -> None:
+        self.code_view(805, base="ScrollViewer", using="using Avalonia.Controls;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
     def test_an_unresolved_base_named_control_without_avalonia_is_not_a_view(self) -> None:
         self.code_view(805, base="Control")
         self.assertEqual({}, self.view_lines())

@@ -771,13 +771,15 @@ public static class HealthSyntaxHost
     // The checker has no Avalonia assemblies, so an Avalonia base type is an error type and matches by simple name.
     // The names are the Avalonia.Controls types that app views derive from. An unresolved name counts only in a project
     // whose source mentions Avalonia. A resolved base type must be in the Avalonia namespace.
-    static readonly HashSet<string> ViewBases = new(StringComparer.Ordinal) { "Control", "UserControl", "TemplatedControl", "ContentControl", "ItemsControl", "Window", "Panel", "Decorator", "Border", "Grid", "StackPanel", "DockPanel", "WrapPanel", "Canvas", "Button", "ToggleButton", "ListBox", "TextBox" };
+    static readonly HashSet<string> ViewBases = new(StringComparer.Ordinal) { "Control", "UserControl", "TemplatedControl", "ContentControl", "ItemsControl", "Window", "Panel", "Decorator", "Border", "Grid", "StackPanel", "DockPanel", "WrapPanel", "Canvas", "Button", "ToggleButton", "ListBox", "TextBox", "ScrollViewer", "Viewbox", "ComboBox", "TabControl", "Slider", "ProgressBar", "CheckBox", "RadioButton" };
     const int ViewLineBudget = 800;
     static bool MentionsAvalonia(SyntaxTree tree)
     {
         var root = tree.GetRoot();
-        return root.DescendantNodes().OfType<UsingDirectiveSyntax>().Any(d => { var n = d.Name?.ToString(); return n == "Avalonia" || (n != null && n.StartsWith("Avalonia.", StringComparison.Ordinal)); })
-            || root.DescendantNodes().OfType<QualifiedNameSyntax>().Any(q => q.ToString().StartsWith("Avalonia.", StringComparison.Ordinal));
+        // `global::Avalonia.Controls` is an alias-qualified name, so the prefix is removed before the test.
+        static string Plain(SyntaxNode n) => n.ToString().Replace("global::", "");
+        return root.DescendantNodes().OfType<UsingDirectiveSyntax>().Any(d => { var n = d.Name == null ? null : Plain(d.Name); return n == "Avalonia" || (n != null && n.StartsWith("Avalonia.", StringComparison.Ordinal)); })
+            || root.DescendantNodes().OfType<QualifiedNameSyntax>().Any(q => Plain(q).StartsWith("Avalonia.", StringComparison.Ordinal));
     }
     static bool DerivesFromViewBase(INamedTypeSymbol symbol, bool avaloniaInProject)
     {
