@@ -274,6 +274,24 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         self.assert_exit(0, self.run_health("LowerBaseline", "-BaseRef", self.base))
         self.assertEqual([], json.loads((self.root / BASELINE).read_text())["findings"])
 
+    def test_many_expired_findings_print_a_summary_line(self) -> None:
+        for i in range(23):
+            self.write(f"src/Fixture/S{i}.cs", f"#pragma warning disable CA{1000 + i}\nclass S{i} {{}}\n")
+        self.enroll()
+        self.set_today("2026-10-15")
+        result = self.run_health("Verify", "-BaseRef", self.base)
+        self.assert_exit(1, result)
+        self.assertEqual(20, result.stdout.count("removeBy: 2026-10-14 -> 2026-10-15"))
+        self.assertRegex(result.stdout, r"removeBy: \d+ more findings of this ledger")
+
+    def test_impossible_calendar_date_in_test_debt_is_a_bad_ledger(self) -> None:
+        self.seed_test_debt("class One { void M() { System.Threading.Thread.Sleep(1); } }\n")
+        path = self.root / TEST_DEBT
+        ledger = json.loads(path.read_text())
+        ledger["findings"][0]["removeBy"] = "2026-02-30"
+        path.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")
+        self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "invalid finding count/hash/date")
+
     def test_impossible_calendar_date_is_a_bad_ledger(self) -> None:
         self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
         b = self.enroll()

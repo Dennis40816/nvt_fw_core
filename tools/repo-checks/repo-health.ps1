@@ -138,10 +138,15 @@ function Get-HealthToday { return [DateTime]::UtcNow.Date }
 # A finding is due on its removeBy day. It fails from the next day. ISO dates sort as text.
 function Test-RemoveByExpiry($Ledger, [string]$LedgerPath) {
     $today = (Get-HealthToday).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
-    foreach ($f in $Ledger.findings) {
-        if ([string]::CompareOrdinal($f.removeBy, $today) -lt 0) {
-            Write-Failure 'HC_STATE' $f 'removeBy' $f.removeBy $today "The removeBy date in $LedgerPath has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision."
-        }
+    $expired = @($Ledger.findings | Where-Object { [string]::CompareOrdinal($_.removeBy, $today) -lt 0 })
+    # List the first 20, then one summary line, so a ledger with thousands of due findings stays readable.
+    $listed = [Math]::Min($expired.Count, 20)
+    for ($i = 0; $i -lt $listed; $i++) {
+        Write-Failure 'HC_STATE' $expired[$i] 'removeBy' $expired[$i].removeBy $today "The removeBy date in $LedgerPath has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision."
+    }
+    if ($expired.Count -gt $listed) {
+        Write-Output "HC_STATE ${LedgerPath}:1 removeBy: $($expired.Count - $listed) more findings of this ledger have a removeBy date before $today; $listed are listed above."
+        $script:Failures++
     }
 }
 function Get-Limit($Baseline, [string]$Metric) {
