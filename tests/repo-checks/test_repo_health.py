@@ -228,6 +228,28 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         views = [e["project"] for e in self.measure()["entities"] if "viewTypeLines" in e["values"]]
         self.assertEqual(["Fixture"], views)
 
+    def test_pragma_disable_all_retains_disabled_all_id(self) -> None:
+        self.write("src/Fixture/One.cs", "#pragma warning disable\nclass One {}\n")
+        self.assertEqual(2, self.measure()["summary"]["suppressions"])
+
+    def test_evaluated_nowarn_and_warning_exemptions_honor_conditions_and_imports(self) -> None:
+        self.write("Directory.Build.props", '''<Project><PropertyGroup>
+<Disabled>CA1111;CA2222</Disabled><NoWarn>$(NoWarn);$(Disabled)</NoWarn>
+<NoWarn Condition="'$(Configuration)' == 'Never'">CA9999</NoWarn>
+<WarningsNotAsErrors>CS1234</WarningsNotAsErrors>
+</PropertyGroup></Project>''')
+        symbols = {f["symbol"] for f in self.measure()["findings"] if f["rule"] == "suppressions"}
+        self.assertTrue({"NoWarn:CA1111", "NoWarn:CA2222", "WarningsNotAsErrors:CS1234"}.issubset(symbols))
+        self.assertNotIn("NoWarn:CA9999", symbols)
+        self.assertFalse(any("$(" in s for s in symbols))
+
+    def test_project_only_nowarn_is_detected(self) -> None:
+        self.write("src/Fixture/Fixture.csproj",
+                   '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
+                   '<TargetFramework>net10.0</TargetFramework><NoWarn>CA1031</NoWarn></PropertyGroup></Project>')
+        symbols = {f["symbol"] for f in self.measure()["findings"] if f["rule"] == "suppressions"}
+        self.assertIn("NoWarn:CA1031", symbols)
+
     def test_finding_is_due_on_its_removeby_day_and_fails_after(self) -> None:
         self.write("src/Fixture/One.cs", "#pragma warning disable CA1234\nclass One {}\n")
         self.enroll()
@@ -258,28 +280,6 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         b["findings"][0]["removeBy"] = "2026-13-45"
         self.write_baseline(b)
         self.assert_exit(2, self.run_health("Verify", "-BaseRef", self.base), "invalid finding count/hash/date")
-
-    def test_pragma_disable_all_retains_disabled_all_id(self) -> None:
-        self.write("src/Fixture/One.cs", "#pragma warning disable\nclass One {}\n")
-        self.assertEqual(2, self.measure()["summary"]["suppressions"])
-
-    def test_evaluated_nowarn_and_warning_exemptions_honor_conditions_and_imports(self) -> None:
-        self.write("Directory.Build.props", '''<Project><PropertyGroup>
-<Disabled>CA1111;CA2222</Disabled><NoWarn>$(NoWarn);$(Disabled)</NoWarn>
-<NoWarn Condition="'$(Configuration)' == 'Never'">CA9999</NoWarn>
-<WarningsNotAsErrors>CS1234</WarningsNotAsErrors>
-</PropertyGroup></Project>''')
-        symbols = {f["symbol"] for f in self.measure()["findings"] if f["rule"] == "suppressions"}
-        self.assertTrue({"NoWarn:CA1111", "NoWarn:CA2222", "WarningsNotAsErrors:CS1234"}.issubset(symbols))
-        self.assertNotIn("NoWarn:CA9999", symbols)
-        self.assertFalse(any("$(" in s for s in symbols))
-
-    def test_project_only_nowarn_is_detected(self) -> None:
-        self.write("src/Fixture/Fixture.csproj",
-                   '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>'
-                   '<TargetFramework>net10.0</TargetFramework><NoWarn>CA1031</NoWarn></PropertyGroup></Project>')
-        symbols = {f["symbol"] for f in self.measure()["findings"] if f["rule"] == "suppressions"}
-        self.assertIn("NoWarn:CA1031", symbols)
 
     def test_removing_a_tightened_optional_limit_is_a_raised_limit(self) -> None:
         b = self.enroll()
