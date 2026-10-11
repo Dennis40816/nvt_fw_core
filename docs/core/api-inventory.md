@@ -1,6 +1,6 @@
 # Public API inventory
 
-Core 0.9.0 keeps a reviewed list of every public `Nvt.Core` API in `src/Nvt.Core/PublicAPI.Unshipped.txt`. The 0.9.0 release step moves the approved entries to `PublicAPI.Shipped.txt`. The analyzer gate (RS0016/RS0017 as errors) follows in the last inventory slice, so a missing entry does not fail the build yet.
+Core 0.9.0 keeps a reviewed list of every public `Nvt.Core` API. The released entries are in `src/Nvt.Core/PublicAPI.Shipped.txt` and new entries go to `PublicAPI.Unshipped.txt`. The analyzer gate (RS0016/RS0017 as errors) is on, so a missing entry fails the build.
 
 This page covers every public namespace of the four published projects: `Nvt.Core`, `Nvt.Core.Avalonia`, `Nvt.Core.Fonts` and `Nvt.Core.TestSupport`. The analyzer gate (RS0016 and RS0017 as errors) is on for all four.
 
