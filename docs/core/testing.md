@@ -3,7 +3,7 @@
 This page tells you how to write tests in Core and in the repositories that use Core. It extends the test rules T1 to T5 in [Core conventions](conventions.md#test-rules).
 Each rule has a reason. Read the reason before you ask for an exception.
 
-**Terms.** A *ratchet* is a check that counts known violations. It fails when the count goes up. It never asks you to fix old code at once. A *watchdog* is a long time limit that stops a hung test. A watchdog is not an assertion.
+**Terms.** A *ratchet* is a check that counts known violations. It fails when the count goes up. It never asks you to fix old code at once. A *watchdog* is a long time limit that stops a hung test. A watchdog is not an assertion. A *calibration unit* is the median time of `RelativePerf.CalibrationUnit` on one machine. A *reference second* is a second on the reference machine. A *slow test* is a test that takes more than 5 reference seconds.
 
 ## Rules
 
@@ -84,6 +84,41 @@ Each rule has a reason. Read the reason before you ask for an exception.
     - Test data holds only hash values.
     - The original files stay in a private repository.
     - Why: a public repository cannot take data back after a push.
+
+## Test duration
+
+These rules take effect when `tests/slow-tests-baseline.json` is merged. Until then, `tools/repo-checks/duration_report.py` only reports.
+
+15. **Measure test duration on CI in the Release build. Convert it to reference seconds.**
+    - Reference seconds = measured seconds × (reference unit ÷ this machine's unit).
+    - The reference unit is stored in `tests/slow-tests-baseline.json`. It is measured once on the CI runner image.
+    - A calibration test prints this machine's unit. `tools/repo-checks/duration_report.py` does the conversion.
+    - A local Debug run does not count. A test that is slow only in Debug is not slow.
+    - Why: a fixed limit in seconds fails on a slow machine and hides slow tests on a fast one.
+
+16. **A slow test has `[Trait("Category", "Slow")]` and an entry in `tests/slow-tests-baseline.json`.**
+    - The entry has a reason: `real-process`, `large-input`, `real-io`, or `ui-render`.
+    - Not a reason: waiting for real time. Use `ManualTimeProvider` or `SignalWait`.
+    - Not a reason: a host or workspace built again in each test. Use a class fixture.
+    - A slow test still runs in the merge gate. It runs in its own shard so it does not slow the fast shards.
+
+17. **The number of slow tests is a ratchet.**
+    - The check fails when: a test is over the limit and is not in the baseline; a reason is not in the list; a test is over 30 reference seconds and is not approved.
+    - The count can only go down. Remove a test from the baseline when it becomes fast.
+    - Why: a new slow test must not enter without a decision.
+
+18. **CI lists the 20 slowest tests in the job summary.**
+    - Columns: rank, test, project, seconds, reference seconds, slow mark.
+    - The data comes from a TRX file. The summary also shows the calibration unit of this run, the number of tests over 1 reference second, and the total time of the slow tests.
+
+19. **Each shard has a watchdog. A watchdog is not an assertion.**
+    - Per run: a hang timeout of 5 minutes with no dump, so a hang becomes a named failure.
+    - Per job: `timeout-minutes` = 3 × the median time of the last 10 green runs of that shard, rounded up, with a minimum of 10.
+    - A watchdog stop is reported as a hang. It is never counted as a slow-test failure.
+
+20. **A test over 30 reference seconds is split, or the owner approves it in the pull request.**
+    - The approval is `"approved": true` in the baseline entry.
+    - Why: one long test hides its cause and defines the run time of its whole shard.
 
 ## Shared test support
 

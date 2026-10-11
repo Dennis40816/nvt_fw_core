@@ -11,7 +11,7 @@
       <Border Grid.Column="1" Width="{DynamicResource NfcSpace24}"/>
       <Border Grid.Column="3" Width="{DynamicResource NfcSpace8}"/>
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}" VerticalAlignment="Center">
-        <TextBlock Classes="nvtIcon" Text="{x:Static icons:ConsoleGlyphs.Terminal}" Foreground="{DynamicResource NfcTextSecondaryBrush}"/>
+        <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.DataObject}" Foreground="{DynamicResource NfcTextSecondaryBrush}"/>
         <TextBlock Classes="consoleHeading" Text="{Binding Title, ElementName=Root}" VerticalAlignment="Center"/>
       </StackPanel>
       <Grid Grid.Column="2"><Grid x:Name="WideSearch" ColumnDefinitions="*,Auto,Auto" VerticalAlignment="Center">

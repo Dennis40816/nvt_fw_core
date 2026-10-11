@@ -11,6 +11,23 @@ The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.
 The caller selects files, prints results, and sets the process exit code.
 
+## Test duration report
+
+`duration_report.py` reads TRX files and does three things:
+
+- It lists the 20 slowest tests and writes the list to the GitHub job summary.
+- It converts each duration to reference seconds with the calibration unit that `CalibrationTests` prints.
+- It checks the slow-test ratchet in `tests/slow-tests-baseline.json` ([testing rules 15 to 20](../../docs/core/testing.md#test-duration)).
+
+```powershell
+python tools/repo-checks/duration_report.py --trx artifacts/test-results --baseline tests/slow-tests-baseline.json --github-summary --check
+```
+
+- `--seed-baseline FILE` writes a first baseline from the TRX files. Every slow test gets the reason `unclassified`, which is a note and not a failure.
+- `--require-trx` exits with 2 when no TRX file is found.
+- The script reads no traits. The baseline file is the list of slow tests.
+- Tests run in parallel, so a duration includes the wait for a CPU. Compare runs of the same setup only.
+
 ## Skill metadata
 
 `skill_metadata_validation.py` parses the existing closed YAML schema for skill metadata.
