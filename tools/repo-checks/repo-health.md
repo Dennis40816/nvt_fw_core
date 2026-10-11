@@ -21,7 +21,7 @@ compiler and format messages do not change with the host language. It runs `dotn
 `eng/code-health/baseline.json`; override it with `BaselinePath`.
 Verify and LowerBaseline require a committed baseline and Solution. Enroll is the
 only production enrollment mode: it requires all providers to succeed, refuses any
-existing baseline, and writes debt owned by NVT CORE, due 2026-10-31. It also
+existing baseline, and writes debt owned by NVT CORE with no due date. It also
 generates the marked HealthBaselineWarningIds block in projects.props. No mode
 automatically refreshes or raises debt. An absent baseline at the merge base fails
 closed: first enrollment must be integrated before checking subsequent PRs against
@@ -38,8 +38,20 @@ unique content hashes are reserved before remaining unique symbols; locations
 disambiguate partial files with the same symbols. Ambiguous identities fail closed.
 The example baseline may omit `viewTypeLines`; its effective limit is 800 without
 adding a field during LowerBaseline.
-Baseline entity ownership requires `owner`/`issue`; findings require
-`owner`/`removeBy`. Fixes must lower/delete debt in the same change.
+Baseline entity ownership requires `owner`/`issue`; findings require `owner`.
+`removeBy` is optional on a finding (owner decision of 2026-10-11: debt has no deadline). Fixes must
+lower/delete debt in the same change. Debt cannot be added and its count cannot grow, with or without a date.
+When a finding has a `removeBy`, Verify compares it with today's date (UTC) in both ledgers. A finding is due
+on its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
+expired findings of a ledger and then one summary line with the count. A `removeBy` that is present and is
+not a real calendar date is a bad ledger (exit 2). A finding without `removeBy` never expires. Structural
+entities have no date, so they never expire. Core's two ledgers carry no `removeBy`.
+LowerBaseline never moves, adds or removes a date. Adding, moving or removing a date is one JSON edit in a dedicated pull
+request with an owner decision. The checker does not compare a date with the base ref, so the owner's review
+of that pull request is the control.
+The bundle file `schema.json` still lists `removeBy` as required. The checker takes it out of that list in
+memory when it reads a baseline, because `schema.json` is a distributed file with a pinned hash. The file
+changes at the next pin synchronization.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's
@@ -58,7 +70,7 @@ and contributing path. They never offset each other through repository totals.
 | `methodLines` | Full declaration span, including attributes, of methods, constructors, destructors, operators, conversions, accessors and local functions; limit 80, with the >150 split-plan review retained in the size summary. |
 | `partialFiles` | Distinct files declaring each project-qualified type, including nested/generic types; limit 8. |
 | `axamlCodeBehindLines` | Physical `.axaml.cs` lines; limit 150. |
-| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. |
+| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. A code-only view (no `.axaml`) is a type that derives, directly or through a base type of the same project, from an Avalonia view base type: `Control`, `UserControl`, `TemplatedControl`, `ContentControl`, `ItemsControl`, `Window`, `Panel`, `Decorator`, `Border`, `Grid`, `StackPanel`, `DockPanel`, `WrapPanel`, `Canvas`, `Button`, `ToggleButton`, `ListBox`, `TextBox`, `ScrollViewer`, `Viewbox`, `ComboBox`, `TabControl`, `Slider`, `ProgressBar`, `CheckBox` or `RadioButton`. The checker has no Avalonia assemblies, so an unresolved base type counts by its simple name, and only in a project whose source mentions Avalonia (a `using` or a qualified name, also with `global::`). A resolved base type must be in the `Avalonia` namespace. The view is measured only when its span is strictly above 800 lines, so a small code-only view adds no entity. The file name decides nothing. Known limits: the name list is closed, and a view that derives from a base type of another project (an unresolved type with a name outside the list) is not found. Add the name to the list when a tool needs it. The 800-line budget of a code-only view is fixed, so a tightened `limits.viewTypeLines` applies only to AXAML views. A project-defined namespace that starts with `Avalonia.` counts as a mention. The branch for a resolved Avalonia base type has no fixture, because the fixtures have no Avalonia assemblies. |
 | `suppressions` | SuppressMessage/UnconditionalSuppressMessage attributes (with check ID), each disable pragma plus every disabled ID (`ALL` for no IDs), evaluated NoWarn/WarningsNotAsErrors IDs when props contain those properties. MSBuild evaluates imports/conditions without building; default configuration only in H02. |
 | `nativeImportDuplicates` | DllImport/LibraryImport (including resolved attribute aliases): exact DLL string + effective EntryPoint constant, falling back to method name. Report duplicate groups/excess and fingerprints of all participants. Unresolved constants fail. |
 | `generationFields` | Mutable int/long/uint/ulong/Int32/Int64 fields whose names contain Generation/Revision/RequestId, ignoring case; increment/adoption semantics need review. |
@@ -199,8 +211,7 @@ A file is a test file when its path has a `tests` or `test` folder or a folder e
 - `-Mode EnrollTestDebt -Solution <sln>` writes the ledger once. It evaluates the projects
   (so a file linked into two test projects counts for each, as in Verify) but does not build.
   Without `-Solution` it attributes by the nearest project file, which can disagree with
-  Verify. It refuses to overwrite a ledger. Owner and removeBy follow Enroll (removeBy
-  `2026-10-31`).
+  Verify. It refuses to overwrite a ledger. The owner follows Enroll. The ledger has no `removeBy`.
 - Verify fails with `New test duplication` when a fingerprint appears or its count grows.
   It also fails with `run LowerBaseline` when a recorded fingerprint shrinks and the ledger
   was not lowered. LowerBaseline lowers the ledger and never adds to it.
@@ -223,7 +234,7 @@ block from the ledger. Core's own enrollment used the seed
 
 `-Owner <name>` sets the owner written to entities and findings. Without it, Core
 uses `NVT CORE` and any other `-Repo` uses its upper-case name (nfc becomes NFC).
-Issue and removeBy stay shared (`health-refactor/2026-10-31`, `2026-10-31`).
+The issue stays shared (`health-refactor/2026-10-31`). Enroll writes no `removeBy`.
 Verify checks owner and issue only as non-empty strings, so a hand edit is not
 rejected, but `-Owner` is the supported way.
 
@@ -233,8 +244,8 @@ methods) is an error in the bundle `.editorconfig`. Lambdas converted to void
 delegates are counted in the ledger but do not fail the build.
 
 The ledger stores H02 structural excess and syntax findings plus analyzer and
-format debt. Entities use issue health-refactor/2026-10-31; findings use removeBy
-2026-10-31, all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
+format debt. Entities use issue health-refactor/2026-10-31; findings have no removeBy,
+all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
 against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only
 loading supports provider tests, and never executes enrollment or verification.

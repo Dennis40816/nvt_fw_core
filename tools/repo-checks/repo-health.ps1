@@ -4,7 +4,8 @@
 C# health enforcement; syntax measurement contract roslyn-physical-v1. No package restore.
 The embedded host uses the global.json-selected SDK's Roslyn, in an isolated ALC.
 Narrow discovery choices (also in repo-health.md): unresolved async lambdas remain
-candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget;
+candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
+a code-only Avalonia view above it;
 clock candidates are TimeProvider descendants or Fake/Manual/Test*Clock,
 Fake/Manual/Test*TimeProvider, ClockState; workspace lifecycle candidates contain
 both Directory.CreateDirectory and Directory.Delete with a Path.GetTempPath call.
@@ -116,11 +117,13 @@ function Read-Baseline([string]$Text, [string]$Label) {
     }
     $seen.Clear()
     foreach ($f in $b.findings) {
-        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner', 'removeBy')) {
+        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner')) {
             if ($f -isnot [System.Collections.IDictionary] -or -not $f.Contains($key)) { throw "Bad baseline $Label`: finding missing $key" }
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad baseline $Label`: invalid finding $key" }
         }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or $f.removeBy -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "Bad baseline $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$') { throw "Bad baseline $Label`: invalid finding count/hash/date" }
+        # removeBy is optional. A finding without it has no due date. A value that is present must be a real calendar date.
+        if ($f.Contains('removeBy') -and -not (Test-IsoDate $f.removeBy)) { throw "Bad baseline $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad baseline $Label`: duplicate finding fingerprint" }
         # Diagnostic fingerprints, including bannedApi/RS0030, use exactly this
         # reader/key. H03 must populate them before enabling complete Verify.
@@ -129,6 +132,27 @@ function Read-Baseline([string]$Text, [string]$Label) {
     return $b
 }
 function Test-Count($Value) { return (($Value -is [int] -or $Value -is [long]) -and $Value -ge 0) }
+function Test-IsoDate($Value) {
+    $parsed = [DateTime]::MinValue
+    return $Value -is [string] -and [DateTime]::TryParseExact($Value, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$parsed)
+}
+# The one clock of the removeBy check. Tests replace this function to set the date.
+function Get-HealthToday { return [DateTime]::UtcNow.Date }
+# A finding is due on its removeBy day. It fails from the next day. ISO dates sort as text.
+# A finding without removeBy has no due date and never expires.
+function Test-RemoveByExpiry($Ledger, [string]$LedgerPath) {
+    $today = (Get-HealthToday).ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+    $expired = @($Ledger.findings | Where-Object { $_.Contains('removeBy') -and [string]::CompareOrdinal($_.removeBy, $today) -lt 0 })
+    # List the first 20, then one summary line, so a ledger with thousands of due findings stays readable.
+    $listed = [Math]::Min($expired.Count, 20)
+    for ($i = 0; $i -lt $listed; $i++) {
+        Write-Failure 'HC_STATE' $expired[$i] 'removeBy' $expired[$i].removeBy $today "The removeBy date in $LedgerPath has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision."
+    }
+    if ($expired.Count -gt $listed) {
+        Write-Output "HC_STATE ${LedgerPath}:1 removeBy: $($expired.Count - $listed) more findings of this ledger have a removeBy date before $today; $listed are listed above."
+        $script:Failures++
+    }
+}
 function Get-Limit($Baseline, [string]$Metric) {
     if ($Baseline.limits.Contains($Metric)) { return $Baseline.limits[$Metric] }
     return $script:Limits[$Metric]
@@ -232,6 +256,11 @@ function Read-HealthDocument([string]$Text, [string]$Definition) {
     $schemaPath = Join-Path $PSScriptRoot 'csharp/schema.json'
     if (-not (Test-Path -LiteralPath $schemaPath)) { $schemaPath = Join-Path $PSScriptRoot 'schema.json' }
     $schema = ConvertFrom-Json -AsHashtable ([IO.File]::ReadAllText($schemaPath))
+    # removeBy is optional since the owner decision of 2026-10-11. schema.json is a distributed bundle file with a pinned
+    # hash, so it keeps removeBy in the required list. The checker takes it out of that list in memory, until a pin
+    # synchronization changes the file.
+    $findingDefinition = $schema.'$defs'.'baseline-finding'
+    $findingDefinition.required = @($findingDefinition.required | Where-Object { $_ -cne 'removeBy' })
     $validation = @{ '$schema' = $schema.'$schema'; '$defs' = $schema.'$defs'; '$ref' = "#/`$defs/$Definition" }
     if (-not (Test-Json -Json $Text -Schema ($validation | ConvertTo-Json -Depth 100) -ErrorAction SilentlyContinue)) { throw "Invalid $Definition document (schema)" }
     return (ConvertFrom-Json -AsHashtable -Depth 100 $Text)
@@ -614,7 +643,7 @@ function Enroll-Baseline($Measurement, [string]$Path) {
         foreach ($metric in $e.values.Keys) { if ($e.values[$metric] -gt $script:Limits[$metric]) { $ceilings[$metric] = $e.values[$metric] } }
         if ($ceilings.Count) { $b.entities += @{ project = $e.project; kind = $e.kind; symbol = $e.symbol; locations = $e.locations; contentHash = $e.contentHash; ceilings = $ceilings; owner = $enrollOwner; issue = 'health-refactor/2026-10-31' } }
     }
-    foreach ($f in $Measurement.findings) { $entry = @{ owner = $enrollOwner; removeBy = '2026-10-31' }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
+    foreach ($f in $Measurement.findings) { $entry = @{ owner = $enrollOwner }; foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }; $b.findings += $entry }
     $json = ConvertTo-Json -Depth 100 $b
     [void](Read-HealthDocument $json 'baseline')
     [void][IO.Directory]::CreateDirectory((Split-Path $Path -Parent))
@@ -642,12 +671,13 @@ function Read-TestDebt([string]$Text, [string]$Label) {
     if ($d.findings -isnot [array]) { throw "Bad test-debt $Label`: findings must be an array" }
     $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($f in $d.findings) {
-        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner', 'removeBy')) {
+        foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count', 'owner')) {
             if ($f -isnot [System.Collections.IDictionary] -or -not $f.Contains($key)) { throw "Bad test-debt $Label`: finding missing $key" }
             if ($key -ne 'count' -and ($f[$key] -isnot [string] -or -not $f[$key].Trim())) { throw "Bad test-debt $Label`: invalid finding $key" }
         }
         if ($f.rule -cnotin $script:TestRules) { throw "Bad test-debt $Label`: $($f.rule) is not a test-duplication rule" }
-        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$' -or $f.removeBy -notmatch '^\d{4}-\d{2}-\d{2}$') { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
+        if (-not (Test-Count $f.count) -or $f.count -eq 0 -or $f.syntaxHash -notmatch '^[0-9a-f]{64}$') { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
+        if ($f.Contains('removeBy') -and -not (Test-IsoDate $f.removeBy)) { throw "Bad test-debt $Label`: invalid finding count/hash/date" }
         if (-not $seen.Add((Finding-Key $f))) { throw "Bad test-debt $Label`: duplicate finding fingerprint" }
     }
     return $d
@@ -694,7 +724,7 @@ function Enroll-TestDebt($Measurement, [string]$Path) {
     $enrollOwner = Get-EnrollOwner
     $entries = @()
     foreach ($f in @($Measurement.testFindings | Sort-Object { Finding-Key $_ })) {
-        $entry = @{ owner = $enrollOwner; removeBy = '2026-10-31' }
+        $entry = @{ owner = $enrollOwner }
         foreach ($key in @('rule', 'project', 'path', 'member', 'symbol', 'syntaxHash', 'count')) { $entry[$key] = $f[$key] }
         $entries += $entry
     }
@@ -765,6 +795,32 @@ public static class HealthSyntaxHost
         return string.Join(".", parts);
     }
     static bool Callable(SyntaxNode n) => n is BaseMethodDeclarationSyntax || n is AccessorDeclarationSyntax || n is LocalFunctionStatementSyntax;
+    // A code-only view derives from an Avalonia view base type, directly or through a base type of the same project.
+    // It counts for viewTypeLines only above the budget, so a small view adds no entity and no app needs a one-time registration.
+    // The checker has no Avalonia assemblies, so an Avalonia base type is an error type and matches by simple name.
+    // The names are the Avalonia.Controls types that app views derive from. An unresolved name counts only in a project
+    // whose source mentions Avalonia. A resolved base type must be in the Avalonia namespace.
+    static readonly HashSet<string> ViewBases = new(StringComparer.Ordinal) { "Control", "UserControl", "TemplatedControl", "ContentControl", "ItemsControl", "Window", "Panel", "Decorator", "Border", "Grid", "StackPanel", "DockPanel", "WrapPanel", "Canvas", "Button", "ToggleButton", "ListBox", "TextBox", "ScrollViewer", "Viewbox", "ComboBox", "TabControl", "Slider", "ProgressBar", "CheckBox", "RadioButton" };
+    const int ViewLineBudget = 800;
+    static bool MentionsAvalonia(SyntaxTree tree)
+    {
+        var root = tree.GetRoot();
+        // `global::Avalonia.Controls` is an alias-qualified name, so the prefix is removed before the test.
+        static string Plain(SyntaxNode n) => n.ToString().Replace("global::", "");
+        return root.DescendantNodes().OfType<UsingDirectiveSyntax>().Any(d => { var n = d.Name == null ? null : Plain(d.Name); return n == "Avalonia" || (n != null && n.StartsWith("Avalonia.", StringComparison.Ordinal)); })
+            || root.DescendantNodes().OfType<QualifiedNameSyntax>().Any(q => Plain(q).StartsWith("Avalonia.", StringComparison.Ordinal));
+    }
+    static bool DerivesFromViewBase(INamedTypeSymbol symbol, bool avaloniaInProject)
+    {
+        for (var b = symbol.BaseType; b != null; b = b.BaseType)
+        {
+            if (!ViewBases.Contains(b.Name)) continue;
+            if (b.TypeKind == TypeKind.Error) { if (avaloniaInProject) return true; continue; }
+            string ns = b.ContainingNamespace?.ToDisplayString() ?? "";
+            if (ns == "Avalonia" || ns.StartsWith("Avalonia.", StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
     static string Member(SyntaxNode n)
     {
         var owner = n.Ancestors().FirstOrDefault(Callable);
@@ -992,6 +1048,8 @@ public static class HealthSyntaxHost
         var types = new Dictionary<string,Entity>(StringComparer.Ordinal);
         var state = new Dictionary<string,HashSet<string>>(StringComparer.Ordinal);
         var typeText = new Dictionary<string,List<string>>(StringComparer.Ordinal);
+        var codeViews = new HashSet<string>(StringComparer.Ordinal);
+        HashSet<string> avaloniaProjects = null;
         var imports = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
         var discovery = new List<object>();
         var fakes = new Dictionary<string,List<Finding>>(StringComparer.Ordinal);
@@ -1041,6 +1099,8 @@ public static class HealthSyntaxHost
                 }
                 if (!e.locations.Contains(u.Path)) { e.locations.Add(u.Path); e.locationLines[u.Path] = Line(u.Tree,t); e.values["partialFiles"]++; }
                 typeText[key].Add(Normal(t));
+                avaloniaProjects ??= units.Where(x => MentionsAvalonia(x.Tree)).Select(x => x.Project).ToHashSet(StringComparer.Ordinal);
+                if (u.Model.GetDeclaredSymbol(t) is INamedTypeSymbol viewSymbol && DerivesFromViewBase(viewSymbol, avaloniaProjects.Contains(u.Project))) codeViews.Add(key);
                 // Sum declaration spans, not whole files or nested sibling types.
                 e.values["viewTypeLines"] = e.values.GetValueOrDefault("viewTypeLines") + SpanLines(u.Tree,t);
                 foreach (var f in t.ChildNodes().OfType<FieldDeclarationSyntax>())
@@ -1178,7 +1238,8 @@ public static class HealthSyntaxHost
         {
             var e = pair.Value; e.values["stateMembers"] = state[pair.Key].Count;
             e.contentHash = Hash(string.Join("\n",typeText[pair.Key].OrderBy(s => s,StringComparer.Ordinal)));
-            if (!views.Contains(pair.Key)) e.values.Remove("viewTypeLines");
+            bool oversizedCodeView = codeViews.Contains(pair.Key) && e.values.GetValueOrDefault("viewTypeLines") > ViewLineBudget;
+            if (!views.Contains(pair.Key) && !oversizedCodeView) e.values.Remove("viewTypeLines");
         }
         foreach (var group in fakes.Values.Where(g => g.Select(f => f.path).Distinct(StringComparer.Ordinal).Count()>1)) findings.AddRange(group);
         int nativeExcess = 0, nativeGroups = 0;
@@ -1369,6 +1430,10 @@ try {
             if ($LASTEXITCODE -eq 0) { $allowedDebt = Read-TestDebt (Invoke-Checked 'git' @('-C', $script:GitRoot, 'show', "${allowedCommit}:$testDebtGit")) "${allowedCommit}:$testDebtGit" }
             $testDebt = if (Test-Path -LiteralPath $testDebtFull -PathType Leaf) { Read-TestDebt ([IO.File]::ReadAllText($testDebtFull)) $TestDebtPath } else { $null }
             Compare-TestDebtLedger $allowedDebt $testDebt
+            if ($Mode -eq 'Verify') {
+                Test-RemoveByExpiry $baseline $BaselinePath
+                if ($null -ne $testDebt) { Test-RemoveByExpiry $testDebt $TestDebtPath }
+            }
 
         }
         # H03 provider initialization (fixture tests substitute providers here).
