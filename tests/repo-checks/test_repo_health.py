@@ -217,6 +217,92 @@ class One { string text = "#pragma warning disable CS0001 [SuppressMessage]"; }
         views = [e["project"] for e in self.measure()["entities"] if "viewTypeLines" in e["values"]]
         self.assertEqual(["Fixture"], views)
 
+    def code_view(self, lines: int, base: str = "Avalonia.Controls.Control", name: str = "Plain",
+                  path: str = "src/Fixture/Plain.cs", using: str = "") -> None:
+        self.assertGreaterEqual(lines, 2)
+        self.write(path, using + f"namespace N;\nclass {name} : {base} {{\n" + "// body\n" * (lines - 2) + "}\n")
+
+    def view_lines(self) -> dict:
+        return {e["symbol"]: e["values"]["viewTypeLines"] for e in self.measure()["entities"]
+                if e["kind"] == "type" and "viewTypeLines" in e["values"]}
+
+    def test_code_only_view_above_the_budget_is_measured(self) -> None:
+        self.code_view(805)
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_code_only_view_below_the_budget_adds_no_entity(self) -> None:
+        self.code_view(790)
+        self.assertEqual({}, self.view_lines())
+
+    def test_code_only_view_is_found_through_a_base_type_of_the_same_project(self) -> None:
+        self.write("src/Fixture/Base.cs", "namespace N;\nabstract class Base : Avalonia.Controls.UserControl {}\n")
+        self.code_view(810, base="Base")
+        self.assertEqual({"N.Plain": 810}, self.view_lines())
+
+    def test_large_type_that_is_not_a_view_is_not_a_view(self) -> None:
+        self.code_view(900, base="System.Object")
+        self.assertEqual({}, self.view_lines())
+
+    def test_code_only_view_result_does_not_depend_on_the_file_name(self) -> None:
+        self.code_view(805, path="src/Fixture/Anything.Else.cs")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_code_only_view_crossing_the_budget_fails_verify(self) -> None:
+        self.code_view(790)
+        self.enroll()
+        self.code_view(805)
+        self.assert_exit(1, self.run_health("Verify"), "viewTypeLines")
+
+    def test_budget_boundary_is_strictly_above_800_lines(self) -> None:
+        self.code_view(800)
+        self.assertEqual({}, self.view_lines())
+        self.code_view(801)
+        self.assertEqual({"N.Plain": 801}, self.view_lines())
+
+    def test_code_only_view_sums_its_partial_files(self) -> None:
+        self.write("src/Fixture/Plain.cs", "namespace N;\npartial class Plain : Avalonia.Controls.Panel {\n" + "// a\n" * 448 + "}\n")
+        self.write("src/Fixture/Plain.Part.cs", "namespace N;\npartial class Plain {\n" + "// b\n" * 398 + "}\n")
+        self.assertEqual({"N.Plain": 850}, self.view_lines())
+
+    def test_view_base_names_cover_window_panel_decorator_and_common_containers(self) -> None:
+        for base in ("Window", "Panel", "Decorator", "Grid", "Border", "ContentControl"):
+            with self.subTest(base=base):
+                self.code_view(805, base=base, using="using Avalonia.Controls;\n")
+                self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_a_global_alias_qualified_avalonia_name_counts_as_a_mention(self) -> None:
+        self.code_view(805, base="global::Avalonia.Controls.Control")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+        self.code_view(805, base="Control", using="using global::Avalonia.Controls;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_a_using_alias_of_an_avalonia_view_base_is_found(self) -> None:
+        self.code_view(805, base="V", using="using V = Avalonia.Controls.UserControl;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_scroll_viewer_is_a_view_base(self) -> None:
+        self.code_view(805, base="ScrollViewer", using="using Avalonia.Controls;\n")
+        self.assertEqual({"N.Plain": 805}, self.view_lines())
+
+    def test_an_unresolved_base_named_control_without_avalonia_is_not_a_view(self) -> None:
+        self.code_view(805, base="Control")
+        self.assertEqual({}, self.view_lines())
+
+    def test_a_base_named_control_that_the_project_declares_is_not_an_avalonia_view(self) -> None:
+        self.write("src/Fixture/Control.cs", "namespace N;\nclass Control {}\n")
+        self.code_view(805, base="Control", using="using Avalonia;\n")
+        self.assertEqual({}, self.view_lines())
+
+    def test_lower_baseline_removes_a_code_only_view_that_shrinks_below_the_budget(self) -> None:
+        self.code_view(805)
+        self.enroll()
+        self.code_view(790)
+        self.git("add", "-A")
+        self.assert_exit(1, self.run_health("Verify", "-BaseRef", self.base), "run LowerBaseline")
+        self.assert_exit(0, self.run_health("LowerBaseline", "-BaseRef", self.base))
+        entities = json.loads((self.root / BASELINE).read_text())["entities"]
+        self.assertEqual([], [e for e in entities if "viewTypeLines" in e["ceilings"]])
+
     def test_pragma_disable_all_retains_disabled_all_id(self) -> None:
         self.write("src/Fixture/One.cs", "#pragma warning disable\nclass One {}\n")
         self.assertEqual(2, self.measure()["summary"]["suppressions"])
