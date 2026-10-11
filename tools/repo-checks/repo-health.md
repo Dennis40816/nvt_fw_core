@@ -40,6 +40,13 @@ The example baseline may omit `viewTypeLines`; its effective limit is 800 withou
 adding a field during LowerBaseline.
 Baseline entity ownership requires `owner`/`issue`; findings require
 `owner`/`removeBy`. Fixes must lower/delete debt in the same change.
+Verify also compares each finding's `removeBy` with today's date (UTC) in both ledgers. A finding is due on
+its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
+expired findings of a ledger and then one summary line with the count. A `removeBy` that is not a real
+calendar date is a bad ledger (exit 2). Structural entities have no date, so they never expire.
+LowerBaseline never moves a date. Moving a date is one JSON edit in a dedicated pull request with an owner
+decision. The checker does not compare a date with the base ref, so the owner's review of that pull request
+is the control.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's
@@ -58,7 +65,7 @@ and contributing path. They never offset each other through repository totals.
 | `methodLines` | Full declaration span, including attributes, of methods, constructors, destructors, operators, conversions, accessors and local functions; limit 80, with the >150 split-plan review retained in the size summary. |
 | `partialFiles` | Distinct files declaring each project-qualified type, including nested/generic types; limit 8. |
 | `axamlCodeBehindLines` | Physical `.axaml.cs` lines; limit 150. |
-| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. |
+| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. A code-only view (no `.axaml`) is a type that derives, directly or through a base type of the same project, from an Avalonia view base type: `Control`, `UserControl`, `TemplatedControl`, `ContentControl`, `ItemsControl`, `Window`, `Panel`, `Decorator`, `Border`, `Grid`, `StackPanel`, `DockPanel`, `WrapPanel`, `Canvas`, `Button`, `ToggleButton`, `ListBox`, `TextBox`, `ScrollViewer`, `Viewbox`, `ComboBox`, `TabControl`, `Slider`, `ProgressBar`, `CheckBox` or `RadioButton`. The checker has no Avalonia assemblies, so an unresolved base type counts by its simple name, and only in a project whose source mentions Avalonia (a `using` or a qualified name, also with `global::`). A resolved base type must be in the `Avalonia` namespace. The view is measured only when its span is strictly above 800 lines, so a small code-only view adds no entity. The file name decides nothing. Known limits: the name list is closed, and a view that derives from a base type of another project (an unresolved type with a name outside the list) is not found. Add the name to the list when a tool needs it. The 800-line budget of a code-only view is fixed, so a tightened `limits.viewTypeLines` applies only to AXAML views. A project-defined namespace that starts with `Avalonia.` counts as a mention. The branch for a resolved Avalonia base type has no fixture, because the fixtures have no Avalonia assemblies. |
 | `suppressions` | SuppressMessage/UnconditionalSuppressMessage attributes (with check ID), each disable pragma plus every disabled ID (`ALL` for no IDs), evaluated NoWarn/WarningsNotAsErrors IDs when props contain those properties. MSBuild evaluates imports/conditions without building; default configuration only in H02. |
 | `nativeImportDuplicates` | DllImport/LibraryImport (including resolved attribute aliases): exact DLL string + effective EntryPoint constant, falling back to method name. Report duplicate groups/excess and fingerprints of all participants. Unresolved constants fail. |
 | `generationFields` | Mutable int/long/uint/ulong/Int32/Int64 fields whose names contain Generation/Revision/RequestId, ignoring case; increment/adoption semantics need review. |
