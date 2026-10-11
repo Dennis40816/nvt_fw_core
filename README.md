@@ -93,6 +93,7 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.ReportList`: [ReportList](docs/core/modules/ReportList.md)
 - `Nvt.Core.Shell`: [Shell](docs/core/modules/Shell.md)
 - `Nvt.Core.MessageCenter`: [MessageCenter](docs/core/modules/MessageCenter.md)
+- `Nvt.Core.LogConsole`: [LogConsole](docs/core/modules/LogConsole.md)
 
 ## Who maintains this
 

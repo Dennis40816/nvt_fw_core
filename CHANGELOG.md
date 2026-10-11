@@ -6,6 +6,10 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 0.9.0 - 2026-10-12
+
+Feature freeze. After this release only fixes follow until 1.0.0. The breaking changes below are all breaking changes since 0.5.0.
+
 ### Breaking changes
 
 - ReportList: pager buttons now use the shared `actionNeutral` role.
@@ -95,6 +99,8 @@ Both Inputs documents describe valid bound-update order and the retained reverse
 
 ### Added
 
+- Public API review: `PublicAPI.Shipped.txt` of `Nvt.Core` (1,616 entries), `Nvt.Core.Avalonia` (477), `Nvt.Core.Fonts` (3) and `Nvt.Core.TestSupport` (50) lists every public member that this release commits to. The analyzer gate (RS0016 and RS0017 as errors) is on for these four projects, so a change to a listed member needs a `*REMOVED*` line and a CHANGELOG entry. See the [API inventory](docs/core/api-inventory.md).
+- LogConsole: `Nvt.Core.LogConsole` adds a bounded log store and an immutable projection with level and source filters, literal search, grouping of duplicates and time modes. `Nvt.Core.Avalonia.LogConsole` adds the controller, header, toolbar, empty state and a recycling list view that keeps the reading position. Apps own the store, the source registry and the file export ([#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170)).
 - Added the public API inventory for `Nvt.Core.Avalonia` (477 entries), `Nvt.Core.Fonts` (3) and `Nvt.Core.TestSupport` (50), and switched the analyzer gate on for the four published projects. A new public member now needs an entry in `PublicAPI.Unshipped.txt`, or the build fails with RS0016.
 - Added the public API inventory for the Launcher coordination, transport and repository namespaces (`PublicAPI.Unshipped.txt`, 394 entries). Every public `Nvt.Core` API is now listed. Enforcement follows in the last inventory step.
 - Added the public API inventory for the Launcher contracts, persistence and activation namespaces (`PublicAPI.Unshipped.txt`, 477 entries). Enforcement follows in the last inventory step.
