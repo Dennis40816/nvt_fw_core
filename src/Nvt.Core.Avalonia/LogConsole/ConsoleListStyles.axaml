@@ -24,13 +24,13 @@
             <console:ConsoleItemsHost Name="PART_ItemsHost"/>
           </ScrollViewer>
           <Border Background="{DynamicResource NfcSurfaceSubtleBrush}" IsVisible="{Binding #PART_Retention.IsVisible}">
-            <TextBlock Name="PART_Retention" Margin="{DynamicResource Nvt.Console.List.RetentionMargin}"
+            <console:ConsoleRetentionText Name="PART_Retention" Margin="{DynamicResource Nvt.Console.List.RetentionMargin}"
                        Height="{DynamicResource Nvt.Console.List.RetentionHeight}" LineHeight="{DynamicResource Nvt.Console.List.RowHeight}" IsVisible="False" IsHitTestVisible="False"
                        Foreground="{DynamicResource NfcTextSecondaryBrush}"
                        FontFamily="{DynamicResource Nvt.Font.Caption.Family}"
                        FontSize="{DynamicResource Nvt.Font.Caption.Size}" FontWeight="{DynamicResource Nvt.Font.Caption.Weight}"/>
           </Border>
-          <Button Grid.Row="1" Name="PART_Jump" Classes="actionPrimary" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+          <console:ConsoleJumpButton Grid.Row="1" Name="PART_Jump" Classes="actionPrimary" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                   Margin="{DynamicResource Nvt.Console.List.JumpMargin}" Height="{DynamicResource NfcControlHeight}" IsVisible="False"
                   FontFamily="{DynamicResource Nvt.Font.Body.Family}"
                   FontSize="{DynamicResource Nvt.Font.Body.Size}" FontWeight="{DynamicResource Nvt.Font.Body.Weight}"/>
@@ -45,7 +45,7 @@
     <Setter Property="FocusAdorner">
       <Template>
         <Border BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
+                Margin="{DynamicResource Nvt.Controls.InsetFocusRingMargin}" IsHitTestVisible="False" AdornerLayer.IsClipEnabled="False"
                 CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
       </Template>
     </Setter>

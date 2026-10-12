@@ -260,8 +260,7 @@
         "symbol",
         "syntaxHash",
         "count",
-        "owner",
-        "removeBy"
+        "owner"
       ],
       "properties": {
         "rule": {

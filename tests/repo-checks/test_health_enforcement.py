@@ -772,6 +772,8 @@ class Fixture {
         self.commit_all('upper-case pin')
         r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
         self.assertNotEqual(0, r.returncode)
+        # The schema rejects it before the ancestry check runs.
+        self.assertIn('Invalid core-health.lock', r.stderr + r.stdout)
 
     def test_core_ignores_core_root(self):
         self.core_repo()
@@ -862,6 +864,41 @@ class Fixture {
         r = self.verify_application(core)
         self.assertNotEqual(0, r.returncode)
         self.assertIn('does not descend from the pin it replaces', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_on_a_diverged_line(self):
+        core, first, second = self.core_checkout()
+        identity = ['-c', 'user.name=fixture', '-c', 'user.email=fixture@example.test', '-c', 'commit.gpgsign=false']
+
+        def core_git(*args):
+            return subprocess.check_output(['git', '-C', str(core), *args], text=True).strip()
+
+        core_git('checkout', '-q', '-b', 'side', first)
+        core_git(*identity, 'commit', '-q', '--allow-empty', '-m', 'side line')
+        side = core_git('rev-parse', 'HEAD')
+        core_git('checkout', '-q', 'main')
+        # The Core checkout must reach both lines from its HEAD, or the first check fails on reachability instead.
+        core_git(*identity, 'merge', '--no-ff', '-q', '-m', 'merge side', 'side')
+        self.app_repo()
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the second commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        self.lock_write(side)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin moved to a diverged line')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('does not descend from the pin it replaces', r.stderr)
+
+    def test_application_pin_move_reports_a_core_root_that_is_not_a_repository(self):
+        _, _, _ = self.application_pin_move()
+        # Outside the repository: a directory below it would resolve to the repository of the test itself.
+        empty = tempfile.TemporaryDirectory(prefix='h03-notrepo-')
+        self.addCleanup(empty.cleanup)
+        r = self.verify_application(Path(empty.name).resolve())
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('git merge-base exited 128', r.stderr + r.stdout)
 
     def test_an_application_still_cannot_move_its_pin_in_a_pull_request(self):
         self.app_repo()

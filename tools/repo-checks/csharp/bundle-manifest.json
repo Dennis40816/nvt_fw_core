@@ -11,8 +11,8 @@
   "files": [
     {
       "path": "Directory.Build.props",
-      "sha256": "26a1dce105b061cc7b243f9edccb8b786d82f7e73e1ff5dda4f311976b7a8f2e",
-      "byteLength": 2431
+      "sha256": "7fb587f56f7c9184b9d9c739351b559a2818b8f6eb1888290f4a8de266678b01",
+      "byteLength": 2985
     },
     {
       "path": ".editorconfig",
@@ -36,8 +36,8 @@
     },
     {
       "path": "schema.json",
-      "sha256": "e1446e0609ebc8e1fc5e9c15f167aaa9ed9f2eb2849f167ec3b3f8689029b664",
-      "byteLength": 9895
+      "sha256": "ce419abcad5adcf2d8a86b4a622716b4b0ba4d67d93b7682e8f0633553e2fe6f",
+      "byteLength": 9875
     }
   ]
 }
