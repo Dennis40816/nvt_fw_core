@@ -12,15 +12,16 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 [Collection(ConsolePerformanceIsolation.Name)]
 public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
 {
-    // Reference median: 3,992.52 units for a full headless viewport traversal; allow a 2x margin (rounded up).
-    // This includes text layout/container recycling rather than timing only an offset assignment.
-    private const double ScrollCalibrationRatio = 8000;
+    // The gates below count work. A count does not change with the load of the host, so a solution-level parallel run
+    // cannot fail them (issue 206). Reference on 2026-10-12, 10,000 rows, one full traversal:
+    // 39,980 row visits (3.998 per row), 9,998 row measures (1.000 per row), at most 2 host measure passes in any one of its 770 steps.
+    // The visit and row measure limits add 25% to the reference. The host limit is the one of a single user scroll (below).
+    // A count needs no warm-up and no median: one traversal gives the same number each time.
+    private const double VisitsPerRowLimit = 5.0;
+    private const double RowMeasuresPerRowLimit = 1.25;
     // Count row visits during height rebuilding, synchronization, measure/realization and arrangement.
     // Linear traversal doubles the work (2.0); allow 25% margin, independent of host scheduling.
     private const double DoublingRatio = 2.5;
-    // The calibration unit and the traversal are measured in pairs, so one burst of host load cannot shrink the unit
-    // while it inflates the traversal. The median of the pairs is the ratio.
-    private const int PairedRounds = 3;
     // Small identity/state records fit in 4 KiB; copying 10,000 row IDs allocates over 160 KiB.
     private const long ScrollAllocationLimit = 4096;
     // One invalidation plus one geometry correction; theme propagation permits one additional pass.
@@ -28,29 +29,45 @@ public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
     private const int ThemeMeasureLimit = 3;
 
     [AvaloniaFact, Trait("Category", "Performance")]
-    public void TenThousandRowScrollStaysWithinCalibrationRatio()
+    public void TenThousandRowTraversalStaysWithinTheWorkBudget()
     {
-        using var scene = new ConsoleScrollScene(10_000);
+        const int rows = 10_000;
+        using var scene = new ConsoleScrollScene(rows);
         scene.Pause();
-        var rounds = new double[PairedRounds];
-        for (int round = 0; round < rounds.Length; round++)
-        {
-            var unit = RelativePerf.CalibrationUnit();
-            rounds[round] = RelativePerf.InUnits(RelativePerf.MedianTime(scene.Traverse), unit);
-        }
-        Array.Sort(rounds);
-        var units = rounds[rounds.Length / 2];
-        output.WriteLine($"Traversal calibration ratios (sorted): {string.Join(", ", rounds.Select(round => round.ToString("F2", CultureInfo.InvariantCulture)))}; median {units:F2}; limit {ScrollCalibrationRatio}");
-        RequireScrollRatio(units);
+        var work = scene.MeasureTraversal();
+        var visitsPerRow = ((double)work.RowVisits / rows).ToString("F3", CultureInfo.InvariantCulture);
+        var measuresPerRow = ((double)work.RowMeasures / rows).ToString("F3", CultureInfo.InvariantCulture);
+        output.WriteLine($"Traversal work at {rows} rows: {work.RowVisits} row visits ({visitsPerRow} per row; limit {VisitsPerRowLimit}), "
+            + $"{work.HostMeasurePasses} host measure passes in {work.Steps} steps, at most {work.MaxStepMeasurePasses} in one step (limit {ScrollMeasureLimit}), "
+            + $"{work.RowMeasures} row measures ({measuresPerRow} per row; limit {RowMeasuresPerRowLimit})");
+        RequireWorkBudget(work, rows);
     }
 
-    [AvaloniaFact, Trait("Category", "Performance")]
-    public void CalibrationPolicyRejectsADeliberatelySlowPath()
+    [Theory, Trait("Category", "Performance")]
+    [InlineData("visits")]
+    [InlineData("row measures")]
+    [InlineData("host passes in one step")]
+    [InlineData("visits counter stopped")]
+    [InlineData("row measures counter stopped")]
+    [InlineData("host pass counter stopped")]
+    [InlineData("step pass counter stopped")]
+    public void WorkBudgetPolicyRejectsEachCountOutOfBudget(string broken)
     {
-        var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var unit = RelativePerf.CalibrationUnit();
-        var work = RelativePerf.MedianTime(() => clock.Advance(unit * (ScrollCalibrationRatio + 1)), clock: clock);
-        Assert.ThrowsAny<XunitException>(() => RequireScrollRatio(RelativePerf.InUnits(work, unit)));
+        const int rows = 1_000;
+        var good = new ConsoleTraversalWork(rows * 4, 10, ScrollMeasureLimit, rows, 10);
+        RequireWorkBudget(good, rows);
+        var bad = broken switch
+        {
+            "visits" => good with { RowVisits = (long)(rows * VisitsPerRowLimit) + 1 },
+            "row measures" => good with { RowMeasures = (long)(rows * RowMeasuresPerRowLimit) + 1 },
+            "host passes in one step" => good with { MaxStepMeasurePasses = ScrollMeasureLimit + 1 },
+            "visits counter stopped" => good with { RowVisits = 0 },
+            "row measures counter stopped" => good with { RowMeasures = 0 },
+            "host pass counter stopped" => good with { HostMeasurePasses = 0 },
+            "step pass counter stopped" => good with { MaxStepMeasurePasses = 0 },
+            _ => throw new ArgumentOutOfRangeException(nameof(broken), broken, "Unknown case."),
+        };
+        Assert.ThrowsAny<XunitException>(() => RequireWorkBudget(bad, rows));
     }
 
     [AvaloniaFact, Trait("Category", "Performance")]
@@ -60,12 +77,12 @@ public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
         using var larger = new ConsoleScrollScene(20_000);
         smaller.Pause();
         larger.Pause();
-        var clock = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var smallVisits = smaller.TraversalRowVisits();
-        var largeVisits = larger.TraversalRowVisits();
-        // Encode operation counts in the shared manual clock; no host elapsed time enters the scale policy.
-        var ratio = RelativePerf.ScaleRatio(() => clock.Advance(TimeSpan.FromTicks(smaller.TraversalRowVisits())),
-            () => clock.Advance(TimeSpan.FromTicks(larger.TraversalRowVisits())), clock: clock);
+        var smallVisits = smaller.MeasureTraversal().RowVisits;
+        var largeVisits = larger.MeasureTraversal().RowVisits;
+        // Operation counts, not elapsed time: no host scheduling enters the scale policy.
+        Assert.InRange(smallVisits, 10_000, 50_000);
+        Assert.InRange(largeVisits, 20_000, 100_000);
+        var ratio = (double)largeVisits / smallVisits;
         output.WriteLine($"Row visits: {smallVisits} at 10,000; {largeVisits} at 20,000");
         output.WriteLine($"20,000 / 10,000 traversal ratio: {ratio:F3}; limit {DoublingRatio}");
         RequireScaleRatio(ratio);
@@ -161,7 +178,14 @@ public sealed class ConsoleScrollPerformanceTests(ITestOutputHelper output)
         Assert.ThrowsAny<XunitException>(() => RequireScaleRatio(2.75));
     }
 
-    private static void RequireScrollRatio(double ratio) => Assert.InRange(ratio, 0, ScrollCalibrationRatio);
+    private static void RequireWorkBudget(ConsoleTraversalWork work, int rows)
+    {
+        // A lower bound keeps a counter that stopped counting from passing.
+        Assert.InRange(work.RowVisits, rows, (long)(rows * VisitsPerRowLimit));
+        Assert.InRange(work.RowMeasures, rows / 2, (long)(rows * RowMeasuresPerRowLimit));
+        Assert.InRange(work.HostMeasurePasses, 1, work.Steps * ScrollMeasureLimit);
+        Assert.InRange(work.MaxStepMeasurePasses, 1, ScrollMeasureLimit);
+    }
     private static void RequireScaleRatio(double ratio) => Assert.InRange(ratio, 0, DoublingRatio);
     private static void RequireAllocation(long bytes) => Assert.InRange(bytes, 0, ScrollAllocationLimit);
 }

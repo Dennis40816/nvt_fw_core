@@ -6,6 +6,10 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Fixed
+
+- Tests: the Console scroll gate counts work (row visits, host measure passes per step and row presenter measures of one full traversal) instead of timing it against a calibration unit, so the load of a solution-level parallel run does not change it (#206). The 10,000 and 20,000 row tests drop from about 4.5 minutes each to under one minute. The scale gate counts one traversal per size. The gate no longer reads a clock, so a cost per row that grows without changing a count is not caught.
+
 ## 0.9.0 - 2026-10-11
 
 Tag `core-v0.9.0` on commit `fb18767fab03b0eaef2547dc62fdaaa3f96fef91` (#191).
