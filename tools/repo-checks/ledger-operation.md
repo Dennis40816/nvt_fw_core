@@ -7,6 +7,8 @@ The rules of the checker are in [repo-health.md](repo-health.md). This page is t
 
 The two ledgers are `eng/code-health/baseline.json` and `eng/code-health/test-debt.json`.
 `removeBy` is optional on a finding. Core's ledgers carry none.
+A ledger of an application can still carry dates from an older enrollment
+(see [Remove the `removeBy` dates of a ledger](#remove-the-removeby-dates-of-a-ledger)).
 
 Terms on this page:
 
@@ -124,6 +126,49 @@ that file is not a synchronization path. That pin synchronization cannot use Ado
 `Directory.Build.props` is not one either. The full list of conditions and limits is in the Adopt
 section of [repo-health.md](repo-health.md#adopt-debt-that-a-rule-change-reveals).
 
+## Remove the `removeBy` dates of a ledger
+
+An older ledger can carry a `removeBy` date on every finding. The date can be a placeholder from an
+enrollment that needed one. A ledger does not need dates (owner decision of 2026-10-11).
+Verify fails from the day after the date, so remove the field before that day.
+
+- Use a pull request of its own that holds nothing else. It holds no code.
+- Make it after the pin synchronization that brings the schema with an optional `removeBy`.
+  An older schema requires the field, and a finding without it fails the schema check.
+- The change deletes the `removeBy` field of findings. It changes no other field and no count.
+  It adds no fingerprint, so Verify accepts it against a base ledger that has the dates.
+- LowerBaseline does not remove the field. It lowers counts and deletes entries, and it keeps the other fields.
+- Run the snippet with PowerShell 7 (`pwsh`), once for `eng/code-health/baseline.json` and once for
+  `eng/code-health/test-debt.json`. Skip a ledger that does not exist.
+
+```powershell
+param([Parameter(Mandatory)][string]$Path)
+$ErrorActionPreference = 'Stop'
+$full = (Resolve-Path -LiteralPath $Path).Path
+$text = [IO.File]::ReadAllText($full)
+$ledger = ConvertFrom-Json -AsHashtable -Depth 100 $text
+$removed = 0
+foreach ($f in $ledger.findings) {
+    if ($f.Contains('removeBy')) { [void]$f.Remove('removeBy'); $removed++ }
+}
+$json = ((ConvertTo-Json -InputObject $ledger -Depth 100) -replace "`r`n", "`n") + "`n"
+if ($text.Contains("`r`n")) { $json = $json -replace "`n", "`r`n" }
+[IO.File]::WriteAllText($full, $json, (New-Object Text.UTF8Encoding $false))
+"removed $removed removeBy fields from $Path"
+```
+
+The snippet writes the ledger in the format of the checker (`ConvertTo-Json -Depth 100`, UTF-8 without BOM)
+and keeps the line ending of the file.
+
+Check before you open the pull request:
+
+1. `git diff --numstat` shows one deleted line per removed field.
+   When `removeBy` was the last field of a finding, the line before it also changes: one added line and
+   one deleted line for each such finding (one comma less).
+   Any other changed line means that the ledger was not in checker format. Stop and report it.
+2. Run Verify in a CRLF checkout with `-BaseRef` and, when the pin moved, `-CoreRoot`. Expect exit code 0.
+3. The pull request text says that it only removes the `removeBy` fields and changes no fingerprint.
+
 ## Common failures
 
 | What you see | Meaning | What to do |
@@ -131,7 +176,7 @@ section of [repo-health.md](repo-health.md#adopt-debt-that-a-rule-change-reveals
 | `New fingerprint; deleting another finding cannot offset it`, `New/growing excess or raised ceiling is forbidden`, `New test duplication`, `New format ...` | A fingerprint appeared or its count grew. | Undo the change that altered the fingerprint (a rename, a move or an edit of the statement). If the new debt is real, fix it instead of enrolling it. |
 | `Fixes must lower/delete baseline debt in this change; run LowerBaseline.` (for the test ledger: `... test-debt ...`) | The measured value is below the ledger value. The code lowered debt and the ledger did not follow. | Run LowerBaseline last. Never edit a ceiling by hand. A ceiling that you raise by hand fails with the message of the first row or with this one, depending on whether it equals the measurement. |
 | `The test-debt ledger may only shrink after its first enrollment.` | `test-debt.json` has an entry that is higher than in the base ref. | Restore the ledger of the base ref. Lower it only with LowerBaseline. |
-| `The removeBy date in <ledger> has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision.` (the output line starts with `HC_STATE`) | A finding that has a `removeBy` date is past due. | Fix the finding first. A date change is an owner decision in a pull request of its own. |
+| `The removeBy date in <ledger> has passed. Fix the finding, or move the date in a dedicated pull request with an owner decision.` (the output line starts with `HC_STATE`) | A finding that has a `removeBy` date is past due. | Fix the finding first. A date change is an owner decision in a pull request of its own. To drop a date that only stood in as a placeholder, see [Remove the `removeBy` dates of a ledger](#remove-the-removeby-dates-of-a-ledger). |
 | `Adopt refused: this change touches N path(s) that are not synchronization files; ...` | The change has a path that is not a synchronization path. | Move that path to another pull request. Run Adopt alone. |
 | Exit code 2 | Tool or input error, such as a parse error, an unavailable stage or a bad ledger. | Read the first error. It is not debt. |
 
