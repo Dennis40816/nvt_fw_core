@@ -434,6 +434,7 @@ function Test-BundleDrift {
     $lockPath = Join-Path $Root 'eng/core-health.lock.json'
     $lock = Read-HealthDocument ([IO.File]::ReadAllText($lockPath)) 'core-health.lock'
     $isCore = ($Repo -eq 'core')
+    if ($isCore -and -not $lock.files.ContainsKey('repo-health.ps1')) { throw 'Core lock must include repo-health.ps1' }
     $trusted = $null
     # An application's pull request cannot replace the trusted pin, unless -CoreRoot proves the new pin (see below).
     # Core is the source of the bundle, so its pull request may change a bundle file and may move its own pin (see below).
@@ -449,6 +450,10 @@ function Test-BundleDrift {
     elseif ($Mode -ne 'Enroll') {
         $trusted = Read-HealthDocument (Invoke-Checked 'git' @('show', 'HEAD:eng/core-health.lock.json')) 'core-health.lock'
         if (-not $isCore -and -not $CoreRoot -and $lock.coreCommit -cne $trusted.coreCommit) { throw 'HC_DRIFT eng/core-health.lock.json:1 pin differs from committed pin' }
+    }
+    # An old lock may lack the checker entry, but a lock that has it keeps it: dropping it would skip the check.
+    if (-not $isCore -and $null -ne $trusted -and $trusted.files.ContainsKey('repo-health.ps1') -and -not $lock.files.ContainsKey('repo-health.ps1')) {
+        throw 'HC_DRIFT eng/core-health.lock.json:1 the repo-health.ps1 entry was removed from the lock; integrate the reviewed synchronization separately'
     }
     # Core may leave the pin behind its tree, because a bundle change cannot name its own commit. The pin is always a
     # commit of this history (a full clone is required). A moved pin is not older than the pin it replaces, and its
@@ -468,27 +473,42 @@ function Test-BundleDrift {
     }
     $canonicalRoot = if ($CoreRoot) { [IO.Path]::GetFullPath($CoreRoot) } else { $Root }
     foreach ($name in $lock.files.Keys) {
-        $path = Join-Path $Root "eng/core-health/$name"
+        $isChecker = ($name -ceq 'repo-health.ps1')
+        $canonicalPath = if ($isChecker) { 'tools/repo-checks/repo-health.ps1' } else { "tools/repo-checks/csharp/$name" }
+        $path = if ($isChecker) {
+            if ($isCore) { Join-Path $Root $canonicalPath } else { $PSCommandPath }
+        } else { Join-Path $Root "eng/core-health/$name" }
+        if ($isChecker -and (-not $path -or -not (Test-Path -LiteralPath $path -PathType Leaf))) { throw "Missing repo-health.ps1 script path: $path" }
         $bytes = [IO.File]::ReadAllBytes($path)
-        if ($bytes -contains 13 -or ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) { throw "HC_DRIFT $path`:1 LF/UTF-8 required" }
+        if ($bytes -contains 13 -or ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) {
+            if ($isChecker) { throw 'repo-health.ps1 must use LF line endings and UTF-8 without a BOM.' }
+            throw "HC_DRIFT $path`:1 LF/UTF-8 required"
+        }
         $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
-        if ($hash -cne $lock.files[$name]) { throw "HC_DRIFT $path`:1 SHA-256 differs from lock" }
+        $driftPath = if ($isChecker) { 'eng/core-health.lock.json' } else { $path }
+        if ($hash -cne $lock.files[$name]) { throw "HC_DRIFT $driftPath`:1 $name SHA-256 differs from lock" }
+        if ($isChecker -and $isCore) {
+            # Core compares the tree script with the lock. The script that runs must be the same bytes.
+            if (-not $PSCommandPath) { throw 'repo-health.ps1 must run from its script file' }
+            $runningHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($PSCommandPath))).ToLowerInvariant()
+            if ($runningHash -cne $hash) { throw "HC_DRIFT $PSCommandPath`:1 the running repo-health.ps1 differs from $canonicalPath of this tree" }
+        }
         # Git blob identity is computed over raw bytes, without autocrlf filters.
         $local = (Invoke-Checked 'git' @('hash-object', '--no-filters', $path)).Trim()
         if ($isCore) {
             # Core is the source of the bundle: the copy, the canonical file and the lock are the same bytes.
-            $working = (Invoke-Checked 'git' @('hash-object', '--no-filters', (Join-Path $Root "tools/repo-checks/csharp/$name"))).Trim()
-            if ($working -cne $local) { throw "HC_DRIFT $path`:1 differs from the canonical file (tools/repo-checks/csharp/$name)" }
+            $working = if ($isChecker) { $local } else { (Invoke-Checked 'git' @('hash-object', '--no-filters', (Join-Path $Root $canonicalPath))).Trim() }
+            if ($working -cne $local) { throw "HC_DRIFT $path`:1 differs from the canonical file ($canonicalPath)" }
             if ($pinMoved) {
-                $pinned = (Invoke-Checked 'git' @('-C', $Root, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
+                $pinned = (Invoke-Checked 'git' @('-C', $Root, 'rev-parse', "$($lock.coreCommit):$canonicalPath")).Trim()
                 if ($pinned -cne $working) { throw "HC_DRIFT eng/core-health.lock.json:1 the pin moved to a commit whose $name differs from this tree" }
             }
             continue
         }
         # Without -CoreRoot an application has no canonical Core objects.
         if (-not $CoreRoot) { continue }
-        $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):tools/repo-checks/csharp/$name")).Trim()
-        if ($canonical -cne $local) { throw "HC_DRIFT $path`:1 differs from approved Core revision" }
+        $canonical = (Invoke-Checked 'git' @('-C', $canonicalRoot, 'rev-parse', "$($lock.coreCommit):$canonicalPath")).Trim()
+        if ($canonical -cne $local) { throw "HC_DRIFT $path`:1 $name differs from approved Core revision" }
     }
     $common = [IO.File]::ReadAllText((Join-Path $Root 'eng/core-health/.editorconfig'))
     Test-ManagedBlock $common (Read-EditorText (Join-Path $Root '.editorconfig'))

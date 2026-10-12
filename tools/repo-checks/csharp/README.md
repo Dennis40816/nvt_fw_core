@@ -6,10 +6,14 @@ All files use LF and UTF-8 without a BOM.
 
 Copy the six paths in `bundle-manifest.json`'s `copyFiles` from an approved Core
 commit, byte for byte, into `eng/core-health/`. Add `eng/core-health.lock.json`
-recording that commit and each distributed file's SHA-256. CI must compare with
+recording that commit and the SHA-256 of each of the six files and of `repo-health.ps1` (an old application
+lock may omit the checker entry). CI must compare with
 the trusted Core revision as well as the local copies. The manifest's `version`
 is its format version; its entries record `path`, `sha256`, and `byteLength`.
 The manifest, this README, and the generator are Core tooling, outside `copyFiles`.
+The manifest lists `repo-health.ps1` in `verifiedFiles`.
+Its hash and byte length appear in `files`.
+The generator never copies the checker.
 
 Classify every C# project in repository-owned `eng/code-health/projects.props`,
 using `domain`, `application`, `presentation`, `infrastructure`, `composition`,
@@ -38,6 +42,9 @@ findings belong in the ledger, not mechanically in the seam manifest.
 
 The minimal lock has schemaVersion=1, coreCommit (40 lowercase hex), and files
 mapping the six distributed filenames to raw-byte SHA-256 (64 lowercase hex).
+Core's lock also records `repo-health.ps1`.
+An old application lock may omit that entry until its pin synchronization.
+The checker then skips its own hash and blob checks.
 For an application the checker verifies Git blob identity at that revision in addition to
 the hashes, and protects the base/HEAD pin. Core instead compares each copy, its canonical file
 and the lock hash as the same bytes. Apps provide a local approved Core checkout with
@@ -62,25 +69,35 @@ Solution; LowerBaseline cannot enroll. Generated HealthBaselineWarningIds must
 equal the build diagnostic ledger per project. VSTHRD100 remains error: apps must
 remove async void before enrollment can build. Public API enrollment remains H07d.
 
-To change a bundle file in Core, edit the canonical file in `tools/repo-checks/csharp/` and run from the
-repo root, with the pin that the lock names now (the pin does not move in this change):
+To change a bundle file in Core, edit its canonical file in `tools/repo-checks/csharp/`.
+To change the checker, edit `tools/repo-checks/repo-health.ps1`.
+Save the checker as LF UTF-8 without a BOM.
+Run the same commands from the repository root for either change.
+Use the pin that the lock names now.
+The pin stays in this change.
 
 ```powershell
 ./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <coreCommit of eng/core-health.lock.json>
 ./tools/repo-checks/csharp/New-HealthBundle.ps1 -Check
 ```
 
-This is one pull request: the canonical file, the copy in `eng/core-health/`, the manifest and the lock hash.
-Core's `Verify` accepts it, because Core compares its copies with its own canonical files. After the pull
-request merges, a pin synchronization pull request moves `coreCommit` to the merge commit
-(`New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>`). Then an application updates its pin as below.
+The change includes the canonical file, any distributed copy, the manifest and the lock hash.
+`-Distribute` updates the manifest and lock hash for `repo-health.ps1` in the same run.
+It copies only the six bundle files.
+Core's `Verify` compares these files with the working tree.
+After merge, a pin synchronization moves `coreCommit` to the merge commit.
+Run `New-HealthBundle.ps1 -Distribute -CoreCommit <merge commit>` for that step.
+An application then updates its pin as below.
 
 An application moves its pin in one pull request that changes `eng/core-health.lock.json`
 (`coreCommit` and the hashes) and the copies in `eng/core-health/` (copy all six files of the new Core
 commit, byte for byte). CI must run `Verify` with `-BaseRef origin/main` and with `-CoreRoot` set to a
-Core checkout that is at the approved commit or later. The checker then accepts the pin move when the new
-pin is a commit of that checkout, descends from the old pin and its six files equal the copies. The copy of
-`repo-health.ps1` is not in the lock: it moves in the same pull request and the review covers it.
+Core checkout. The checker that runs must be the one at the new pin, so run it from a checkout of that pin
+and not from a later commit that changed the checker. The checker then accepts the pin move when the new
+pin is a commit of that checkout, descends from the old pin and its six files equal the copies.
+The running `repo-health.ps1` must match the checker blob at the new pin.
+A lock that had the `repo-health.ps1` entry in the base lock cannot drop it.
+Its lock entry records the raw-byte SHA-256 of that checker.
 Without `-CoreRoot` (a lock-only run) a moved pin is an error.
 
 Core's pin step runs in the Core checkout. The command exists only there, because an application has no
@@ -92,10 +109,15 @@ Core's pin step runs in the Core checkout. The command exists only there, becaus
 python -B -m unittest discover -s tests/repo-checks -p test_csharp_health_bundle.py -v
 ```
 
-An application does not run these commands. It copies the six files of the approved commit by hand,
-together with `repo-health.ps1`, and edits its own `eng/core-health.lock.json`:
+An application does not run these commands.
+It copies the six bundle files of the approved commit by hand.
+It runs the checker from that commit.
+It keeps the checker as LF bytes with a `.gitattributes` line `tools/repo-checks/repo-health.ps1 text eol=lf`.
+Core has this line. Without it, a Windows checkout with `autocrlf` writes CRLF and `Verify` stops with a tool error.
+It edits its own `eng/core-health.lock.json`:
 
 - `coreCommit` is the approved Core commit (40 lowercase hex digits).
+- `repo-health.ps1` records the hash of `tools/repo-checks/repo-health.ps1` at that commit.
 - Each file entry is the SHA-256 of the raw LF bytes of the copied file, as lowercase hex. In PowerShell:
   `(Get-FileHash -Algorithm SHA256 <file>).Hash.ToLowerInvariant()`. Hash the file only when it has LF line
   endings. A CRLF checkout gives a different hash, and the checker rejects it.

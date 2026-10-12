@@ -14,13 +14,20 @@ $bundleFiles = @(
     'BannedSymbols.Tests.txt',
     'schema.json'
 )
+$verifiedFiles = @('repo-health.ps1')
+$healthFiles = $bundleFiles + $verifiedFiles
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
+$lockPath = Join-Path $repoRoot 'eng/core-health.lock.json'
 $copyLines = @()
+$verifiedLines = @()
 $fileLines = @()
+$hashes = [ordered]@{}
 $sha256 = [System.Security.Cryptography.SHA256]::Create()
 try {
-    for ($index = 0; $index -lt $bundleFiles.Count; $index++) {
-        $name = $bundleFiles[$index]
-        $path = Join-Path $PSScriptRoot $name
+    for ($index = 0; $index -lt $healthFiles.Count; $index++) {
+        $name = $healthFiles[$index]
+        $path = if ($name -in $verifiedFiles) { Join-Path $PSScriptRoot "../$name" } else { Join-Path $PSScriptRoot $name }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing health file: $name ($path)." }
         $bytes = [System.IO.File]::ReadAllBytes($path)
         if ($bytes -contains 13 -or
             ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and
@@ -28,8 +35,16 @@ try {
             throw "$name must use LF line endings and UTF-8 without a BOM."
         }
         $hash = [System.BitConverter]::ToString($sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
-        $comma = if ($index -lt $bundleFiles.Count - 1) { ',' } else { '' }
-        $copyLines += '    "' + $name + '"' + $comma
+        $hashes[$name] = $hash
+        if ($index -lt $bundleFiles.Count) {
+            $copyComma = if ($index -lt $bundleFiles.Count - 1) { ',' } else { '' }
+            $copyLines += '    "' + $name + '"' + $copyComma
+        }
+        else {
+            $verifiedComma = if ($index -lt $healthFiles.Count - 1) { ',' } else { '' }
+            $verifiedLines += '    "' + $name + '"' + $verifiedComma
+        }
+        $comma = if ($index -lt $healthFiles.Count - 1) { ',' } else { '' }
         $fileLines += @(
             '    {',
             ('      "path": "' + $name + '",'),
@@ -45,6 +60,7 @@ finally {
 
 # Explicit formatting keeps output identical in Windows PowerShell 5.1 and PowerShell 7.
 $manifestLines = @('{', '  "version": 1,', '  "copyFiles": [') + $copyLines +
+    @('  ],', '  "verifiedFiles": [') + $verifiedLines +
     @('  ],', '  "files": [') + $fileLines + @('  ]', '}')
 $utf8 = [System.Text.UTF8Encoding]::new($false)
 $expected = $utf8.GetBytes(($manifestLines -join "`n") + "`n")
@@ -54,16 +70,20 @@ if ($Check) {
     if ([System.Convert]::ToBase64String($actual) -cne [System.Convert]::ToBase64String($expected)) {
         throw 'Bundle manifest disagrees with the policy files. Run New-HealthBundle.ps1 after reviewing the change.'
     }
-    Write-Output "Bundle manifest verified: $($bundleFiles.Count) files."
+    $lock = ConvertFrom-Json ([IO.File]::ReadAllText($lockPath))
+    foreach ($name in $verifiedFiles) {
+        $entry = $lock.files.PSObject.Properties[$name]
+        if ($null -eq $entry -or $entry.Value -cne $hashes[$name]) { throw "Core lock hash of $name disagrees with the verified file. Run New-HealthBundle.ps1 -Distribute after reviewing the change." }
+    }
+    Write-Output "Bundle manifest verified: $($bundleFiles.Count) files to distribute and $($verifiedFiles.Count) verified file."
 }
 else {
     [System.IO.File]::WriteAllBytes($manifestPath, $expected)
-    Write-Output "Bundle manifest written: $($bundleFiles.Count) files."
+    Write-Output "Bundle manifest written: $($bundleFiles.Count) files to distribute and $($verifiedFiles.Count) verified file."
 }
 
 if ($Distribute) {
     if ($Check) { throw '-Check cannot be combined with -Distribute' }
-    $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
     $destination = Join-Path $repoRoot 'eng/core-health'
     [void][IO.Directory]::CreateDirectory($destination)
     foreach ($name in $bundleFiles) {
@@ -84,10 +104,16 @@ if ($Distribute) {
     if ($CoreCommit) {
         $commit = (& git -C $repoRoot rev-parse "$CoreCommit^{commit}").Trim()
         if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') { throw 'Invalid CoreCommit' }
-        $hashes = [ordered]@{}
-        foreach ($name in $bundleFiles) { $hashes[$name] = (Get-FileHash -LiteralPath (Join-Path $destination $name) -Algorithm SHA256).Hash.ToLowerInvariant() }
-        $lock = [ordered]@{ schemaVersion = 1; coreCommit = $commit; files = $hashes }
-        [IO.File]::WriteAllText((Join-Path $repoRoot 'eng/core-health.lock.json'), ($lock | ConvertTo-Json -Depth 10).Replace("`r`n", "`n") + "`n", $utf8)
     }
+    else { $commit = (ConvertFrom-Json ([IO.File]::ReadAllText($lockPath))).coreCommit }
+    # Explicit lines keep the bytes the same in Windows PowerShell 5.1 and PowerShell 7 (ConvertTo-Json differs).
+    $lockLines = @('{', '  "schemaVersion": 1,', ('  "coreCommit": "' + $commit + '",'), '  "files": {')
+    $hashNames = @($hashes.Keys)
+    for ($index = 0; $index -lt $hashNames.Count; $index++) {
+        $lockComma = if ($index -lt $hashNames.Count - 1) { ',' } else { '' }
+        $lockLines += ('    "' + $hashNames[$index] + '": "' + $hashes[$hashNames[$index]] + '"' + $lockComma)
+    }
+    $lockLines += @('  }', '}')
+    [IO.File]::WriteAllBytes($lockPath, $utf8.GetBytes(($lockLines -join "`n") + "`n"))
     Write-Output 'Distributed six files and the managed EditorConfig block. Verify provenance before committing the pin.'
 }

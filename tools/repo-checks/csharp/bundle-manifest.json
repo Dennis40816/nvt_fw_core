@@ -8,6 +8,9 @@
     "BannedSymbols.Tests.txt",
     "schema.json"
   ],
+  "verifiedFiles": [
+    "repo-health.ps1"
+  ],
   "files": [
     {
       "path": "Directory.Build.props",
@@ -36,8 +39,13 @@
     },
     {
       "path": "schema.json",
-      "sha256": "ce419abcad5adcf2d8a86b4a622716b4b0ba4d67d93b7682e8f0633553e2fe6f",
-      "byteLength": 9875
+      "sha256": "2b811968ef8881056b20f87f622afc15d4204b588c1d06e8dd149600daa713ec",
+      "byteLength": 9997
+    },
+    {
+      "path": "repo-health.ps1",
+      "sha256": "04bf1910b9552f29a2ad25dc44bfbe694f072127e493eabfd2bda6ad34eae75a",
+      "byteLength": 137739
     }
   ]
 }
