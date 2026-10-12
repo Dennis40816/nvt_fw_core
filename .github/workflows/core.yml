@@ -43,6 +43,30 @@ jobs:
       - name: Test the pack script offline
         run: pwsh -File ./scripts/tests/test-pack.ps1
 
+  health:
+    name: Core / repo health
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out Core with history
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore locked dependencies
+        run: dotnet restore Nvt.Core.sln --locked-mode
+      - name: Verify repo health against the base branch
+        if: github.event_name == 'pull_request'
+        run: ./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln -BaseRef "origin/$env:GITHUB_BASE_REF"
+      - name: Verify repo health on main
+        if: github.event_name == 'push'
+        run: ./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln
+
   release:
     name: Core / release
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/core-v')
