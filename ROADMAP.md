@@ -91,10 +91,13 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Codex dispatch queue and Windows scheduler | 1.0.0 | Merged | [tools](tools/) |
 | Health enforcement: first baseline, ledger without `removeBy` dates (the schema follows in #208), bundle change in one pull request, `-Mode Adopt` | 1.0.0 | Merged | [#158](https://github.com/Dennis40816/nvt_fw_core/pull/158), [#198](https://github.com/Dennis40816/nvt_fw_core/pull/198), [#199](https://github.com/Dennis40816/nvt_fw_core/pull/199), [#202](https://github.com/Dennis40816/nvt_fw_core/pull/202) |
 | Debt ledger operation guide | 1.0.0 | Merged | [#207](https://github.com/Dennis40816/nvt_fw_core/pull/207), [guide](tools/repo-checks/ledger-operation.md) |
-| Health bundle: `schema.json` change (`removeBy` optional) | 1.0.0 | In review | [#208](https://github.com/Dennis40816/nvt_fw_core/pull/208) |
-| Health bundle: pin-only change, then each tool's pin synchronization | 1.0.0 | Planned, after #208 | [#197](https://github.com/Dennis40816/nvt_fw_core/issues/197) |
-| Verify the checker script against the pinned Core commit | 1.0.0 | Planned | [#185](https://github.com/Dennis40816/nvt_fw_core/issues/185) |
-| Health Verify job in CI | 1.0.0 | Planned; needs the owner's approval of the workflow file change | — |
+| Health bundle: `schema.json` change (`removeBy` optional) | 1.0.0 | Merged | [#208](https://github.com/Dennis40816/nvt_fw_core/pull/208) |
+| Health bundle: pin-only changes, then each tool's pin synchronization | 1.0.0 | The Core pin is `d2c3971` (merged). Each tool synchronizes once: NFH first, then NFC and NFU | [#212](https://github.com/Dennis40816/nvt_fw_core/pull/212), [#216](https://github.com/Dennis40816/nvt_fw_core/pull/216), [#197](https://github.com/Dennis40816/nvt_fw_core/issues/197) |
+| Verify the checker script against the pinned Core commit | 1.0.0 | Merged | [#215](https://github.com/Dennis40816/nvt_fw_core/pull/215), [#185](https://github.com/Dennis40816/nvt_fw_core/issues/185) |
+| Health Verify job in CI | 1.0.0 | Merged | [#211](https://github.com/Dennis40816/nvt_fw_core/pull/211) |
+| Health bundle: PublicAPI files are required next to the project, duplicate `AdditionalFiles` removed | 1.0.0 | Merged | [#214](https://github.com/Dennis40816/nvt_fw_core/pull/214) |
+| Application CI wiring guide | 1.0.0 | Merged | [#217](https://github.com/Dennis40816/nvt_fw_core/pull/217), [guide](tools/repo-checks/csharp/README.md#application-ci-wiring) |
+| Ledgers: remove the placeholder `removeBy` dates | 1.0.0 | Guide merged. Each application removes its dates after its pin synchronization | [#218](https://github.com/Dennis40816/nvt_fw_core/pull/218), [guide](tools/repo-checks/ledger-operation.md#remove-the-removeby-dates-of-a-ledger) |
 | Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Open | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
 
 **5. Shared UI classes**
