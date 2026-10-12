@@ -154,7 +154,8 @@ class HealthBundleTests(unittest.TestCase):
             "seam-owner-entry": "path member symbol owner reason kind review",
         }.items():
             self.assertEqual(set(fields.split()), set(definitions[name]["properties"]))
-            self.assertEqual(set(fields.split()) - ({"contentHash"} if name == "baseline-entity" else set()), set(definitions[name]["required"]))
+            optional = {"baseline-entity": {"contentHash"}, "baseline-finding": {"removeBy"}}.get(name, set())
+            self.assertEqual(set(fields.split()) - optional, set(definitions[name]["required"]))
             self.assertFalse(definitions[name]["additionalProperties"])
 
 

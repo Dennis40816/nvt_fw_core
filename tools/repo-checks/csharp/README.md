@@ -83,7 +83,8 @@ pin is a commit of that checkout, descends from the old pin and its six files eq
 `repo-health.ps1` is not in the lock: it moves in the same pull request and the review covers it.
 Without `-CoreRoot` (a lock-only run) a moved pin is an error.
 
-To update the pin of an application, review the canonical changes and run from the repo root:
+Core's pin step runs in the Core checkout. The command exists only there, because an application has no
+`tools/repo-checks/csharp`:
 
 ```powershell
 ./tools/repo-checks/csharp/New-HealthBundle.ps1 -Distribute -CoreCommit <approved-commit>
@@ -91,7 +92,15 @@ To update the pin of an application, review the canonical changes and run from t
 python -B -m unittest discover -s tests/repo-checks -p test_csharp_health_bundle.py -v
 ```
 
-Make a dedicated, owner-reviewed synchronization change that recopies all six
+An application does not run these commands. It copies the six files of the approved commit by hand,
+together with `repo-health.ps1`, and edits its own `eng/core-health.lock.json`:
+
+- `coreCommit` is the approved Core commit (40 lowercase hex digits).
+- Each file entry is the SHA-256 of the raw LF bytes of the copied file, as lowercase hex. In PowerShell:
+  `(Get-FileHash -Algorithm SHA256 <file>).Hash.ToLowerInvariant()`. Hash the file only when it has LF line
+  endings. A CRLF checkout gives a different hash, and the checker rejects it.
+
+For an application, make a dedicated, owner-reviewed synchronization change that recopies all six
 files and updates the consumer lock to the approved Core commit and hashes.
 It must still pass comparison with the previous diagnostic/structural baseline.
 The host first downloads the approved analyzer packages, adds the central pins,
