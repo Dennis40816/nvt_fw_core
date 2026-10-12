@@ -118,7 +118,11 @@ print HC_DIAGNOSTIC file:line, symbol, member and old/new counts. Build error ru
 warning IDs. Apps must migrate their async void handlers before build/enrollment;
 a syntax baseline cannot exempt an analyzer error. HealthPublicApi is set for
 Core's four published projects in eng/code-health/projects.props (H07d). Each
-project keeps its own PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt.
+project keeps its own PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt. The analyzer
+package adds both files as AdditionalFiles. The bundle props add no second copy, because a
+duplicate makes the dotnet format workspace load warn, and the format stage fails on that
+warning. The target HealthRequirePublicApiFiles fails the build before compile when a file is
+missing. The format stage runs after the build stage and does not run that target.
 
 Analyzer warnings repeated by format after prospective edits reuse fresh SARIF
 occurrences in source order, independently gated by the build ledger. They are not
