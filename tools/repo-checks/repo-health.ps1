@@ -328,11 +328,7 @@ function Read-HealthDocument([string]$Text, [string]$Definition) {
     $schemaPath = Join-Path $PSScriptRoot 'csharp/schema.json'
     if (-not (Test-Path -LiteralPath $schemaPath)) { $schemaPath = Join-Path $PSScriptRoot 'schema.json' }
     $schema = ConvertFrom-Json -AsHashtable ([IO.File]::ReadAllText($schemaPath))
-    # removeBy is optional since the owner decision of 2026-10-11. schema.json is a distributed bundle file with a pinned
-    # hash, so it keeps removeBy in the required list. The checker takes it out of that list in memory, until a pin
-    # synchronization changes the file.
-    $findingDefinition = $schema.'$defs'.'baseline-finding'
-    $findingDefinition.required = @($findingDefinition.required | Where-Object { $_ -cne 'removeBy' })
+    # removeBy is optional since the owner decision of 2026-10-11: schema.json does not list it as required.
     $validation = @{ '$schema' = $schema.'$schema'; '$defs' = $schema.'$defs'; '$ref' = "#/`$defs/$Definition" }
     if (-not (Test-Json -Json $Text -Schema ($validation | ConvertTo-Json -Depth 100) -ErrorAction SilentlyContinue)) { throw "Invalid $Definition document (schema)" }
     return (ConvertFrom-Json -AsHashtable -Depth 100 $Text)
@@ -420,8 +416,19 @@ function Test-EditorOverrides([string]$Common, [string]$Editor, [string]$Path) {
     }
 }
 function Test-GitAncestor([string]$Ancestor, [string]$Descendant, [string]$Repository = $Root) {
-    & git -C $Repository merge-base --is-ancestor $Ancestor $Descendant 2>&1 | Out-Null
-    return ($LASTEXITCODE -eq 0)
+    # Exit 0 is "is an ancestor" and 1 is "is not". 128 with "Not a valid commit name" is an unknown commit.
+    # Any other result (a path that is not a repository, a corrupt repository, another code) is a tool error.
+    # LC_ALL=C keeps git's message in English for this call, so the match below does not depend on the host language.
+    $previousLocale = $env:LC_ALL
+    $env:LC_ALL = 'C'
+    try {
+        $output = @(& git -C $Repository merge-base --is-ancestor $Ancestor $Descendant 2>&1)
+        $code = $LASTEXITCODE
+    }
+    finally { $env:LC_ALL = $previousLocale }
+    $unknownCommit = ($code -eq 128 -and (($output -join ' ') -match 'Not a valid (commit|object) name'))
+    if ($code -notin @(0, 1) -and -not $unknownCommit) { throw "git merge-base exited $code`: $($output -join ' ')" }
+    return ($code -eq 0)
 }
 function Test-BundleDrift {
     $lockPath = Join-Path $Root 'eng/core-health.lock.json'

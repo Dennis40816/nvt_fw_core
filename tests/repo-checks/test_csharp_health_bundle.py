@@ -6,6 +6,7 @@ from __future__ import annotations
 import configparser
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -13,6 +14,7 @@ import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from xml.sax.saxutils import quoteattr
 
 ROOT = Path(__file__).resolve().parents[2]
 BUNDLE = ROOT / "tools" / "repo-checks" / "csharp"
@@ -98,9 +100,61 @@ class HealthBundleTests(unittest.TestCase):
                    "$(RepoHealthRoot)eng/core-health/BannedSymbols.Files.txt",
                    "$(RepoHealthRoot)eng/code-health/$(HealthLayer)/BannedSymbols.txt"],
             "'$(HealthLayer)' == 'tests'": ["$(RepoHealthRoot)eng/core-health/BannedSymbols.Tests.txt"],
-            "'$(HealthPublicApi)' == 'true'": ["$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt",
-                                            "$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt"],
+            # The package adds PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt itself.
+            # A second Include is a duplicate source file warning in the dotnet format workspace load.
+            "'$(HealthPublicApi)' == 'true'": [],
         }, groups)
+
+    def test_props_requires_public_api_files_without_adding_them_twice(self) -> None:
+        root = ET.parse(BUNDLE / "Directory.Build.props").getroot()
+        self.assertEqual([], [item.get("Include") for item in root.iter("AdditionalFiles")
+                              if "PublicAPI" in item.get("Include", "")])
+        targets = root.findall("Target")
+        self.assertEqual(1, len(targets))
+        target = targets[0]
+        self.assertEqual("HealthRequirePublicApiFiles", target.get("Name"))
+        self.assertEqual("CoreCompile", target.get("BeforeTargets"))
+        self.assertEqual("'$(HealthPublicApi)' == 'true'", target.get("Condition"))
+        self.assertEqual(
+            ["!Exists('$(MSBuildProjectDirectory)/PublicAPI.Shipped.txt')",
+             "!Exists('$(MSBuildProjectDirectory)/PublicAPI.Unshipped.txt')"],
+            [error.get("Condition") for error in target.findall("Error")])
+
+    @unittest.skipIf(os.environ.get('HEALTH_SKIP_HOST_TESTS') == '1', 'HEALTH_SKIP_HOST_TESTS=1: requires the dotnet SDK')
+    def test_public_api_target_fails_only_for_a_missing_file_of_a_public_api_project(self) -> None:
+        dotnet = shutil.which("dotnet")
+        self.assertIsNotNone(dotnet, "the dotnet SDK is required to evaluate the target")
+        props = (BUNDLE / "Directory.Build.props").resolve().as_posix()
+        project = (
+            '<Project Sdk="Microsoft.NET.Sdk">'
+            '<PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>'
+            f'<Import Project={quoteattr(props)} /></Project>'
+        )
+        cases = (
+            ("true", ("PublicAPI.Shipped.txt", "PublicAPI.Unshipped.txt"), True),
+            ("true", ("PublicAPI.Shipped.txt",), False),
+            ("true", ("PublicAPI.Unshipped.txt",), False),
+            ("true", (), False),
+            ("false", (), True),
+        )
+        for flag, present, expected_ok in cases:
+            with self.subTest(public_api=flag, present=present), tempfile.TemporaryDirectory() as work:
+                folder = Path(work)
+                (folder / "Probe.csproj").write_text(project, encoding="utf-8")
+                for name in present:
+                    (folder / name).write_text("#nullable enable" + chr(10), encoding="utf-8")
+                result = subprocess.run(
+                    [dotnet, "msbuild", str(folder / "Probe.csproj"), "-nologo", "-t:HealthRequirePublicApiFiles",
+                     f"-p:HealthPublicApi={flag}", "-p:NuGetAudit=false"],
+                    capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=work, check=False)
+                output = result.stdout + result.stderr
+                self.assertEqual(expected_ok, result.returncode == 0, output)
+                # The first Error task stops the target, so only the first missing file is named.
+                missing = [name for name in ("PublicAPI.Shipped.txt", "PublicAPI.Unshipped.txt")
+                           if name not in present]
+                for name in ("PublicAPI.Shipped.txt", "PublicAPI.Unshipped.txt"):
+                    named = not expected_ok and missing[0] == name
+                    self.assertEqual(named, f"requires {name}" in output, output)
 
     def test_props_preserves_enforcement_and_baseline_settings(self) -> None:
         properties = ET.parse(BUNDLE / "Directory.Build.props").getroot().find("PropertyGroup")
@@ -154,7 +208,8 @@ class HealthBundleTests(unittest.TestCase):
             "seam-owner-entry": "path member symbol owner reason kind review",
         }.items():
             self.assertEqual(set(fields.split()), set(definitions[name]["properties"]))
-            self.assertEqual(set(fields.split()) - ({"contentHash"} if name == "baseline-entity" else set()), set(definitions[name]["required"]))
+            optional = {"baseline-entity": {"contentHash"}, "baseline-finding": {"removeBy"}}.get(name, set())
+            self.assertEqual(set(fields.split()) - optional, set(definitions[name]["required"]))
             self.assertFalse(definitions[name]["additionalProperties"])
 
 
