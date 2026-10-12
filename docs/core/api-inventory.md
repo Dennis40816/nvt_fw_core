@@ -85,7 +85,7 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 
 ## The gate
 
-`eng/code-health/projects.props` sets `HealthPublicApi` for the four projects. The shared health props then add `Microsoft.CodeAnalysis.PublicApiAnalyzers` and the two API files, and `TreatWarningsAsErrors` makes RS0016 (an undeclared public symbol) and RS0017 (a removed symbol that is still listed) fail the build.
+`eng/code-health/projects.props` sets `HealthPublicApi` for the four projects. The shared health props then add `Microsoft.CodeAnalysis.PublicApiAnalyzers`. The package adds the two API files as additional files. The props do not add them again, because a second include makes the `dotnet format` workspace load warn about a duplicate source file. A project that sets `HealthPublicApi` and lacks one of the two files fails `dotnet build` before compile, with an error from the target `HealthRequirePublicApiFiles`. A test evaluates that target for each combination of present files and for `HealthPublicApi` set to false. `TreatWarningsAsErrors` makes RS0016 (an undeclared public symbol) and RS0017 (a removed symbol that is still listed) fail the build.
 
 - A new public member needs an entry in the project's `PublicAPI.Unshipped.txt` in the same pull request.
 - The release step moves the approved entries from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`.

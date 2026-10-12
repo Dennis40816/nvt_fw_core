@@ -11,8 +11,8 @@
   "files": [
     {
       "path": "Directory.Build.props",
-      "sha256": "26a1dce105b061cc7b243f9edccb8b786d82f7e73e1ff5dda4f311976b7a8f2e",
-      "byteLength": 2431
+      "sha256": "7fb587f56f7c9184b9d9c739351b559a2818b8f6eb1888290f4a8de266678b01",
+      "byteLength": 2985
     },
     {
       "path": ".editorconfig",
