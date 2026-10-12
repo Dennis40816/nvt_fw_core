@@ -230,8 +230,11 @@ A way B application runs its own `tools/repo-checks/repo-health.ps1` instead of 
 - The checker uses the process working directory as the workspace, not the PowerShell location.
   CI starts in the workspace.
   Outside CI, start the process in the application root, or pass an absolute `-Root`.
-- Verify `FORMAT:*` findings in a Windows (CRLF) checkout, as CI does.
-  NFU measured different `FORMAT:WHITESPACE` counts in a worktree with `core.autocrlf=false` than in the CI checkout.
-  Fingerprints from the LF worktree did not match the committed ledger.
+- Register and verify the ledger in a Windows (CRLF) checkout, as CI does.
+  The count of `FORMAT:*` findings and the member that holds each finding depend on the line endings of the files.
+  NFU got 12 new `FORMAT:WHITESPACE` fingerprints in a worktree with `core.autocrlf=false` and none in a CRLF checkout.
+  The checker and the base commit were the same.
+  A checker older than the pin also gave different counts in the two trees.
+  A mismatch that only an LF checkout shows is not a checker change and needs no `Adopt`.
 - Core is a public repository, so the default token is enough for the `.core` checkout.
   A private Core needs a token with read access.
