@@ -111,9 +111,10 @@ python -B -m unittest discover -s tests/repo-checks -p test_csharp_health_bundle
 
 An application does not run these commands.
 It copies the six bundle files of the approved commit by hand.
-It runs the checker from that commit.
-It keeps the checker as LF bytes with a `.gitattributes` line `tools/repo-checks/repo-health.ps1 text eol=lf`.
-Core has this line. Without it, a Windows checkout with `autocrlf` writes CRLF and `Verify` stops with a tool error.
+It runs the checker from that commit, in one of the two ways described in "Application CI wiring" below.
+Only an application that keeps a local copy of the checker needs the `.gitattributes` line
+`tools/repo-checks/repo-health.ps1 text eol=lf`. Core has this line.
+Without it, a Windows checkout with `autocrlf` writes CRLF and `Verify` stops with a tool error.
 It edits its own `eng/core-health.lock.json`:
 
 - `coreCommit` is the approved Core commit (40 lowercase hex digits).
@@ -128,3 +129,109 @@ It must still pass comparison with the previous diagnostic/structural baseline.
 The host first downloads the approved analyzer packages, adds the central pins,
 regenerates and reviews package locks, smoke builds, and verifies locked restore.
 First integrate the contract and enrollment before verifying later PRs against their base; absent base artifacts fail closed.
+
+## Application CI wiring
+
+An application runs `Verify` in CI with the checker that its lock names.
+The recommended way is to check out Core at `coreCommit` into `.core` and run the checker from there.
+This section gives the workflow steps and the rules that three applications found by running them.
+
+### Two ways to run the checker
+
+| | A. Run the checker from `.core` (recommended) | B. Run a local copy |
+|---|---|---|
+| Local `tools/repo-checks/repo-health.ps1` | Not needed. Delete it. | Needed. Same blob as the checker at the pin. |
+| Local `tools/repo-checks/schema.json` | Not needed. The checker reads `.core/tools/repo-checks/csharp/schema.json`. | Needed. Same bytes as `tools/repo-checks/csharp/schema.json` at the pin. |
+| `.gitattributes` line for the checker | Not needed. | Needed (see above). |
+| Pin synchronization | Lock, copies in `eng/core-health/` and ledgers only. | The same, plus the checker copy and the schema file. `Adopt` refuses the schema path, so a synchronization that needs `Adopt` cannot use way B. |
+
+The checker reads its schema from `csharp/schema.json` next to the script.
+When that file is missing, it reads `schema.json` next to the script.
+An application copy has no `csharp` directory, so it uses the second file.
+The lock schema at a new pin has a `repo-health.ps1` key.
+An old schema file rejects a lock that has this key, with `Invalid core-health.lock document (schema)`.
+
+### Two pull requests
+
+1. The wiring pull request changes `.github/workflows/*.yml` and the `.gitignore`. The pin does not move.
+2. The synchronization pull request changes the lock, the copies and the ledgers. The pin moves.
+
+Keep them separate.
+`Adopt` accepts only synchronization paths, and a workflow file is not one of them.
+The wiring pull request runs its own workflow, so it proves the wiring before the pin moves.
+
+### Standard steps
+
+```yaml
+      - name: Check out the application with history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read the Core pin
+        id: pin
+        shell: pwsh
+        run: |
+          $lock = Get-Content -Raw -LiteralPath eng/core-health.lock.json | ConvertFrom-Json
+          if ($lock.coreCommit -cnotmatch '^[0-9a-f]{40}$') { throw 'eng/core-health.lock.json: coreCommit is not a 40-character lowercase SHA.' }
+          "commit=$($lock.coreCommit)" >> $env:GITHUB_OUTPUT
+
+      - name: Check out Core at the pin
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Dennis40816/nvt_fw_core
+          ref: ${{ steps.pin.outputs.commit }}
+          path: .core
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify repo health (pull request)
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: ./.core/tools/repo-checks/repo-health.ps1 -Mode Verify -Repo <repo> -Root . -Solution <Name>.sln -BaseRef "origin/$env:BASE_REF" -CoreRoot ./.core
+
+      - name: Verify repo health (push)
+        if: github.event_name == 'push'
+        shell: pwsh
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          $p = @{ Mode = 'Verify'; Repo = '<repo>'; Root = '.'; Solution = '<Name>.sln'; CoreRoot = './.core' }
+          if ($env:PUSH_BEFORE -and $env:PUSH_BEFORE -notmatch '^0+$') { $p.BaseRef = $env:PUSH_BEFORE }
+          ./.core/tools/repo-checks/repo-health.ps1 @p
+```
+
+Replace `<repo>` and `<Name>.sln` with the application values.
+Put the steps after the application's own restore step, in the order the application already uses.
+A way B application runs its own `tools/repo-checks/repo-health.ps1` instead of the `.core` script and keeps `-CoreRoot ./.core`.
+
+### Rules
+
+- Both checkouts use `fetch-depth: 0`.
+  The checker asks whether the new pin is a commit of the Core checkout and whether the old pin is its ancestor.
+  A shallow clone reports `not a commit of the Core checkout`.
+  `-BaseRef` needs the merge base, so the application checkout needs the full history too.
+- Check the pin before you pass it on.
+  The lock is controlled by the pull request.
+  The step above accepts only 40 lowercase hex digits and passes the value as a step output, not inside `run:`.
+- Pass `-CoreRoot` on pushes too.
+  After a pin move, the lock on the pushed commit is the new pin and `-BaseRef` is the old head.
+  When `github.event.before` is all zeros (a new branch), pass no `-BaseRef`.
+  The checker then compares with the lock at `HEAD`, which is allowed.
+  After a forced push, the `before` commit can be missing from the clone and the push run fails.
+  Do not force-push to a branch that runs this job.
+- Build the push arguments as a hashtable and splat it with `@p`.
+  An array splat passes `-Mode` as a positional value.
+- Add `/.core/` to the application `.gitignore`.
+  An untracked `.core/**/*.csproj` is counted as an unregistered project.
+- The checker uses the process working directory as the workspace, not the PowerShell location.
+  CI starts in the workspace.
+  Outside CI, start the process in the application root, or pass an absolute `-Root`.
+- Verify `FORMAT:*` findings in a Windows (CRLF) checkout, as CI does.
+  NFU measured different `FORMAT:WHITESPACE` counts in a worktree with `core.autocrlf=false` than in the CI checkout.
+  Fingerprints from the LF worktree did not match the committed ledger.
+- Core is a public repository, so the default token is enough for the `.core` checkout.
+  A private Core needs a token with read access.
