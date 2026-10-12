@@ -22,6 +22,7 @@ FILES = (
     "Directory.Build.props", ".editorconfig", "BannedSymbols.Common.txt",
     "BannedSymbols.Files.txt", "BannedSymbols.Tests.txt", "schema.json",
 )
+VERIFIED_FILES = ("repo-health.ps1",)
 ENGINES = [engine for name in ("pwsh", "powershell") if (engine := shutil.which(name))]
 
 
@@ -30,12 +31,33 @@ class HealthBundleTests(unittest.TestCase):
         manifest = json.loads((BUNDLE / "bundle-manifest.json").read_bytes())
         self.assertEqual(1, manifest["version"])
         self.assertEqual(list(FILES), manifest["copyFiles"])
-        self.assertEqual(list(FILES), [entry["path"] for entry in manifest["files"]])
+        self.assertEqual(list(VERIFIED_FILES), manifest["verifiedFiles"])
+        self.assertEqual(list(FILES + VERIFIED_FILES), [entry["path"] for entry in manifest["files"]])
         for entry in manifest["files"]:
             with self.subTest(path=entry["path"]):
-                content = (BUNDLE / entry["path"]).read_bytes()
+                directory = BUNDLE.parent if entry["path"] in VERIFIED_FILES else BUNDLE
+                content = (directory / entry["path"]).read_bytes()
                 self.assertEqual(len(content), entry["byteLength"])
                 self.assertEqual(hashlib.sha256(content).hexdigest(), entry["sha256"])
+
+    def test_lock_covers_seven_files_and_matches_the_tree(self) -> None:
+        lock = json.loads((ROOT / "eng/core-health.lock.json").read_bytes())
+        self.assertEqual(set(FILES + VERIFIED_FILES), set(lock["files"]))
+        self.assertEqual(set(FILES), {path.name for path in (ROOT / "eng/core-health").iterdir()})
+        for name in FILES + VERIFIED_FILES:
+            with self.subTest(path=name):
+                directory = BUNDLE.parent if name in VERIFIED_FILES else BUNDLE
+                content = (directory / name).read_bytes()
+                self.assertNotIn(b"\r", content)
+                self.assertFalse(content.startswith(b"\xef\xbb\xbf"))
+                self.assertEqual(hashlib.sha256(content).hexdigest(), lock["files"][name])
+
+    def test_lock_schema_keeps_the_verified_file_optional(self) -> None:
+        schema = json.loads((BUNDLE / "schema.json").read_bytes())
+        files = schema["$defs"]["core-health.lock"]["properties"]["files"]
+        self.assertEqual(set(FILES), set(files["required"]))
+        self.assertEqual(set(FILES + VERIFIED_FILES), set(files["properties"]))
+        self.assertFalse(files["additionalProperties"])
 
     def test_all_bundle_files_are_utf8_without_bom_and_use_lf(self) -> None:
         for path in BUNDLE.iterdir():
@@ -219,8 +241,15 @@ class ManifestCommandTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent,
                                                prefix=".csharp-bundle-test-")
         self.addCleanup(temporary.cleanup)
-        self.bundle = Path(temporary.name)
+        self.root = Path(temporary.name)
+        self.bundle = self.root / "tools/repo-checks/csharp"
         shutil.copytree(BUNDLE, self.bundle, dirs_exist_ok=True)
+        self.checker = self.bundle.parent / "repo-health.ps1"
+        shutil.copyfile(BUNDLE.parent / "repo-health.ps1", self.checker)
+        shutil.copytree(ROOT / "eng/core-health", self.root / "eng/core-health")
+        self.lock = self.root / "eng/core-health.lock.json"
+        shutil.copyfile(ROOT / "eng/core-health.lock.json", self.lock)
+        shutil.copyfile(ROOT / ".editorconfig", self.root / ".editorconfig")
         self.manifest = self.bundle / "bundle-manifest.json"
 
     def run_script(self, *arguments: str, engine: str | None = None) -> subprocess.CompletedProcess:
@@ -298,6 +327,62 @@ class ManifestCommandTests(unittest.TestCase):
             for arguments in ((), ("-Check",)):
                 with self.subTest(arguments=arguments, prefix=content[:5]):
                     self.assertEqual(1, self.run_script(*arguments).returncode)
+
+    def test_distribute_writes_the_same_lock_bytes_in_each_available_powershell(self) -> None:
+        expected = self.lock.read_bytes()
+        for engine in ENGINES:
+            with self.subTest(engine=engine):
+                # A lock in another layout must come back as the committed bytes.
+                self.lock.write_bytes(json.dumps(json.loads(expected)).encode("utf-8"))
+                self.assert_success(self.run_script("-Distribute", engine=engine))
+                self.assertEqual(expected, self.lock.read_bytes())
+
+    def test_check_rejects_verified_script_drift_without_rewriting_manifest(self) -> None:
+        original = self.manifest.read_bytes()
+        self.checker.write_bytes(self.checker.read_bytes() + b"# fixture change\n")
+        self.assertEqual(1, self.run_script("-Check").returncode)
+        self.assertEqual(original, self.manifest.read_bytes())
+
+    def test_check_rejects_verified_lock_hash_drift(self) -> None:
+        lock = json.loads(self.lock.read_bytes())
+        lock["files"]["repo-health.ps1"] = "0" * 64
+        self.lock.write_text(json.dumps(lock), encoding="utf-8")
+        result = self.run_script("-Check")
+        self.assertEqual(1, result.returncode)
+        self.assertIn("Core lock hash of repo-health.ps1", result.stdout + result.stderr)
+
+    def test_distribute_updates_verified_hash_without_copying_the_script(self) -> None:
+        previous_pin = json.loads(self.lock.read_bytes())["coreCommit"]
+        self.checker.write_bytes(self.checker.read_bytes() + b"# fixture change\n")
+        self.assert_success(self.run_script("-Distribute"))
+        self.assert_success(self.run_script("-Check"))
+        digest = hashlib.sha256(self.checker.read_bytes()).hexdigest()
+        manifest = json.loads(self.manifest.read_bytes())
+        entry = next(entry for entry in manifest["files"] if entry["path"] == "repo-health.ps1")
+        lock = json.loads(self.lock.read_bytes())
+        self.assertEqual(digest, entry["sha256"])
+        self.assertEqual(len(self.checker.read_bytes()), entry["byteLength"])
+        self.assertEqual(digest, lock["files"]["repo-health.ps1"])
+        self.assertEqual(previous_pin, lock["coreCommit"])
+        self.assertEqual(set(FILES), {path.name for path in (self.root / "eng/core-health").iterdir()})
+
+    def test_generation_and_check_reject_missing_verified_script(self) -> None:
+        self.checker.unlink()
+        for arguments in ((), ("-Check",)):
+            with self.subTest(arguments=arguments):
+                result = self.run_script(*arguments)
+                self.assertEqual(1, result.returncode)
+                self.assertIn("Missing health file: repo-health.ps1", result.stdout + result.stderr)
+
+    def test_generation_and_check_reject_verified_script_crlf_and_bom(self) -> None:
+        original = self.checker.read_bytes()
+        for content in (original.replace(b"\n", b"\r\n"), b"\xef\xbb\xbf" + original):
+            self.checker.write_bytes(content)
+            for arguments in ((), ("-Check",)):
+                with self.subTest(arguments=arguments, prefix=content[:5]):
+                    result = self.run_script(*arguments)
+                    self.assertEqual(1, result.returncode)
+                    self.assertIn("repo-health.ps1 must use LF line endings and UTF-8 without a BOM", result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

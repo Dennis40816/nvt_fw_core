@@ -158,41 +158,64 @@ Directories and symbol globs never match. kind is permanent-seam. Authorized
 RS0030 counts remain separate from debt; Core starts with zero entries. Adding
 existing debt as a permanent seam requires owner review, not mechanical migration.
 
-The lock is `{ "schemaVersion": 1, "coreCommit": "<40 lowercase hex>", "files":
-{ "<each of the six filenames>": "<SHA-256 lowercase hex>" } }`. No policy.json is
-needed: versions, valid layers, limits and package pins are fixed in the checker
-and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
-blob identity additionally checks an application's six files against coreCommit's
-canonical files. With BaseRef, an application's committed merge-base pin must agree;
-without it (and without -CoreRoot), the committed HEAD pin must agree. An application may move its pin in a
-pull request only with -CoreRoot: the new pin must be a commit of that approved Core
-checkout (reachable from its HEAD) and descend from the pin it replaces, and the six
-copies must be that commit's files. Without -CoreRoot a moved pin is an error. The checker
-trusts the checkout that -CoreRoot names. The application's CI and its copy of `repo-health.ps1`
-decide which checkout that is, so the review of the pull request that changes them covers it.
-The Core checkout that -CoreRoot names needs a full clone (a shallow one fails with
-`a full clone of Core is required`). An app supplies -CoreRoot <local approved Core checkout> for the
-canonical object lookup.
-Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
-lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
-in the lock. With BaseRef it also requires every lock hash to equal the merge-base
-lock, because the pin alone cannot detect a pull request that edits a bundle file and
-its lock hash together. Lock-only mode has no canonical Core objects, so a copy of the
-checker kept in the application repository is governed by code review, not by a
-self-check. Application CI must always pass -BaseRef: without it, a bundle file and its
-lock hash edited together are accepted.
+The lock records `schemaVersion=1`, `coreCommit` and a `files` map.
+The commit uses 40 lowercase hex digits.
+Each SHA-256 uses 64 lowercase hex digits.
+The map requires the six distributed filenames.
+It also accepts `repo-health.ps1` as a verified file.
+The manifest lists the checker in `verifiedFiles`.
+The generator does not distribute the checker.
+Hash inputs use raw LF UTF-8 bytes without a BOM.
+No Git filters apply.
+An old application lock without `repo-health.ps1` skips the checker hash and blob checks.
+All six distributed file checks still apply.
 
-Core is the source of the bundle, so it checks itself differently. Each `eng/core-health` file, its
-canonical file in `tools/repo-checks/csharp` and its lock hash must be the same bytes. A Core pull
-request may change a bundle file in one change: the canonical file, the copy, the manifest and the
-lock hash together. The pin (`coreCommit`) may stay behind the tree, because a change cannot name
-its own commit. The pin is always a commit of the history of HEAD, so Core needs a full clone
-(`fetch-depth: 0`). A Core pull request may move the pin: the new pin is not older than the pin it
-replaces, and its six canonical files are the files of this tree. `-CoreRoot` is for applications
-and Core ignores it. The control over a bundle change in Core is the owner review of that pull
-request. The steps are in `csharp/README.md`.
-No network operation occurs. A pin change is a separately reviewed synchronization;
-first integrate the approved pin before using it as the base for adoption changes.
+An application supplies `-CoreRoot <local approved Core checkout>` for Git blob checks.
+Each distributed copy must match its canonical blob at `coreCommit`.
+The running checker (`$PSCommandPath`) must match `tools/repo-checks/repo-health.ps1` at that pin.
+Its SHA-256 must also match the lock when the checker entry is present.
+When the lock has the checker entry, a missing checker path, a BOM or a CR is a tool error.
+A pull request cannot drop the entry that the base lock has.
+A lock-only run with `-BaseRef` also rejects a lock that adds the entry to a base lock without it, because the base
+lock has no hash to compare. That change is a pin synchronization with `-CoreRoot`.
+Core also requires that the running script has the same bytes as `tools/repo-checks/repo-health.ps1` of its tree.
+The checker trusts the checkout named by `-CoreRoot`.
+The owner reviews changes to CI and the checker that select this checkout.
+The Core checkout needs a full clone.
+A shallow clone fails with `a full clone of Core is required`.
+An application may move its pin only with `-CoreRoot`.
+The new pin must be reachable from that checkout's HEAD.
+It must descend from the previous pin.
+The six copies must match the new pin.
+The checker must match the new pin when its lock entry is present.
+
+Without `-CoreRoot`, an application runs in lock-only mode.
+Each distributed file must match its lock hash.
+The running checker must match its lock hash when that entry is present.
+With `-BaseRef`, every lock hash must equal the merge-base lock.
+The pin must also equal the merge-base pin.
+Without `-BaseRef`, the pin must equal the committed HEAD pin.
+Application CI must always pass `-BaseRef`.
+Without it, matching edits to a file and its lock hash are accepted.
+
+Core compares each distributed copy with its canonical file and lock hash.
+Core always requires the `repo-health.ps1` lock entry.
+It compares that hash with `tools/repo-checks/repo-health.ps1` in the working tree.
+The old application lock exception does not apply to Core.
+A Core change updates the canonical file, any distributed copy, the manifest and the lock hash.
+The pin may stay behind the tree.
+A change cannot name its own commit.
+The pin must belong to HEAD's history.
+Core needs a full clone (`fetch-depth: 0`).
+A moved pin must descend from the previous pin.
+Its six canonical bundle files must match this tree.
+Its checker blob must also match this tree.
+Core ignores `-CoreRoot`.
+The owner reviews the Core change.
+The steps are in `csharp/README.md`.
+No network operation occurs.
+A pin change has its own synchronization review.
+Integrate the approved pin before using it as the base for adoption changes.
 
 The managed root block uses `# BEGIN CORE HEALTH MANAGED BLOCK` and
 `# END CORE HEALTH MANAGED BLOCK`. Its interior must exactly equal the canonical
