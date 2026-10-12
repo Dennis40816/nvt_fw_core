@@ -42,10 +42,14 @@ public sealed class SignalWait
     /// <summary>Fails the signal, so every waiter throws the exception. Used by fixtures that know a wait can never end.</summary>
     internal bool Fail(Exception exception) => _signal.TrySetException(exception);
 
+    /// <summary>Waits until the signal is set or the watchdog expires.</summary>
+    /// <exception cref="TimeoutException">The watchdog expired. The message names the signal.</exception>
+    public Task WaitAsync() => WaitAsync(CancellationToken.None);
+
     /// <summary>Waits until the signal is set, the token is canceled, or the watchdog expires.</summary>
     /// <exception cref="TimeoutException">The watchdog expired. The message names the signal.</exception>
     /// <exception cref="OperationCanceledException">The token was canceled.</exception>
-    public async Task WaitAsync(CancellationToken cancellationToken = default)
+    public async Task WaitAsync(CancellationToken cancellationToken)
     {
         TaskCompletionSource signal = _signal;
         try

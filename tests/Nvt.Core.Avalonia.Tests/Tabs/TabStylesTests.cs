@@ -28,17 +28,17 @@ public sealed class TabStylesTests
             FormsTestHost.Show(host);
             object? template = first.Template;
             foreach (bool dark in new[] { false, true })
-            foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
-            {
-                host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, shape);
-                Flush(host);
-                CornerRadius corner = new(shape == ThemeShape.Pill ? 999 : 6);
-                Assert.Equal(corner, Part<Border>(first, "TabBody").CornerRadius);
-                Assert.Equal(corner, Part<Border>(tabs, "TabStrip").CornerRadius);
-                Assert.Equal(32, first.Bounds.Height);
-                Assert.Same(template, first.Template);
-            }
+                foreach (ThemeShape shape in new[] { ThemeShape.Square, ThemeShape.Pill, ThemeShape.Square })
+                {
+                    host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
+                    ThemeShapes.SetShape(host.Resources, shape);
+                    Flush(host);
+                    CornerRadius corner = new(shape == ThemeShape.Pill ? 999 : 6);
+                    Assert.Equal(corner, Part<Border>(first, "TabBody").CornerRadius);
+                    Assert.Equal(corner, Part<Border>(tabs, "TabStrip").CornerRadius);
+                    Assert.Equal(32, first.Bounds.Height);
+                    Assert.Same(template, first.Template);
+                }
         }
         finally { host.Close(); }
     }
@@ -59,28 +59,28 @@ public sealed class TabStylesTests
             ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
             FormsTestHost.Show(host);
             foreach (bool selected in new[] { false, true })
-            foreach (FormState state in FormsTestHost.States.Take(5))
-            {
-                tab.IsSelected = selected;
-                tab.IsEnabled = !state.Disabled;
-                var pseudo = (IPseudoClasses)tab.Classes;
-                pseudo.Set(":pointerover", state.Hover);
-                pseudo.Set(":pressed", state.Pressed);
-                pseudo.Set(":focus-visible", state.Focus);
-                Flush(host);
-                string fill = state.Disabled ? selected ? "DisabledSelectedFillBrush" : "DisabledFillBrush"
-                    : selected ? state.Pressed ? "SelectedPressedFillBrush" : state.Hover ? "SelectedHoverFillBrush" : "SelectedFillBrush"
-                    : state.Pressed ? "PressedFillBrush" : state.Hover ? "HoverFillBrush" : "FillBrush";
-                string text = state.Disabled ? "DisabledTextBrush" : selected ? "SelectedTextBrush"
-                    : state.Pressed ? "PressedTextBrush" : state.Hover ? "HoverTextBrush" : "TextBrush";
-                Assert.Equal(ResourceColor(tab, "Nvt.Tab." + fill), ColorOf(tab.Background));
-                Assert.Equal(ResourceColor(tab, "Nvt.Tab." + text), ColorOf(tab.Foreground));
-                var background = fill == "FillBrush" ? ResourceColor(tab, "Nvt.Tab.StripBrush") : ColorOf(tab.Background);
-                Assert.True(Contrast(ColorOf(tab.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-                Assert.Equal(selected, Part<Border>(tab, "TabIndicator").IsVisible);
-                Assert.Equal(state.Focus && !state.Disabled, Part<Border>(tab, "TabFocusRing").IsVisible);
-                if (selected) Assert.True(Contrast(ColorOf(Part<Border>(tab, "TabIndicator").Background), background) >= 3);
-            }
+                foreach (FormState state in FormsTestHost.States.Take(5))
+                {
+                    tab.IsSelected = selected;
+                    tab.IsEnabled = !state.Disabled;
+                    var pseudo = (IPseudoClasses)tab.Classes;
+                    pseudo.Set(":pointerover", state.Hover);
+                    pseudo.Set(":pressed", state.Pressed);
+                    pseudo.Set(":focus-visible", state.Focus);
+                    Flush(host);
+                    string fill = state.Disabled ? selected ? "DisabledSelectedFillBrush" : "DisabledFillBrush"
+                        : selected ? state.Pressed ? "SelectedPressedFillBrush" : state.Hover ? "SelectedHoverFillBrush" : "SelectedFillBrush"
+                        : state.Pressed ? "PressedFillBrush" : state.Hover ? "HoverFillBrush" : "FillBrush";
+                    string text = state.Disabled ? "DisabledTextBrush" : selected ? "SelectedTextBrush"
+                        : state.Pressed ? "PressedTextBrush" : state.Hover ? "HoverTextBrush" : "TextBrush";
+                    Assert.Equal(ResourceColor(tab, "Nvt.Tab." + fill), ColorOf(tab.Background));
+                    Assert.Equal(ResourceColor(tab, "Nvt.Tab." + text), ColorOf(tab.Foreground));
+                    var background = fill == "FillBrush" ? ResourceColor(tab, "Nvt.Tab.StripBrush") : ColorOf(tab.Background);
+                    Assert.True(Contrast(ColorOf(tab.Foreground), background) >= (state.Disabled ? 3 : 4.5));
+                    Assert.Equal(selected, Part<Border>(tab, "TabIndicator").IsVisible);
+                    Assert.Equal(state.Focus && !state.Disabled, Part<Border>(tab, "TabFocusRing").IsVisible);
+                    if (selected) Assert.True(Contrast(ColorOf(Part<Border>(tab, "TabIndicator").Background), background) >= 3);
+                }
             tab.IsEnabled = true;
             Assert.True(tab.Focus(NavigationMethod.Pointer));
             Assert.False(Part<Border>(tab, "TabFocusRing").IsVisible);

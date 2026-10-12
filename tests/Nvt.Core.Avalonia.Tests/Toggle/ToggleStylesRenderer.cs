@@ -120,8 +120,10 @@ public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
             peer.Width = 100;
             var navigation = new Border
             {
-                Padding = new Thickness(0, 0, 0, 5), BorderThickness = new Thickness(0, 0, 0, 1),
-                VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
+                Padding = new Thickness(0, 0, 0, 5),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { sample, peer } },
             };
             navigation.Bind(Border.BorderBrushProperty, new DynamicResourceExtension("NfcDividerBrush"));
@@ -174,8 +176,10 @@ public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
                     native.Classes.Add("danger");
                     cell = new StackPanel
                     {
-                        Orientation = Orientation.Horizontal, Spacing = 16,
-                        HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 16,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
                         Children = { sample, native },
                     };
                 }
@@ -200,7 +204,8 @@ public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
         selected.Width = peer.Width = 100;
         var rail = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 20,
+            Orientation = Orientation.Horizontal,
+            Spacing = 20,
             HorizontalAlignment = HorizontalAlignment.Center,
             Children = { Group(selected, peer), Icon(new ToggleState("Checked", Checked: true)), Sample("toggleSwitch", new ToggleState("Checked", Checked: true)) },
         };
@@ -245,8 +250,10 @@ public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
             {
                 cell = new StackPanel
                 {
-                    Orientation = Orientation.Horizontal, Spacing = 32,
-                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 32,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
                     Children = { sample, Sample("nativeSwitch", state) },
                 };
             }
@@ -261,9 +268,13 @@ public sealed partial class ToggleStylesRenderer(ITestOutputHelper output)
         ToggleButton button = Sample("toggleIcon", state);
         var glyph = new IconPath
         {
-            Width = 18, Height = 18, Stretch = Stretch.Uniform,
+            Width = 18,
+            Height = 18,
+            Stretch = Stretch.Uniform,
             Data = Geometry.Parse("M6 2H12 M7 2V7L4 10V12H14V10L11 7V2 M9 12V17"),
-            StrokeThickness = 1.7, StrokeLineCap = PenLineCap.Round, StrokeJoin = PenLineJoin.Round,
+            StrokeThickness = 1.7,
+            StrokeLineCap = PenLineCap.Round,
+            StrokeJoin = PenLineJoin.Round,
         };
         glyph.Bind(Shape.StrokeProperty, button.GetObservable(TemplatedControl.ForegroundProperty));
         button.Content = glyph;

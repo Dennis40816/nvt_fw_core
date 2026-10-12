@@ -128,11 +128,15 @@ public sealed partial class ChoiceStylesRenderer(ITestOutputHelper output)
                 Add(grid, control, row + 1, column + 1);
             }
         }
-        return Surface(new StackPanel { Spacing = 12, Children =
+        return Surface(new StackPanel
+        {
+            Spacing = 12,
+            Children =
         {
             Label(radio ? "RadioButton" : "CheckBox", 16, true),
             grid,
-        } });
+        }
+        });
     }
 
     private static Border Examples()
@@ -162,12 +166,12 @@ public sealed partial class ChoiceStylesRenderer(ITestOutputHelper output)
             var rows = new List<ChoiceState>();
             var radios = new List<bool>();
             foreach (bool radio in new[] { false, true })
-            foreach (bool? selected in radio ? new bool?[] { false, true } : [false, true, null])
-            foreach (ChoiceState interaction in Interactions)
-            {
-                rows.Add(interaction with { Checked = selected });
-                radios.Add(radio);
-            }
+                foreach (bool? selected in radio ? new bool?[] { false, true } : [false, true, null])
+                    foreach (ChoiceState interaction in Interactions)
+                    {
+                        rows.Add(interaction with { Checked = selected });
+                        radios.Add(radio);
+                    }
             grid.RowDefinitions = new RowDefinitions(string.Join(',', Enumerable.Repeat("40", rows.Count)));
             for (int row = 0; row < rows.Count; row++)
             {
@@ -186,11 +190,19 @@ public sealed partial class ChoiceStylesRenderer(ITestOutputHelper output)
             }
             Add(columns, pane, 0, side * 2);
         }
-        return new Border { Padding = new Thickness(32), Child = new StackPanel { Spacing = 24, Children =
+        return new Border
+        {
+            Padding = new Thickness(32),
+            Child = new StackPanel
+            {
+                Spacing = 24,
+                Children =
         {
             Heading("Choice controls / before and after", "LIGHT / 100%"),
             Label("Native controls and behavior. Shared geometry, palette, and keyboard focus.", 13), columns,
-        } } };
+        }
+            }
+        };
     }
 
     private static Grid Heading(string title, string detail)
@@ -210,8 +222,14 @@ public sealed partial class ChoiceStylesRenderer(ITestOutputHelper output)
 
     private static TextBlock Label(string text, int size, bool strong = false)
     {
-        var label = new TextBlock { Text = text, FontSize = size, FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal,
-            VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        var label = new TextBlock
+        {
+            Text = text,
+            FontSize = size,
+            FontWeight = strong ? FontWeight.SemiBold : FontWeight.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextWrapping = TextWrapping.Wrap
+        };
         label.Bind(TextBlock.FontFamilyProperty, new DynamicResourceExtension("NfcUiFontFamily"));
         label.Bind(TextBlock.ForegroundProperty, new DynamicResourceExtension(strong ? "NfcTextStrongBrush" : "NfcTextSecondaryBrush"));
         return label;

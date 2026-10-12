@@ -45,54 +45,54 @@ public sealed class ChoiceStylesTests(ITestOutputHelper output)
                 Assert.Equal(FontWeight.Normal, control.FontWeight);
                 Assert.Equal(new Size(20, 20), Part<Border>(control, "ChoiceIndicator").Bounds.Size);
                 foreach (bool? selected in radio ? new bool?[] { false, true } : [false, true, null])
-                foreach (ChoiceState interaction in Interactions.Concat([
-                    new("Pressed without hover", Pressed: true),
+                    foreach (ChoiceState interaction in Interactions.Concat([
+                        new("Pressed without hover", Pressed: true),
                     new("Disabled interactions", Disabled: true, Hover: true, Pressed: true, Focus: true)]))
-                {
-                    ChoiceState state = interaction with { Checked = selected };
-                    SetState(control, state);
-                    Flush(host);
-                    (string fill, string border) = Expected(state);
-                    Border indicator = Part<Border>(control, "ChoiceIndicator");
-                    Assert.Equal(ResourceColor(control, fill), ColorOf(indicator.Background));
-                    Assert.Equal(ResourceColor(control, border), ColorOf(indicator.BorderBrush));
-                    string labelToken = state.Disabled ? "NfcTextDisabledBrush" : "Nvt.Controls.ChoiceForegroundBrush";
-                    Assert.Equal(ResourceColor(control, labelToken), ColorOf(label.Foreground));
-                    Assert.Equal(1, control.Opacity);
-                    Assert.Null(control.FocusAdorner);
-                    Assert.Equal(new CornerRadius(radio ? 999 : 6), indicator.CornerRadius);
-                    Assert.Equal(!radio && selected is true, Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").IsVisible);
-                    Assert.Equal(!radio && selected is null, Part<Rectangle>(control, "ChoiceDash").IsVisible);
-                    Ellipse dot = Part<Ellipse>(control, "ChoiceDot");
-                    Assert.Equal(radio && selected is true, dot.IsVisible);
-                    if (dot.IsVisible) Assert.Equal(new Size(10, 10), dot.Bounds.Size);
-                    Border ring = Part<Border>(control, "ChoiceFocusRing");
-                    Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                    foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "NfcSelectionSurfaceBrush", "NfcSecondaryActionPressedBrush" })
                     {
-                        Color background = ResourceColor(control, surface);
-                        double textContrast = Contrast(ColorOf(label.Foreground), background);
-                        Assert.True(textContrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{radio}/{selected}/{state.Name}: label {textContrast:F3}");
-                        if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, textContrast);
-                        else textMinimum = Math.Min(textMinimum, textContrast);
-                        double indicatorContrast = Contrast(ColorOf(indicator.BorderBrush), background);
-                        Assert.True(indicatorContrast >= 3, $"{dark}/{radio}/{selected}/{state.Name}: indicator {indicatorContrast:F3}");
-                        indicatorMinimum = Math.Min(indicatorMinimum, indicatorContrast);
-                        double focusContrast = Contrast(ColorOf(ring.BorderBrush), background);
-                        Assert.True(focusContrast >= 3, $"{dark}: focus {focusContrast:F3}");
-                        ringMinimum = Math.Min(ringMinimum, focusContrast);
+                        ChoiceState state = interaction with { Checked = selected };
+                        SetState(control, state);
+                        Flush(host);
+                        (string fill, string border) = Expected(state);
+                        Border indicator = Part<Border>(control, "ChoiceIndicator");
+                        Assert.Equal(ResourceColor(control, fill), ColorOf(indicator.Background));
+                        Assert.Equal(ResourceColor(control, border), ColorOf(indicator.BorderBrush));
+                        string labelToken = state.Disabled ? "NfcTextDisabledBrush" : "Nvt.Controls.ChoiceForegroundBrush";
+                        Assert.Equal(ResourceColor(control, labelToken), ColorOf(label.Foreground));
+                        Assert.Equal(1, control.Opacity);
+                        Assert.Null(control.FocusAdorner);
+                        Assert.Equal(new CornerRadius(radio ? 999 : 6), indicator.CornerRadius);
+                        Assert.Equal(!radio && selected is true, Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").IsVisible);
+                        Assert.Equal(!radio && selected is null, Part<Rectangle>(control, "ChoiceDash").IsVisible);
+                        Ellipse dot = Part<Ellipse>(control, "ChoiceDot");
+                        Assert.Equal(radio && selected is true, dot.IsVisible);
+                        if (dot.IsVisible) Assert.Equal(new Size(10, 10), dot.Bounds.Size);
+                        Border ring = Part<Border>(control, "ChoiceFocusRing");
+                        Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
+                        foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "NfcSelectionSurfaceBrush", "NfcSecondaryActionPressedBrush" })
+                        {
+                            Color background = ResourceColor(control, surface);
+                            double textContrast = Contrast(ColorOf(label.Foreground), background);
+                            Assert.True(textContrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{radio}/{selected}/{state.Name}: label {textContrast:F3}");
+                            if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, textContrast);
+                            else textMinimum = Math.Min(textMinimum, textContrast);
+                            double indicatorContrast = Contrast(ColorOf(indicator.BorderBrush), background);
+                            Assert.True(indicatorContrast >= 3, $"{dark}/{radio}/{selected}/{state.Name}: indicator {indicatorContrast:F3}");
+                            indicatorMinimum = Math.Min(indicatorMinimum, indicatorContrast);
+                            double focusContrast = Contrast(ColorOf(ring.BorderBrush), background);
+                            Assert.True(focusContrast >= 3, $"{dark}: focus {focusContrast:F3}");
+                            ringMinimum = Math.Min(ringMinimum, focusContrast);
+                        }
+                        if (selected is not false)
+                        {
+                            Color white = Color.Parse("#FFFFFF");
+                            Assert.Equal(white, ColorOf(dot.Fill));
+                            Assert.Equal(white, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
+                            Assert.Equal(white, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
+                            double contrast = Contrast(white, ColorOf(indicator.Background));
+                            Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}: mark {contrast:F3}");
+                            markMinimum = Math.Min(markMinimum, contrast);
+                        }
                     }
-                    if (selected is not false)
-                    {
-                        Color white = Color.Parse("#FFFFFF");
-                        Assert.Equal(white, ColorOf(dot.Fill));
-                        Assert.Equal(white, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
-                        Assert.Equal(white, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
-                        double contrast = Contrast(white, ColorOf(indicator.Background));
-                        Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}: mark {contrast:F3}");
-                        markMinimum = Math.Min(markMinimum, contrast);
-                    }
-                }
             }
             finally { host.Close(); }
         }
@@ -108,57 +108,57 @@ public sealed class ChoiceStylesTests(ITestOutputHelper output)
     public void WholeRowAcceptsInputAndOnlyKeyboardFocusShowsRing(bool dark, bool square)
     {
         foreach (bool radio in new[] { false, true })
-        foreach (bool selected in new[] { false, true })
-        {
-            var before = new Grid { Focusable = true, Height = 20 };
-            ToggleButton control = Sample(radio, new("Rest", selected));
-            var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16, Children = { before, control } };
-            Window host = Create(panel, dark);
-            try
+            foreach (bool selected in new[] { false, true })
             {
-                ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
-                Show(host);
-                Assert.True(control.Focus(NavigationMethod.Pointer));
-                Assert.False(Part<Border>(control, "ChoiceFocusRing").IsVisible);
-                Assert.True(before.Focus());
-                KeyStroke(host, Key.Tab);
-                Assert.Same(control, host.FocusManager!.GetFocusedElement());
-                Border ring = Part<Border>(control, "ChoiceFocusRing");
-                Assert.True(ring.IsVisible);
-                Assert.Null(control.FocusAdorner);
-                Assert.Equal(new Thickness(2), ring.BorderThickness);
-                Assert.Equal(new Thickness(-4), ring.Margin);
-                Assert.False(ring.IsHitTestVisible);
-                Assert.Equal(new CornerRadius(square ? 10 : 999), ring.CornerRadius);
-                Assert.Equal(control.Bounds.Width + 8, ring.Bounds.Width);
-                Assert.Equal(control.Bounds.Height + 8, ring.Bounds.Height);
-                Point ringPoint = ring.TranslatePoint(default, control)!.Value;
-                Assert.Equal(new Point(-4, -4), ringPoint);
-                Assert.Single(control.GetVisualDescendants().OfType<Border>(), part => part.Name == "ChoiceFocusRing");
-                control.IsChecked = false;
-                KeyStroke(host, Key.Space);
-                Assert.True(control.IsChecked);
-                foreach (Point point in new[] { new Point(24, 16), new Point(70, 16), new Point(control.Bounds.Width - 2, 2) })
+                var before = new Grid { Focusable = true, Height = 20 };
+                ToggleButton control = Sample(radio, new("Rest", selected));
+                var panel = new StackPanel { Margin = new Thickness(24), Spacing = 16, Children = { before, control } };
+                Window host = Create(panel, dark);
+                try
                 {
+                    ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+                    Show(host);
+                    Assert.True(control.Focus(NavigationMethod.Pointer));
+                    Assert.False(Part<Border>(control, "ChoiceFocusRing").IsVisible);
+                    Assert.True(before.Focus());
+                    KeyStroke(host, Key.Tab);
+                    Assert.Same(control, host.FocusManager!.GetFocusedElement());
+                    Border ring = Part<Border>(control, "ChoiceFocusRing");
+                    Assert.True(ring.IsVisible);
+                    Assert.Null(control.FocusAdorner);
+                    Assert.Equal(new Thickness(2), ring.BorderThickness);
+                    Assert.Equal(new Thickness(-4), ring.Margin);
+                    Assert.False(ring.IsHitTestVisible);
+                    Assert.Equal(new CornerRadius(square ? 10 : 999), ring.CornerRadius);
+                    Assert.Equal(control.Bounds.Width + 8, ring.Bounds.Width);
+                    Assert.Equal(control.Bounds.Height + 8, ring.Bounds.Height);
+                    Point ringPoint = ring.TranslatePoint(default, control)!.Value;
+                    Assert.Equal(new Point(-4, -4), ringPoint);
+                    Assert.Single(control.GetVisualDescendants().OfType<Border>(), part => part.Name == "ChoiceFocusRing");
                     control.IsChecked = false;
-                    Assert.True(before.Focus(NavigationMethod.Pointer));
-                    Point location = control.TranslatePoint(point, host)!.Value;
-                    host.MouseDown(location, MouseButton.Left);
-                    host.MouseUp(location, MouseButton.Left);
-                    Flush(host);
+                    KeyStroke(host, Key.Space);
                     Assert.True(control.IsChecked);
+                    foreach (Point point in new[] { new Point(24, 16), new Point(70, 16), new Point(control.Bounds.Width - 2, 2) })
+                    {
+                        control.IsChecked = false;
+                        Assert.True(before.Focus(NavigationMethod.Pointer));
+                        Point location = control.TranslatePoint(point, host)!.Value;
+                        host.MouseDown(location, MouseButton.Left);
+                        host.MouseUp(location, MouseButton.Left);
+                        Flush(host);
+                        Assert.True(control.IsChecked);
+                        Assert.False(ring.IsVisible);
+                    }
+                    control.IsEnabled = false;
                     Assert.False(ring.IsVisible);
+                    Assert.True(control.IsChecked);
+                    Point center = control.TranslatePoint(new Point(60, 16), host)!.Value;
+                    host.MouseDown(center, MouseButton.Left);
+                    host.MouseUp(center, MouseButton.Left);
+                    Assert.True(control.IsChecked);
                 }
-                control.IsEnabled = false;
-                Assert.False(ring.IsVisible);
-                Assert.True(control.IsChecked);
-                Point center = control.TranslatePoint(new Point(60, 16), host)!.Value;
-                host.MouseDown(center, MouseButton.Left);
-                host.MouseUp(center, MouseButton.Left);
-                Assert.True(control.IsChecked);
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 
     /// <summary>Pins 32 and 24 DIP rows, the eight DIP label gap, and top-aligned indicators on wrapped content.</summary>
@@ -178,32 +178,32 @@ public sealed class ChoiceStylesTests(ITestOutputHelper output)
             Show(host);
             var templates = new[] { normal.Template, compact.Template, wrapped.Template };
             foreach (bool dark in new[] { false, true })
-            foreach (bool square in new[] { false, true, false })
-            foreach (double scale in new[] { 1d, 1.25, 2 })
-            {
-                host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
-                ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
-                host.SetRenderScaling(scale);
-                Flush(host);
-                Assert.Equal(32, normal.Bounds.Height);
-                Assert.True(normal.Bounds.Height >= 32);
-                Assert.Equal(24, compact.Bounds.Height);
-                Assert.True(wrapped.Bounds.Height > 32);
-                ToggleButton[] controls = [normal, compact, wrapped];
-                for (int index = 0; index < controls.Length; index++)
-                {
-                    ToggleButton control = controls[index];
-                    Assert.Same(templates[index], control.Template);
-                    Border indicator = Part<Border>(control, "ChoiceIndicator");
-                    var presenter = Part<global::Avalonia.Controls.Presenters.ContentPresenter>(control, "PART_ContentPresenter");
-                    Assert.Equal(new Size(20, 20), indicator.Bounds.Size);
-                    Point indicatorPoint = indicator.TranslatePoint(default, control)!.Value;
-                    Point labelPoint = presenter.TranslatePoint(default, control)!.Value;
-                    Assert.Equal(8, labelPoint.X - indicatorPoint.X - indicator.Bounds.Width);
-                    Assert.Equal(indicatorPoint.Y, labelPoint.Y);
-                    Assert.Equal(new CornerRadius(radio ? 999 : 6), indicator.CornerRadius);
-                }
-            }
+                foreach (bool square in new[] { false, true, false })
+                    foreach (double scale in new[] { 1d, 1.25, 2 })
+                    {
+                        host.RequestedThemeVariant = dark ? global::Avalonia.Styling.ThemeVariant.Dark : global::Avalonia.Styling.ThemeVariant.Light;
+                        ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+                        host.SetRenderScaling(scale);
+                        Flush(host);
+                        Assert.Equal(32, normal.Bounds.Height);
+                        Assert.True(normal.Bounds.Height >= 32);
+                        Assert.Equal(24, compact.Bounds.Height);
+                        Assert.True(wrapped.Bounds.Height > 32);
+                        ToggleButton[] controls = [normal, compact, wrapped];
+                        for (int index = 0; index < controls.Length; index++)
+                        {
+                            ToggleButton control = controls[index];
+                            Assert.Same(templates[index], control.Template);
+                            Border indicator = Part<Border>(control, "ChoiceIndicator");
+                            var presenter = Part<global::Avalonia.Controls.Presenters.ContentPresenter>(control, "PART_ContentPresenter");
+                            Assert.Equal(new Size(20, 20), indicator.Bounds.Size);
+                            Point indicatorPoint = indicator.TranslatePoint(default, control)!.Value;
+                            Point labelPoint = presenter.TranslatePoint(default, control)!.Value;
+                            Assert.Equal(8, labelPoint.X - indicatorPoint.X - indicator.Bounds.Width);
+                            Assert.Equal(indicatorPoint.Y, labelPoint.Y);
+                            Assert.Equal(new CornerRadius(radio ? 999 : 6), indicator.CornerRadius);
+                        }
+                    }
         }
         finally { host.Close(); }
     }

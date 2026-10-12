@@ -190,6 +190,61 @@ try {{
         r = self.check_editor('  [*.cs]  \nroot = true\n')
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
+    def test_only_synchronization_paths_allow_adoption(self):
+        r = self.run_ps("""
+$allowed = @('eng/core-health.lock.json', 'eng/core-health/Directory.Build.props', 'eng/core-health/.editorconfig',
+    'eng/core-health/schema.json', 'eng/core-health/BannedSymbols.Common.txt', 'tools/repo-checks/repo-health.ps1',
+    'tools/repo-checks/csharp/schema.json', 'tools/repo-checks/csharp/Directory.Build.props', 'tools/repo-checks/doc_sync.py',
+    'tools/repo-checks/doc-sync.core.json', 'eng/code-health/baseline.json', 'eng/code-health/test-debt.json',
+    'tests/repo-checks/test_x.py', 'docs/guide.md', 'README.md')
+foreach ($p in $allowed) { if (-not (Test-SynchronizationPath $p)) { Write-Output "should allow $p"; exit 7 } }
+$refused = @('src/Fixture/One.cs', 'src/Fixture/Fixture.csproj', 'Directory.Build.props', 'docs/Evil.cs', 'tests/repo-checks/Fixture.cs',
+    'eng/code-health/other.json', 'global.json', '.editorconfig',
+    'tools/repo-checks/Gen/Big.cs', 'tools/repo-checks/Gen/Gen.csproj', 'eng/core-health/X.cs', 'eng/core-health/Other.props',
+    'eng/core-health/sub/Directory.Build.props', 'tools/repo-checks/csharp/sub/.editorconfig', 'eng/core-health/Dir.Targets',
+    'eng/core-health/sub/global.json', 'tools/repo-checks/nuget.config', 'tools/repo-checks/packages.lock.json',
+    'tools/repo-checks/stylecop.json', 'eng/core-health/other.json', 'tools/repo-checks/.globalconfig',
+    "src/A.cs`nwarning: LF will be replaced by CRLF", "warning: x`nsrc/A.cs", "docs/a`nb.md", "eng/core-health/ok.txt`nsrc/Big.cs")
+foreach ($p in $refused) { if (Test-SynchronizationPath $p) { Write-Output "should refuse [$p]"; exit 8 } }
+$script:ChangedPaths = @('docs/guide.md', 'src/A.cs', "eng/core-health.lock.json`nwarning: LF will be replaced by CRLF")
+if (@(Get-NonSynchronizationPaths).Count -ne 2) { exit 9 }
+""")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_generated_block_must_hold_only_per_project_warning_ids(self):
+        r = self.run_ps(r"""
+$group = "  <PropertyGroup Condition=`"'`$(MSBuildProjectName)' == 'Nvt.Core'`">`n    <HealthBaselineWarningIds>CA1031;RS0030</HealthBaselineWarningIds>`n  </PropertyGroup>`n"
+$begin = '  <!-- BEGIN GENERATED HEALTH WARNING IDS -->'
+$end = '  <!-- END GENERATED HEALTH WARNING IDS -->'
+function Block($inside) { return "<Project>`n$begin`n$inside$end`n</Project>`n" }
+if ($null -eq (Get-GeneratedBlockRest (Block ''))) { Write-Output 'empty block refused'; exit 7 }
+if ($null -eq (Get-GeneratedBlockRest (Block ($group + $group)))) { Write-Output 'groups refused'; exit 7 }
+if ($null -eq (Get-GeneratedBlockRest ((Block $group) -replace "`n", "`r`n"))) { Write-Output 'CRLF refused'; exit 7 }
+$refused = @{
+    item = (Block "  <ItemGroup><Compile Include=`"x.cs`" /></ItemGroup>`n")
+    property = (Block "  <PropertyGroup><DefineConstants>X</DefineConstants></PropertyGroup>`n")
+    extraProperty = (Block ($group -replace '</PropertyGroup>', "    <NoWarn>CS0000</NoWarn>`n  </PropertyGroup>"))
+    badIds = (Block ($group -replace 'CA1031;RS0030', 'CA1031</HealthBaselineWarningIds><Import Project="x.props" /><HealthBaselineWarningIds>'))
+    secondBlock = ((Block $group) + (Block ''))
+    wrapped = ("<Project>`n$begin`n$begin`n$group$end`n$end`n</Project>`n")
+    noBlock = "<Project>`n</Project>`n"
+}
+foreach ($name in $refused.Keys) { if ($null -ne (Get-GeneratedBlockRest $refused[$name])) { Write-Output "should refuse $name"; exit 8 } }
+foreach ($ignorable in @([string][char]0, [string][char]0xAD, [string][char]0x200B)) {
+    # Characters that a culture comparison ignores must still make two files differ.
+    $x = Get-GeneratedBlockRest (Block $group)
+    $y = Get-GeneratedBlockRest ((Block $group) -replace '<Project>', ('<Project>' + $ignorable))
+    if (Test-OrdinalEqual $x $y) { Write-Output "ignorable character $([int][char]$ignorable) is ignored"; exit 10 }
+}
+foreach ($p in @("eng/core-health.lock$([char]0xAD).json", "eng/code-health/base$([char]0x200B)line.json", "tools/repo-checks/x.p$([char]0xAD)y")) {
+    if (Test-SynchronizationPath $p) { Write-Output "should refuse [$p]"; exit 11 }
+}
+$a = Get-GeneratedBlockRest (Block $group)
+$b = Get-GeneratedBlockRest ("<Project>`n<ItemGroup />`n$begin`n$group$end`n</Project>`n")
+if ($a -ceq $b) { Write-Output 'outside text must differ'; exit 9 }
+""")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
     def test_bundle_file_drift_fails_even_with_changed_hash(self):
         # A self-consistent PR hash cannot approve altered canonical bytes.
         subprocess.run(['git','init','-q',str(self.root)],check=True)
@@ -207,7 +262,7 @@ try {{
         self.write('eng/core-health.lock.json',json.dumps({'schemaVersion':1,'coreCommit':commit,'files':files}))
         r=self.run_ps("$Mode='Enroll'; Test-BundleDrift")
         self.assertNotEqual(0,r.returncode)
-        self.assertIn('approved Core revision',r.stderr)
+        self.assertIn('differs from the canonical file',r.stderr)
 
     def test_unclassified_project_and_evaluated_overrides_fail(self):
         props={'MSBuildProjectName':'Fixture','HealthLayer':'infrastructure','HealthPublicApi':'','HealthBaselineWarningIds':'',
@@ -578,6 +633,244 @@ class Fixture {
         r = self.run_ps(f"$Repo = 'nfc'; $Mode = 'Enroll'; $CoreRoot = $Root; Test-BundleDrift")
         self.assertNotEqual(0, r.returncode)
         self.assertIn('approved Core revision', r.stderr)
+
+    # --- Core is the source of the bundle: a bundle file changes in one pull request (issue 197) ---
+
+    def core_repo(self):
+        """A Core tree whose lock names the commit of its own bundle files. Returns the pin."""
+        self.git('init', '-q', '-b', 'main')
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', self.root / 'tools/repo-checks/csharp')
+        self.write('.editorconfig', (ROOT / '.editorconfig').read_text())
+        self.git('add', '.')
+        self.git('commit', '-qm', 'bundle files')
+        pin = self.git('rev-parse', 'HEAD')
+        self.lock_write(pin)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'lock')
+        return pin
+
+    def change_bundle_file(self, pin, text='P:System.DateTime.Now\n'):
+        """Change the canonical file and its copy, and the lock hash. The pin stays."""
+        for path in ('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'eng/core-health/BannedSymbols.Common.txt'):
+            self.write(path, text)
+        self.lock_write(pin)
+
+    def commit_all(self, message):
+        self.git('add', '.')
+        self.git('commit', '-qm', message)
+        return self.git('rev-parse', 'HEAD')
+
+    def verify_core(self, base='main'):
+        return self.run_ps(f"$Mode = 'Verify'; $BaseRef = '{base}'; Test-BundleDrift")
+
+    def test_core_accepts_a_bundle_change_in_one_pull_request(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.change_bundle_file(pin)
+        self.commit_all('bundle change')
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_accepts_the_stale_pin_of_a_merged_bundle_change(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        self.commit_all('bundle change, merged')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_copy_that_differs_from_the_canonical_file(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(pin)
+        self.commit_all('copy only')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('differs from the canonical file', r.stderr)
+
+    def test_core_rejects_a_canonical_file_that_differs_from_the_copy(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.commit_all('canonical only')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('differs from the canonical file', r.stderr)
+
+    def test_core_rejects_a_lock_hash_that_differs_from_the_files(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        for path in ('tools/repo-checks/csharp/BannedSymbols.Common.txt', 'eng/core-health/BannedSymbols.Common.txt'):
+            self.write(path, 'P:System.DateTime.Now\n')
+        self.commit_all('files without the lock hash')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('SHA-256 differs from lock', r.stderr)
+
+    def test_core_accepts_a_pin_only_synchronization(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write(merged)
+        self.commit_all('pin only')
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_pin_that_is_older_than_the_pin_it_replaces(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.lock_write(merged)
+        self.commit_all('pin synchronized')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write(pin)
+        self.commit_all('pin moved back')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('older than the pin it replaces', r.stderr)
+
+    def test_core_rejects_a_pin_whose_files_differ_from_the_tree(self):
+        pin = self.core_repo()
+        self.change_bundle_file(pin)
+        merged = self.commit_all('bundle change, merged')
+        self.git('checkout', '-q', '-b', 'pin')
+        self.change_bundle_file(merged, 'P:System.Environment.TickCount\n')
+        self.commit_all('another change and a pin that has the first one')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the pin moved to a commit whose BannedSymbols.Common.txt', r.stderr)
+
+    def test_core_rejects_a_pin_that_is_not_a_commit_of_its_history(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pin')
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_rejects_a_committed_pin_that_is_not_in_its_history_without_a_base_ref(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_enroll_rejects_a_pin_that_is_not_in_its_history(self):
+        self.core_repo()
+        self.lock_write('b' * 40)
+        self.commit_all('unknown pin, committed')
+        r = self.run_ps("$Mode = 'Enroll'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of this history', r.stderr)
+
+    def test_core_rejects_a_pin_in_upper_case(self):
+        pin = self.core_repo()
+        self.lock_write(pin.upper())
+        self.commit_all('upper-case pin')
+        r = self.run_ps("$Mode = 'Verify'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+
+    def test_core_ignores_core_root(self):
+        self.core_repo()
+        r = self.run_ps(f"$Mode = 'Verify'; $CoreRoot = '{self.root.as_posix()}/does-not-exist'; Test-BundleDrift")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    # --- An application moves its pin in one pull request when -CoreRoot proves it ---
+
+    def core_checkout(self):
+        """A separate Core checkout with two commits. Returns (path, first commit, second commit)."""
+        temp = tempfile.TemporaryDirectory(dir=Path(__file__).parent, prefix='.h03-core-')
+        self.addCleanup(temp.cleanup)
+        core = Path(temp.name).resolve()
+        env = os.environ | {'GIT_AUTHOR_NAME': 'fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.test',
+                            'GIT_COMMITTER_NAME': 'fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.test'}
+
+        def run(*args):
+            return subprocess.check_output(['git', '-C', str(core), *args], env=env, text=True).strip()
+
+        run('init', '-q', '-b', 'main')
+        shutil.copytree(ROOT / 'tools/repo-checks/csharp', core / 'tools/repo-checks/csharp')
+        run('add', '.')
+        run('commit', '-qm', 'first')
+        first = run('rev-parse', 'HEAD')
+        (core / 'tools/repo-checks/csharp/BannedSymbols.Common.txt').write_text('P:System.DateTime.Now\n', encoding='utf-8', newline='\n')
+        run('add', '.')
+        run('commit', '-qm', 'second')
+        return core, first, run('rev-parse', 'HEAD')
+
+    def application_pin_move(self, new_text='P:System.DateTime.Now\n', pin=None):
+        """Application at the first commit; a pull request moves the pin to `pin` (default: second commit)."""
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the first commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        self.write('eng/core-health/BannedSymbols.Common.txt', new_text)
+        self.lock_write(pin or second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin synchronization')
+        return core, first, second
+
+    def verify_application(self, core, mode='Verify'):
+        return self.run_ps(f"$Repo = 'nfc'; $Mode = '{mode}'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
+
+    def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
+        core, _, _ = self.application_pin_move()
+        r = self.verify_application(core)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_adopt_accepts_the_moved_pin_when_core_root_proves_it(self):
+        # Adopt runs the same bundle check through Initialize-Enforcement, so the pin-moving pull request can run it.
+        core, _, _ = self.application_pin_move()
+        r = self.verify_application(core, 'Adopt')
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_application_pin_move_fails_without_core_root(self):
+        self.application_pin_move()
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('pin differs from base', r.stderr)
+
+    def test_application_pin_move_fails_when_the_copy_is_not_the_files_of_the_new_pin(self):
+        core, _, _ = self.application_pin_move(new_text='P:System.Environment.TickCount\n')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('approved Core revision', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_not_in_the_core_checkout(self):
+        core, _, _ = self.application_pin_move(pin='d' * 40)
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('not a commit of the Core checkout', r.stderr)
+
+    def test_application_pin_move_fails_when_the_new_pin_is_older(self):
+        core, first, second = self.core_checkout()
+        self.app_repo()
+        self.write('eng/core-health/BannedSymbols.Common.txt', 'P:System.DateTime.Now\n')
+        self.lock_write(second)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin at the second commit')
+        self.git('checkout', '-q', '-b', 'pr')
+        shutil.copyfile(ROOT / 'tools/repo-checks/csharp/BannedSymbols.Common.txt', self.root / 'eng/core-health/BannedSymbols.Common.txt')
+        self.lock_write(first)
+        self.git('add', '.')
+        self.git('commit', '-qm', 'pin moved back')
+        r = self.verify_application(core)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('does not descend from the pin it replaces', r.stderr)
+
+    def test_an_application_still_cannot_move_its_pin_in_a_pull_request(self):
+        self.app_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.lock_write('c' * 40)
+        self.commit_all('pin moved')
+        r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('pin differs from base', r.stderr)
 
 
 @unittest.skipIf(os.environ.get('HEALTH_SKIP_HOST_TESTS') == '1', 'HEALTH_SKIP_HOST_TESTS=1: requires host cache/build')

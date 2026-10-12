@@ -7,7 +7,7 @@ namespace Nvt.Core.Avalonia.LogConsole;
 // The view owns this adapter. Its enabled state and notifications have the controller's single lifetime source.
 internal sealed class ConsoleClearSearchCommand(ConsoleController? controller) : ICommand
 {
-    public bool CanExecute(object? parameter) => controller?.ResetFiltersCommand.CanExecute(null) == true;
+    public bool CanExecute(object? parameter) => controller?.IsActive == true;
     public void Execute(object? parameter)
     {
         if (CanExecute(parameter)) controller!.SetSearchText(string.Empty);

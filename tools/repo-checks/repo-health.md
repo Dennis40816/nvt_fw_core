@@ -14,16 +14,17 @@ compiler and format messages do not change with the host language. It runs `dotn
 ./tools/repo-checks/repo-health.ps1 -Mode Measure -Repo core -Root . -OutputPath measurement.json
 ./tools/repo-checks/repo-health.ps1 -Mode Verify -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
 ./tools/repo-checks/repo-health.ps1 -Mode LowerBaseline -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
+./tools/repo-checks/repo-health.ps1 -Mode Adopt -Repo core -Root . -Solution Nvt.Core.sln -BaseRef origin/main
 ```
 
 `Repo` accepts `core`, `nfc`, `nfh`, `nfu`. Measure defaults to JSON on stdout;
 `OutFile` aliases `OutputPath`. The default baseline is
 `eng/code-health/baseline.json`; override it with `BaselinePath`.
-Verify and LowerBaseline require a committed baseline and Solution. Enroll is the
+Verify, LowerBaseline and Adopt require a committed baseline and Solution. Enroll is the
 only production enrollment mode: it requires all providers to succeed, refuses any
-existing baseline, and writes debt owned by NVT CORE, due 2026-10-31. It also
-generates the marked HealthBaselineWarningIds block in projects.props. No mode
-automatically refreshes or raises debt. An absent baseline at the merge base fails
+existing baseline, and writes debt owned by NVT CORE with no due date. It also
+generates the marked HealthBaselineWarningIds block in projects.props. Only Adopt adds
+to an existing ledger, and only the debt that the Adopt section below allows. An absent baseline at the merge base fails
 closed: first enrollment must be integrated before checking subsequent PRs against
 that base. Measure remains syntax-only; it cannot satisfy the CI gate. Exit codes: **0** pass, **1** debt findings, **2**
 tool/input error (including parse errors and unavailable stages).
@@ -38,8 +39,21 @@ unique content hashes are reserved before remaining unique symbols; locations
 disambiguate partial files with the same symbols. Ambiguous identities fail closed.
 The example baseline may omit `viewTypeLines`; its effective limit is 800 without
 adding a field during LowerBaseline.
-Baseline entity ownership requires `owner`/`issue`; findings require
-`owner`/`removeBy`. Fixes must lower/delete debt in the same change.
+Baseline entity ownership requires `owner`/`issue`; findings require `owner`.
+`removeBy` is optional on a finding (owner decision of 2026-10-11: debt has no deadline). Fixes must
+lower/delete debt in the same change. Debt cannot be added and its count cannot grow, with or without a date. The one exception is
+Adopt in a synchronization-only change (see "Adopt" below).
+When a finding has a `removeBy`, Verify compares it with today's date (UTC) in both ledgers. A finding is due
+on its `removeBy` day and fails from the next day with `HC_STATE`, naming the finding. It lists the first 20
+expired findings of a ledger and then one summary line with the count. A `removeBy` that is present and is
+not a real calendar date is a bad ledger (exit 2). A finding without `removeBy` never expires. Structural
+entities have no date, so they never expire. Core's two ledgers carry no `removeBy`.
+LowerBaseline never moves, adds or removes a date. Adding, moving or removing a date is one JSON edit in a dedicated pull
+request with an owner decision. The checker does not compare a date with the base ref, so the owner's review
+of that pull request is the control.
+The bundle file `schema.json` still lists `removeBy` as required. The checker takes it out of that list in
+memory when it reads a baseline, because `schema.json` is a distributed file with a pinned hash. The file
+changes at the next pin synchronization.
 
 The allowed baseline comes from `git show <merge-base>:<path>`, where the checker
 computes the merge base of HEAD and BaseRef. Without BaseRef it reads HEAD's
@@ -58,7 +72,7 @@ and contributing path. They never offset each other through repository totals.
 | `methodLines` | Full declaration span, including attributes, of methods, constructors, destructors, operators, conversions, accessors and local functions; limit 80, with the >150 split-plan review retained in the size summary. |
 | `partialFiles` | Distinct files declaring each project-qualified type, including nested/generic types; limit 8. |
 | `axamlCodeBehindLines` | Physical `.axaml.cs` lines; limit 150. |
-| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. |
+| `viewTypeLines` | Aggregate declaration spans of AXAML `x:Class` types across partials; adjacent matching-name `.axaml.cs` is the fallback. The plan omits a threshold: use the file budget of 800. A code-only view (no `.axaml`) is a type that derives, directly or through a base type of the same project, from an Avalonia view base type: `Control`, `UserControl`, `TemplatedControl`, `ContentControl`, `ItemsControl`, `Window`, `Panel`, `Decorator`, `Border`, `Grid`, `StackPanel`, `DockPanel`, `WrapPanel`, `Canvas`, `Button`, `ToggleButton`, `ListBox`, `TextBox`, `ScrollViewer`, `Viewbox`, `ComboBox`, `TabControl`, `Slider`, `ProgressBar`, `CheckBox` or `RadioButton`. The checker has no Avalonia assemblies, so an unresolved base type counts by its simple name, and only in a project whose source mentions Avalonia (a `using` or a qualified name, also with `global::`). A resolved base type must be in the `Avalonia` namespace. The view is measured only when its span is strictly above 800 lines, so a small code-only view adds no entity. The file name decides nothing. Known limits: the name list is closed, and a view that derives from a base type of another project (an unresolved type with a name outside the list) is not found. Add the name to the list when a tool needs it. The 800-line budget of a code-only view is fixed, so a tightened `limits.viewTypeLines` applies only to AXAML views. A project-defined namespace that starts with `Avalonia.` counts as a mention. The branch for a resolved Avalonia base type has no fixture, because the fixtures have no Avalonia assemblies. |
 | `suppressions` | SuppressMessage/UnconditionalSuppressMessage attributes (with check ID), each disable pragma plus every disabled ID (`ALL` for no IDs), evaluated NoWarn/WarningsNotAsErrors IDs when props contain those properties. MSBuild evaluates imports/conditions without building; default configuration only in H02. |
 | `nativeImportDuplicates` | DllImport/LibraryImport (including resolved attribute aliases): exact DLL string + effective EntryPoint constant, falling back to method name. Report duplicate groups/excess and fingerprints of all participants. Unresolved constants fail. |
 | `generationFields` | Mutable int/long/uint/ulong/Int32/Int64 fields whose names contain Generation/Revision/RequestId, ignoring case; increment/adoption semantics need review. |
@@ -82,7 +96,7 @@ use evaluated Release DefineConstants and ResolveReferences. H02's semantic
 candidate metrics still use SDK framework references and same-project source;
 they do not prove complete semantic R1–R12 compliance.
 
-Verify/LowerBaseline/Enroll validate the local schema, bundle provenance, managed
+Verify/LowerBaseline/Adopt/Enroll validate the local schema, bundle provenance, managed
 EditorConfig and evaluated project settings, create artifacts/code-health, remove
 stale named outputs, then run:
 
@@ -99,8 +113,9 @@ of UI language, then resolved with SDK Roslyn to a banned documentation ID. Repo
 print HC_DIAGNOSTIC file:line, symbol, member and old/new counts. Build error rules
 (including VSTHRD100 and CS4014) cannot be grandfathered or suppressed by generated
 warning IDs. Apps must migrate their async void handlers before build/enrollment;
-a syntax baseline cannot exempt an analyzer error. HealthPublicApi stays unset
-in Core until H07d; H03 does not generate API inventory files.
+a syntax baseline cannot exempt an analyzer error. HealthPublicApi is set for
+Core's four published projects in eng/code-health/projects.props (H07d). Each
+project keeps its own PublicAPI.Shipped.txt and PublicAPI.Unshipped.txt.
 
 Analyzer warnings repeated by format after prospective edits reuse fresh SARIF
 occurrences in source order, independently gated by the build ledger. They are not
@@ -140,9 +155,15 @@ The lock is `{ "schemaVersion": 1, "coreCommit": "<40 lowercase hex>", "files":
 { "<each of the six filenames>": "<SHA-256 lowercase hex>" } }`. No policy.json is
 needed: versions, valid layers, limits and package pins are fixed in the checker
 and shared schema. Lock hashes cover raw LF UTF-8 bytes, without Git filters. Git
-blob identity additionally checks all six files against coreCommit's canonical
-files. Core also checks its working canonical tree. With BaseRef, the committed
-merge-base pin must agree; without it, the committed HEAD pin must agree. An app
+blob identity additionally checks an application's six files against coreCommit's
+canonical files. With BaseRef, an application's committed merge-base pin must agree;
+without it, the committed HEAD pin must agree. An application may move its pin in a
+pull request only with -CoreRoot: the new pin must be a commit of that approved Core
+checkout (reachable from its HEAD) and descend from the pin it replaces, and the six
+copies must be that commit's files. Without -CoreRoot a moved pin is an error. The checker
+trusts the checkout that -CoreRoot names. The application's CI and its copy of `repo-health.ps1`
+decide which checkout that is, so the review of the pull request that changes them covers it.
+Core needs a full clone as well (a shallow one fails with `a full clone ... is required`). An app
 supplies -CoreRoot <local approved Core checkout> for the canonical object lookup.
 Without -CoreRoot (an application whose CI does not fetch Core) the checker runs in
 lock-only mode: it checks LF/UTF-8 and that each eng/core-health file equals the SHA-256
@@ -151,7 +172,17 @@ lock, because the pin alone cannot detect a pull request that edits a bundle fil
 its lock hash together. Lock-only mode has no canonical Core objects, so a copy of the
 checker kept in the application repository is governed by code review, not by a
 self-check. Application CI must always pass -BaseRef: without it, a bundle file and its
-lock hash edited together are accepted. Core itself always compares with its own canonical tree.
+lock hash edited together are accepted.
+
+Core is the source of the bundle, so it checks itself differently. Each `eng/core-health` file, its
+canonical file in `tools/repo-checks/csharp` and its lock hash must be the same bytes. A Core pull
+request may change a bundle file in one change: the canonical file, the copy, the manifest and the
+lock hash together. The pin (`coreCommit`) may stay behind the tree, because a change cannot name
+its own commit. The pin is always a commit of the history of HEAD, so Core needs a full clone
+(`fetch-depth: 0`). A Core pull request may move the pin: the new pin is not older than the pin it
+replaces, and its six canonical files are the files of this tree. `-CoreRoot` is for applications
+and Core ignores it. The control over a bundle change in Core is the owner review of that pull
+request. The steps are in `csharp/README.md`.
 No network operation occurs. A pin change is a separately reviewed synchronization;
 first integrate the approved pin before using it as the base for adoption changes.
 
@@ -169,7 +200,7 @@ without changing a severity), or a dotnet_diagnostic.<ID>.severity of none, sile
 suggestion; warning and error stay allowed. The line reader follows Roslyn: it drops a
 leading BOM, accepts `=` or `:` as the separator, and ignores a trailing `#` or `;`
 comment. File names are matched case-insensitively. Only Core skips
-`tools/repo-checks/csharp/.editorconfig`, because only Core compares it with the pin. Per-project Debug, Release and other declared
+`tools/repo-checks/csharp/.editorconfig`, because it is the canonical file that Core compares with its copy. Per-project Debug, Release and other declared
 configurations must retain the shared settings, SDK WarningsAsErrors IDs, exact
 ledger warning exemptions and approved analyzer package references/assets/versions.
 NoWarn must equal the suppression ledger in every evaluated configuration.
@@ -182,6 +213,71 @@ Enroll once after the owner has approved the current-tree evidence:
 ```powershell
 ./tools/repo-checks/repo-health.ps1 -Mode Enroll -Repo core -Root . -Solution Nvt.Core.sln
 ```
+
+### Adopt: debt that a rule change reveals
+
+A pin synchronization can bring a checker that measures more than the old one, for example a
+code-only Avalonia view above 800 lines. The measured excess has no ledger entry, and neither
+Enroll (it refuses an existing ledger) nor LowerBaseline (it never adds) can register it.
+
+`-Mode Adopt -BaseRef <ref>` registers it under one condition: **the change is synchronization-only**.
+Every path that git reports as changed against the merge base must be one of these:
+
+- `eng/core-health.lock.json`, `eng/code-health/baseline.json` and `eng/code-health/test-debt.json`,
+- `eng/code-health/projects.props`, and then only the inside of the generated warning-ID block. The
+  file must hold exactly one block, every group inside it must be a `PropertyGroup` for one project
+  that sets only `HealthBaselineWarningIds`, and the rest of the file must equal the base, because
+  every project imports it,
+- under `eng/core-health/` and `tools/repo-checks/`, the bundle files by exact name
+  (`Directory.Build.props`, `.editorconfig`, `schema.json` and `bundle-manifest.json`, `doc-sync.core.json`),
+  and any `.ps1`, `.py` or `.txt` file. Any other file there is refused, for example a C#, AXAML,
+  project, props, targets, `.globalconfig`, `.json` (such as a nested `global.json` or `stylecop.json`),
+  `nuget.config` or lock file. The lock hash and the Core comparison guard the bundle files' bytes,
+- any `tests/repo-checks/*.py`, and any `*.md`.
+
+No other path may differ from the base. The reason is that the measurement then reads the same
+sources, projects and imports as the base. An excess that the base ledger lacks was revealed by the checker or by the
+bundle, not caused by this change. This replaces any per-file reasoning: a base type in another file, a
+linked file, an AXAML mapping and a fingerprint that merges several files cannot matter when no source differs.
+
+- A single other changed path, for example one edited test or one new class, refuses Adopt. Run Adopt in a
+  pull request of its own, before the code changes.
+- The root `.editorconfig` and a root `Directory.Build.props` are not synchronization paths. A change of the
+  bundle `.editorconfig` makes the managed block of the root `.editorconfig` change too, so that pin
+  synchronization cannot use Adopt in one pull request. The bundle `.editorconfig` has not changed since
+  the bundle was added.
+- The `*.md`, `.ps1`, `.py` and `.txt` rules assume that no project globs those files. A project that
+  compiles or embeds one of them must not be listed here.
+- A path that git prints with other text glued to it matches nothing, so the check fails closed. A path
+  that holds a line break is refused.
+- Git lists the changed paths of the whole repository. When `-Root` is not the repository root, Adopt
+  is refused and Verify accepts no growth, because a change outside `-Root` would not be seen. The
+  "Contributing change" line then names a repository-relative path.
+- A finding of the evaluated project (member `MSBuild`: `NoWarn` and similar) is never registered this way.
+- A fingerprint that the ledger already has keeps its count. A measured increase of it fails.
+- Adopt only adds. It never raises a ceiling or a count that the ledger has, and Verify does not
+  accept such a raise in a synchronization-only change either. It writes the measured value as the
+  ceiling, with the Enroll owner and the issue `health-refactor/adopted`. When it registered something, it
+  also refreshes the generated warning-ID block.
+- In the pull request that also moves an application's pin, run Adopt with `-CoreRoot` as well:
+  Adopt runs the bundle check first, and that check accepts a moved pin only when `-CoreRoot`
+  proves it (the pin is a commit of that checkout and descends from the pin it replaces).
+- It writes nothing when any other failure remains, and it requires `-BaseRef`.
+
+Verify applies the same condition after it reads the ledger: growth against the base ledger is
+accepted only in a synchronization-only change. Verify still requires the ledger to equal the
+measurement, so a hand-raised ceiling fails with `run LowerBaseline`. Verify cannot tell Adopt output
+from a hand edit that equals the measurement, so the owner reviews the added entries at the Files
+changed tab of `eng/code-health/baseline.json`. LowerBaseline applies the same check, and then writes
+the measured values. A hand-written new entry in a synchronization-only change is therefore accepted by
+LowerBaseline and rewritten with the measured value, as Adopt would write it.
+
+Two limits fail closed and refuse an Adopt that would be legitimate: a base `projects.props` with a BOM or a
+lone CR compares unequal, and a `-Root` that is a symbolic link or an 8.3 name does not equal the
+repository root.
+
+Adopt runs after the build and format stages. A failure of those stages stops it first. New analyzer
+warning IDs without a ledger entry and format findings cannot be adopted with it.
 
 ### Test-duplication ledger
 
@@ -198,8 +294,7 @@ A file is a test file when its path has a `tests` or `test` folder or a folder e
 - `-Mode EnrollTestDebt -Solution <sln>` writes the ledger once. It evaluates the projects
   (so a file linked into two test projects counts for each, as in Verify) but does not build.
   Without `-Solution` it attributes by the nearest project file, which can disagree with
-  Verify. It refuses to overwrite a ledger. Owner and removeBy follow Enroll (removeBy
-  `2026-10-31`).
+  Verify. It refuses to overwrite a ledger. The owner follows Enroll. The ledger has no `removeBy`.
 - Verify fails with `New test duplication` when a fingerprint appears or its count grows.
   It also fails with `run LowerBaseline` when a recorded fingerprint shrinks and the ledger
   was not lowered. LowerBaseline lowers the ledger and never adds to it.
@@ -222,7 +317,7 @@ block from the ledger. Core's own enrollment used the seed
 
 `-Owner <name>` sets the owner written to entities and findings. Without it, Core
 uses `NVT CORE` and any other `-Repo` uses its upper-case name (nfc becomes NFC).
-Issue and removeBy stay shared (`health-refactor/2026-10-31`, `2026-10-31`).
+The issue stays shared (`health-refactor/2026-10-31`). Enroll writes no `removeBy`.
 Verify checks owner and issue only as non-empty strings, so a hand edit is not
 rejected, but `-Owner` is the supported way.
 
@@ -232,8 +327,8 @@ methods) is an error in the bundle `.editorconfig`. Lambdas converted to void
 delegates are counted in the ledger but do not fail the build.
 
 The ledger stores H02 structural excess and syntax findings plus analyzer and
-format debt. Entities use issue health-refactor/2026-10-31; findings use removeBy
-2026-10-31, all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
+format debt. Entities use issue health-refactor/2026-10-31 (Adopt writes health-refactor/adopted); findings have no removeBy,
+all with the Enroll owner (NVT CORE for Core). Verify checks evaluated HealthBaselineWarningIds
 against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only
 loading supports provider tests, and never executes enrollment or verification.

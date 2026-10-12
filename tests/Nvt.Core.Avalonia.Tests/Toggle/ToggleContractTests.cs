@@ -35,8 +35,8 @@ public sealed class ToggleContractTests
                 AssertResource(element.Attribute("Value")?.Value ?? element.Value);
         }
         foreach (XElement style in source.Descendants(ThemeContractTests.Presentation + "Style"))
-        foreach (string selector in style.Attribute("Selector")!.Value.Split(','))
-            Assert.Matches(@"^\s*(?:ToggleButton\.(?:toggleSegment|toggleTab|toggleIcon|toggleSwitch|toggleSoft)|ToggleSwitch|Border\.toggleSegmentGroup)(?:[\s:.>]|$)", selector);
+            foreach (string selector in style.Attribute("Selector")!.Value.Split(','))
+                Assert.Matches(@"^\s*(?:ToggleButton\.(?:toggleSegment|toggleTab|toggleIcon|toggleSwitch|toggleSoft)|ToggleSwitch|Border\.toggleSegmentGroup)(?:[\s:.>]|$)", selector);
 
         static void AssertResource(string value) => Assert.True(
             value.StartsWith("{DynamicResource ", StringComparison.Ordinal) ||
@@ -116,28 +116,28 @@ public sealed class ToggleContractTests
         void Verify(Color accent, Color danger, Color label, double radius)
         {
             foreach (ToggleButton button in buttons)
-            foreach (bool isDanger in new[] { false, true })
-            foreach (ToggleState state in new[]
-            {
+                foreach (bool isDanger in new[] { false, true })
+                    foreach (ToggleState state in new[]
+                    {
                 new ToggleState("Checked", Checked: true, Focus: true),
                 new ToggleState("Checked hover", Checked: true, Hover: true),
                 new ToggleState("Checked pressed", Checked: true, Pressed: true),
             })
-            {
-                button.Classes.Set("danger", isDanger);
-                SetState(button, state);
-                Flush(host);
-                Assert.Equal(isDanger ? danger : accent, ColorOf(Part(button, "ToggleBody").Background));
-                bool isSwitch = button is ToggleSwitch || button.Classes.Contains("toggleSwitch");
-                if (isSwitch)
-                    Assert.Equal(label, ColorOf(Assert.Single(button.GetVisualDescendants().OfType<global::Avalonia.Controls.Shapes.Ellipse>()).Fill));
-                else
-                {
-                    Assert.Equal(label, ColorOf(button.Foreground));
-                    Assert.Equal(new CornerRadius(radius), button.CornerRadius);
-                    Assert.Equal(new CornerRadius(radius + 4), Part(button, "ToggleFocusRing").CornerRadius);
-                }
-            }
+                    {
+                        button.Classes.Set("danger", isDanger);
+                        SetState(button, state);
+                        Flush(host);
+                        Assert.Equal(isDanger ? danger : accent, ColorOf(Part(button, "ToggleBody").Background));
+                        bool isSwitch = button is ToggleSwitch || button.Classes.Contains("toggleSwitch");
+                        if (isSwitch)
+                            Assert.Equal(label, ColorOf(Assert.Single(button.GetVisualDescendants().OfType<global::Avalonia.Controls.Shapes.Ellipse>()).Fill));
+                        else
+                        {
+                            Assert.Equal(label, ColorOf(button.Foreground));
+                            Assert.Equal(new CornerRadius(radius), button.CornerRadius);
+                            Assert.Equal(new CornerRadius(radius + 4), Part(button, "ToggleFocusRing").CornerRadius);
+                        }
+                    }
         }
 
         static ResourceDictionary Palette(Color accent, Color danger, Color label, double radius)

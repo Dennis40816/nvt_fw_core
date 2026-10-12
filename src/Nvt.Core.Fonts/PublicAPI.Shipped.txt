@@ -1,0 +1,4 @@
+#nullable enable
+Nvt.Core.Fonts.NvtCoreFonts
+static Nvt.Core.Fonts.NvtCoreFonts.CjkFallback.get -> Avalonia.Media.FontFallback!
+static Nvt.Core.Fonts.NvtCoreFonts.WithNvtCoreFonts(this Avalonia.AppBuilder! builder) -> Avalonia.AppBuilder!

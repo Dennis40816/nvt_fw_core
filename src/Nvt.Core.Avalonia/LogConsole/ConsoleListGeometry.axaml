@@ -22,4 +22,12 @@
   <x:String x:Key="Nvt.Console.List.Level.Warn">Warn</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Error">Error</x:String>
   <x:String x:Key="Nvt.Console.List.Level.Fatal">Fatal</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.CopyMessage">Copy message</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.CopyRow">Copy row</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.CopySource">Copy source</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.Expand">Expand</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.Collapse">Collapse</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.FilterSource">Filter by this source</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.FilterLevel">Filter by this level</x:String>
+  <x:String x:Key="Nvt.Console.List.Menu.OpenLink">Open link</x:String>
 </ResourceDictionary>

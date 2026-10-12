@@ -28,7 +28,9 @@ internal static class RedesignSheets
 
     internal static TextBlock Label(string text, double size = 13) => new()
     {
-        Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap,
+        Text = text,
+        FontSize = size,
+        TextWrapping = TextWrapping.Wrap,
         VerticalAlignment = VerticalAlignment.Center,
     };
 
@@ -37,54 +39,54 @@ internal static class RedesignSheets
     {
         string? destination = Environment.GetEnvironmentVariable(variable);
         foreach (bool dark in single ? new[] { false } : new[] { false, true })
-        foreach (bool square in single ? new[] { false } : new[] { false, true })
-        {
-            Control content = build();
-            var surface = new Border { Padding = new Thickness(24), Child = content };
-            surface.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
-            var root = new Border
+            foreach (bool square in single ? new[] { false } : new[] { false, true })
             {
-                Padding = new Thickness(32),
-                Child = new StackPanel
+                Control content = build();
+                var surface = new Border { Padding = new Thickness(24), Child = content };
+                surface.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
+                var root = new Border
                 {
-                    Spacing = 20,
-                    Children =
+                    Padding = new Thickness(32),
+                    Child = new StackPanel
+                    {
+                        Spacing = 20,
+                        Children =
                     {
                         Label(single ? $"CORE / {name.ToUpperInvariant()} / LIGHT + DARK" : $"CORE / {name.ToUpperInvariant()} / {(square ? "SQUARE" : "PILL")} / {(dark ? "DARK" : "LIGHT")}", 24),
                         Label(description), surface,
                         Label("100% scale / synthetic examples / 150 ms transitions / keyboard focus only", 11),
                     },
-                },
-            };
-            Window host = Create(root, dark);
-            try
-            {
-                ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
-                ListMenuTestHost.Show(host);
-                restore(content);
-                ListMenuTestHost.Flush(host);
-                host.Height = Math.Ceiling(root.DesiredSize.Height);
-                ListMenuTestHost.Flush(host);
-                Assert.Equal(1, host.RenderScaling);
-                foreach (Control control in content.GetVisualDescendants().OfType<Control>())
+                    },
+                };
+                Window host = Create(root, dark);
+                try
                 {
-                    if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0) continue;
-                    Point point = control.TranslatePoint(default, host)!.Value;
-                    Assert.True(point.X >= 0 && point.Y >= 0 && point.X + control.Bounds.Width <= host.Width + 1
-                        && point.Y + control.Bounds.Height <= host.Height + 1, $"{name}/{control.Name}: {point}, {control.Bounds}");
+                    ThemeShapes.SetShape(host.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
+                    ListMenuTestHost.Show(host);
+                    restore(content);
+                    ListMenuTestHost.Flush(host);
+                    host.Height = Math.Ceiling(root.DesiredSize.Height);
+                    ListMenuTestHost.Flush(host);
+                    Assert.Equal(1, host.RenderScaling);
+                    foreach (Control control in content.GetVisualDescendants().OfType<Control>())
+                    {
+                        if (!control.IsEffectivelyVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0) continue;
+                        Point point = control.TranslatePoint(default, host)!.Value;
+                        Assert.True(point.X >= 0 && point.Y >= 0 && point.X + control.Bounds.Width <= host.Width + 1
+                            && point.Y + control.Bounds.Height <= host.Height + 1, $"{name}/{control.Name}: {point}, {control.Bounds}");
+                    }
+                    using var frame = host.CaptureRenderedFrame();
+                    Assert.NotNull(frame);
+                    Assert.Equal(1200, frame.PixelSize.Width);
+                    if (string.IsNullOrWhiteSpace(destination)) continue;
+                    Directory.CreateDirectory(destination);
+                    string file = single ? $"{name}.png" : $"{name}-{(square ? "square" : "pill")}-{(dark ? "dark" : "light")}.png";
+                    string path = System.IO.Path.Combine(destination, file);
+                    frame.Save(path, PngBitmapEncoderOptions.Default);
+                    Assert.True(new FileInfo(path).Length <= 1_000_000, file);
+                    output.WriteLine($"{file}: {frame.PixelSize}, {new FileInfo(path).Length} bytes");
                 }
-                using var frame = host.CaptureRenderedFrame();
-                Assert.NotNull(frame);
-                Assert.Equal(1200, frame.PixelSize.Width);
-                if (string.IsNullOrWhiteSpace(destination)) continue;
-                Directory.CreateDirectory(destination);
-                string file = single ? $"{name}.png" : $"{name}-{(square ? "square" : "pill")}-{(dark ? "dark" : "light")}.png";
-                string path = System.IO.Path.Combine(destination, file);
-                frame.Save(path, PngBitmapEncoderOptions.Default);
-                Assert.True(new FileInfo(path).Length <= 1_000_000, file);
-                output.WriteLine($"{file}: {frame.PixelSize}, {new FileInfo(path).Length} bytes");
+                finally { host.Close(); }
             }
-            finally { host.Close(); }
-        }
     }
 }

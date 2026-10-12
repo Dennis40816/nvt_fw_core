@@ -54,8 +54,11 @@ public sealed partial class ListMenuStylesRenderer
         else
         {
             if (family == 2)
-                stack.Children.Add(new Menu { Items = { new MenuItem { Header = "File", Items = { new MenuItem { Header = "Open sample" } } },
-                    new MenuItem { Header = "Edit" }, new MenuItem { Header = "View" } } });
+                stack.Children.Add(new Menu
+                {
+                    Items = { new MenuItem { Header = "File", Items = { new MenuItem { Header = "Open sample" } } },
+                    new MenuItem { Header = "Edit" }, new MenuItem { Header = "View" } }
+                });
             stack.Children.Add(Label("Popup / checked items, icon spacing and separators", 13));
             Control popup = MenuPreview();
             popup.Width = 360;
