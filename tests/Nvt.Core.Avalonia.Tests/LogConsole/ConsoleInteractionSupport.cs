@@ -137,6 +137,14 @@ internal sealed class ConsoleInteractionScene : IDisposable
     }
 }
 
+/// <summary>The work of one full traversal of the Console list, as counts.</summary>
+/// <param name="RowVisits">Row visits of height rebuilding, synchronization, measure and arrange.</param>
+/// <param name="HostMeasurePasses">Measure passes of the items host.</param>
+/// <param name="MaxStepMeasurePasses">The most host measure passes that one scroll step needed.</param>
+/// <param name="RowMeasures">Measure passes of row presenters, where text layout happens.</param>
+/// <param name="Steps">Scroll steps of the traversal.</param>
+internal readonly record struct ConsoleTraversalWork(long RowVisits, int HostMeasurePasses, int MaxStepMeasurePasses, long RowMeasures, int Steps);
+
 internal sealed class ConsoleScrollScene : IDisposable
 {
     private readonly InMemoryLogTextContent _content = new("Message");
@@ -184,13 +192,44 @@ internal sealed class ConsoleScrollScene : IDisposable
             Window.UpdateLayout();
         }
     }
-    internal long TraversalRowVisits()
+    /// <summary>Walks the whole list once and returns counts of work. No clock enters the result.</summary>
+    /// <remarks>
+    /// Call it on a scene that was only created and paused. Row measures are the growth of the pass count of each presenter
+    /// that the host holds after a step. A new presenter starts at zero. A presenter that is measured and recycled inside one
+    /// layout is not seen, and one that sat in the pool before the first step adds its earlier passes. The error is a few
+    /// measures in 10,000 and far below the margin of the limit.
+    /// </remarks>
+    internal ConsoleTraversalWork MeasureTraversal()
     {
         Host.Offset = default;
         Window.UpdateLayout();
-        var before = Host.RowVisits;
-        Traverse();
-        return Host.RowVisits - before;
+        var seen = new Dictionary<ConsoleRowPresenter, int>();
+        long rowMeasures = 0;
+        void SeeRowPresenters()
+        {
+            foreach (var presenter in Host.Children.OfType<ConsoleRowPresenter>())
+            {
+                rowMeasures += presenter.MeasurePasses - seen.GetValueOrDefault(presenter);
+                seen[presenter] = presenter.MeasurePasses;
+            }
+        }
+        SeeRowPresenters();
+        rowMeasures = 0;
+        var visitsBefore = Host.RowVisits;
+        var passesBefore = Host.MeasurePasses;
+        var maxStepPasses = 0;
+        var step = Host.PageScrollSize.Height;
+        var steps = 0;
+        for (var y = 0d; y < Host.Extent.Height; y += step)
+        {
+            var stepPassesBefore = Host.MeasurePasses;
+            Host.Offset = new(0, y);
+            Window.UpdateLayout();
+            maxStepPasses = Math.Max(maxStepPasses, Host.MeasurePasses - stepPassesBefore);
+            SeeRowPresenters();
+            steps++;
+        }
+        return new(Host.RowVisits - visitsBefore, Host.MeasurePasses - passesBefore, maxStepPasses, rowMeasures, steps);
     }
     internal void CopyOldOrderAndScroll()
     {
