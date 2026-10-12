@@ -39,11 +39,11 @@ class EnforcementTests(unittest.TestCase):
              'locations': [{'physicalLocation': {'artifactLocation': {'uri': path}, 'region': {'startLine': line, 'startColumn': 3}}}]}
             for line in lines]}]}))
 
-    def run_ps(self, body, *, measure=False):
+    def run_ps(self, body, *, measure=False, checker=CHECKER):
         # Function-only loading avoids executing the production entry point. Only
         # reference evaluation is stubbed: parser/compiler execution is real and offline.
         setup = f"""
-. '{CHECKER.as_posix()}' -FunctionsOnly
+. '{checker.as_posix()}' -FunctionsOnly
 $Root = '{self.root.as_posix()}'
 $Mode = 'Verify'; $BaseRef = ''; $BaselinePath = 'eng/code-health/baseline.json'
 $script:Seams = @{{entries=@()}}
@@ -249,17 +249,15 @@ if ($a -ceq $b) { Write-Output 'outside text must differ'; exit 9 }
         # A self-consistent PR hash cannot approve altered canonical bytes.
         subprocess.run(['git','init','-q',str(self.root)],check=True)
         shutil.copytree(ROOT/'tools/repo-checks/csharp',self.root/'tools/repo-checks/csharp')
+        shutil.copyfile(CHECKER, self.root / 'tools/repo-checks/repo-health.ps1')
         env=os.environ|{'GIT_AUTHOR_NAME':'fixture','GIT_AUTHOR_EMAIL':'fixture@example.test','GIT_COMMITTER_NAME':'fixture','GIT_COMMITTER_EMAIL':'fixture@example.test'}
         subprocess.run(['git','-C',str(self.root),'add','.'],check=True,env=env)
         subprocess.run(['git','-C',str(self.root),'commit','-qm','fixture'],check=True,env=env)
         commit=subprocess.check_output(['git','-C',str(self.root),'rev-parse','HEAD'],env=env,text=True).strip()
-        import hashlib
-        files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (self.root/'eng/core-health').iterdir()}
-        self.write('eng/core-health.lock.json',json.dumps({'schemaVersion':1,'coreCommit':commit,'files':files}))
+        self.lock_write(commit)
         self.write('.editorconfig',(ROOT/'.editorconfig').read_text())
         self.write('eng/core-health/BannedSymbols.Common.txt','P:System.DateTime.Now\n')
-        files['BannedSymbols.Common.txt']=hashlib.sha256((self.root/'eng/core-health/BannedSymbols.Common.txt').read_bytes()).hexdigest()
-        self.write('eng/core-health.lock.json',json.dumps({'schemaVersion':1,'coreCommit':commit,'files':files}))
+        self.lock_write(commit)
         r=self.run_ps("$Mode='Enroll'; Test-BundleDrift")
         self.assertNotEqual(0,r.returncode)
         self.assertIn('differs from the canonical file',r.stderr)
@@ -580,13 +578,94 @@ class Fixture {
 
     def lock_write(self, core_commit='a' * 40):
         files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (self.root / 'eng/core-health').iterdir()}
+        checker = self.root / 'tools/repo-checks/repo-health.ps1'
+        if not checker.exists():
+            checker = CHECKER
+        files['repo-health.ps1'] = hashlib.sha256(checker.read_bytes()).hexdigest()
         self.write('eng/core-health.lock.json', json.dumps({'schemaVersion': 1, 'coreCommit': core_commit, 'files': files}))
+
+    def copy_checker(self, suffix=b'# fixture change\n'):
+        checker = self.root / 'tools/repo-checks/repo-health.ps1'
+        checker.parent.mkdir(parents=True, exist_ok=True)
+        checker.write_bytes(CHECKER.read_bytes() + suffix)
+        shutil.copyfile(self.root / 'eng/core-health/schema.json', checker.with_name('schema.json'))
+        return checker
+
+    def remove_checker_hash(self):
+        lock = json.loads((self.root / 'eng/core-health.lock.json').read_bytes())
+        del lock['files']['repo-health.ps1']
+        self.write('eng/core-health.lock.json', json.dumps(lock))
 
     def test_lock_only_mode_passes_without_a_core_checkout(self):
         self.app_repo()
         self.assertFalse((self.root / 'tools/repo-checks/csharp').exists())
         r = self.run_ps("$Repo = 'nfc'; $Mode = 'Verify'; Test-BundleDrift")
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_lock_only_mode_rejects_a_running_script_that_differs_from_the_lock(self):
+        self.app_repo()
+        checker = self.copy_checker()
+        r = self.run_ps("$Repo = 'nfc'; Test-BundleDrift", checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT eng/core-health.lock.json:1 repo-health.ps1 SHA-256 differs from lock', r.stderr)
+
+    def test_lock_only_mode_rejects_an_edited_script_and_lock_hash_against_base(self):
+        self.app_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        checker = self.copy_checker()
+        self.lock_write()
+        self.commit_all('script and lock edited together')
+        r = self.run_ps("$Repo = 'nfc'; $BaseRef = 'main'; Test-BundleDrift", checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('hash of repo-health.ps1 differs from base', r.stderr)
+
+    def test_lock_only_mode_accepts_a_matching_script_hash_without_base_ref(self):
+        self.app_repo()
+        checker = self.copy_checker()
+        self.lock_write()
+        self.commit_all('matching script hash')
+        r = self.run_ps("$Repo = 'nfc'; Test-BundleDrift", checker=checker)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_lock_only_mode_skips_the_script_for_an_old_application_lock(self):
+        self.app_repo()
+        self.remove_checker_hash()
+        self.commit_all('old application lock')
+        checker = self.copy_checker()
+        r = self.run_ps("$Repo = 'nfc'; $BaseRef = 'main'; Test-BundleDrift", checker=checker)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_lock_only_mode_rejects_dropping_the_script_entry_of_the_base_lock(self):
+        self.app_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.remove_checker_hash()
+        self.commit_all('script entry dropped from the lock')
+        checker = self.copy_checker()
+        r = self.run_ps("$Repo = 'nfc'; $BaseRef = 'main'; Test-BundleDrift", checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the repo-health.ps1 entry was removed from the lock', r.stderr)
+
+    def test_lock_only_mode_without_base_ref_rejects_dropping_the_committed_script_entry(self):
+        self.app_repo()
+        self.remove_checker_hash()
+        checker = self.copy_checker()
+        r = self.run_ps("$Repo = 'nfc'; Test-BundleDrift", checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the repo-health.ps1 entry was removed from the lock', r.stderr)
+
+    def test_lock_only_mode_rejects_a_script_with_crlf_or_bom(self):
+        self.app_repo()
+        original = CHECKER.read_bytes()
+        for content in (original.replace(b'\n', b'\r\n'), b'\xef\xbb\xbf' + original):
+            with self.subTest(prefix=content[:5]):
+                checker = self.root / 'tools/repo-checks/repo-health.ps1'
+                checker.parent.mkdir(parents=True, exist_ok=True)
+                checker.write_bytes(content)
+                shutil.copyfile(self.root / 'eng/core-health/schema.json', checker.with_name('schema.json'))
+                r = self.run_ps("$Repo = 'nfc'; Test-BundleDrift", checker=checker)
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('repo-health.ps1 must use LF line endings and UTF-8 without a BOM', r.stderr)
+                self.assertNotIn('HC_DRIFT', r.stderr)
 
     def test_lock_only_mode_rejects_a_bundle_file_that_differs_from_the_lock(self):
         self.app_repo()
@@ -623,6 +702,7 @@ class Fixture {
     def test_core_root_keeps_the_canonical_comparison_for_applications(self):
         self.app_repo()
         shutil.copytree(ROOT / 'tools/repo-checks/csharp', self.root / 'tools/repo-checks/csharp')
+        shutil.copyfile(CHECKER, self.root / 'tools/repo-checks/repo-health.ps1')
         self.git('add', '.')
         self.git('commit', '-qm', 'core copy')
         commit = self.git('rev-parse', 'HEAD')
@@ -640,6 +720,7 @@ class Fixture {
         """A Core tree whose lock names the commit of its own bundle files. Returns the pin."""
         self.git('init', '-q', '-b', 'main')
         shutil.copytree(ROOT / 'tools/repo-checks/csharp', self.root / 'tools/repo-checks/csharp')
+        shutil.copyfile(CHECKER, self.root / 'tools/repo-checks/repo-health.ps1')
         self.write('.editorconfig', (ROOT / '.editorconfig').read_text())
         self.git('add', '.')
         self.git('commit', '-qm', 'bundle files')
@@ -661,7 +742,79 @@ class Fixture {
         return self.git('rev-parse', 'HEAD')
 
     def verify_core(self, base='main'):
-        return self.run_ps(f"$Mode = 'Verify'; $BaseRef = '{base}'; Test-BundleDrift")
+        tree_checker = self.root / 'tools/repo-checks/repo-health.ps1'
+        return self.run_ps(f"$Mode = 'Verify'; $BaseRef = '{base}'; Test-BundleDrift", checker=tree_checker)
+
+    def test_core_accepts_the_script_when_the_lock_hash_matches(self):
+        self.core_repo()
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_script_that_differs_from_the_lock_hash(self):
+        self.core_repo()
+        self.copy_checker()
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('HC_DRIFT eng/core-health.lock.json:1 repo-health.ps1 SHA-256 differs from lock', r.stderr)
+
+    def test_core_accepts_a_script_change_and_hash_update_with_the_same_pin(self):
+        pin = self.core_repo()
+        self.git('checkout', '-q', '-b', 'pr')
+        self.copy_checker()
+        self.lock_write(pin)
+        self.commit_all('script and hash updated')
+        r = self.verify_core()
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_core_rejects_a_moved_pin_whose_script_differs_from_the_tree(self):
+        pin = self.core_repo()
+        self.copy_checker()
+        self.lock_write(pin)
+        merged = self.commit_all('script change merged')
+        self.git('checkout', '-q', '-b', 'pr')
+        self.copy_checker(b'# another fixture change\n')
+        self.lock_write(merged)
+        self.commit_all('new script with the previous script pin')
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the pin moved to a commit whose repo-health.ps1 differs from this tree', r.stderr)
+
+    def test_core_rejects_a_running_script_that_differs_from_the_tree_script(self):
+        self.core_repo()
+        running = self.root / 'tools/repo-checks/other/repo-health.ps1'
+        running.parent.mkdir(parents=True)
+        running.write_bytes(CHECKER.read_bytes() + b'# another script\n')
+        shutil.copyfile(self.root / 'tools/repo-checks/csharp/schema.json', running.with_name('schema.json'))
+        r = self.run_ps("$Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift", checker=running)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the running repo-health.ps1 differs from tools/repo-checks/repo-health.ps1 of this tree', r.stderr)
+
+    def test_core_requires_the_script_hash_in_its_lock(self):
+        self.core_repo()
+        self.remove_checker_hash()
+        r = self.verify_core()
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('Core lock must include repo-health.ps1', r.stderr)
+
+    def test_core_reports_a_missing_script_path_as_a_tool_error(self):
+        self.core_repo()
+        (self.root / 'tools/repo-checks/repo-health.ps1').unlink()
+        r = self.run_ps("$Mode = 'Verify'; $BaseRef = 'main'; Test-BundleDrift")
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('Missing repo-health.ps1 script path', r.stderr)
+        self.assertNotIn('HC_DRIFT', r.stderr)
+
+    def test_core_reports_script_crlf_and_bom_as_tool_errors(self):
+        self.core_repo()
+        checker = self.root / 'tools/repo-checks/repo-health.ps1'
+        original = checker.read_bytes()
+        for content in (original.replace(b'\n', b'\r\n'), b'\xef\xbb\xbf' + original):
+            with self.subTest(prefix=content[:5]):
+                checker.write_bytes(content)
+                r = self.verify_core()
+                self.assertNotEqual(0, r.returncode)
+                self.assertIn('repo-health.ps1 must use LF line endings and UTF-8 without a BOM', r.stderr)
+                self.assertNotIn('HC_DRIFT', r.stderr)
 
     def test_core_accepts_a_bundle_change_in_one_pull_request(self):
         pin = self.core_repo()
@@ -766,6 +919,19 @@ class Fixture {
         self.assertNotEqual(0, r.returncode)
         self.assertIn('not a commit of this history', r.stderr)
 
+    def test_lock_schema_accepts_six_and_seven_keys_and_rejects_an_unknown_key(self):
+        self.core_repo()
+        body = ("$files = @{}; foreach ($f in Get-ChildItem -LiteralPath eng/core-health -File) { $files[$f.Name] = 'a' * 64 }\n"
+                "function Probe($extra) { $all = $files.Clone(); foreach ($k in $extra.Keys) { $all[$k] = $extra[$k] }\n"
+                "  $text = ConvertTo-Json @{ schemaVersion = 1; coreCommit = 'a' * 40; files = $all } -Depth 5\n"
+                "  try { [void](Read-HealthDocument $text 'core-health.lock'); 'accepted' } catch { 'rejected' } }\n"
+                "'six=' + (Probe @{}); 'seven=' + (Probe @{ 'repo-health.ps1' = 'b' * 64 }); 'unknown=' + (Probe @{ 'other.ps1' = 'c' * 64 })")
+        r = self.run_ps(body)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertIn('six=accepted', r.stdout)
+        self.assertIn('seven=accepted', r.stdout)
+        self.assertIn('unknown=rejected', r.stdout)
+
     def test_core_rejects_a_pin_in_upper_case(self):
         pin = self.core_repo()
         self.lock_write(pin.upper())
@@ -795,6 +961,7 @@ class Fixture {
 
         run('init', '-q', '-b', 'main')
         shutil.copytree(ROOT / 'tools/repo-checks/csharp', core / 'tools/repo-checks/csharp')
+        shutil.copyfile(CHECKER, core / 'tools/repo-checks/repo-health.ps1')
         run('add', '.')
         run('commit', '-qm', 'first')
         first = run('rev-parse', 'HEAD')
@@ -803,22 +970,52 @@ class Fixture {
         run('commit', '-qm', 'second')
         return core, first, run('rev-parse', 'HEAD')
 
-    def application_pin_move(self, new_text='P:System.DateTime.Now\n', pin=None):
-        """Application at the first commit; a pull request moves the pin to `pin` (default: second commit)."""
+    def application_pin_move(self, new_text='P:System.DateTime.Now\n', pin=None, old_lock=False):
+        """Application at the first commit; a pull request moves the pin to `pin` (default: second commit).
+
+        `old_lock` removes the checker entry from the base lock and from the lock of the pull request."""
         core, first, second = self.core_checkout()
         self.app_repo()
         self.lock_write(first)
+        if old_lock:
+            self.remove_checker_hash()
         self.git('add', '.')
         self.git('commit', '-qm', 'pin at the first commit')
         self.git('checkout', '-q', '-b', 'pr')
         self.write('eng/core-health/BannedSymbols.Common.txt', new_text)
         self.lock_write(pin or second)
+        if old_lock:
+            self.remove_checker_hash()
         self.git('add', '.')
         self.git('commit', '-qm', 'pin synchronization')
         return core, first, second
 
-    def verify_application(self, core, mode='Verify'):
-        return self.run_ps(f"$Repo = 'nfc'; $Mode = '{mode}'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift")
+    def verify_application(self, core, mode='Verify', checker=CHECKER):
+        return self.run_ps(f"$Repo = 'nfc'; $Mode = '{mode}'; $BaseRef = 'main'; $CoreRoot = '{core.as_posix()}'; Test-BundleDrift", checker=checker)
+
+    def test_application_core_root_rejects_a_running_script_that_differs_from_the_pin(self):
+        core, _, second = self.application_pin_move()
+        checker = self.copy_checker()
+        self.lock_write(second)
+        self.commit_all('different checker with matching lock hash')
+        r = self.verify_application(core, checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('repo-health.ps1 differs from approved Core revision', r.stderr)
+
+    def test_application_core_root_skips_the_script_for_an_old_lock(self):
+        core, _, _ = self.application_pin_move(old_lock=True)
+        checker = self.copy_checker()
+        r = self.verify_application(core, checker=checker)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
+    def test_application_core_root_rejects_dropping_the_script_entry_of_the_base_lock(self):
+        core, _, _ = self.application_pin_move()
+        self.remove_checker_hash()
+        self.commit_all('script entry dropped from the lock')
+        checker = self.copy_checker()
+        r = self.verify_application(core, checker=checker)
+        self.assertNotEqual(0, r.returncode)
+        self.assertIn('the repo-health.ps1 entry was removed from the lock', r.stderr)
 
     def test_application_may_move_its_pin_forward_when_core_root_proves_it(self):
         core, _, _ = self.application_pin_move()

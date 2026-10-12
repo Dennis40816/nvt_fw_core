@@ -7,6 +7,7 @@
     "BannedSymbols.Common.txt": "2bed3cfdc57f2083b7557331281112485a986a6bd29a9d7d948657581d6a84d8",
     "BannedSymbols.Files.txt": "de16dd734fda8ee8bd1514eb52edb8873d5d21e1b6d7f3759b2094874bebc318",
     "BannedSymbols.Tests.txt": "a7c9797aac63eb1b4a4831ee0e8c4b5966aa4185528218cec5dbcb04579293f4",
-    "schema.json": "ce419abcad5adcf2d8a86b4a622716b4b0ba4d67d93b7682e8f0633553e2fe6f"
+    "schema.json": "2b811968ef8881056b20f87f622afc15d4204b588c1d06e8dd149600daa713ec",
+    "repo-health.ps1": "04bf1910b9552f29a2ad25dc44bfbe694f072127e493eabfd2bda6ad34eae75a"
   }
 }
