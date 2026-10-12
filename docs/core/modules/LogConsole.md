@@ -679,6 +679,11 @@ Unknown level keys fall back to their suffix. Level labels take no format argume
 | `Nvt.Console.List.JumpToLatestMany` | `Jump to latest ({0} new messages)` |
 | `Nvt.Console.List.RetentionOne` | `Retention changed · {0} message evicted` |
 | `Nvt.Console.List.RetentionFormat` | `Retention changed · {0} messages evicted` |
+| `Nvt.Console.List.Name` | `Console messages` |
+| `Nvt.Console.List.Row.NameFormat` | `{Level}, {Time}, {Source}, {Message}, {Repeat}, {Links}` |
+| `Nvt.Console.List.Row.RepeatFormat` | `repeated {0} times` |
+| `Nvt.Console.List.Row.LinkOneFormat` | `{0} link` |
+| `Nvt.Console.List.Row.LinksFormat` | `{0} links` |
 | `Nvt.Console.List.Level.Trace` | `Trace` |
 | `Nvt.Console.List.Level.Debug` | `Debug` |
 | `Nvt.Console.List.Level.Info` | `Info` |
@@ -694,7 +699,7 @@ realized containers by `ConsoleRowId`; projection application updates identities
 Only viewport rows and a small overscan are realized. Expanded heights begin as estimates and are updated
 by measurement. Huge messages are read in bounded segments ending on wrapped-line boundaries.
 The host stores compact offset/height indexes and retains text layouts only for visible segments;
-it creates no text visual per line and never materializes the complete message.
+it creates no text visual per line and never materializes more than the clipboard text bound.
 Row width follows the logical viewport and horizontal scrolling is disabled.
 
 Error/Fatal backgrounds use the existing danger surface. Message/source search hits use the existing
@@ -790,7 +795,76 @@ Enter/Space toggles expansion, Ctrl+C copies, Escape closes the row menu before 
 and Ctrl+End requests Resume. Shift+F10 and Menu open the focused row menu. Keys route through commands
 and do not intercept TextBox editing or toolbar shortcuts. Realized rows use Core's keyboard-only Focus B
 adorner and stay out of the Tab sequence. Recycled focus falls back to the list entry.
-No additional automation peers are supplied here.
+Peer creation is lazy: a peer exists only after assistive technology asks for it. The automation tree
+contains a List peer and the ListItem peers of realized rows, including the host's realization buffer,
+followed by the visible template Jump to latest button and retention notice. Hidden template parts are
+omitted. Unrealized rows and the row's painting controls are not automation children. `GetChildren`
+builds the list on each call, without a child cache. Realization changes and a visibility change of the
+template parts invalidate children at most once per completed layout pass, only when the view already has
+a peer. The list supports multiple, optional selection and vertical scrolling; rows support selection, and
+expandable rows also expose expand/collapse. A grouped row is selected when any retained member is selected. Selection
+and expansion actions share the pointer/keyboard command path and request caller-owned state through
+`ViewStateRequested` and `RequestViewState`. Pattern expansion changes only `ExpandedIds`, preserving
+selection, reading anchor, following and keyboard focus. Pattern AddToSelection and RemoveFromSelection
+change selection without moving focus or its range origin. Pattern Select replaces the selection with
+the row and focuses it, the same selection result as a pointer click. A selection change from a pattern
+pauses following like any other selection change. Enter and Space keep their existing selection/expansion
+behavior.
+
+`Nvt.Console.List.Name` names the list. `Nvt.Console.List.Row.NameFormat` orders the named fragments
+`{Level}`, `{Time}`, `{Source}`, `{Message}`, `{Repeat}` and `{Links}`. Its default order is level, time,
+source, message, repeat and links. Translations can reorder fragments and change their separators.
+The grammar is case-sensitive named fragments plus literal text. Each literal run before a fragment,
+including a leading run or a run between fragments, belongs to the fragment immediately to its right:
+keep the run exactly when that fragment is nonempty, even if no earlier fragment was emitted; otherwise
+omit both. A trailing literal run belongs to the final template fragment and is kept only when that
+fragment is nonempty; an earlier present fragment does not retain an absent final fragment's suffix.
+Thus `{Level}, {Time}, {Source}` with hidden time yields `Info, app`, and `{Level} ({Time})` yields
+`Info` with hidden time or `Info (12:00:00.000)` with present time. A template consisting entirely of
+literal text is kept. `{{` emits `{` and `}}` emits `}` in literal text. Unknown fragment names and
+unbalanced single braces make the entire template fall back to the built-in English template.
+A translation should not put paired punctuation around a fragment that can be absent: `({Time}) {Level}`
+with hidden time yields `) Info`.
+Level labels use `Nvt.Console.List.Level.*`,
+repeat uses `Nvt.Console.List.Row.RepeatFormat`, and link counts use `Nvt.Console.List.Row.LinkOneFormat`
+or `Nvt.Console.List.Row.LinksFormat`. List text uses the host resource override and English fallback path;
+invalid name templates fall back to the built-in named template. Hidden time, a single occurrence and
+absent links omit their fragments. Selection and expansion are exposed by patterns rather than repeated
+in the name.
+
+The painting layout publishes plain bounded text and its truncation result. Collapsed rows use the
+painter's bounded first-line preview; expanded rows collect text from the existing paint scan under the
+clipboard text bound. A row that has never been laid out omits the message fragment and has no expand
+pattern until presentation. Rebinding to an equal row (same identifier, text version, length and source)
+keeps the published values. Rebinding to another row or toggling expansion drops them, and the peer
+reports the message-free name until the next layout publishes them again. Releasing the presenter drops
+them as well. Pointer hit testing returns no link while no values are published.
+Published link metadata supplies the link count. Peer property and pattern reads perform no retained
+content reads, so they take no content-owner lock, and never call a controller content reader or app adapter,
+capture a projection, wait, or declare a live region.
+Following can add rows frequently, so announcing each row would obscure deliberate navigation.
+Reads use the UI thread and only the published `Projection` and `ViewState`. The host passes the row's
+projection index when binding a presenter; position and set size use direct indexed reads. Recycled
+presenters update their peer input and notify only changed name, selection and expansion values.
+Position and set-size automation properties are initialized with the peer and updated on input changes
+only while that presenter has a peer. Release clears the metadata; ordinary realization and recycling
+without peers perform no automation property writes. Text notifications are sent after the painting
+measure publishes its text, within the presenter's measure pass.
+Detached views and disposed controllers produce neutral peer values. Lifecycle checks observe the
+controller's existing disposal flag with a volatile read, without entering its scheduling lock.
+
+Focus B uses the existing inset focus-ring margin so viewport-edge rings remain within the row.
+Layout uses Avalonia's render-scaling seam: row bounds follow layout rounding, while the focus stroke
+retains its DIP thickness. A fractional device-pixel stroke is antialiased; its outward raster envelope
+rounds up. The dense row's expand target covers the full reserved arrow column, including its centered
+glyph's side spaces: 24 DIP wide and 20 DIP high. The 20 DIP height is the row height approved with the
+K2b geometry. Existing interactive controls use `NfcControlHeight` (32 DIP), so this target is 12 DIP
+shorter. Its height is also below 24 DIP. Core has no written minimum for it, so this is an explicit
+recorded exception. Enter on the focused row and the row peer's expand pattern both change
+expansion (their selection/focus effects differ as described above), so no function depends on
+hitting the arrow. Raising the height to 24 DIP changes the row height of the whole console and needs its
+own approved row-geometry change.
+Headless peer tests do not establish native UIA/AT-SPI or Narrator/NVDA output.
 
 Reading-only state changes reuse layout inputs. Realized rows are configured on input/resource changes and
 first realization rather than each measure pass. Height rebuilding reads common geometry once. Row order is

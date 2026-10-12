@@ -31,6 +31,7 @@ internal sealed class ConsoleRowInteraction
         view.AddHandler(InputElement.KeyDownEvent, KeyDown, RoutingStrategies.Tunnel);
         view.GotFocus += GotFocus;
         view.Focusable = true;
+        KeyboardNavigation.SetTabNavigation(view, KeyboardNavigationMode.Once);
     }
 
     internal ConsoleLinkIndex Links(ConsoleRow row) => _view.Controller?.GetLinks(row)
@@ -39,14 +40,22 @@ internal sealed class ConsoleRowInteraction
     internal void Activate(ConsoleRow row, KeyModifiers modifiers, bool toggle, NavigationMethod method = NavigationMethod.Pointer)
         => _select.Execute(new(row, modifiers, toggle, method));
 
+    internal void Automate(ConsoleRow row, ConsoleSelectionAction selection, bool? expanded = null)
+        => _select.Execute(new(row, KeyModifiers.None, false, NavigationMethod.Directional, selection, expanded));
+
     private void Select(SelectionIntent? intent)
     {
         if (!CanInteract || intent is null || _view.Projection is not { } projection) return;
         var row = intent.Row;
         var origin = _focus?.Anchor ?? row.MemberSequences[0];
-        var state = _view.AttachmentSession!.CaptureReadingState();
+        var moveFocus = intent.Selection == ConsoleSelectionAction.Replace;
+        var state = intent.Selection == ConsoleSelectionAction.Preserve
+            ? _view.ViewState : _view.AttachmentSession!.CaptureReadingState();
         var selected = row.MemberSequences.ToImmutableHashSet();
-        if (intent.Modifiers.HasFlag(KeyModifiers.Shift))
+        if (intent.Selection == ConsoleSelectionAction.Preserve) selected = state.Selection;
+        else if (intent.Selection == ConsoleSelectionAction.Add) selected = state.Selection.Union(row.MemberSequences);
+        else if (intent.Selection == ConsoleSelectionAction.Remove) selected = state.Selection.Except(row.MemberSequences);
+        else if (intent.Modifiers.HasFlag(KeyModifiers.Shift))
         {
             var end = projection.Rows.IndexOf(row);
             var start = FindEntry(origin);
@@ -55,14 +64,17 @@ internal sealed class ConsoleRowInteraction
                 .SelectMany(item => item.MemberSequences).ToImmutableHashSet();
         }
         else if (intent.Modifiers.HasFlag(KeyModifiers.Control))
-            selected = row.MemberSequences.Any(state.Selection.Contains)
+            selected = ConsoleRowSelection.Contains(row, state)
                 ? state.Selection.Except(row.MemberSequences) : state.Selection.Union(row.MemberSequences);
-        _focus = new(row.MemberSequences[0], intent.Modifiers.HasFlag(KeyModifiers.Shift) ? origin : row.MemberSequences[0]);
+        if (moveFocus)
+            _focus = new(row.MemberSequences[0], intent.Modifiers.HasFlag(KeyModifiers.Shift) ? origin : row.MemberSequences[0]);
         var expanded = state.ExpandedIds;
         if (intent.Toggle)
             expanded = expanded.Contains(row.Id) ? expanded.Remove(row.Id) : expanded.Add(row.Id);
+        else if (intent.Expanded is { } requested)
+            expanded = requested ? expanded.Add(row.Id) : expanded.Remove(row.Id);
         _view.Request(state with { Selection = selected, ExpandedIds = expanded });
-        FocusRow(row, intent.Method);
+        if (moveFocus) FocusRow(row, intent.Method);
         foreach (var container in _host.Children.OfType<ConsoleRowPresenter>()) container.RefreshInteraction();
     }
 
@@ -84,7 +96,8 @@ internal sealed class ConsoleRowInteraction
 
     private void GotFocus(object? sender, RoutedEventArgs e)
     {
-        if (!ReferenceEquals(e.Source, _view)) return;
+        if (!ReferenceEquals(e.Source, _view)
+            || e is FocusChangedEventArgs { NavigationMethod: NavigationMethod.Pointer }) return;
         var presenter = _host.Children.OfType<ConsoleRowPresenter>()
             .FirstOrDefault(row => _focus is { } focus && row.Row?.MemberSequences.Contains(focus.Entry) == true)
             ?? _host.Children.OfType<ConsoleRowPresenter>().Where(row => row.Bounds.Bottom > 0).MinBy(row => row.Bounds.Y);
@@ -97,6 +110,17 @@ internal sealed class ConsoleRowInteraction
     private void HandleKey(KeyEventArgs? e)
     {
         if (!CanInteract || e is null) return;
+        if (e.Key == Key.Tab && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            var previous = TopLevel.GetTopLevel(_view)?.FocusManager?.FindNextElement(
+                NavigationDirection.Previous, new FindNextElementOptions { FocusedElement = _view });
+            if (previous is not null)
+            {
+                previous.Focus(NavigationMethod.Tab, e.KeyModifiers);
+                e.Handled = true;
+            }
+            return;
+        }
         var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         if (control && e.Key == Key.End) _view.JumpToLatest();
         else if (e.Key == Key.Escape)
@@ -202,5 +226,8 @@ internal sealed class ConsoleRowInteraction
         _focus = null;
     }
     private sealed record FocusPosition(long Entry, long Anchor);
-    private sealed record SelectionIntent(ConsoleRow Row, KeyModifiers Modifiers, bool Toggle, NavigationMethod Method);
+    private sealed record SelectionIntent(ConsoleRow Row, KeyModifiers Modifiers, bool Toggle, NavigationMethod Method,
+        ConsoleSelectionAction Selection = ConsoleSelectionAction.Replace, bool? Expanded = null);
 }
+
+internal enum ConsoleSelectionAction { Replace, Add, Remove, Preserve }

@@ -3,6 +3,7 @@
 using System.Collections;
 using System.Collections.Immutable;
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -36,6 +37,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     private int _measurePasses;
     private ImmutableArray<ConsoleRowId> _rowOrder;
     private Configuration? _configuration;
+    // UI thread only; realization changes are delivered once at the completed layout pass.
+    private bool _realizationChanged;
     internal int MeasurePasses => _measurePasses;
     private long _rowVisits;
     internal long RowVisits => _rowVisits;
@@ -50,7 +53,21 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     internal IReadOnlyDictionary<ConsoleRowId, HeightMeasurement> MeasuredHeights => _heights;
     internal RowSource ItemsSource { get; } = new();
 
-    public ConsoleItemsHost() { ClipToBounds = true; }
+    public ConsoleItemsHost()
+    {
+        ClipToBounds = true;
+        LayoutUpdated += RealizationLaidOut;
+    }
+
+    internal void NoteChildSetChanged() => _realizationChanged = true;
+
+    private void RealizationLaidOut(object? sender, EventArgs e)
+    {
+        if (!_realizationChanged) return;
+        _realizationChanged = false;
+        if (_view is { } view && ControlAutomationPeer.FromElement(view) is ConsoleListAutomationPeer peer)
+            peer.InvalidateRealizedChildren();
+    }
     public bool CanHorizontallyScroll { get; set; }
     public bool CanVerticallyScroll { get; set; }
     public bool IsLogicalScrollEnabled => true;
@@ -103,16 +120,21 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
             return;
         }
         _configuration = configuration;
-        if (!ReferenceEquals(ItemsSource.Projection, view.Projection)) _rowOrder = default;
+        if (!ReferenceEquals(ItemsSource.Projection, view.Projection))
+        {
+            _rowOrder = default;
+            _realizationChanged = true;
+        }
         ItemsSource.Projection = view.Projection;
         var retained = ItemsSource.Select(row => row.Id).ToHashSet();
         foreach (var id in _heights.Keys.Where(id => !retained.Contains(id)).ToArray()) _heights.Remove(id);
         foreach (var id in _realized.Keys.Where(id => !retained.Contains(id)).ToArray()) Recycle(id);
         // Rebind borrowed content before returning: the caller may immediately dispose the old leases.
-        foreach (var row in ItemsSource)
+        for (var index = 0; index < ItemsSource.Count; index++)
         {
+            var row = ItemsSource[index];
             _rowVisits++;
-            if (_realized.TryGetValue(row.Id, out var container)) container.Configure(row, view);
+            if (_realized.TryGetValue(row.Id, out var container)) container.Configure(row, view, index);
         }
         RebuildHeights();
         InvalidateMeasure();
@@ -193,7 +215,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
                     container = _pool.TryPop(out var recycled) ? recycled : new ConsoleRowPresenter();
                     _realized.Add(row.Id, container);
                     Children.Add(container);
-                    container.Configure(row, _view);
+                    _realizationChanged = true;
+                    container.Configure(row, _view, i);
                 }
                 container.Measure(new(width, double.PositiveInfinity));
                 if (_view.ViewState.ExpandedIds.Contains(row.Id)
@@ -245,8 +268,8 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         var wasAtEnd = AtEnd;
         var readingPosition = CaptureReadingPosition();
         _heights.Clear();
-        foreach (var container in _realized.Values)
-            if (container.Row is { } row) container.Configure(row, _view);
+        for (var index = 0; index < ItemsSource.Count; index++)
+            if (_realized.TryGetValue(ItemsSource[index].Id, out var container)) container.Configure(ItemsSource[index], _view, index);
         RebuildHeights();
         if (PreservesReadingPosition) RestoreReadingPosition(readingPosition);
         else if (wasAtEnd) ScrollToEnd();
@@ -336,6 +359,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     {
         VerifyAccess();
         ClearRealized();
+        _realizationChanged = false;
         _pool.Clear();
         _heights.Clear();
         _tops = [0];
@@ -358,6 +382,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     {
         var container = _realized[id];
         _realized.Remove(id);
+        _realizationChanged = true;
         var focused = container.IsKeyboardFocusWithin;
         Children.Remove(container);
         if (focused) _view?.Focus(NavigationMethod.Pointer);
