@@ -15,7 +15,7 @@ public sealed class ModuleDocumentationTests
     [Theory]
     [InlineData("LogConsole.md", "## Avalonia public API")]
     [InlineData("LogConsole.zh-TW.md", "## Avalonia 公開 API")]
-    public async Task AvaloniaApiTable_PublicTypes_MatchesCompiledSurfaceAsync(string name, string heading)
+    public async Task AvaloniaApiTable_PublicMembers_MatchesCompiledSurfaceAsync(string name, string heading)
     {
         var lines = await TestFiles.ReadLinesAsync(DocumentPath(name), TestContext.Current.CancellationToken);
         var types = typeof(ConsoleController).Assembly.GetExportedTypes()
@@ -130,6 +130,9 @@ public sealed class ModuleDocumentationTests
         public static readonly string ControllerProperty = nameof(Controller);
         public int Controller { get; set; }
         public void Refresh() => Controller++;
+        [CompilerGenerated]
+        public static void Generated() { }
+        public sealed class Part { }
     }
 
     private sealed class SampleList

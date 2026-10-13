@@ -86,7 +86,7 @@ public sealed class ConsoleLifecycleTests
 
         var current = SwitchPagesAndCheckCurrent(scene);
 
-        Assert.All(current, Assert.True);
+        Assert.All(current, check => Assert.Equal((true, true, true), check));
     }
 
     [AvaloniaFact]
@@ -101,6 +101,20 @@ public sealed class ConsoleLifecycleTests
 
         Assert.Equal(1, store.Store.ChangedSubscriberCount);
         Assert.Equal(0, scene.Controller.PendingOperationCount);
+    }
+
+    [AvaloniaFact]
+    public void Detach_ControllerReplacedWhileAttached_ReleasesNewController()
+    {
+        using var store = new ConsoleTestStore();
+        using var second = store.Controller();
+        using var scene = new ConsoleInteractionScene(store: store);
+        scene.View.Controller = second;
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        scene.Detach();
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
     }
 
     [AvaloniaFact]
@@ -130,16 +144,34 @@ public sealed class ConsoleLifecycleTests
     }
 
     [AvaloniaFact]
-    public void Dispose_DetachedController_KeepsSubscriptionReleased()
+    public void Dispose_DetachedController_IgnoresLaterPublish()
     {
         using var store = new ConsoleTestStore();
         using var scene = new ConsoleInteractionScene(composed: true, store: store);
         scene.Detach();
+        scene.Controller.Dispose();
+        scene.Controller.Dispose();
 
-        scene.Controller.Dispose();
-        scene.Controller.Dispose();
+        scene.Publish("https://example.test/after-dispose");
+        ConsoleInteractionWindow.Pump(scene.Window);
 
         Assert.Equal(0, store.Store.ChangedSubscriberCount);
+        Assert.Equal(0, scene.Controller.PendingOperationCount);
+        Assert.False(scene.Controller.ClearCommand.CanExecute(null));
+    }
+
+    [AvaloniaFact]
+    public void Attach_StoreDisposedWhileDetached_LeavesControllerDetached()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(composed: true, store: store);
+        scene.Detach();
+        store.Store.Dispose();
+
+        scene.Attach();
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
+        Assert.Equal(0, scene.Controller.PendingOperationCount);
     }
 
     [AvaloniaFact]
@@ -361,20 +393,20 @@ public sealed class ConsoleLifecycleTests
         return observations;
     }
 
-    private static bool[] SwitchPagesAndCheckCurrent(ConsoleInteractionScene scene)
+    private static (bool SameProjection, bool Advanced, bool ItemsMatch)[] SwitchPagesAndCheckCurrent(ConsoleInteractionScene scene)
     {
-        var current = new bool[20];
+        var current = new (bool, bool, bool)[20];
         var lastSequence = scene.Controller.Projection.LastSequence;
         for (var index = 0; index < current.Length; index++)
         {
             scene.Controller.SetSearchText(index % 2 == 0 ? "example" : "");
             scene.Detach();
-            scene.Publish("https://example.test/new");
+            scene.Publish($"https://example.test/new/{index}");
             scene.Attach();
             var projection = scene.Controller.Projection;
-            current[index] = ReferenceEquals(projection, scene.View.Projection)
-                && projection.LastSequence > lastSequence
-                && scene.View.ItemsHost!.ItemsSource.Count == projection.RowCount;
+            current[index] = (ReferenceEquals(projection, scene.View.Projection),
+                projection.LastSequence > lastSequence,
+                scene.View.ItemsHost!.ItemsSource.Count == projection.RowCount);
             lastSequence = projection.LastSequence;
         }
         return current;
