@@ -51,9 +51,9 @@ public sealed class ConsoleViewInteractionTests
         finally { window.Close(); }
     }
 
-    /// <summary>Narrow controls route keyboard search, Only matches, Display dedupe, and More clear.</summary>
+    /// <summary>Compact controls route keyboard search, Only matches, Display dedupe, and More clear.</summary>
     [AvaloniaFact]
-    public void NarrowSearchOnlyMatchesDisplayDedupeAndMoreClearUseVisibleControls()
+    public void CompactSearchOnlyMatchesDisplayDedupeAndMoreClearUseVisibleControls()
     {
         using var fixture = new ConsoleTestStore();
         fixture.Store.Add(LogLevel.Info, "app", "needle");
@@ -69,7 +69,6 @@ public sealed class ConsoleViewInteractionTests
         {
             var search = toolbar.FindControl<TextBox>("SearchBox")!;
             Assert.True(search.IsEffectivelyVisible);
-            Assert.False(header.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
             Assert.Equal("Search console", ControlAutomationPeer.CreatePeerForElement(search)!.GetName());
             Assert.True(search.Focus());
             window.KeyTextInput("needle");
@@ -109,7 +108,7 @@ public sealed class ConsoleViewInteractionTests
         finally { window.Close(); }
     }
 
-    /// <summary>Every level and wide toggle exposes the same name and checked state that its click changes.</summary>
+    /// <summary>Every level toggle and the toolbar and menu toggles expose the same name and checked state that a click changes.</summary>
     [AvaloniaTheory]
     [InlineData(LogLevel.Trace)]
     [InlineData(LogLevel.Debug)]
@@ -126,9 +125,10 @@ public sealed class ConsoleViewInteractionTests
         var surface = ConsoleTestView.Surface(controller);
         var header = (ConsoleHeader)surface.Children[0];
         var toolbar = (ConsoleToolbar)surface.Children[1];
-        var window = ConsoleTestView.Create(surface);
+        var window = ConsoleTestView.Create(surface, height: 400);
         try
         {
+            ConsoleTestView.OpenLevels(window, toolbar);
             var button = toolbar.FindControl<ToggleButton>("Level" + level)!;
             var name = level + " · 1";
             Assert.Equal(name, ToolTip.GetTip(button));
@@ -139,14 +139,16 @@ public sealed class ConsoleViewInteractionTests
             ConsoleTestView.Click(window, button);
             AssertToggle(button, name, true);
             Assert.Contains(level, controller.Filter.EnabledLevels);
-            var matches = header.FindControl<ToggleButton>("OnlyMatches")!;
+            var matches = toolbar.FindControl<ToggleButton>("OnlyMatches")!;
             AssertToggle(matches, "Only matches", true);
             ConsoleTestView.Click(window, matches);
             AssertToggle(matches, "Only matches", false);
-            var dedupe = toolbar.FindControl<ToggleButton>("Dedupe")!;
-            AssertToggle(dedupe, "Dedupe", false);
-            ConsoleTestView.Click(window, dedupe);
-            AssertToggle(dedupe, "Dedupe", true);
+            var display = OpenMenu(window, header.FindControl<Button>("Display")!);
+            var dedupe = display.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "Dedupe");
+            Assert.False(dedupe.IsChecked);
+            ConsoleTestView.ClickMenu(window, dedupe);
+            Assert.True(controller.Filter.Deduplicate);
+            display.Hide();
         }
         finally { window.Close(); }
     }

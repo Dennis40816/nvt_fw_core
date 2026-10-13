@@ -2,7 +2,7 @@
 
 # Icons
 
-Icons 提供 68 個具名 Material Symbols 字形與選用的 TextBlock 樣式。
+Icons 提供 72 個具名 Material Symbols 字形與選用的 TextBlock 樣式。
 應用程式可共用圖示名稱，不必複製碼位或圖示樣式。
 命名空間為 `Nvt.Core.Avalonia.Icons`，位於 `Nvt.Core.Avalonia`。
 
@@ -94,7 +94,9 @@ icon.Classes.Add("nvtIcon");
 | `AreaChart` | U+E770 | 區域圖 |
 | `ArrowDownward` | U+E5DB | 向下移動 |
 | `Block` | U+F08C | 封鎖動作 |
+| `BugReport` | U+E868 | 除錯問題 |
 | `CallSplit` | U+E0B6 | 分割路徑 |
+| `Cancel` | U+E5C9 | 取消或嚴重錯誤狀態 |
 | `Check` | U+E668 | 確認或完成 |
 | `ChevronLeft` | U+E5CB | 向左導覽 |
 | `ChevronRight` | U+E5CC | 向右導覽 |
@@ -103,6 +105,7 @@ icon.Classes.Add("nvtIcon");
 | `ContentCopy` | U+E14D | 複製內容 |
 | `ContentPaste` | U+E14F | 貼上內容 |
 | `ContentPasteOff` | U+E4F8 | 停用貼上 |
+| `CopyAll` | U+E2EC | 複製全部項目 |
 | `CropSquare` | U+E3C6 | 單一視窗外框 |
 | `DataObject` | U+EAD3 | 結構化資料 |
 | `Delete` | U+E92E | 刪除項目 |
@@ -128,6 +131,7 @@ icon.Classes.Add("nvtIcon");
 | `Menu` | U+E5D2 | 開啟導覽 |
 | `Merge` | U+EB98 | 合併路徑 |
 | `Minimize` | U+E931 | 最小化範圍 |
+| `MoreHoriz` | U+E5D3 | 橫向更多細節 |
 | `MoreVert` | U+E5D4 | 更多動作 |
 | `NotificationsOff` | U+E7F6 | 靜音通知 |
 | `OpenInNew` | U+E89E | 在另一個視窗開啟 |

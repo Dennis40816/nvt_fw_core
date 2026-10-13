@@ -94,7 +94,7 @@ internal sealed class ConsoleInteractionScene : IDisposable
         if (composed)
         {
             Header = new() { Controller = Controller };
-            Toolbar = new() { Controller = Controller };
+            Toolbar = new() { Controller = Controller, List = View };
             EmptyState = new() { Controller = Controller };
             var grid = new Grid { RowDefinitions = new("Auto,Auto,*") };
             grid.Children.Add(Header);

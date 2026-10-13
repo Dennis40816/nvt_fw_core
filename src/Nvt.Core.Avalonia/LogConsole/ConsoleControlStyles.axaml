@@ -33,38 +33,48 @@
     <Setter Property="FontSize" Value="{DynamicResource Nvt.Font.Heading.Size}"/>
     <Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.Heading.Weight}"/>
   </Style>
-  <Style Selector="ToggleButton.consoleLevel">
-    <Setter Property="Width" Value="{DynamicResource NfcControlHeight}"/>
-    <Setter Property="Padding" Value="0"/>
-    <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Grid Background="Transparent">
-          <Border x:Name="LevelFeedback" Background="{DynamicResource NfcSelectionSurfaceBrush}" Opacity="0"
-                  CornerRadius="{TemplateBinding CornerRadius}"/>
-          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-          <Border x:Name="LevelFocus" IsVisible="False" IsHitTestVisible="False"
-                  BorderBrush="{DynamicResource Nvt.Focus.RingBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
-                  CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"><Border.Margin><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Focus"><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Border.Margin></Border>
-        </Grid>
-      </ControlTemplate>
-    </Setter>
-  </Style>
-  <Style Selector="ToggleButton.consoleLevel:checked, ToggleButton.consoleLevel:pointerover, ToggleButton.consoleLevel:pressed">
-    <Setter Property="Background" Value="Transparent"/>
-  </Style>
-  <Style Selector="ToggleButton.consoleLevel TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/></Style>
+  <!-- The level row items: an icon in the level colour while shown, plus the name and the count. -->
+  <Style Selector="ToggleButton.consoleLevelItem"><Setter Property="Padding"><MultiBinding Converter="{StaticResource ConsoleLayout}"><DynamicResource ResourceKey="NfcSpace8"/></MultiBinding></Setter></Style>
+  <Style Selector="ToggleButton.consoleLevelItem TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/></Style>
   <Style Selector="ToggleButton.consoleTrace:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcTextMutedBrush}"/></Style>
   <Style Selector="ToggleButton.consoleDebug:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/></Style>
   <Style Selector="ToggleButton.consoleInfo:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcInfoTextBrush}"/></Style>
   <Style Selector="ToggleButton.consoleWarn:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcWarningTextBrush}"/></Style>
   <Style Selector="ToggleButton.consoleError:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/></Style>
   <Style Selector="ToggleButton.consoleFatal:checked TextBlock.nvtIcon"><Setter Property="Foreground" Value="{DynamicResource NfcDangerTextStrongBrush}"/></Style>
-  <Style Selector="ToggleButton.consoleLevel:pointerover /template/ Border#LevelFeedback"><Setter Property="Opacity" Value="1"/></Style>
-  <Style Selector="ToggleButton.consoleLevel:pressed /template/ Border#LevelFeedback">
-    <Setter Property="Opacity" Value="1"/><Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+  <Style Selector="ToggleButton.consoleLevelItem TextBlock.consoleLevelCount"><Setter Property="Foreground" Value="{DynamicResource NfcTextMutedBrush}"/></Style>
+  <!-- Buttons inside the search field are smaller than the field, so their hover fill stays inside its border. -->
+  <Style Selector="Button.consoleFieldAction, ToggleButton.consoleFieldAction">
+    <Setter Property="Width"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Inset"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Setter>
+    <Setter Property="MinWidth"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Inset"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Setter>
+    <Setter Property="Height"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Inset"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Setter>
+    <Setter Property="MinHeight"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Inset"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Setter>
   </Style>
-  <Style Selector="ToggleButton.consoleLevel:focus-visible /template/ Border#LevelFocus"><Setter Property="IsVisible" Value="True"/></Style>
+  <!-- Only matches: the funnel shape carries the state (funnel = on, slashed funnel = off), so no filled disc or ring. -->
+  <Style Selector="ToggleButton.consoleSearchFlag:not(:checked):not(:pointerover):not(:pressed):not(:disabled)">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextMutedBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.consoleSearchFlag:checked:not(:disabled)">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.consoleSearchFlag:checked:not(:disabled):pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.consoleSearchFlag:checked:not(:disabled):pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+  <!-- A disabled console action stays a plain dimmed glyph; the shared disabled fill and ring would read as a different button. -->
+  <Style Selector="Button.consoleAction.actionGhost:disabled">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+  </Style>
+  <Style Selector="TextBlock.consoleHint"><Setter Property="Foreground" Value="{DynamicResource NfcDangerTextBrush}"/></Style>
   <Style Selector="ToggleButton.toggleSoft.consoleToggle:checked"><Setter Property="FontWeight" Value="{DynamicResource Nvt.Font.BodyStrong.Weight}"/></Style>
   <Style Selector="ToggleButton.toggleSoft.consoleToggle /template/ ContentPresenter">
     <Setter Property="TextTrimming" Value="None"/>
@@ -85,7 +95,7 @@
     <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
     <Setter Property="MinWidth" Value="0"/>
-    <Setter Property="Padding"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Search"><DynamicResource ResourceKey="NfcSpace12"/><DynamicResource ResourceKey="NfcSpace4"/><DynamicResource ResourceKey="NfcControlHeight"/></MultiBinding></Setter>
+    <Setter Property="Padding"><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="Search"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Setter>
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
     <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Focus.RingThickness}"/>

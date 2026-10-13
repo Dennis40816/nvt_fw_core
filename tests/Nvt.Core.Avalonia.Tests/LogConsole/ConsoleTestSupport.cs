@@ -131,6 +131,9 @@ internal static class ConsoleTestView
         root.MouseUp(center, MouseButton.Left);
         Pump(window);
     }
+    // Clicks the level label, which opens the row and pins it (a second click closes it).
+    internal static void OpenLevels(Window window, ConsoleToolbar toolbar)
+        => Click(window, toolbar.FindControl<Button>("LevelsLabel")!);
     internal static StackPanel Surface(ConsoleController controller) => new()
     {
         Children = { new ConsoleHeader { Controller = controller }, new ConsoleToolbar { Controller = controller }, new ConsoleEmptyState { Controller = controller } },

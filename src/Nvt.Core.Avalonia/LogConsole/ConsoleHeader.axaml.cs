@@ -6,7 +6,7 @@ using Avalonia.Controls;
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
-/// <summary>The 48 DIP title and app-action row.</summary>
+/// <summary>The 40 DIP title and app-action row.</summary>
 public sealed partial class ConsoleHeader : UserControl
 {
     /// <summary>Defines the controller supplying this view's state and intents.</summary>
@@ -35,31 +35,5 @@ public sealed partial class ConsoleHeader : UserControl
     {
         InitializeComponent();
         _ = new ConsoleControllerAttachment(this, ControllerProperty);
-        this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
-        SizeChanged += (_, _) => ApplyLayout();
-        ApplyLayout();
-    }
-    private void SearchChanged(object? sender, TextChangedEventArgs args)
-    {
-        if (sender is TextBox search && Controller is { } controller && controller.IsActive
-            && search.Text != controller.Filter.SearchText)
-            controller.SetSearchText(search.Text);
-    }
-    /// <inheritdoc />
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == ConsoleDimensions.NarrowBreakpointProperty) ApplyLayout();
-        if (change.Property == ControllerProperty && this.FindControl<Button>("ClearSearch") is { } button)
-            button.Command = new ConsoleClearSearchCommand(Controller);
-    }
-    private void ApplyLayout()
-    {
-        // Resource bindings can publish while InitializeComponent is still populating names.
-        if (WideSearch is null || WideActions is null || NarrowActions is null) return;
-        var narrow = Bounds.Width <= ConsoleDimensions.GetNarrowBreakpoint(this);
-        this.FindControl<Grid>("WideSearch")!.IsVisible = !narrow;
-        this.FindControl<StackPanel>("WideActions")!.IsVisible = !narrow;
-        this.FindControl<StackPanel>("NarrowActions")!.IsVisible = narrow;
     }
 }

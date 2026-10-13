@@ -2,19 +2,20 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
   <sys:Double x:Key="Nvt.Console.MinimumWidth">640</sys:Double>
-  <sys:Double x:Key="Nvt.Console.NarrowBreakpoint">960</sys:Double>
+  <sys:Double x:Key="Nvt.Console.NarrowBreakpoint">700</sys:Double>
+  <sys:Double x:Key="Nvt.Console.WideBreakpoint">1180</sys:Double>
+  <sys:Double x:Key="Nvt.Console.ZoomValueWidth">48</sys:Double>
   <sys:String x:Key="Nvt.Console.Title" xml:space="preserve">Console</sys:String>
   <sys:String x:Key="Nvt.Console.Search.Placeholder" xml:space="preserve">Search messages, sources or paths</sys:String>
   <sys:String x:Key="Nvt.Console.Search.Name" xml:space="preserve">Search console</sys:String>
   <sys:String x:Key="Nvt.Console.Search.Clear" xml:space="preserve">Clear search</sys:String>
   <sys:String x:Key="Nvt.Console.OnlyMatches" xml:space="preserve">Only matches</sys:String>
-  <sys:String x:Key="Nvt.Console.Export" xml:space="preserve">Export</sys:String>
-  <sys:String x:Key="Nvt.Console.Export.Name" xml:space="preserve">Export console</sys:String>
+  <sys:String x:Key="Nvt.Console.OnlyMatches.On" xml:space="preserve">Only matches: on</sys:String>
+  <sys:String x:Key="Nvt.Console.OnlyMatches.Off" xml:space="preserve">Only matches: off</sys:String>
   <sys:String x:Key="Nvt.Console.Display" xml:space="preserve">Display</sys:String>
   <sys:String x:Key="Nvt.Console.Display.Name" xml:space="preserve">Display console</sys:String>
   <sys:String x:Key="Nvt.Console.More" xml:space="preserve">More</sys:String>
   <sys:String x:Key="Nvt.Console.More.Name" xml:space="preserve">More console actions</sys:String>
-  <sys:String x:Key="Nvt.Console.Time.Name" xml:space="preserve">Time display</sys:String>
   <sys:String x:Key="Nvt.Console.Time.Absolute" xml:space="preserve">Absolute time</sys:String>
   <sys:String x:Key="Nvt.Console.Time.Relative" xml:space="preserve">Relative time</sys:String>
   <sys:String x:Key="Nvt.Console.Time.Hidden" xml:space="preserve">Hidden time</sys:String>
@@ -40,6 +41,21 @@
   <sys:String x:Key="Nvt.Console.Filter.Dedupe" xml:space="preserve">; dedupe</sys:String>
   <sys:String x:Key="Nvt.Console.Filter.Separator" xml:space="preserve">, </sys:String>
   <sys:String x:Key="Nvt.Console.Filter.Summary" xml:space="preserve">{0}; {1}{2}{3}</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.All" xml:space="preserve">All levels</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.AndAbove" xml:space="preserve">{0} and above</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.FatalOnly" xml:space="preserve">Fatal only</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.Some" xml:space="preserve">{0} of {1} levels</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.None" xml:space="preserve">No levels</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.Name" xml:space="preserve">Levels: {0}</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.NameHidden" xml:space="preserve">Levels: {0}, hidden error entries: {1}</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.ErrorsHidden" xml:space="preserve">Hidden error entries: {0}</sys:String>
+  <sys:String x:Key="Nvt.Console.Levels.Group" xml:space="preserve">Level filters</sys:String>
+  <sys:String x:Key="Nvt.Console.Zoom.Value" xml:space="preserve">{0:P0}</sys:String>
+  <sys:String x:Key="Nvt.Console.Zoom.Name" xml:space="preserve">Zoom {0:P0}</sys:String>
+  <sys:String x:Key="Nvt.Console.Zoom.Out" xml:space="preserve">Zoom out</sys:String>
+  <sys:String x:Key="Nvt.Console.Zoom.In" xml:space="preserve">Zoom in</sys:String>
+  <sys:String x:Key="Nvt.Console.Zoom.Reset" xml:space="preserve">Reset zoom to 100 percent</sys:String>
+  <sys:String x:Key="Nvt.Console.Jump" xml:space="preserve">Jump to latest</sys:String>
   <sys:String x:Key="Nvt.Console.Level.Trace" xml:space="preserve">Trace</sys:String>
   <sys:String x:Key="Nvt.Console.Level.Debug" xml:space="preserve">Debug</sys:String>
   <sys:String x:Key="Nvt.Console.Level.Info" xml:space="preserve">Info</sys:String>

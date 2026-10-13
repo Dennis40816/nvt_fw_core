@@ -15,35 +15,39 @@ namespace Nvt.Core.Avalonia.Tests.LogConsole;
 /// <summary>Checks host resources and active input routing through real controls.</summary>
 public sealed class ConsoleResourceTests
 {
-    /// <summary>One resource change moves both search rows together without duplication.</summary>
+    /// <summary>One resource change moves the compact tier, and one more moves the wide tier of an open row.</summary>
     [AvaloniaFact]
-    public void LayoutHostChangesBreakpointMovesBothSearchRowsTogether()
+    public void LayoutHostChangesBreakpointsMovesCompactAndWideTiers()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
-        var header = (ConsoleHeader)surface.Children[0];
         var toolbar = (ConsoleToolbar)surface.Children[1];
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
-            Assert.True(header.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
-            Assert.False(toolbar.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
+            Assert.False(toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
             window.Resources["Nvt.Console.NarrowBreakpoint"] = 1300d;
             ConsoleTestView.Pump(window);
-            Assert.False(header.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
-            Assert.True(toolbar.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
+            Assert.True(toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
             window.Resources["Nvt.Console.NarrowBreakpoint"] = 1000d;
             ConsoleTestView.Pump(window);
-            Assert.True(header.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
-            Assert.False(toolbar.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
+            Assert.False(toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
+            ConsoleTestView.OpenLevels(window, toolbar);
+            Assert.True(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
+            window.Resources["Nvt.Console.WideBreakpoint"] = 1300d;
+            ConsoleTestView.Pump(window);
+            Assert.False(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
+            window.Resources["Nvt.Console.WideBreakpoint"] = 1000d;
+            ConsoleTestView.Pump(window);
+            Assert.True(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
         }
         finally { window.Close(); }
     }
 
-    /// <summary>Host strings replace both responsive rows and empty surface copy.</summary>
+    /// <summary>Host strings replace the toolbar and empty surface copy.</summary>
     [AvaloniaFact]
-    public void ResourcesHostOverridesKeysUpdatesHeaderToolbarAndEmptyState()
+    public void ResourcesHostOverridesKeysUpdatesToolbarAndEmptyState()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -58,17 +62,19 @@ public sealed class ConsoleResourceTests
             window.Resources["Nvt.Console.Empty.NoEvents"] = "尚無事件";
             window.Resources["Nvt.Console.Level.Info"] = "資訊";
             window.Resources["Nvt.Console.Sources.All"] = "所有來源";
+            window.Resources["Nvt.Console.Levels.All"] = "所有層級";
             ConsoleTestView.Pump(window);
-            Assert.Equal("只顯示符合項目", ((TextBlock)header.FindControl<ToggleButton>("OnlyMatches")!.Content!).Text);
-            Assert.Equal("只顯示符合項目", ((TextBlock)toolbar.FindControl<ToggleButton>("OnlyMatches")!.Content!).Text);
+            Assert.Equal("只顯示符合項目", AutomationProperties.GetName(toolbar.FindControl<ToggleButton>("OnlyMatches")!));
             Assert.Equal("尚無事件", empty.FindControl<TextBlock>("EmptyMessage")!.Text);
             Assert.Equal("資訊 · 0", AutomationProperties.GetName(toolbar.FindControl<ToggleButton>("LevelInfo")!));
             Assert.Equal("所有來源", toolbar.FindControl<TextBlock>("SourceLabel")!.Text);
+            Assert.Equal("所有層級", toolbar.FindControl<TextBlock>("LevelsText")!.Text);
+            Assert.Equal("Levels: 所有層級", AutomationProperties.GetName(toolbar.FindControl<ConsoleLevelLabel>("LevelsLabel")!));
         }
         finally { window.Close(); }
     }
 
-    /// <summary>A height token change resizes both outer rows including the narrow second row.</summary>
+    /// <summary>A height token change resizes both outer rows.</summary>
     [AvaloniaFact]
     public void LayoutControlHeightChangesResizesHeaderAndToolbar()
     {
@@ -80,13 +86,15 @@ public sealed class ConsoleResourceTests
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
+            Assert.Equal(40, header.Bounds.Height);
+            Assert.Equal(40, toolbar.Bounds.Height);
             window.Resources["NfcControlHeight"] = 40d;
             ConsoleTestView.Pump(window);
-            Assert.Equal(56, header.Bounds.Height);
-            Assert.Equal(56, toolbar.Bounds.Height);
+            Assert.Equal(48, header.Bounds.Height);
+            Assert.Equal(48, toolbar.Bounds.Height);
             window.Width = 640;
             ConsoleTestView.Pump(window);
-            Assert.Equal(104, toolbar.Bounds.Height);
+            Assert.Equal(48, toolbar.Bounds.Height);
         }
         finally { window.Close(); }
     }
@@ -96,7 +104,7 @@ public sealed class ConsoleResourceTests
     [InlineData(ConsoleTimeMode.Absolute, "Absolute time")]
     [InlineData(ConsoleTimeMode.Relative, "Relative time")]
     [InlineData(ConsoleTimeMode.Hidden, "Hidden time")]
-    public void TimeButtonSelectedModeShowsResourceLabel(ConsoleTimeMode mode, string expected)
+    public void DisplayMenuSelectedModeShowsResourceLabel(ConsoleTimeMode mode, string expected)
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -107,8 +115,14 @@ public sealed class ConsoleResourceTests
         {
             controller.SetTimeModeCommand.Execute(mode);
             ConsoleTestView.Pump(window);
-            Assert.Equal(expected, header.FindControl<TextBlock>("TimeLabel")!.Text);
-            Assert.NotEqual(mode.ToString(), header.FindControl<TextBlock>("TimeLabel")!.Text);
+            var display = header.FindControl<Button>("Display")!;
+            var menu = Assert.IsType<MenuFlyout>(display.Flyout);
+            menu.ShowAt(display);
+            ConsoleTestView.Pump(window);
+            var selected = menu.Items.OfType<MenuItem>().Take(3).Single(item => item.IsChecked);
+            Assert.Equal(expected, selected.Header);
+            Assert.NotEqual(mode.ToString(), selected.Header);
+            menu.Hide();
         }
         finally { window.Close(); }
     }
@@ -153,9 +167,9 @@ public sealed class ConsoleResourceTests
 
     /// <summary>Typing into a still attached view after disposal never invokes the controller.</summary>
     [AvaloniaTheory]
-    [InlineData(1200, 0)]
-    [InlineData(640, 1)]
-    public void SearchTextControllerDisposedIgnoresInputAndDisablesClear(int width, int row)
+    [InlineData(1200)]
+    [InlineData(640)]
+    public void SearchTextControllerDisposedIgnoresInputAndDisablesClear(int width)
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -163,7 +177,7 @@ public sealed class ConsoleResourceTests
         var window = ConsoleTestView.Create(surface, width: width, height: 300);
         try
         {
-            var view = (UserControl)surface.Children[row];
+            var view = (UserControl)surface.Children[1];
             var search = view.FindControl<TextBox>("SearchBox")!;
             var clear = view.FindControl<Button>("ClearSearch")!;
             Assert.True(clear.IsEffectivelyEnabled);

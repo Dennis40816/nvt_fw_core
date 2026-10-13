@@ -22,6 +22,8 @@ public sealed class ConsoleTemplateTests
     [InlineData("Count", "Info", "{99}", "Info · 1")]
     [InlineData("Dedupe.Count", "Dedupe", "{", "Dedupe ×0")]
     [InlineData("Dedupe.Count", "Dedupe", "{99}", "Dedupe ×0")]
+    [InlineData("Zoom.Value", "Zoom", "{", "100%")]
+    [InlineData("Zoom.Value", "Zoom", "{99}", "100%")]
     [InlineData("Sources.Selected", "Sources", "{", "Sources (1)")]
     [InlineData("Sources.Selected", "Sources", "{99}", "Sources (1)")]
     [InlineData("Empty.NoMatches", "Empty", "{", Summary)]
@@ -46,6 +48,31 @@ public sealed class ConsoleTemplateTests
             window.Resources["Nvt.Console." + key] = template;
             ConsoleTestView.Pump(window);
             Assert.Equal(expected, ReadLabel(surface, label));
+            Assert.Empty(log.Errors);
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>Malformed level summary templates keep the built-in text on the label and in its accessible name.</summary>
+    [AvaloniaTheory]
+    [InlineData("Levels.AndAbove", "{", LogLevel.Trace, "Debug and above")]
+    [InlineData("Levels.AndAbove", "{99}", LogLevel.Trace, "Debug and above")]
+    [InlineData("Levels.Some", "{", LogLevel.Debug, "5 of 6 levels")]
+    [InlineData("Levels.Some", "{99}", LogLevel.Debug, "5 of 6 levels")]
+    public void LevelsMalformedSummaryTemplateShowsBuiltInDefault(string key, string template, LogLevel hidden, string expected)
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        controller.ToggleLevelCommand.Execute(hidden);
+        var toolbar = new ConsoleToolbar { Controller = controller };
+        var window = ConsoleTestView.Create(toolbar, height: 40);
+        try
+        {
+            using var log = new ConsoleBindingLogScope();
+            window.Resources["Nvt.Console." + key] = template;
+            ConsoleTestView.Pump(window);
+            Assert.Equal(expected, toolbar.FindControl<TextBlock>("LevelsText")!.Text);
+            Assert.Equal("Levels: " + expected, AutomationProperties.GetName(toolbar.FindControl<ConsoleLevelLabel>("LevelsLabel")!));
             Assert.Empty(log.Errors);
         }
         finally { window.Close(); }
@@ -97,13 +124,26 @@ public sealed class ConsoleTemplateTests
         finally { window.Close(); }
     }
 
+    private static string? ReadDedupe(ConsoleHeader header)
+    {
+        var display = header.FindControl<Button>("Display")!;
+        var menu = Assert.IsType<MenuFlyout>(display.Flyout);
+        menu.ShowAt(display);
+        ConsoleTestView.Pump();
+        var text = menu.Items.OfType<MenuItem>().Last().Header as string;
+        menu.Hide();
+        return text;
+    }
+
     private static string? ReadLabel(StackPanel surface, string label)
     {
         var toolbar = (ConsoleToolbar)surface.Children[1];
         return label switch
         {
             "Info" => AutomationProperties.GetName(toolbar.FindControl<ToggleButton>("LevelInfo")!),
-            "Dedupe" => ((TextBlock)toolbar.FindControl<ToggleButton>("Dedupe")!.Content!).Text,
+            "Dedupe" => ReadDedupe((ConsoleHeader)surface.Children[0]),
+            "Levels" => toolbar.FindControl<TextBlock>("LevelsText")!.Text,
+            "Zoom" => toolbar.FindControl<TextBlock>("ZoomText")!.Text,
             "Sources" => toolbar.FindControl<TextBlock>("SourceLabel")!.Text,
             "Empty" => ((ConsoleEmptyState)surface.Children[2]).FindControl<TextBlock>("EmptyMessage")!.Text,
             _ => throw new ArgumentOutOfRangeException(nameof(label)),

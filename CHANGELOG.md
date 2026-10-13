@@ -6,6 +6,29 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Changed
+
+- Console toolbar rework (owner direction C of #226). The toolbar has four regions: level filter, search, actions and zoom. The level filter shows one text label such as `All levels` or `Debug and above`.
+  Hovering the label for 300 ms opens the six level toggles to the right on the same row. A click pins the row open. Escape, a second click, a press outside or focus leaving closes a pinned row. A hover-opened row also closes 500 ms after the pointer leaves the toolbar. Touch never opens it by hover.
+  One visibility rule decides every part: it shows when the width tier allows it and the host did not hide it. The toolbar uses three width tiers: below 700 DIP (compact), 700 to 1179 DIP and from 1180 DIP (wide).
+  While the row is open below 1180 DIP, the search field and the action buttons hide. A hint shows the count of hidden Error and Fatal entries, only when such entries exist.
+  The search field keeps the Only matches button inside it. On is a funnel, off is a funnel with a slash, and neither draws a filled disc. Its tooltip reads `Only matches: on` or `Only matches: off`.
+  A disabled console action no longer draws the shared disabled fill and ring.
+- Console header and toolbar rows are 40 DIP high. The header has the title, a `Display` menu (time format and dedupe) and a `More` menu (copy selected, copy visible, save log, include time and level, clear).
+  The Time and Export buttons of the header are gone.
+- The level toggles use the standard focus ring.
+
+### Added
+
+- `ConsoleToolbar.List` and `ConsoleToolbar.CopyVisibleCommand` (public API, with their styled properties). The zoom out, zoom value, zoom in and jump to latest buttons are disabled until `List` is set. `NvtIcons.CopyAll` is a new icon (72 icons in total).
+- Resource keys: `Nvt.Console.WideBreakpoint`, `Nvt.Console.ZoomValueWidth`, `Nvt.Console.Levels.All`, `Levels.AndAbove`, `Levels.FatalOnly`, `Levels.Some`, `Levels.None`, `Levels.Name`, `Levels.NameHidden`, `Levels.ErrorsHidden`,
+  `Levels.Group`, `Zoom.Value`, `Zoom.Name`, `Zoom.Out`, `Zoom.In`, `Zoom.Reset`, `Jump`, `OnlyMatches.On` and `OnlyMatches.Off`.
+
+### Breaking changes
+
+- `Nvt.Console.NarrowBreakpoint` changes from 960 to 700. A host that overrides it keeps its own value.
+- The resource keys `Nvt.Console.Export`, `Nvt.Console.Export.Name` and `Nvt.Console.Time.Name` are removed. The header no longer has a Time button or an Export button.
+
 ## 0.9.2 - 2026-10-13
 
 Tag `core-v0.9.2` on commit `12bb7f6375e154f530caa4bdaf816707ea9839d3` (#227).

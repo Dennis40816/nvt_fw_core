@@ -1,31 +1,54 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.ComponentModel;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Media;
-using Nvt.Core.LogConsole;
+using Avalonia.Interactivity;
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
-/// <summary>The responsive event-scope filter row.</summary>
+/// <summary>The 40 DIP filter and action row.</summary>
 public sealed partial class ConsoleToolbar : UserControl
 {
     // UI-thread-only subscription; exists only while attached.
     private TopLevel? _iconHost;
+    private readonly ConsoleLevelRowModel _levelRow;
+    // Runs the open and close delays; the dispatcher in production, a manual clock in tests.
+    private Func<TimeSpan, Action, IDisposable> _schedule = ConsoleLevelRowModel.Run;
+    // The parts the host has not closed. Every part is shown today; the width rule below is the only input that hides one.
+    private readonly ConsoleToolbarParts _hostParts = ConsoleToolbarParts.All;
+    // True while any mouse button is down anywhere in the window, so a drag or a selection never opens the row.
+    private bool _buttonDown;
+    // True when the press that started was outside the level row while the row was open. The row closes after the release.
+    private bool _outsidePress;
+    // False while InitializeComponent is still populating names; resource bindings can publish before that ends.
+    private bool _ready;
+
     /// <summary>Defines the controller supplying this view's state and intents.</summary>
     public static readonly StyledProperty<ConsoleController?> ControllerProperty = AvaloniaProperty.Register<ConsoleToolbar, ConsoleController?>(nameof(Controller));
     /// <summary>Gets or sets the controller. The host owns its lifetime.</summary>
     public ConsoleController? Controller { get => GetValue(ControllerProperty); set => SetValue(ControllerProperty, value); }
+    /// <summary>Defines the app command to copy all filtered rows.</summary>
+    public static readonly StyledProperty<ICommand?> CopyVisibleCommandProperty = AvaloniaProperty.Register<ConsoleToolbar, ICommand?>(nameof(CopyVisibleCommand));
+    /// <summary>Gets or sets the app command to copy all filtered rows. The host supplies it, as it does for the header.</summary>
+    public ICommand? CopyVisibleCommand { get => GetValue(CopyVisibleCommandProperty); set => SetValue(CopyVisibleCommandProperty, value); }
+    /// <summary>Defines the list that the zoom and jump buttons act on.</summary>
+    public static readonly StyledProperty<ConsoleListView?> ListProperty = AvaloniaProperty.Register<ConsoleToolbar, ConsoleListView?>(nameof(List));
+    /// <summary>Gets or sets the list that the zoom and jump buttons act on. The buttons are disabled while it is null.</summary>
+    public ConsoleListView? List { get => GetValue(ListProperty); set => SetValue(ListProperty, value); }
 
     /// <summary>Initializes the view and its local input routing.</summary>
     public ConsoleToolbar()
     {
         InitializeComponent();
+        _ready = true;
+        _levelRow = new ConsoleLevelRowModel((delay, action) => _schedule(delay, action), HoverAllowed);
+        _levelRow.Changed += (_, _) => ApplyLayout();
         _ = new ConsoleControllerAttachment(this, ControllerProperty);
         this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
         SizeChanged += (_, _) => ApplyLayout();
+        InitializeLevelRow();
         ApplyLayout();
         var source = this.FindControl<Button>("Sources")!;
         var menu = (MenuFlyout)source.Flyout!;
@@ -40,25 +63,37 @@ public sealed partial class ConsoleToolbar : UserControl
         };
         menu.Closed += (_, _) => UnsubscribeSourceMenu(Controller);
     }
-    private void SearchChanged(object? sender, TextChangedEventArgs args)
-    {
-        if (sender is TextBox search && Controller is { } controller && controller.IsActive
-            && search.Text != controller.Filter.SearchText)
-            controller.SetSearchText(search.Text);
-    }
+
+    // Test seam: runs the level row delays on the given clock.
+    internal void UseClock(TimeProvider clock)
+        => _schedule = (delay, action) => clock.CreateTimer(_ => action(), null, delay, Timeout.InfiniteTimeSpan);
+
     /// <inheritdoc />
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
         _iconHost = TopLevel.GetTopLevel(this);
-        if (_iconHost is not null) _iconHost.ScalingChanged += ScalingChanged;
+        if (_iconHost is not null)
+        {
+            _iconHost.ScalingChanged += ScalingChanged;
+            _iconHost.AddHandler(PointerPressedEvent, HostPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+            _iconHost.AddHandler(PointerReleasedEvent, HostPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        }
         CenterIcons();
     }
     /// <inheritdoc />
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ClearSourceMenu();
-        if (_iconHost is not null) _iconHost.ScalingChanged -= ScalingChanged;
+        _levelRow.Close();
+        _buttonDown = false;
+        _outsidePress = false;
+        if (_iconHost is not null)
+        {
+            _iconHost.ScalingChanged -= ScalingChanged;
+            _iconHost.RemoveHandler(PointerPressedEvent, HostPointerPressed);
+            _iconHost.RemoveHandler(PointerReleasedEvent, HostPointerReleased);
+        }
         _iconHost = null;
         base.OnDetachedFromVisualTree(e);
     }
@@ -66,12 +101,15 @@ public sealed partial class ConsoleToolbar : UserControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ConsoleDimensions.NarrowBreakpointProperty) ApplyLayout();
+        if (!_ready) return;
+        if (change.Property == ConsoleDimensions.NarrowBreakpointProperty
+            || change.Property == ConsoleDimensions.WideBreakpointProperty) ApplyLayout();
         if (change.Property == ControllerProperty)
         {
             this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
             UnsubscribeSourceMenu(change.OldValue as ConsoleController);
             ClearSourceMenu();
+            _levelRow?.Close();
         }
     }
     private void SourceProjectionChanged(object? sender, PropertyChangedEventArgs args)
@@ -92,23 +130,5 @@ public sealed partial class ConsoleToolbar : UserControl
             menu.Hide();
             ConsoleMenuBuilder.Clear(menu);
         }
-    }
-    private void ScalingChanged(object? sender, EventArgs args) => CenterIcons();
-    private void CenterIcons()
-    {
-        foreach (var level in Enum.GetValues<LogLevel>())
-        {
-            var icon = (TextBlock)this.FindControl<ToggleButton>("Level" + level)!.Content!;
-            TextOptions.SetBaselinePixelAlignment(icon, BaselinePixelAlignment.Unaligned);
-            icon.RenderTransform = new TranslateTransform(0, ConsoleGlyphs.VerticalOffset(level, _iconHost?.RenderScaling ?? 1));
-        }
-    }
-    private void ApplyLayout()
-    {
-        // Resource bindings can publish while InitializeComponent is still populating names.
-        if (NarrowSearchRow is null || Dedupe is null) return;
-        var narrow = Bounds.Width <= ConsoleDimensions.GetNarrowBreakpoint(this);
-        this.FindControl<Grid>("NarrowSearchRow")!.IsVisible = narrow;
-        this.FindControl<ToggleButton>("Dedupe")!.IsVisible = !narrow;
     }
 }

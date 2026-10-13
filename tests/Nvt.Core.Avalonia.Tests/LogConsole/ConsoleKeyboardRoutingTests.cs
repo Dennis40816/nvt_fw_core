@@ -55,7 +55,7 @@ public sealed class ConsoleKeyboardRoutingTests
         using var scene = new ConsoleInteractionScene(composed: true);
         scene.Controller.SetSearchText("example");
         ConsoleInteractionWindow.Pump(scene.Window);
-        var search = scene.Header!.FindControl<TextBox>("SearchBox")!;
+        var search = scene.Toolbar!.FindControl<TextBox>("SearchBox")!;
         Assert.True(search.Focus());
         search.SelectionStart = 0;
         search.SelectionEnd = 0;
@@ -72,7 +72,7 @@ public sealed class ConsoleKeyboardRoutingTests
         scene.Click(2);
         scene.Controller.SetSearchText("example");
         ConsoleInteractionWindow.Pump(scene.Window);
-        var search = scene.Header!.FindControl<TextBox>("SearchBox")!;
+        var search = scene.Toolbar!.FindControl<TextBox>("SearchBox")!;
         Assert.True(search.Focus());
         search.SelectAll();
         var copied = new List<string>();
@@ -100,6 +100,5 @@ public sealed class ConsoleKeyboardRoutingTests
         Assert.False(scene.Controller.Filter.Deduplicate);
         scene.SendKey(Key.D, RawInputModifiers.Control);
         Assert.True(scene.Controller.Filter.Deduplicate);
-        Assert.True(scene.Toolbar!.FindControl<global::Avalonia.Controls.Primitives.ToggleButton>("Dedupe")!.IsChecked);
     }
 }
