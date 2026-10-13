@@ -98,7 +98,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Health Verify job in CI | 1.0.0 | Merged | [#211](https://github.com/Dennis40816/nvt_fw_core/pull/211) |
 | Health bundle: PublicAPI files are required next to the project, duplicate `AdditionalFiles` removed | 1.0.0 | Merged | [#214](https://github.com/Dennis40816/nvt_fw_core/pull/214) |
 | Application CI wiring guide | 1.0.0 | Merged | [#217](https://github.com/Dennis40816/nvt_fw_core/pull/217), [guide](tools/repo-checks/csharp/README.md#application-ci-wiring) |
-| Ledgers: remove the placeholder `removeBy` dates | 1.0.0 | Guide merged. NFH removed its dates ([NFH #106](https://github.com/Dennis40816/nvt-freeform-helper/pull/106)). NFC and NFU remove theirs after their pin synchronization | [#218](https://github.com/Dennis40816/nvt_fw_core/pull/218), [guide](tools/repo-checks/ledger-operation.md#remove-the-removeby-dates-of-a-ledger) |
+| Ledgers: remove the placeholder `removeBy` dates | 1.0.0 | Guide merged. NFH removed its dates ([NFH #106](https://github.com/Dennis40816/nvt-freeform-helper/pull/106)). NFU and NFC are open | [#218](https://github.com/Dennis40816/nvt_fw_core/pull/218), [guide](tools/repo-checks/ledger-operation.md#remove-the-removeby-dates-of-a-ledger) |
 | Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Done ([#220](https://github.com/Dennis40816/nvt_fw_core/pull/220)) | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
 
 **5. Shared UI classes**
