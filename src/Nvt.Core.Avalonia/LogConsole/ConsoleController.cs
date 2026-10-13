@@ -72,7 +72,27 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             throw new ArgumentException("RelativeTimeTemplate must be a valid composite format with placeholder 0.", nameof(options), error);
         }
-        InitializeCommands();
+        ToggleLevelCommand = Command<LogLevel>(level =>
+        {
+            if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
+            var removed = _filter.EnabledLevels.Remove(level);
+            SetFilter(_filter with
+            {
+                EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
+                ? _filter.EnabledLevels.Add(level) : removed
+            });
+        });
+        ToggleOnlyMatchesCommand = Command(() => SetFilter(_filter with { OnlyMatches = !_filter.OnlyMatches }));
+        ToggleDedupeCommand = Command(() => SetFilter(_filter with { Deduplicate = !_filter.Deduplicate }));
+        SetTimeModeCommand = Command<ConsoleTimeMode>(mode =>
+        {
+            if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+            SetFilter(_filter with { TimeMode = mode });
+        });
+        ClearCommand = Command(() => { InvalidateCommandState(); _store.Clear(); });
+        ResetFiltersCommand = Command(() => SetFilter(new ConsoleFilter { TimeMode = _filter.TimeMode }));
+        ToggleExportTimeCommand = Command(() => SetExportOptions(_exportOptions with { IncludeTime = !_exportOptions.IncludeTime }));
+        ToggleExportLevelCommand = Command(() => SetExportOptions(_exportOptions with { IncludeLevel = !_exportOptions.IncludeLevel }));
         RowCommands = new(this, notifications => PublishNotifications(notifications));
         _store.Changed += StoreChanged;
         try
@@ -120,21 +140,21 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     /// <summary>Gets the most recent refresh failure; the next successful refresh clears it.</summary>
     public Exception? RefreshError => _refreshError;
     /// <summary>Toggles one level, including levels with zero events.</summary>
-    public ICommand ToggleLevelCommand { get; private set; } = null!;
+    public ICommand ToggleLevelCommand { get; }
     /// <summary>Toggles search filtering while preserving highlights.</summary>
-    public ICommand ToggleOnlyMatchesCommand { get; private set; } = null!;
+    public ICommand ToggleOnlyMatchesCommand { get; }
     /// <summary>Toggles grouping of duplicate events.</summary>
-    public ICommand ToggleDedupeCommand { get; private set; } = null!;
+    public ICommand ToggleDedupeCommand { get; }
     /// <summary>Selects an Absolute, Relative, or Hidden time mode.</summary>
-    public ICommand SetTimeModeCommand { get; private set; } = null!;
+    public ICommand SetTimeModeCommand { get; }
     /// <summary>Clears the app-owned store through its generation fence.</summary>
-    public ICommand ClearCommand { get; private set; } = null!;
+    public ICommand ClearCommand { get; }
     /// <summary>Resets filtering and dedupe, retaining time presentation and reading state.</summary>
-    public ICommand ResetFiltersCommand { get; private set; } = null!;
+    public ICommand ResetFiltersCommand { get; }
     /// <summary>Toggles inclusion of UTC timestamps in export.</summary>
-    public ICommand ToggleExportTimeCommand { get; private set; } = null!;
+    public ICommand ToggleExportTimeCommand { get; }
     /// <summary>Toggles inclusion of levels in export.</summary>
-    public ICommand ToggleExportLevelCommand { get; private set; } = null!;
+    public ICommand ToggleExportLevelCommand { get; }
 
     /// <summary>Selects ordinal source IDs. An empty set selects all sources.</summary>
     public void SetSelectedSources(IEnumerable<string> sources)
@@ -188,31 +208,6 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         if (options is { SourceRegistry.IsDefault: true }) throw new ArgumentException("SourceRegistry must be initialized.", nameof(options));
         if (options is { SourceRegistry.IsEmpty: false } && !sources.SequenceEqual(options.SourceRegistry))
             throw new ArgumentException("Sources and SourceRegistry must agree when both are supplied.", nameof(options));
-    }
-
-    private void InitializeCommands()
-    {
-        ToggleLevelCommand = Command<LogLevel>(level =>
-        {
-            if (!Enum.IsDefined(level)) throw new ArgumentOutOfRangeException(nameof(level));
-            var removed = _filter.EnabledLevels.Remove(level);
-            SetFilter(_filter with
-            {
-                EnabledLevels = ReferenceEquals(removed, _filter.EnabledLevels)
-                ? _filter.EnabledLevels.Add(level) : removed
-            });
-        });
-        ToggleOnlyMatchesCommand = Command(() => SetFilter(_filter with { OnlyMatches = !_filter.OnlyMatches }));
-        ToggleDedupeCommand = Command(() => SetFilter(_filter with { Deduplicate = !_filter.Deduplicate }));
-        SetTimeModeCommand = Command<ConsoleTimeMode>(mode =>
-        {
-            if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
-            SetFilter(_filter with { TimeMode = mode });
-        });
-        ClearCommand = Command(() => { InvalidateCommandState(); _store.Clear(); });
-        ResetFiltersCommand = Command(() => SetFilter(new ConsoleFilter { TimeMode = _filter.TimeMode }));
-        ToggleExportTimeCommand = Command(() => SetExportOptions(_exportOptions with { IncludeTime = !_exportOptions.IncludeTime }));
-        ToggleExportLevelCommand = Command(() => SetExportOptions(_exportOptions with { IncludeLevel = !_exportOptions.IncludeLevel }));
     }
 
     // After Dispose the cache is gone. A view that is still attached falls back to the spans the row carries.
