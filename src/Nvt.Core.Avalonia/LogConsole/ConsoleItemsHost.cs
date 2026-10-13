@@ -31,6 +31,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     private readonly Stack<ConsoleRowPresenter> _pool = [];
     private readonly Dictionary<ConsoleRowId, HeightMeasurement> _heights = [];
     private double[] _tops = [0];
+    private double _insetScale = 1;
     private Size _viewport;
     private Vector _offset;
     private int _measureDepth;
@@ -141,7 +142,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         NotifyGeometryChanged();
     }
 
-    private double MessageWidth => ConsoleRowPresenter.GetMessageWidth((Control?)_view ?? this, Viewport.Width,
+    private double MessageWidth => ConsoleRowPresenter.GetMessageWidth(this, Viewport.Width,
         _view?.TimeMode != ConsoleTimeMode.Hidden);
 
     private void RebuildHeights()
@@ -157,7 +158,7 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
             if (_view!.ViewState.ExpandedIds.Contains(row.Id))
                 height = _heights.TryGetValue(row.Id, out var measured) && measured.Version == row.TextVersion
                     && measured.Width == messageWidth ? measured.Height
-                    : ConsoleTextPresenter.Estimate(row.TextContent.Length, messageWidth, _view);
+                    : ConsoleTextPresenter.Estimate(row.TextContent.Length, messageWidth, this);
             _tops[i + 1] = _tops[i] + height;
         }
     }
@@ -261,6 +262,9 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
     private void ResourcesUpdated(object? sender, EventArgs e) => InvalidateHeights();
     private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) => InvalidateHeights();
 
+    // A zoom scales the row, so it scales the offset inside the first visible row by the same factor.
+    internal void ScaleReadingInset(double factor) => _insetScale = factor;
+
     private void InvalidateHeights()
     {
         // Resource ancestry can disappear before the visual detach notification.
@@ -271,6 +275,12 @@ internal sealed class ConsoleItemsHost : Panel, ILogicalScrollable
         for (var index = 0; index < ItemsSource.Count; index++)
             if (_realized.TryGetValue(ItemsSource[index].Id, out var container)) container.Configure(ItemsSource[index], _view, index);
         RebuildHeights();
+        if (_insetScale != 1 && ItemsSource.Count > 0)
+        {
+            var span = _tops[readingPosition.Index + 1] - _tops[readingPosition.Index];
+            readingPosition = (readingPosition.Index, Math.Min(readingPosition.Inset * _insetScale, Math.Max(0, span - 1)));
+        }
+        _insetScale = 1;
         if (PreservesReadingPosition) RestoreReadingPosition(readingPosition);
         else if (wasAtEnd) ScrollToEnd();
         InvalidateMeasure();

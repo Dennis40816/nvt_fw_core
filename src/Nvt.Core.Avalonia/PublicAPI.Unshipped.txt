@@ -1,1 +1,11 @@
 #nullable enable
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.MaximumZoom = 3 -> double
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.MinimumZoom = 0.8 -> double
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomStep = 0.1 -> double
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ResetZoom() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Zoom.get -> double
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Zoom.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomChanged -> System.EventHandler<double>?
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomIn() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomOut() -> void
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomProperty -> Avalonia.StyledProperty<double>!
