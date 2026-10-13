@@ -40,6 +40,9 @@ public sealed class ConsoleListView : TemplatedControl
     private Parts? _parts;
     private Session? _session;
 
+    /// <summary>Initializes attachment-scoped controller observation.</summary>
+    public ConsoleListView() => _ = new ConsoleControllerAttachment(this, ControllerProperty);
+
     /// <summary>Gets or sets the caller-owned, frozen projection. Keep it alive until the next assignment.</summary>
     public ConsoleProjection? Projection { get => GetValue(ProjectionProperty); set => SetValue(ProjectionProperty, value); }
     /// <summary>Gets or sets the single caller-owned reading and expansion state.</summary>

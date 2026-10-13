@@ -82,6 +82,9 @@ public sealed class LogStore : IDisposable
         remove { lock (_gate) _changed -= value; }
     }
 
+    // Observe the actual delegate list under its existing gate for composed lifecycle tests.
+    internal int ChangedSubscriberCount { get { lock (_gate) return _changed?.GetInvocationList().Length ?? 0; } }
+
     /// <summary>Gets the immediate generation fence for queued and asynchronous work.</summary>
     public long Generation { get { lock (_gate) return _generation.Value; } }
 

@@ -13,7 +13,8 @@ namespace Nvt.Core.Avalonia.LogConsole;
 
 /// <summary>Owns console inputs and leased projections on the registered Core UI thread.</summary>
 /// <remarks>Create, invoke intents, and dispose on the UI thread. The app owns the store.
-/// Consumers borrow Projection until replacement; bindings receive the replacement before old leases retire.</remarks>
+/// Consumers borrow Projection until replacement; bindings receive the replacement before old leases retire.
+/// Hosted controls suspend store observation when the last view detaches and resume it on attachment.</remarks>
 public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
 {
     private readonly LogStore _store;
@@ -21,6 +22,10 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     // _workGate protects notification scheduling, disposal, and the single pending operation.
     private readonly Lock _workGate = new();
     private DispatcherOperation? _pending;
+    internal int PendingOperationCount { get { lock (_workGate) return _pending is null ? 0 : 1; } }
+    private bool IsDetached { get { lock (_workGate) return _attachments is { Count: 0 }; } }
+    // _workGate protects view tokens, which never reference a view. Null is standalone; empty is detached.
+    private HashSet<IDisposable>? _attachments;
     private bool _refreshRequested;
     private bool _refreshRetryAvailable;
     private bool _disposed;
@@ -329,7 +334,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     {
         lock (_workGate)
         {
-            if (_disposed || retry && !_refreshRetryAvailable) return;
+            if (_disposed || _attachments is { Count: 0 } || retry && !_refreshRetryAvailable) return;
             if (refresh)
             {
                 _refreshRequested = true;
@@ -345,15 +350,14 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         lock (_workGate)
         {
             _pending = null;
-            if (_disposed) return;
+            if (_disposed || _attachments is { Count: 0 }) return;
             // A subscriber may pump the dispatcher. Keep its borrowed leases pinned.
             if (_notificationDepth != 0) return;
             refresh = _refreshRequested;
             _refreshRequested = false;
         }
         // Background priority lets binding/layout/render work consume the replacement first.
-        _retired?.Dispose();
-        _retired = null;
+        ReleaseRetiredProjection();
         if (!refresh) return;
         ConsoleProjection? next = null;
         LogSnapshot? snapshot = null;
@@ -442,7 +446,11 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
         {
             if (--_notificationDepth == 0)
             {
-                if (IsActive) Schedule(false);
+                if (IsActive)
+                {
+                    Schedule(false);
+                    if (IsDetached) ReleaseRetiredProjection();
+                }
                 else ReleaseProjections();
             }
         }
@@ -451,9 +459,71 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
 
     private void ReleaseProjections()
     {
-        _retired?.Dispose();
-        _retired = null;
+        ReleaseRetiredProjection();
         _current.Dispose();
+    }
+
+    private void ReleaseRetiredProjection() { _retired?.Dispose(); _retired = null; }
+
+    internal IDisposable? AttachView()
+    {
+        _dispatcher.VerifyAccess();
+        ViewAttachment? attachment = null;
+        try
+        {
+            bool subscribe;
+            bool refresh;
+            lock (_workGate)
+            {
+                if (_disposed) return null;
+                subscribe = _attachments is { Count: 0 };
+                refresh = _attachments is null || subscribe;
+                attachment = new(this);
+                (_attachments ??= []).Add(attachment);
+            }
+            if (subscribe)
+            {
+                try { _store.Changed += StoreChanged; }
+                // The app disposed the store before the page: stay detached; the finally releases the token.
+                catch (ObjectDisposedException error) when (error.ObjectName == typeof(LogStore).FullName) { return null; }
+            }
+            if (refresh) Schedule(true);
+            var owned = attachment;
+            attachment = null;
+            return owned;
+        }
+        finally { attachment?.Dispose(); }
+    }
+
+    private void DetachView(IDisposable attachment)
+    {
+        _dispatcher.VerifyAccess();
+        DispatcherOperation? pending;
+        lock (_workGate)
+        {
+            if (_attachments?.Remove(attachment) != true || _attachments.Count != 0 || _disposed) return;
+            _stateVersion++;
+            pending = _pending;
+            _pending = null;
+            _refreshRequested = false;
+            _refreshRetryAvailable = false;
+        }
+        _store.Changed -= StoreChanged;
+        pending?.Abort();
+        if (_notificationDepth == 0) ReleaseRetiredProjection();
+    }
+
+    private sealed class ViewAttachment : IDisposable
+    {
+        // UI thread only; the token owns a controller reference and never a view reference.
+        private ConsoleController? _owner;
+        internal ViewAttachment(ConsoleController owner) => _owner = owner;
+        public void Dispose()
+        {
+            var owner = _owner;
+            _owner = null;
+            owner?.DetachView(this);
+        }
     }
 
     /// <summary>Unsubscribes, aborts queued work, and releases both owned projections. Safe to repeat.</summary>
@@ -461,16 +531,19 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     {
         _dispatcher.VerifyAccess();
         DispatcherOperation? pending;
+        bool unsubscribe;
         lock (_workGate)
         {
             if (_disposed) return;
+            unsubscribe = _attachments is not { Count: 0 };
             Volatile.Write(ref _disposed, true);
+            _attachments?.Clear();
             _stateVersion++;
             pending = _pending;
             _pending = null;
             _refreshRequested = false;
         }
-        _store.Changed -= StoreChanged;
+        if (unsubscribe) _store.Changed -= StoreChanged;
         pending?.Abort();
         _linkCache = null;
         RowCommands.Release();

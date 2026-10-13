@@ -17,5 +17,6 @@ public sealed partial class ConsoleEmptyState : UserControl
     public ConsoleEmptyState()
     {
         InitializeComponent();
+        _ = new ConsoleControllerAttachment(this, ControllerProperty);
     }
 }

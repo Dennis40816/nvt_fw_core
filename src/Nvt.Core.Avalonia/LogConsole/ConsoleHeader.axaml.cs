@@ -34,6 +34,7 @@ public sealed partial class ConsoleHeader : UserControl
     public ConsoleHeader()
     {
         InitializeComponent();
+        _ = new ConsoleControllerAttachment(this, ControllerProperty);
         this.FindControl<Button>("ClearSearch")!.Command = new ConsoleClearSearchCommand(Controller);
         SizeChanged += (_, _) => ApplyLayout();
         ApplyLayout();
