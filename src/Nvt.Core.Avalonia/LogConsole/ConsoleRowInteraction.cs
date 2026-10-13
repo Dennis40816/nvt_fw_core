@@ -18,6 +18,7 @@ internal sealed class ConsoleRowInteraction
     private readonly RelayCommand<KeyEventArgs> _keys;
     private FocusPosition? _focus;
     private MenuFlyout? _menu;
+    private double _wheelZoom;
     private readonly List<WeakReference<ConsoleCopySelectionCommand>> _commands = [];
     internal long? FocusedEntry => _focus?.Entry;
     internal MenuFlyout? OpenMenu => _menu;
@@ -29,6 +30,7 @@ internal sealed class ConsoleRowInteraction
         _select = new(Select);
         _keys = new(HandleKey);
         view.AddHandler(InputElement.KeyDownEvent, KeyDown, RoutingStrategies.Tunnel);
+        view.AddHandler(InputElement.PointerWheelChangedEvent, WheelChanged, RoutingStrategies.Tunnel);
         view.GotFocus += GotFocus;
         view.Focusable = true;
         KeyboardNavigation.SetTabNavigation(view, KeyboardNavigationMode.Once);
@@ -94,6 +96,31 @@ internal sealed class ConsoleRowInteraction
         _keys.Execute(e);
     }
 
+    // Ctrl and the wheel zoom the rows. The tunnel route runs before the scroll viewer scrolls.
+    private void WheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (e.KeyModifiers != KeyModifiers.Control || e.Delta.Y == 0 || !CanInteract) return;
+        // A touchpad sends fractions of a notch. One full notch is one step.
+        if (Math.Sign(e.Delta.Y) != Math.Sign(_wheelZoom)) _wheelZoom = 0;
+        _wheelZoom += e.Delta.Y;
+        while (_wheelZoom >= 1 - 1e-9) { _view.ZoomIn(); _wheelZoom -= 1; }
+        while (_wheelZoom <= -1 + 1e-9) { _view.ZoomOut(); _wheelZoom += 1; }
+        e.Handled = true;
+    }
+
+    // Plus (also with Shift, and on the number pad), minus and 0, each with Ctrl.
+    private bool TryZoomKey(KeyEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Alt)) return false;
+        switch (e.Key)
+        {
+            case Key.OemPlus or Key.Add: _view.ZoomIn(); return true;
+            case Key.OemMinus or Key.Subtract: _view.ZoomOut(); return true;
+            case Key.D0 or Key.NumPad0: _view.ResetZoom(); return true;
+            default: return false;
+        }
+    }
+
     private void GotFocus(object? sender, RoutedEventArgs e)
     {
         if (!ReferenceEquals(e.Source, _view)
@@ -128,6 +155,7 @@ internal sealed class ConsoleRowInteraction
             if (_menu?.IsOpen == true) _menu.Hide();
             else _view.Request(_view.ViewState with { Selection = [] });
         }
+        else if (control && TryZoomKey(e)) { }
         else { HandleRowKey(e, control); return; }
         e.Handled = true;
     }
@@ -218,6 +246,7 @@ internal sealed class ConsoleRowInteraction
     internal void Detach()
     {
         _view.RemoveHandler(InputElement.KeyDownEvent, KeyDown);
+        _view.RemoveHandler(InputElement.PointerWheelChangedEvent, WheelChanged);
         _view.GotFocus -= GotFocus;
         CloseMenu();
         foreach (var reference in _commands)

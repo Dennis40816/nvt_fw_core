@@ -504,7 +504,7 @@ console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換
 | `ConsoleHeader` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`、`Title`、`CopySelectedCommand`、`CopyVisibleCommand`、`SaveLogCommand`；static readonly `ControllerProperty`、`TitleProperty`、`CopySelectedCommandProperty`、`CopyVisibleCommandProperty`、`SaveLogCommandProperty`。 |
 | `ConsoleToolbar` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`；static readonly `ControllerProperty`。 |
 | `ConsoleEmptyState` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`；static readonly `ControllerProperty`。 |
-| `ConsoleListView` | 建構子 `()`；get/set `Controller`、`Projection`、`ViewState`、`TimeOptions`、`TimeMode`；static readonly `ControllerProperty`、`ProjectionProperty`、`ViewStateProperty`、`TimeOptionsProperty`、`TimeModeProperty`；`ViewStateRequested`；`JumpToLatest()`。 |
+| `ConsoleListView` | 建構子 `()`；get/set `Controller`、`Projection`、`ViewState`、`TimeOptions`、`TimeMode`；static readonly `ControllerProperty`、`ProjectionProperty`、`ViewStateProperty`、`TimeOptionsProperty`、`TimeModeProperty`；`ViewStateRequested`；`JumpToLatest()`；get/set `Zoom`；static readonly `ZoomProperty`；const `MinimumZoom`、`MaximumZoom`、`ZoomStep`；`ZoomChanged`；`ZoomIn()`、`ZoomOut()`、`ResetZoom()`。 |
 | `IConsoleClipboard` | `SetText(text)`。 |
 | `IConsoleLinkOpener` | `GetUnavailableReason(target)`、`Open(target)`。 |
 
@@ -560,6 +560,10 @@ Console 控制項、連結與選取互動、鍵盤 commands、accessibility 與�
 | `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`，預設 Absolute；Hidden 移除整個時間欄。 |
 | `ViewStateRequested` | 以 `EventHandler<ConsoleViewState>` 傳回要求替換的新狀態。 |
 | `JumpToLatest()` | 要求 Resume；宿主的 Ctrl+End command 可呼叫此方法。 |
+| `Zoom` / `ZoomProperty` | 列的縮放倍率 `double`，預設 1.0，雙向。超出 0.8 到 3.0 的值會被夾到邊界，NaN 變成 1.0。 |
+| `MinimumZoom` / `MaximumZoom` / `ZoomStep` | 常數 0.8、3.0 與 0.1：80% 到 300%，每階 10%。 |
+| `ZoomChanged` | `Zoom` 改變後在 UI thread 觸發的 `EventHandler<double>`，帶新值。 |
+| `ZoomIn()` / `ZoomOut()` / `ResetZoom()` | 放大一階、縮小一階，或設回 1.0。 |
 
 輸入設定與要求接受都在 UI thread 執行。使用控制器時，宿主將要求交給 `RequestViewState`，
 再綁定控制器接受的 `ViewState`。獨立使用列表時，呼叫端持有並替換狀態。列表不呼叫 `ConsoleProjector`、
@@ -567,8 +571,8 @@ Console 控制項、連結與選取互動、鍵盤 commands、accessibility 與�
 設定投影時會同步將保留的 presenter 重新繫結；設定返回後，呼叫端即可立即 Dispose
 先前投影，即使尚未 layout 或接著再次替換也一樣。
 
-收合列使用 `ConsoleRow.GetFirstLine`，列高固定 20 DIP。
-欄位為時間 104、等級 84、來源 120、訊息剩餘空間、重複次數 48、箭頭 24 DIP，
+收合列使用 `ConsoleRow.GetFirstLine`，縮放 1.0 時列高固定 20 DIP。
+縮放 1.0 時，欄位為時間 104、等級 84、來源 120、訊息剩餘空間、重複次數 48、箭頭 24 DIP，
 內容左右各留 16 DIP。等級同時顯示共用 Material Symbols 圖示與名稱。
 長來源使用字元省略號，tooltip 保留完整 SourceId。
 內容被省略或實際超出寬度才顯示箭頭；重複列才顯示次數。
@@ -617,7 +621,7 @@ registry 的顯示名稱仍由投影或宿主處理。
 Error／Fatal 使用既有 danger surface。訊息與來源搜尋命中使用既有 warning surface
 與 strong warning text。繪製順序是搜尋底色、文字、連結裝飾與 hover，最後套用搜尋命中前景。
 搜尋命中之外的 hover 文字使用 app accent。Theme 或 resource 改變會使顯示快取失效。
-暫停閱讀時，重建量測高度會保留首個可見列及其 DIP 內位移。
+暫停閱讀時，重建量測高度會保留首個可見列及其 DIP 內位移。縮放改變時，該位移依縮放倍率等比例換算。
 
 使用者離開末尾時，以首個可見列、sequence、文字 offset 與 DIP offset 要求 Pause。
 展開以同一個新狀態合併展開與暫停；pointer 移動超過 4 DIP 即取消啟用。
@@ -694,6 +698,15 @@ Detach 釋放列選單 commands 的 delegates 與 subscribers；Dispose 也釋�
 列複製在上限前與既有 export prefix、原始換行及去重 suffix 一致。
 `ConsoleController.CopySelectionCommand` 也可供標頭的 copy-selected command 使用。
 平台佇列操作的失敗由宿主管理。
+
+列表可縮放列內容。`Zoom` 的範圍是 0.8 到 3.0，預設 1.0，每階 `ZoomStep` 為 0.1。
+縮放會改變列高、五個欄寬與四個列字型大小，不改變工具列、標頭、跳到最新按鈕、保留提示與列內距。
+暫停中的列表保留第一個可見列，以及視窗在該列內的位移。
+列表有焦點時，Ctrl+加號（也接受 Ctrl+= 與數字鍵盤加號）放大，Ctrl+減號縮小，Ctrl+0 還原。
+滑鼠在列表上時，Ctrl 加滾輪也會縮放，不需要焦點。滾輪一格為一階，觸控板的小數位移會累加。
+滾輪只在單獨按住 Ctrl 時縮放，Shift 與 Alt 維持原本的意義。
+按住 Alt 時，鍵盤手勢不處理。
+列表不儲存這個值。宿主在 `ZoomChanged` 處理常式中儲存，建立檢視時再指派回來。
 
 列表只有一個 Tab 入口。Up／Down、PageUp／PageDown 與 Home／End 移動列焦點；Shift 延伸選取。
 Enter／Space 切換展開，Ctrl+C 複製，Escape 先關閉列選單，再清除選取；Ctrl+End 要求 Resume。

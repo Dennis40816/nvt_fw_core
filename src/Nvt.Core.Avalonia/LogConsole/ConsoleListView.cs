@@ -12,7 +12,7 @@ namespace Nvt.Core.Avalonia.LogConsole;
 
 /// <summary>A recycling console list. The caller owns projection leases and accepts state requests.</summary>
 /// <remarks>Load LogConsole/ConsoleListStyles.axaml. Set inputs on the UI thread; this view never projects data.</remarks>
-public sealed class ConsoleListView : TemplatedControl
+public sealed partial class ConsoleListView : TemplatedControl
 {
     /// <summary>Defines the controller supplying row commands and injected app adapters.</summary>
     public static readonly StyledProperty<ConsoleController?> ControllerProperty =
@@ -84,6 +84,7 @@ public sealed class ConsoleListView : TemplatedControl
         _parts = new(e.NameScope.Find<ConsoleItemsHost>("PART_ItemsHost")!,
             e.NameScope.Find<ScrollViewer>("PART_ScrollViewer")!,
             e.NameScope.Find<Button>("PART_Jump")!, e.NameScope.Find<TextBlock>("PART_Retention")!);
+        RefreshZoomResources();
         if (TopLevel.GetTopLevel(this) is not null) AttachSession();
     }
 
@@ -114,6 +115,7 @@ public sealed class ConsoleListView : TemplatedControl
             _session?.Apply(ReferenceEquals(previous.Follow, current.Follow)
                 || _session.AcceptRequestedAnchor(current.Follow));
         }
+        else if (change.Property == ZoomProperty) ZoomUpdated(change.GetOldValue<double>(), change.GetNewValue<double>());
         else if (change.Property == ProjectionProperty || change.Property == TimeOptionsProperty || change.Property == TimeModeProperty
             || change.Property == ControllerProperty)
             _session?.Apply(true);
@@ -123,6 +125,7 @@ public sealed class ConsoleListView : TemplatedControl
     {
         if (_parts is null || _session is not null) return;
         UiThread.RegisterRunningDispatcher(Dispatcher);
+        RefreshZoomResources();
         _session = new(this, _parts);
         _session.Apply();
     }
@@ -328,8 +331,15 @@ public sealed class ConsoleListView : TemplatedControl
             _parts.Retention.Text = ConsoleListText.Format(_view, retentionKey, evicted);
         }
 
-        private void ResourcesUpdated(object? sender, EventArgs e) => UpdateText();
-        private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) => UpdateText();
+        private void ResourcesUpdated(object? sender, EventArgs e) => ResourcesUpdated();
+        private void ResourcesUpdated(object? sender, ResourcesChangedEventArgs e) => ResourcesUpdated();
+
+        private void ResourcesUpdated()
+        {
+            // The theme values that the zoom multiplies may have changed.
+            _view.RefreshZoomResources();
+            UpdateText();
+        }
 
         private void Schedule()
         {
