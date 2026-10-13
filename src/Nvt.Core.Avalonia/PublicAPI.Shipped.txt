@@ -89,6 +89,7 @@ Nvt.Core.Avalonia.LogConsole.ConsoleListView.Controller.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.JumpToLatest() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.get -> Nvt.Core.LogConsole.ConsoleProjection?
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ResetZoom() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeMode.get -> Nvt.Core.LogConsole.ConsoleTimeMode
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeMode.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptions.get -> Nvt.Core.LogConsole.ConsoleProjectionOptions!
@@ -96,6 +97,11 @@ Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptions.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewState.get -> Nvt.Core.LogConsole.ConsoleViewState!
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewState.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewStateRequested -> System.EventHandler<Nvt.Core.LogConsole.ConsoleViewState!>?
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Zoom.get -> double
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Zoom.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomChanged -> System.EventHandler<double>?
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomIn() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomOut() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ConsoleToolbar() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
@@ -404,6 +410,9 @@ const Nvt.Core.Avalonia.Icons.NvtIcons.Videocam = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.Visibility = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.VisibilityOff = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.Warning = "" -> string!
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.MaximumZoom = 3 -> double
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.MinimumZoom = 0.8 -> double
+const Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomStep = 0.1 -> double
 const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.CaptureUnavailable = "CAPTURE_UNAVAILABLE" -> string!
 const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.ExitRejected = "EXIT_REJECTED" -> string!
 const Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryGenericFailureCodes.FileExists = "FILE_EXISTS" -> string!
@@ -465,6 +474,7 @@ static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ProjectionProperty 
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeModeProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleTimeMode>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptionsProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleProjectionOptions!>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewStateProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleViewState!>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomProperty -> Avalonia.StyledProperty<double>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
 static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.DefaultExpandedProperty -> Avalonia.StyledProperty<bool>!
 static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.HeaderRightProperty -> Avalonia.StyledProperty<object?>!

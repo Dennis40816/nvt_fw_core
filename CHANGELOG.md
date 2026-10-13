@@ -6,6 +6,11 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 0.9.2 - 2026-10-13
+
+A release after the feature freeze of 0.9.0, at the request of the owner. It adds font zoom to the Console list for the NFH adoption.
+No breaking change since 0.9.1. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.1 entries.
+
 ### Added
 
 - Console font zoom. The Console list zooms the rows from 80 to 300 percent in steps of 10 percent. Ctrl+Plus, Ctrl+Minus and Ctrl+0 change the zoom while the list has focus. Ctrl with the mouse wheel over the list zooms too.
