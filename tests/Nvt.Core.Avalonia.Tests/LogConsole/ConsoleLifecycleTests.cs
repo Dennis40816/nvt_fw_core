@@ -79,6 +79,70 @@ public sealed class ConsoleLifecycleTests
     }
 
     [AvaloniaFact]
+    public void Attach_TwentyPageSwitches_ShowsLatestProjectionEachTime()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(composed: true, store: store);
+
+        var current = SwitchPagesAndCheckCurrent(scene);
+
+        Assert.All(current, Assert.True);
+    }
+
+    [AvaloniaFact]
+    public void Attach_ControllerReplacedWhileAttached_MovesObservationToNewController()
+    {
+        using var store = new ConsoleTestStore();
+        using var second = store.Controller();
+        using var scene = new ConsoleInteractionScene(store: store);
+
+        scene.View.Controller = second;
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Equal(1, store.Store.ChangedSubscriberCount);
+        Assert.Equal(0, scene.Controller.PendingOperationCount);
+    }
+
+    [AvaloniaFact]
+    public void Attach_ControllerClearedWhileAttached_ReleasesSubscription()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(store: store);
+
+        scene.View.Controller = null;
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
+    }
+
+    [AvaloniaFact]
+    public void Attach_ViewWithoutController_LeavesStoreUnobserved()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(store: store);
+        scene.View.Controller = null;
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        scene.Detach();
+        scene.Attach();
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
+    }
+
+    [AvaloniaFact]
+    public void Dispose_DetachedController_KeepsSubscriptionReleased()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(composed: true, store: store);
+        scene.Detach();
+
+        scene.Controller.Dispose();
+        scene.Controller.Dispose();
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
+    }
+
+    [AvaloniaFact]
     public void Detach_UnreferencedViews_AllowsCollectionWithLiveController()
     {
         using var store = new ConsoleTestStore();
@@ -89,6 +153,8 @@ public sealed class ConsoleLifecycleTests
 
         Assert.False(detached.List.IsAlive);
         Assert.False(detached.Toolbar.IsAlive);
+        Assert.False(detached.Header.IsAlive);
+        Assert.False(detached.EmptyState.IsAlive);
         Assert.Equal(0, store.Store.ChangedSubscriberCount);
         Assert.True(controller.ClearCommand.CanExecute(null));
         GC.KeepAlive(controller);
@@ -295,6 +361,25 @@ public sealed class ConsoleLifecycleTests
         return observations;
     }
 
+    private static bool[] SwitchPagesAndCheckCurrent(ConsoleInteractionScene scene)
+    {
+        var current = new bool[20];
+        var lastSequence = scene.Controller.Projection.LastSequence;
+        for (var index = 0; index < current.Length; index++)
+        {
+            scene.Controller.SetSearchText(index % 2 == 0 ? "example" : "");
+            scene.Detach();
+            scene.Publish("https://example.test/new");
+            scene.Attach();
+            var projection = scene.Controller.Projection;
+            current[index] = ReferenceEquals(projection, scene.View.Projection)
+                && projection.LastSequence > lastSequence
+                && scene.View.ItemsHost!.ItemsSource.Count == projection.RowCount;
+            lastSequence = projection.LastSequence;
+        }
+        return current;
+    }
+
     private static void BeginDeferredScroll(ConsoleInteractionScene scene, ConsoleMeasureContent content)
     {
         var host = scene.View.ItemsHost!;
@@ -315,7 +400,7 @@ public sealed class ConsoleLifecycleTests
         scene.Window.Close();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         ConsoleTestView.Pump();
-        return new(new(scene.View), new(scene.Toolbar!));
+        return new(new(scene.View), new(scene.Toolbar!), new(scene.Header!), new(scene.EmptyState!));
     }
 
     private static void CollectViews()
@@ -330,5 +415,5 @@ public sealed class ConsoleLifecycleTests
         }
     }
 
-    private sealed record DetachedScene(WeakReference List, WeakReference Toolbar);
+    private sealed record DetachedScene(WeakReference List, WeakReference Toolbar, WeakReference Header, WeakReference EmptyState);
 }

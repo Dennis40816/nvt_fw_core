@@ -23,6 +23,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
     private readonly Lock _workGate = new();
     private DispatcherOperation? _pending;
     internal int PendingOperationCount { get { lock (_workGate) return _pending is null ? 0 : 1; } }
+    private bool IsDetached { get { lock (_workGate) return _attachments is { Count: 0 }; } }
     // _workGate protects view tokens, which never reference a view. Null is standalone; empty is detached.
     private HashSet<IDisposable>? _attachments;
     private bool _refreshRequested;
@@ -448,7 +449,7 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
                 if (IsActive)
                 {
                     Schedule(false);
-                    if (_attachments is { Count: 0 }) ReleaseRetiredProjection();
+                    if (IsDetached) ReleaseRetiredProjection();
                 }
                 else ReleaseProjections();
             }
@@ -480,7 +481,12 @@ public sealed class ConsoleController : INotifyPropertyChanged, IDisposable
                 attachment = new(this);
                 (_attachments ??= []).Add(attachment);
             }
-            if (subscribe) _store.Changed += StoreChanged;
+            if (subscribe)
+            {
+                try { _store.Changed += StoreChanged; }
+                // The app disposed the store before the page: stay detached; the finally releases the token.
+                catch (ObjectDisposedException error) when (error.ObjectName == typeof(LogStore).FullName) { return null; }
+            }
             if (refresh) Schedule(true);
             var owned = attachment;
             attachment = null;
