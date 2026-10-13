@@ -105,6 +105,24 @@ Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
 ```
 
+## Sync-GhAppLabels
+
+這個函式讓定義檔裡的標籤在一個 repo 中存在。
+`tools/gh-app/labels.json` 是共用標籤名稱、顏色與說明的單一來源。要新增標籤，先改這個檔，再到每個 repo 各跑一次同步。
+
+每個標籤只有 `name`、`color`、`description` 三個欄位。名稱只能有英數字、`.`、`_`、`-`，不能有空白。顏色是六位十六進位數字，不加 `#`。說明最多 100 個字元。
+
+沒有 `-Apply` 時只讀取，回傳每個標籤的計畫：`create`、`update` 或 `unchanged`。它不會刪除標籤，也不理會定義檔沒有列出的標籤。
+
+`-Apply` 建立或更新有差異的標籤。這些呼叫會要求 `issues: write`，所以每次使用前都要 owner 同意。它需要放在 repo 外的 `-IssuesLogPath`，並在每次變更前寫一行 UTC 紀錄。
+
+```powershell
+Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json
+Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json -Apply -IssuesLogPath ..\issues-write.log
+```
+
+`tools/gh-app/sync-labels.ps1 -Owner OWNER -Repo REPO [-Apply -IssuesLogPath PATH]` 會載入 repo 設定檔並執行這個函式。
+
 ## Request-GhAppOwnerReview
 
 Session 把 PR 送 owner 審查時，呼叫此函式記錄當下的 head。

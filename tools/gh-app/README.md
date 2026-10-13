@@ -146,6 +146,24 @@ Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
 ```
 
+## Sync-GhAppLabels
+
+This function makes the labels of a definition file exist in one repository.
+`tools/gh-app/labels.json` is the single source of the shared label names, colors and descriptions. Add a label to that file and run the sync in each repository.
+
+Each label has exactly `name`, `color` and `description`. A name has letters, digits, `.`, `_` and `-`, and no spaces. A color has six hexadecimal digits without `#`. A description has at most 100 characters.
+
+Without `-Apply` the function only reads and returns the plan: `create`, `update` or `unchanged` per label. It never deletes a label, and it ignores every label that the file does not name.
+
+`-Apply` creates or updates the labels that differ. It requests `issues: write` for those calls, so the owner must agree before each use. It needs `-IssuesLogPath` outside the repository and logs one UTC line per change before the call.
+
+```powershell
+Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json
+Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json -Apply -IssuesLogPath ..\issues-write.log
+```
+
+`tools/gh-app/sync-labels.ps1 -Owner OWNER -Repo REPO [-Apply -IssuesLogPath PATH]` imports the repository config and runs the function.
+
 ## Request-GhAppOwnerReview
 
 Call this function when a session sends a PR to the owner for review.

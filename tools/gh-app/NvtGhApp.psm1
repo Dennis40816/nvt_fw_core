@@ -578,6 +578,95 @@ function Add-GhAppComment {
     Invoke-GhAppApi $context POST "issues/$Number/comments" @{ body = (Read-GhAppBody $BodyFile) } -AsApp
 }
 
+function Read-GhAppLabelDefinition {
+    param([string]$Path)
+    if (-not [string]::IsNullOrWhiteSpace($Path)) { $Path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Path) }
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not [IO.File]::Exists($Path)) { throw 'The label definition file is missing.' }
+    try { $document = ConvertFrom-Json -InputObject ([IO.File]::ReadAllText($Path)) -ErrorAction Stop }
+    catch { throw 'The label definition file is not valid JSON.' }
+    if ($null -eq $document -or $null -eq $document.PSObject.Properties['labels']) { throw 'The label definition file lists no labels.' }
+    $labels = @($document.labels)
+    if ($labels.Count -eq 0) { throw 'The label definition file lists no labels.' }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($label in $labels) {
+        if ($null -eq $label) { throw 'Each label has exactly the fields name, color and description.' }
+        $names = @($label.PSObject.Properties.Name)
+        if ($names.Count -ne 3 -or @($names | Where-Object { $_ -cnotin @('name', 'color', 'description') }).Count -gt 0) {
+            throw 'Each label has exactly the fields name, color and description.'
+        }
+        # A name without spaces or percent signs is the same in every URL that the module builds.
+        # The anchor is \z, because $ also matches before a final newline.
+        if ($label.name -isnot [string] -or $label.name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,49}\z') { throw "Invalid label name: $($label.name)" }
+        if ($label.color -isnot [string] -or $label.color -cnotmatch '^[0-9A-Fa-f]{6}\z') { throw "Invalid label color for $($label.name)." }
+        if ($label.description -isnot [string] -or $label.description.Length -gt 100 -or $label.description -cmatch '[\x00-\x1f\x7f]') {
+            throw "Invalid label description for $($label.name)."
+        }
+        if (-not $seen.Add($label.name)) { throw "Duplicate label name: $($label.name)" }
+    }
+    $labels
+}
+
+function Get-GhAppIssuesLogPath {
+    param([hashtable]$Context, [string]$IssuesLogPath)
+    $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($IssuesLogPath)
+    if (Test-GhAppRepositoryPath $path) { throw 'The issues write log must be outside every repository.' }
+    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), $Context.tokenHelperPath, $Context.dpapiPath)) {
+        if ([string]::Equals($path, [IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'The issues write log must not name a config, helper, or DPAPI file.'
+        }
+    }
+    $path
+}
+
+function Sync-GhAppLabels {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$DefinitionPath, [Alias('Repo')][string]$Repository,
+        [switch]$Apply, [string]$IssuesLogPath)
+    $context = Get-GhAppContext $Repository
+    $definition = @(Read-GhAppLabelDefinition $DefinitionPath)
+    if ($Apply -and [string]::IsNullOrWhiteSpace($IssuesLogPath)) { throw 'Apply requires IssuesLogPath.' }
+    $logPath = $(if ($Apply) { Get-GhAppIssuesLogPath $context $IssuesLogPath } else { $null })
+    # GitHub compares label names without case. An ordinal comparison keeps a character that only folds to ASCII from matching.
+    $existing = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($item in @(Get-GhAppItems $context 'labels')) { $existing[[string]$item.name] = $item }
+    $plan = @()
+    foreach ($label in $definition) {
+        $current = $null
+        $null = $existing.TryGetValue($label.name, [ref]$current)
+        $action = 'create'
+        $changes = @()
+        if ($null -ne $current) {
+            if ($current.name -cne $label.name) { $changes += 'name' }
+            if ($current.color -ine $label.color) { $changes += 'color' }
+            if ([string]$current.description -cne $label.description) { $changes += 'description' }
+            $action = $(if ($changes.Count -gt 0) { 'update' } else { 'unchanged' })
+        }
+        $plan += [pscustomobject]@{ Action = $action; Name = $label.name; Color = $label.color.ToLowerInvariant();
+            Description = $label.description; Changes = ($changes -join ','); Existing = $(if ($null -ne $current) { [string]$current.name } else { $null }) }
+    }
+    # A dry run reads only. It never lists a label that the definition file does not name, and no run deletes a label.
+    if (-not $Apply) { return $plan }
+    $writeContext = $null
+    foreach ($row in $plan) {
+        if ($row.Action -ceq 'unchanged') { continue }
+        $line = "$([DateTimeOffset]::UtcNow.ToString('o')) issues-write label $($row.Action) name=$($row.Name)"
+        try { [IO.File]::AppendAllText($logPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false)) }
+        catch { throw 'The issues write log could not be written.' }
+        if ($null -eq $writeContext) {
+            # A copy carries the flag, so the stored configuration and every other call stay unchanged.
+            $writeContext = $context.Clone()
+            $writeContext.includeIssuesWrite = $true
+        }
+        if ($row.Action -ceq 'create') {
+            $null = Invoke-GhAppApi $writeContext POST 'labels' @{ name = $row.Name; color = $row.Color; description = $row.Description } -AsApp
+        } else {
+            # The validated definition name goes into the path. GitHub finds the label without regard to case.
+            $null = Invoke-GhAppApi $writeContext PATCH "labels/$($row.Name)" @{ new_name = $row.Name; color = $row.Color; description = $row.Description } -AsApp
+        }
+    }
+    $plan
+}
+
 function Add-GhAppReviewRecord {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
@@ -909,5 +998,5 @@ function Invoke-GhAppRead {
 }
 
 Export-ModuleMember -Function Import-GhAppConfig, Push-GhAppBranch, New-GhAppPullRequest,
-    Set-GhAppPullRequestBody, Add-GhAppComment, Add-GhAppReviewRecord, Request-GhAppOwnerReview,
+    Set-GhAppPullRequestBody, Add-GhAppComment, Sync-GhAppLabels, Add-GhAppReviewRecord, Request-GhAppOwnerReview,
     Merge-GhAppApprovedPullRequest, Close-GhAppPullRequest, Invoke-GhAppRead
