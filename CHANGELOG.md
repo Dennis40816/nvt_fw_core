@@ -6,9 +6,29 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 0.9.1 - 2026-10-15
+
+A release after the feature freeze of 0.9.0. It adds the interaction, accessibility and lifecycle parts of the Console that NFH needs for its K2e adoption.
+No breaking change since 0.9.0. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.0 entries.
+
+### Added
+
+- Console row interaction (K2c, #188). The Console list opens links through `IConsoleLinkOpener`, has a row menu, selection and copy, and takes the keyboard.
+  An application supplies the link opener and the clipboard adapter. Public API (13 entries in `Nvt.Core.Avalonia`): `IConsoleLinkOpener` (`GetUnavailableReason`, `Open`),
+  `IConsoleClipboard` (`SetText`), `ConsoleController.LinkOpener`, `ConsoleController.Clipboard` (init properties), `ConsoleController.CopySelectionCommand`,
+  `ConsoleListView.Controller` and `ConsoleListView.ControllerProperty`.
+- Console accessibility (K2d, #205). The list exposes a List peer with the realized rows, and each row a ListItem peer with selection and expand patterns.
+  New resource keys: `Nvt.Console.List.Name`, `Nvt.Console.List.Row.NameFormat`, `Nvt.Console.List.Row.RepeatFormat`,
+  `Nvt.Console.List.Row.LinkOneFormat` and `Nvt.Console.List.Row.LinksFormat`. It adds no public API.
+- Console lifecycle and documents (K2e, #221). A hosted `ConsoleController` stops observing the log store when the last Console control detaches. It observes again from the latest snapshot when a control attaches. A page switch leaves no store subscription and no queued refresh. A controller that never had a hosted control observes until `Dispose()`, as before. The Console documents in English and Traditional Chinese list a hosting checklist and the Avalonia public API, and a guard test keeps that table in step with the public API. It adds no public API.
+
 ### Fixed
 
-- Tests: the Console scroll gate counts work (row visits, host measure passes per step and row presenter measures of one full traversal) instead of timing it against a calibration unit, so the load of a solution-level parallel run does not change it (#206). The 10,000 and 20,000 row tests drop from about 4.5 minutes each to under one minute. The scale gate counts one traversal per size. The gate no longer reads a clock, so a cost per row that grows without changing a count is not caught.
+- Console scrolling repeats less work. The projection order is cached instead of copied on every paused scroll, row configuration and height geometry are reused,
+  and scroll, theme change and small scrolls have measure-count bounds (#188).
+- Console: following the end during a measure keeps the end, deferred delivery clears its pending state when it throws, and Resume clears ignored Pause requests (#188).
+- Console: a recycled row restores its focus fallback, and the focus ring of the first and last row stays inside the viewport (#205).
+- Tests: the Console scroll gate counts work (row visits, host measure passes per step and row presenter measures of one full traversal) instead of timing it against a calibration unit, so the load of a solution-level parallel run does not change it (#206, #220). The 10,000 and 20,000 row tests drop from about 4.5 minutes each to under one minute. The scale gate counts one traversal per size. The gate no longer reads a clock, so a cost per row that grows without changing a count is not caught.
 
 ## 0.9.0 - 2026-10-11
 
