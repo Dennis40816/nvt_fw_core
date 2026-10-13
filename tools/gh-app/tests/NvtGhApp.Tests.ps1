@@ -390,7 +390,6 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
     }
 
-
     Describe 'Label sync' {
         BeforeEach {
             Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
@@ -438,11 +437,11 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             (Get-GhAppContext).ContainsKey('includeIssuesWrite') | Should Be $false
             Assert-NoToken ($lines | Out-String)
         }
-        It 'updates only the fields that differ, keeps other labels and deletes nothing' {
+        It 'patches the changed label by its definition name, sends all three fields, leaves other labels and sends no DELETE' {
             Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @(
                         @{ name = 'Needs-Owner'; color = 'FFFFFF'; description = 'Owner approval required.' },
                         @{ name = 'unrelated'; color = '000000'; description = '' })),
-                (New-ApiStep labels/Needs-Owner PATCH @{ name = 'needs-owner' } -App))
+                (New-ApiStep labels/needs-owner PATCH @{ name = 'needs-owner' } -App))
             $plan = @(Sync-GhAppLabels -DefinitionPath $script:LabelFile -Apply -IssuesLogPath $script:IssuesLog)
             $plan.Count | Should Be 1
             $plan[0].Action | Should Be 'update'
@@ -450,10 +449,77 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $calls = @(Get-Calls)
             $calls.Count | Should Be 2
             $calls[1].Arguments -contains 'PATCH' | Should Be $true
+            $calls[1].Arguments -contains 'DELETE' | Should Be $false
+            $calls[1].Arguments -contains "/repos/$script:RepositoryName/labels/needs-owner" | Should Be $true
+            @($calls | Where-Object { $_.Arguments -contains 'DELETE' }).Count | Should Be 0
             $body = ConvertFrom-Json $calls[1].Input
             $body.new_name | Should Be 'needs-owner'
             $body.color | Should Be 'b60205'
+            $body.description | Should Be 'Owner approval required.'
             ([IO.File]::ReadAllText($script:IssuesLog)) -match 'issues-write label update name=needs-owner' | Should Be $true
+        }
+        It 'plans an update in a dry run without a token, a write or a log line' {
+            Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @(
+                        @{ name = 'NEEDS-OWNER'; color = 'b60205'; description = 'Owner approval required.' })))
+            $plan = @(Sync-GhAppLabels -DefinitionPath $script:LabelFile)
+            $plan[0].Action | Should Be 'update'
+            $plan[0].Changes | Should Be 'name'
+            @(Get-Calls).Count | Should Be 1
+            @(Get-HelperRecords).Count | Should Be 0
+            [IO.File]::Exists($script:IssuesLog) | Should Be $false
+        }
+        It 'asks for one permission per changed label and writes one log line per write' {
+            $two = Join-Path $script:FixtureRoot 'two-labels.json'
+            [IO.File]::WriteAllText($two, '{"labels":[{"name":"needs-owner","color":"B60205","description":"Owner approval required."},{"name":"extra","color":"0E8A16","description":"Second."}]}')
+            Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @(
+                        @{ name = 'needs-owner'; color = 'FFFFFF'; description = 'Owner approval required.' })),
+                (New-ApiStep labels/needs-owner PATCH @{ name = 'needs-owner' } -App),
+                (New-ApiStep labels POST @{ name = 'extra' } -App))
+            $plan = @(Sync-GhAppLabels -DefinitionPath $two -Apply -IssuesLogPath $script:IssuesLog)
+            @($plan | ForEach-Object Action) -join ',' | Should Be 'update,create'
+            @(Get-Calls).Count | Should Be 3
+            @(Get-HelperRecords).Count | Should Be 2
+            @(Get-Content -LiteralPath $script:IssuesLog).Count | Should Be 2
+            (Get-GhAppContext).ContainsKey('includeIssuesWrite') | Should Be $false
+        }
+        It 'does not match a remote name that only folds to the same ASCII letters' {
+            $kind = Join-Path $script:FixtureRoot 'kind.json'
+            [IO.File]::WriteAllText($kind, '{"labels":[{"name":"kind","color":"B60205","description":"d"}]}')
+            Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @(
+                        @{ name = "$([char]0x212A)ind"; color = 'b60205'; description = 'd' })))
+            $plan = @(Sync-GhAppLabels -DefinitionPath $kind)
+            $plan[0].Action | Should Be 'create'
+            $plan[0].Existing | Should Be $null
+        }
+        It 'finds a label on the second page of a full first page' {
+            $page = @(1..100 | ForEach-Object { @{ name = "label-$_"; color = '000000'; description = '' } })
+            Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value $page),
+                (New-ApiStep 'labels?per_page=100&page=2' -Value @(
+                        @{ name = 'needs-owner'; color = 'b60205'; description = 'Owner approval required.' })))
+            $plan = @(Sync-GhAppLabels -DefinitionPath $script:LabelFile)
+            $plan[0].Action | Should Be 'unchanged'
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'resolves a relative definition path against the PowerShell location' {
+            Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @()))
+            Push-Location -LiteralPath $script:FixtureRoot
+            try { $plan = @(Sync-GhAppLabels -DefinitionPath 'labels.json') } finally { Pop-Location }
+            $plan[0].Action | Should Be 'create'
+        }
+        It 'refuses a log path inside a repository before any call' {
+            $directory = Join-Path $script:FixtureRoot 'labels-log-repo'
+            [void][IO.Directory]::CreateDirectory((Join-Path $directory '.git'))
+            try {
+                Get-Message { Sync-GhAppLabels -DefinitionPath $script:LabelFile -Apply -IssuesLogPath (Join-Path $directory 'issues.log') } |
+                    Should Be 'The issues write log must be outside every repository.'
+                @(Get-Calls).Count | Should Be 0
+                @(Get-HelperRecords).Count | Should Be 0
+            } finally { [IO.Directory]::Delete($directory, $true) }
+        }
+        It 'refuses the helper file as the log path before any call' {
+            Get-Message { Sync-GhAppLabels -DefinitionPath $script:LabelFile -Apply -IssuesLogPath (Get-GhAppContext).tokenHelperPath } |
+                Should Be 'The issues write log must not name a config, helper, or DPAPI file.'
+            @(Get-Calls).Count | Should Be 0
         }
         It 'makes no write, no token request and no log line when the label is current' {
             Set-Responses @((New-ApiStep 'labels?per_page=100&page=1' -Value @(
@@ -479,7 +545,17 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 @{ Name = 'a color with a hash'; Json = '{"labels":[{"name":"a","color":"#B60205","description":"d"}]}'; Message = 'Invalid label color for a.' },
                 @{ Name = 'a long description'; Json = ('{"labels":[{"name":"a","color":"B60205","description":"' + ('x' * 101) + '"}]}'); Message = 'Invalid label description for a.' },
                 @{ Name = 'a duplicate name'; Json = '{"labels":[{"name":"a","color":"B60205","description":"d"},{"name":"A","color":"B60205","description":"d"}]}'; Message = 'Duplicate label name: A' },
-                @{ Name = 'an extra field'; Json = '{"labels":[{"name":"a","color":"B60205","description":"d","x":1}]}'; Message = 'Each label has exactly the fields name, color and description.' })) {
+                @{ Name = 'an extra field'; Json = '{"labels":[{"name":"a","color":"B60205","description":"d","x":1}]}'; Message = 'Each label has exactly the fields name, color and description.' },
+                @{ Name = 'a missing field'; Json = '{"labels":[{"name":"a","color":"B60205"}]}'; Message = 'Each label has exactly the fields name, color and description.' },
+                @{ Name = 'a null label'; Json = '{"labels":[null]}'; Message = 'Each label has exactly the fields name, color and description.' },
+                @{ Name = 'a document without labels'; Json = '{}'; Message = 'The label definition file lists no labels.' },
+                @{ Name = 'a null document'; Json = 'null'; Message = 'The label definition file lists no labels.' },
+                @{ Name = 'a name with a final newline'; Json = '{"labels":[{"name":"a\n","color":"B60205","description":"d"}]}'; Message = "Invalid label name: a`n" },
+                @{ Name = 'a number as the name'; Json = '{"labels":[{"name":5,"color":"B60205","description":"d"}]}'; Message = 'Invalid label name: 5' },
+                @{ Name = 'a color with a final newline'; Json = '{"labels":[{"name":"a","color":"B60205\n","description":"d"}]}'; Message = 'Invalid label color for a.' },
+                @{ Name = 'a color of five digits'; Json = '{"labels":[{"name":"a","color":"B6020","description":"d"}]}'; Message = 'Invalid label color for a.' },
+                @{ Name = 'a description with a control character'; Json = '{"labels":[{"name":"a","color":"B60205","description":"d\u0007"}]}'; Message = 'Invalid label description for a.' },
+                @{ Name = 'a number as the description'; Json = '{"labels":[{"name":"a","color":"B60205","description":5}]}'; Message = 'Invalid label description for a.' })) {
             It "rejects $($case.Name) before any call" {
                 $path = Join-Path $script:FixtureRoot 'bad-labels.json'
                 if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) }
