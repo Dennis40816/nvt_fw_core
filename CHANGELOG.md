@@ -6,7 +6,9 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
-## 0.9.1 - 2026-10-15
+## 0.9.1 - 2026-10-13
+
+Tag `core-v0.9.1` on commit `26f4230a683ef7d300afc085502ca2121369d06f` (#222).
 
 A release after the feature freeze of 0.9.0. It adds the interaction, accessibility and lifecycle parts of the Console that NFH needs for its K2e adoption.
 No breaking change since 0.9.0. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.0 entries.
