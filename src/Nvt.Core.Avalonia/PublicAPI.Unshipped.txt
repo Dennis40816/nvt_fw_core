@@ -1,14 +1,1 @@
 #nullable enable
-Nvt.Core.Avalonia.LogConsole.ConsoleController.Clipboard.get -> Nvt.Core.Avalonia.LogConsole.IConsoleClipboard?
-Nvt.Core.Avalonia.LogConsole.ConsoleController.Clipboard.init -> void
-Nvt.Core.Avalonia.LogConsole.ConsoleController.CopySelectionCommand.get -> System.Windows.Input.ICommand!
-Nvt.Core.Avalonia.LogConsole.ConsoleController.LinkOpener.get -> Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener?
-Nvt.Core.Avalonia.LogConsole.ConsoleController.LinkOpener.init -> void
-Nvt.Core.Avalonia.LogConsole.ConsoleListView.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
-Nvt.Core.Avalonia.LogConsole.ConsoleListView.Controller.set -> void
-Nvt.Core.Avalonia.LogConsole.IConsoleClipboard
-Nvt.Core.Avalonia.LogConsole.IConsoleClipboard.SetText(string! text) -> void
-Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener
-Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener.GetUnavailableReason(Nvt.Core.LogConsole.LinkTarget! target) -> string?
-Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener.Open(Nvt.Core.LogConsole.LinkTarget! target) -> void
-static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!

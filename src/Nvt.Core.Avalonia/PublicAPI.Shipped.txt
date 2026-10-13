@@ -38,10 +38,15 @@ Nvt.Core.Avalonia.Inputs.NumberScrubber.Value.get -> decimal
 Nvt.Core.Avalonia.Inputs.NumberScrubber.Value.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleController
 Nvt.Core.Avalonia.LogConsole.ConsoleController.ClearCommand.get -> System.Windows.Input.ICommand!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Clipboard.get -> Nvt.Core.Avalonia.LogConsole.IConsoleClipboard?
+Nvt.Core.Avalonia.LogConsole.ConsoleController.Clipboard.init -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleController.ConsoleController(Nvt.Core.LogConsole.LogStore! store, System.Collections.Immutable.ImmutableArray<Nvt.Core.LogConsole.ConsoleSource!> sources, Nvt.Core.LogConsole.ConsoleProjectionOptions? options = null) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleController.CopySelectionCommand.get -> System.Windows.Input.ICommand!
 Nvt.Core.Avalonia.LogConsole.ConsoleController.Dispose() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleController.ExportOptions.get -> Nvt.Core.LogConsole.ConsoleExportOptions!
 Nvt.Core.Avalonia.LogConsole.ConsoleController.Filter.get -> Nvt.Core.LogConsole.ConsoleFilter!
+Nvt.Core.Avalonia.LogConsole.ConsoleController.LinkOpener.get -> Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener?
+Nvt.Core.Avalonia.LogConsole.ConsoleController.LinkOpener.init -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleController.Options.get -> Nvt.Core.LogConsole.ConsoleProjectionOptions!
 Nvt.Core.Avalonia.LogConsole.ConsoleController.Pause(Nvt.Core.LogConsole.ConsoleRowId? rowId = null, int textOffset = 0, double pixelOffset = 0) -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleController.Projection.get -> Nvt.Core.LogConsole.ConsoleProjection!
@@ -79,6 +84,8 @@ Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Title.get -> string!
 Nvt.Core.Avalonia.LogConsole.ConsoleHeader.Title.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.ConsoleListView() -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
+Nvt.Core.Avalonia.LogConsole.ConsoleListView.Controller.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.JumpToLatest() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.get -> Nvt.Core.LogConsole.ConsoleProjection?
 Nvt.Core.Avalonia.LogConsole.ConsoleListView.Projection.set -> void
@@ -94,6 +101,11 @@ Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ConsoleToolbar() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.LogConsole.IConsoleClipboard
+Nvt.Core.Avalonia.LogConsole.IConsoleClipboard.SetText(string! text) -> void
+Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener
+Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener.GetUnavailableReason(Nvt.Core.LogConsole.LinkTarget! target) -> string?
+Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener.Open(Nvt.Core.LogConsole.LinkTarget! target) -> void
 Nvt.Core.Avalonia.MessageCenter.IMessageCenterText
 Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.DiagnosticsExportFailedLabel.get -> string!
 Nvt.Core.Avalonia.MessageCenter.IMessageCenterText.DiagnosticsExportedLabel.get -> string!
@@ -448,6 +460,7 @@ static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopySelectedCommandPr
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.CopyVisibleCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.SaveLogCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleHeader.TitleProperty -> Avalonia.StyledProperty<string!>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ProjectionProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleProjection?>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeModeProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleTimeMode>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptionsProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleProjectionOptions!>!
