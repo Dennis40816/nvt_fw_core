@@ -1,0 +1,9 @@
+{
+  "labels": [
+    {
+      "name": "needs-owner",
+      "color": "B60205",
+      "description": "Owner approval required. Overrides Approval tier: B."
+    }
+  ]
+}
