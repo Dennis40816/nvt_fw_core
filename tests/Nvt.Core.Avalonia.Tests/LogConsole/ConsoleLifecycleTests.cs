@@ -90,6 +90,55 @@ public sealed class ConsoleLifecycleTests
     }
 
     [AvaloniaFact]
+    public void Attach_StoreDisposedBeforeFirstAttach_ReportsRefreshError()
+    {
+        using var store = new ConsoleTestStore();
+        using var controller = store.Controller();
+        store.Store.Dispose();
+        var toolbar = new ConsoleToolbar { Controller = controller };
+
+        var window = ConsoleInteractionWindow.Create(toolbar);
+        window.Close();
+
+        Assert.IsType<ObjectDisposedException>(controller.RefreshError);
+    }
+
+    [AvaloniaFact]
+    public void Detach_OneOfSeveralControls_KeepsSubscriptionAndRefreshes()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(composed: true, store: store);
+        var before = scene.Controller.Projection.LastSequence;
+        var host = (Panel)scene.Toolbar!.Parent!;
+
+        host.Children.Remove(scene.Toolbar!);
+        ConsoleInteractionWindow.Pump(scene.Window);
+        scene.Publish("https://example.test/after-toolbar");
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Equal(1, store.Store.ChangedSubscriberCount);
+        Assert.True(scene.Controller.Projection.LastSequence > before);
+        Assert.Same(scene.Controller.Projection, scene.View.Projection);
+    }
+
+    [AvaloniaFact]
+    public void Detach_LastOfSeveralControls_ReleasesSubscription()
+    {
+        using var store = new ConsoleTestStore();
+        using var scene = new ConsoleInteractionScene(composed: true, store: store);
+        var host = (Panel)scene.Toolbar!.Parent!;
+
+        host.Children.Remove(scene.Toolbar!);
+        host.Children.Remove(scene.Header!);
+        host.Children.Remove(scene.EmptyState!);
+        host.Children.Remove(scene.View);
+        ConsoleInteractionWindow.Pump(scene.Window);
+
+        Assert.Equal(0, store.Store.ChangedSubscriberCount);
+        Assert.Equal(0, scene.Controller.PendingOperationCount);
+    }
+
+    [AvaloniaFact]
     public void Attach_ControllerReplacedWhileAttached_MovesObservationToNewController()
     {
         using var store = new ConsoleTestStore();

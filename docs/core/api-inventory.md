@@ -31,7 +31,7 @@ Types and entries count the public API of the namespace. Consumers count source 
 | `Nvt.Core.Launcher.Transport` | 26 | 145 | other tests (2) | none found (NFC adopts the Launcher host in a later slice) | review: the process and handoff adapters are the host entry points. 20 of the 26 types have no other consumer yet |
 | `Nvt.Core.Lifecycle` | 3 | 15 | Core tests only | NFH (5 files) | keep |
 | `Nvt.Core.Locale` | 2 | 32 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
-| `Nvt.Core.LogConsole` | 31 | 296 | Avalonia (17), other tests (68) | none found (NFH adopts the Console in Core 0.9.1) | keep: the Avalonia Console consumes the data layer |
+| `Nvt.Core.LogConsole` | 31 | 296 | Avalonia (17), other tests (68) | none found (NFH plans to adopt the Console in Core 0.9.1) | keep: the Avalonia Console consumes the data layer |
 | `Nvt.Core.MessageCenter` | 10 | 64 | Avalonia (1), other tests (2) | none found | keep |
 | `Nvt.Core.Persistence` | 2 | 13 | Core tests only | none found | internalize-candidate: no consumer outside its tests |
 | `Nvt.Core.Processes` | 9 | 45 | 6 Core files (Launcher), other tests (1) | none found | keep |
@@ -61,7 +61,7 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 | `Nvt.Core.Avalonia.Focus` | 3 | 11 | Avalonia tests (5) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Icons` | 1 | 72 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Inputs` | 1 | 36 | Avalonia tests (6) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
-| `Nvt.Core.Avalonia.LogConsole` | 7 | 82 | Avalonia tests (36) | none found (NFH adopts the Console in Core 0.9.1) | keep: Console controls and host adapter contracts |
+| `Nvt.Core.Avalonia.LogConsole` | 7 | 82 | Avalonia tests (36) | none found (NFH plans to adopt the Console in Core 0.9.1) | keep: Console controls and host adapter contracts |
 | `Nvt.Core.Avalonia.MessageCenter` | 3 | 61 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Panels` | 2 | 51 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Primitives` | 3 | 28 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
