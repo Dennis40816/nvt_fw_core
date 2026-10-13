@@ -149,12 +149,14 @@ public sealed class ConsoleLifecycleTests
         using var store = new ConsoleTestStore();
         using var scene = new ConsoleInteractionScene(composed: true, store: store);
         scene.Detach();
+        var before = scene.Controller.Projection.Version;
         scene.Controller.Dispose();
         scene.Controller.Dispose();
 
         scene.Publish("https://example.test/after-dispose");
         ConsoleInteractionWindow.Pump(scene.Window);
 
+        Assert.Equal(before, scene.Controller.Projection.Version);
         Assert.Equal(0, store.Store.ChangedSubscriberCount);
         Assert.Equal(0, scene.Controller.PendingOperationCount);
         Assert.False(scene.Controller.ClearCommand.CanExecute(null));
@@ -165,6 +167,7 @@ public sealed class ConsoleLifecycleTests
     {
         using var store = new ConsoleTestStore();
         using var scene = new ConsoleInteractionScene(composed: true, store: store);
+        var before = scene.Controller.Projection;
         scene.Detach();
         store.Store.Dispose();
 
@@ -172,6 +175,8 @@ public sealed class ConsoleLifecycleTests
 
         Assert.Equal(0, store.Store.ChangedSubscriberCount);
         Assert.Equal(0, scene.Controller.PendingOperationCount);
+        Assert.Same(before, scene.View.Projection);
+        Assert.Equal(before.RowCount, scene.View.ItemsHost!.ItemsSource.Count);
     }
 
     [AvaloniaFact]

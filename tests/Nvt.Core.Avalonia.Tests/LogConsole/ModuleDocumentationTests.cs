@@ -111,6 +111,7 @@ public sealed class ModuleDocumentationTests
         => type.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
             .Where(member => member.MemberType is not MemberTypes.Constructor and not MemberTypes.NestedType)
             .Where(member => member is not MethodBase { IsSpecialName: true })
+            // Synthesized members (for example the members of a positional record) are deliberately not part of the table.
             .Where(member => !member.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
             .Select(member => member.Name)
             .ToHashSet(StringComparer.Ordinal);

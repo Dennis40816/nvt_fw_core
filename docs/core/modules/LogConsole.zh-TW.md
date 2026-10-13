@@ -311,7 +311,7 @@ Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 - [ ] 在綁定前設定控制器的 init properties `LinkOpener` 與 `Clipboard`。透過 `IConsoleLinkOpener` 的實作提供宿主的路徑解析器、快取可用性與開啟政策；透過 `IConsoleClipboard` 提供平台 clipboard dispatch。Adapter 方法在 UI 執行緒呼叫，必須立即返回；IO 與非同步工作由宿主執行。
 - [ ] 組合 `ConsoleToolbar`、`ConsoleListView`、`ConsoleEmptyState`，並可加入 `ConsoleHeader`。每個控制項指派同一個 `Controller`。將列表的 `Projection`、`ViewState`、`TimeOptions`、`TimeMode` 分別綁定該控制器的 `Projection`、`ViewState`、`Options`、`Filter.TimeMode`。將 `ViewStateRequested` 交給 `RequestViewState`，再透過 binding 傳回接受的狀態。空狀態從投影推導自身可見性。
 - [ ] 讓控制器持有篩選、跟隨或暫停錨點、展開、選取與投影 leases。控制項借用這些輸入，只持有 attachment-local 的互動、handlers 與顯示快取。宿主持有 store、注入的 adapters、theme、app log 目錄、copy-visible／檔案 commands 與儲存對話框。選用的標頭可將 `CopySelectionCommand` 指派給 `CopySelectedCommand`；`CopyVisibleCommand` 與 `SaveLogCommand` 由宿主提供。
-- [ ] 隱藏頁面時保留同一個控制器。建構時先訂閱，再擷取啟動快照。Console 控制項開始被宿主掛載後，只要仍有控制項 attach，就共用控制器的 store 訂閱。最後一個控制項 detach 時解除訂閱並取消排隊更新，保留控制器的持久狀態。列表 detach 清除 hover、按下中的連結、pointer capture、焦點／範圍起點、選單與延後的捲動／拖曳意圖。重新 attach 恢復已接受的閱讀狀態，並從最新已發布的 store 快照更新。共用 store 的不同控制器各自管理 attachment 生命週期。未離開視覺樹就被丟棄的檢視不會 detach，控制器會持續訂閱，直到 Dispose。app 已 Dispose store 後再 attach，控制器維持 detached，並顯示最後一次投影。
+- [ ] 隱藏頁面時保留同一個控制器。建構時先訂閱，再擷取啟動快照。Console 控制項開始被宿主掛載後，只要仍有控制項 attach，就共用控制器的 store 訂閱。最後一個控制項 detach 時解除訂閱並取消排隊更新，保留控制器的持久狀態。列表 detach 清除 hover、按下中的連結、pointer capture、焦點／範圍起點、選單與延後的捲動／拖曳意圖。重新 attach 恢復已接受的閱讀狀態，並從最新已發布的 store 快照更新。共用 store 的不同控制器各自管理 attachment 生命週期。未離開視覺樹就被丟棄的檢視不會 detach，控制器會持續訂閱，直到 Dispose。App 已 Dispose store 後再 attach，控制器維持 detached，並顯示最後一次投影。
 - [ ] 放棄檢視時釋放宿主自行建立的事件訂閱。永久丟棄頁面時，在 UI 執行緒 Dispose 控制器；重複呼叫 `Dispose()` 安全，會釋放其投影／快照 leases 與 commands。等 consumers 結束後，另行 Dispose app 擁有的 store。從未掛載過控制項的控制器持續觀察 store，直到 Dispose。控制器建構時對 store 呼叫 `SetReady(true)`；detach 與 Dispose 保留這個 store-wide 就緒狀態。
 - [ ] 建立控制項、指派輸入、接受狀態要求、執行控制器 commands 與 Dispose 都在 UI 執行緒進行。Producer 可從其他執行緒寫入 store；控制器通知會合併至已註冊的 dispatcher。不可 Dispose 從控制器借用的投影。宿主的 copy-visible 與檔案匯出須 await `CaptureLatestAsync(cancellationToken)`，並持有及 Dispose 交給 `ConsoleExportFormatter` 的固定版本快照與投影。
 
@@ -393,7 +393,7 @@ lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍�
 多個例外合併成一個 `AggregateException`。只有嘗試替換通知後才會釋放舊投影。
 失敗通知的 observer 丟出例外時，先前投影仍保留，後續更新也仍可執行。
 
-### 資源 keys
+### 資源鍵
 
 `LogConsole/ConsoleResources.axaml` 定義英文預設值與結構尺寸，合併於
 `LogConsoleStyles.axaml`。控制項在區域載入不含預設資源的控制樣式；動態資源 binding
@@ -541,7 +541,7 @@ dotnet test Nvt.Core.sln --no-build --no-restore
 
 Console 控制項、連結與選取互動、鍵盤 commands、accessibility 與視覺證據皆已實作。
 宿主提供路徑政策、開啟、clipboard 與檔案 adapters、儲存對話框、theme 與 app log 目錄。
-NFH 採用 Console 另行進行，預計隨 Core 0.9.1。
+各宿主採用 Console 另行進行，NFH 預計於 Core 0.9.1 進行。
 
 ## 列表檢視
 

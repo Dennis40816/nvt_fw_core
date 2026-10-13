@@ -644,7 +644,7 @@ dotnet test Nvt.Core.sln --no-build --no-restore
 
 The Console controls, link and selection interaction, keyboard commands, accessibility and visual evidence are implemented.
 The host supplies path policy, opening, clipboard and file adapters, the storage dialog, theme and the app log directory.
-NFH adoption of the Console is separate and planned for Core 0.9.1.
+Adoption of the Console by the hosts is separate. NFH adopts it in Core 0.9.1.
 
 ## List view
 
