@@ -8,6 +8,8 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.2 - 2026-10-13
 
+Tag `core-v0.9.2` on commit `12bb7f6375e154f530caa4bdaf816707ea9839d3` (#227).
+
 A release after the feature freeze of 0.9.0, at the request of the owner. It adds font zoom to the Console list for the NFH adoption.
 No breaking change since 0.9.1. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.1 entries.
 
