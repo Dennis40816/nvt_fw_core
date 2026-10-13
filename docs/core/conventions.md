@@ -179,6 +179,7 @@ Ask the questions below for each field, from top to bottom. Stop at the first "y
 
 - A class with more than 30 state members needs a PR note that explains why it is not split.
 - If two fields match a combine signal, the reviewer decides. If three or more fields match, combine them.
+- Getting under the limit is not the end. Remove each field that other fields can compute. Combine each set of three or more fields that match a combine signal. Check every class that you touch, not only the classes above the limit.
 
 ### Examples in Core
 
