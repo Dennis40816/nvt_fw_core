@@ -597,7 +597,7 @@ Declared public types and members of `Nvt.Core.Avalonia.LogConsole` are listed b
 | `ConsoleHeader` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`, `Title`, `CopySelectedCommand`, `CopyVisibleCommand`, `SaveLogCommand`; static readonly `ControllerProperty`, `TitleProperty`, `CopySelectedCommandProperty`, `CopyVisibleCommandProperty`, `SaveLogCommandProperty`. |
 | `ConsoleToolbar` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
 | `ConsoleEmptyState` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
-| `ConsoleListView` | Constructor `()`; get/set `Controller`, `Projection`, `ViewState`, `TimeOptions`, `TimeMode`; static readonly `ControllerProperty`, `ProjectionProperty`, `ViewStateProperty`, `TimeOptionsProperty`, `TimeModeProperty`; `ViewStateRequested`; `JumpToLatest()`. |
+| `ConsoleListView` | Constructor `()`; get/set `Controller`, `Projection`, `ViewState`, `TimeOptions`, `TimeMode`; static readonly `ControllerProperty`, `ProjectionProperty`, `ViewStateProperty`, `TimeOptionsProperty`, `TimeModeProperty`; `ViewStateRequested`; `JumpToLatest()`; get/set `Zoom`; static readonly `ZoomProperty`; const `MinimumZoom`, `MaximumZoom`, `ZoomStep`; `ZoomChanged`; `ZoomIn()`, `ZoomOut()`, `ResetZoom()`. |
 | `IConsoleClipboard` | `SetText(text)`. |
 | `IConsoleLinkOpener` | `GetUnavailableReason(target)`, `Open(target)`. |
 
@@ -664,6 +664,10 @@ It has no dependency on a panel controller or an app type.
 | `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`, default Absolute; Hidden removes the time column. |
 | `ViewStateRequested` | `EventHandler<ConsoleViewState>` carrying the requested replacement state. |
 | `JumpToLatest()` | Requests Resume; a host command can bind Ctrl+End here. |
+| `Zoom` / `ZoomProperty` | `double` size factor of the rows, default 1.0, two-way. A value outside 0.8 to 3.0 is clamped and NaN becomes 1.0. |
+| `MinimumZoom` / `MaximumZoom` / `ZoomStep` | Constants 0.8, 3.0 and 0.1: 80 to 300 percent in steps of 10 percent. |
+| `ZoomChanged` | `EventHandler<double>` raised on the UI thread after `Zoom` changed, with the new value. |
+| `ZoomIn()` / `ZoomOut()` / `ResetZoom()` | Move one stop up, move one stop down, or set 1.0. |
 
 Assign inputs and accept requests on the UI thread. With a controller, route requests to `RequestViewState`
 and bind its accepted `ViewState`. A standalone list caller owns and replaces that state.
@@ -672,8 +676,8 @@ Projection assignment synchronously rebinds surviving presenters, so the caller 
 projection immediately after the assignment returns, even before layout or another replacement.
 Collapse of the containing console preserves the externally owned state.
 
-Collapsed rows use `ConsoleRow.GetFirstLine` and have a fixed 20 DIP height.
-Columns are time 104, level 84, source 120, remaining message, repeat 48, and arrow 24 DIP,
+Collapsed rows use `ConsoleRow.GetFirstLine` and have a fixed height of 20 DIP at zoom 1.0.
+Columns are, at zoom 1.0, time 104, level 84, source 120, remaining message, repeat 48, and arrow 24 DIP,
 with 16 DIP content insets. Level has both a shared Material Symbols glyph and a name.
 Long sources use character ellipsis with the complete source ID in a tooltip.
 The arrow appears for omitted content or actual width truncation; repeat text appears only for duplicates.
@@ -722,7 +726,7 @@ Error/Fatal backgrounds use the existing danger surface. Message/source search h
 warning surface and strong warning text. Painting proceeds through search background, text, link decoration
 and hover, then search foreground last. Hovered link text uses the app accent outside search hits.
 Theme/resource changes invalidate the measured display cache.
-Paused reading keeps the same first visible row and DIP inset while measured heights are rebuilt.
+Paused reading keeps the same first visible row and DIP inset while measured heights are rebuilt. A zoom change scales that inset by the zoom factor.
 
 User scroll-away requests Pause with the first visible row, sequence, text offset and DIP offset.
 Expansion reports one combined expansion/pause state; pointer movement beyond 4 DIP cancels activation.
@@ -805,6 +809,16 @@ Clipboard paths share one bounded builder. At most 65,536 UTF-16 characters are 
 bounded chunks; row copy matches the existing export prefix, original newlines and dedupe suffix until the cap.
 `ConsoleController.CopySelectionCommand` can also supply the header's copy-selected command.
 The host owns failures of its queued platform operations.
+
+The list zooms its rows. `Zoom` is a factor from 0.8 to 3.0 with a default of 1.0, and `ZoomStep` is 0.1.
+The zoom scales the row height, the five column widths and the four row font sizes.
+It does not scale the toolbar, the header, the jump button, the retention notice or the row padding.
+A paused list keeps its first visible row and its offset inside that row.
+While the list has focus, Ctrl+Plus (also Ctrl+= and the number pad plus) zooms in, Ctrl+Minus zooms out, and Ctrl+0 resets.
+Ctrl with the mouse wheel over the list zooms too, with or without focus. One notch is one step, and a touchpad adds up its fractions.
+The wheel zooms only with Ctrl alone, so Shift and Alt keep their usual meaning.
+Alt cancels the key gestures.
+The list does not store the value. A host saves it in the `ZoomChanged` handler and assigns it when it builds the view.
 
 The list has one Tab entry. Up/Down, PageUp/PageDown and Home/End move row focus; Shift extends selection.
 Enter/Space toggles expansion, Ctrl+C copies, Escape closes the row menu before clearing selection,
