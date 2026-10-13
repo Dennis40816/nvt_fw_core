@@ -7,11 +7,11 @@
 `Nvt.Core.LogConsole` is the shared non-UI console model for NFC, NFH, and NFU.
 It targets `net10.0`.
 It adds no package.
-The controller, header, toolbar, and empty state live in `Nvt.Core.Avalonia.LogConsole`. The Avalonia list is described under [List view](#list-view); host commands own projection and state.
+The controller and controls live in `Nvt.Core.Avalonia.LogConsole`. The controller owns projection and durable state; the list is described under [List view](#list-view).
 
 ## Design and provenance
 
-This is a new implementation of the design approved on 2026-10-07 in Core PR #82.
+This implements the approved Console design.
 It does not port a product console.
 The behavior reference is the earlier NFH console and the approved console redesign proposal.
 An NFH measurement included product projection and UI work; the Core performance test measures only projection.
@@ -62,7 +62,7 @@ Counts and empty-state values belong only to this output.
 The host must reject background projections when snapshot, filter, or presentation inputs have changed.
 The Avalonia controller owns command routing for the header and toolbar.
 The non-UI layer supplies immutable inputs and projection mechanisms.
-List virtualization, row interaction, and keyboard routing are supplied by the list slice of K2.
+The Avalonia list supplies virtualization, row interaction, keyboard routing and automation peers.
 
 ## Storage, budgets, and lifetime
 
@@ -220,7 +220,7 @@ Multiline text does not create extra events.
 
 ## Presentation contracts
 
-These contracts follow Console redesign v3 (#82), **v3 更新**, **由 app 注入 / SourceRegistry**,
+These contracts follow the approved Console redesign, **v3 更新**, **由 app 注入 / SourceRegistry**,
 **增量連結解析**, and **去重與篩選的投影**. They add no UI, product type, resource lookup,
 thread-culture read, local-zone lookup, or file-system access. Store admission, ownership,
 rejection, dedupe, and scanner grammar remain unchanged.
@@ -368,8 +368,20 @@ Original message line breaks stay unchanged.
 Rows are separated by LF.
 Repeated rows retain `×N`.
 No display truncation or stale formatted-text cache is used.
-For export and copy, including while collapsed, the host awaits `CaptureLatestAsync(cancellationToken)` and projects that frozen snapshot.
+Host-provided copy-visible and file-export commands await `CaptureLatestAsync(cancellationToken)` and project that frozen snapshot.
+The controller's bounded selection copy validates the latest published snapshot synchronously; accepted writes can still await publication.
 Formatting methods accept an existing projection and do not acquire or refresh store state.
+
+## Hosting and lifecycle
+
+- [ ] Register the running dispatcher with `UiThread.RegisterRunningDispatcher` on the UI thread. Load Core theme tokens, font roles, `LogConsole/LogConsoleStyles.axaml` and `LogConsole/ConsoleListStyles.axaml`; configure fonts with `WithNvtCoreFonts()`.
+- [ ] Keep an app-owned `LogStore` alive for the controller's lifetime. Construct `ConsoleController(store, sources, options)` on that dispatcher. Supply an immutable `ConsoleSource` registry through `sources`, and explicit template, culture and absolute time zone through `ConsoleProjectionOptions`. A nonempty `options.SourceRegistry` must agree with `sources`.
+- [ ] Set the controller's init properties `LinkOpener` and `Clipboard` before binding. Supply the host's path resolver, cached availability and opening policy through `IConsoleLinkOpener`. Supply platform clipboard dispatch through `IConsoleClipboard`. Adapter methods run on the UI thread and must return promptly; perform IO and asynchronous work in the host.
+- [ ] Compose a `ConsoleToolbar`, `ConsoleListView` and `ConsoleEmptyState`, with an optional `ConsoleHeader`. Assign the same `Controller` to each. Bind the list's `Projection`, `ViewState`, `TimeOptions` and `TimeMode` to that controller's `Projection`, `ViewState`, `Options` and `Filter.TimeMode`. Route `ViewStateRequested` to `RequestViewState` and return accepted state through the binding. The empty state derives its visibility from the projection.
+- [ ] Let the controller own filters, following or the paused anchor, expansion, selection and projection leases. Controls borrow those inputs and own only attachment-local interaction, handlers and display caches. The host owns the store, injected adapters, theme, app log directory, copy-visible/file commands and storage dialog. An optional header can use `CopySelectionCommand` for `CopySelectedCommand`; the host supplies `CopyVisibleCommand` and `SaveLogCommand`.
+- [ ] Keep the same controller when hiding a page. Construction subscribes before startup capture. Once Console controls are hosted, they share the controller's store subscription while any remain attached. Detaching the last control unsubscribes and aborts its queued refresh; it retains durable controller state. List detach clears hover, pressed links, pointer capture, focus/range origin, menus and deferred scroll/drag intent. Reattaching restores accepted reading state and refreshes from the latest published store snapshot. Independent controllers over the same store have independent attachment lifetimes.
+- [ ] Release any host-owned event subscriptions when abandoning a view. Dispose the controller on the UI thread when the page is permanently discarded; repeated `Dispose()` is harmless and releases its owned projection/snapshot leases and commands. Dispose the app-owned store separately after its consumers finish. A controller used without hosted controls observes until disposal. Controller construction calls `SetReady(true)` for the store; detach and disposal leave that store-wide readiness unchanged.
+- [ ] Create controls, assign their inputs, accept state requests, invoke controller commands and dispose on the UI thread. Producers may add to the store from other threads; controller notifications coalesce onto the registered dispatcher. Do not dispose a borrowed controller projection. For host-owned copy-visible and file export, await `CaptureLatestAsync(cancellationToken)` and own/dispose the frozen snapshot and projection used by `ConsoleExportFormatter`.
 
 ## Avalonia controller and toolbar
 
@@ -409,8 +421,9 @@ The list borrows `Projection` and reports immutable intents through
 inputs. `Pause(rowId, textOffset, pixelOffset)` captures the reading anchor and samples
 the injected store clock through a fresh nonblocking snapshot for the pause instant;
 `Resume()` is the jump-to-latest intent. Collapse is a view-state change and preserves
-follow state. The host calls `Dispose()` on page exit; it unsubscribes, aborts queued
-work, and releases both projections. Repeated disposal is safe. The app retains store
+follow state. Page hiding detaches controls and preserves the controller. The host calls
+`Dispose()` when the page is permanently discarded; it unsubscribes, aborts queued
+work, and releases owned projections. Repeated disposal is safe. The app retains store
 ownership. The controller calls `SetReady(true)` for the whole store during construction;
 `Dispose()` does not restore its previous readiness. This also affects other subscribers.
 The host must account for that persistent store-wide notification state.
@@ -437,7 +450,7 @@ All intents and disposal require the UI thread. Export flags belong to
 `ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
 styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
 entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
-Fonts roles and keep the console at least 640 DIP wide. The approved B layout places
+Fonts roles and keep the console at least 640 DIP wide. The wide layout places
 search beside the title at wide widths, with levels and sources in the filter row.
 At 960 DIP and below, search and Only matches move to the second filter row; Display
 contains time and dedupe, and More contains export and clear. Header height is 48 DIP;
@@ -455,16 +468,7 @@ The header's `Title` defaults to Console. The app binds `CopySelectedCommand`,
 `CopyVisibleCommand`, and `SaveLogCommand`; the menu supplies the independent Include
 time and Include level options. Header menu bindings follow the header's current
 controller directly, so popup dismissal does not disconnect an executing command.
-Clipboard and file adapters, row navigation, and
-list rendering belong to the host's interaction and list layers.
-
-| Avalonia type | Public members |
-| --- | --- |
-| `ConsoleController` | Constructor `(store, sources, options = null)`, `PropertyChanged`, `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `RefreshError`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`, `SetSelectedSources`, `SetSearchText`, `RequestViewState`, `Pause`, `Resume`, `Dispose`. |
-| `ConsoleHeader` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`, `Title` / `TitleProperty`, `CopySelectedCommand` / `CopySelectedCommandProperty`, `CopyVisibleCommand` / `CopyVisibleCommandProperty`, `SaveLogCommand` / `SaveLogCommandProperty`. |
-| `ConsoleToolbar` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
-| `ConsoleEmptyState` | Constructor, generated `InitializeComponent(loadXaml = true)`, `Controller` / `ControllerProperty`. |
-
+The host provides clipboard and file adapters; `ConsoleListView` provides row navigation and rendering.
 
 The constructor validates `RelativeTimeTemplate`, so malformed composite formatting is rejected
 as an `ArgumentException` naming `options`, with the original `FormatException` as its cause.
@@ -583,6 +587,20 @@ The separate injected `ConsoleProjectionOptions.RelativeTimeTemplate` continues 
 | `ConsoleExportOptions` | `IncludeTime = true`, `IncludeLevel = true`. |
 | `ConsoleExportFormatter` | `FormatVisible(projection, options)`, `FormatSelection(projection, selection, options)`, `WriteLogAsync(destination, projection, options, cancellationToken)`. |
 
+## Avalonia public API
+
+Declared public types and members of `Nvt.Core.Avalonia.LogConsole` are listed below, including generated members and styled-property fields. Inherited Avalonia members are omitted.
+
+| Type | Public members |
+| --- | --- |
+| `ConsoleController` | Constructor `(store, sources, options = null)`; `PropertyChanged`; read-only `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `RefreshError`, `CopySelectionCommand`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`; get/init `Clipboard`, `LinkOpener`; `SetSelectedSources(sources)`, `SetSearchText(text)`, `RequestViewState(state)`, `Pause(rowId = null, textOffset = 0, pixelOffset = 0)`, `Resume()`, `Dispose()`. |
+| `ConsoleHeader` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`, `Title`, `CopySelectedCommand`, `CopyVisibleCommand`, `SaveLogCommand`; static readonly `ControllerProperty`, `TitleProperty`, `CopySelectedCommandProperty`, `CopyVisibleCommandProperty`, `SaveLogCommandProperty`. |
+| `ConsoleToolbar` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
+| `ConsoleEmptyState` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
+| `ConsoleListView` | Constructor `()`; get/set `Controller`, `Projection`, `ViewState`, `TimeOptions`, `TimeMode`; static readonly `ControllerProperty`, `ProjectionProperty`, `ViewStateProperty`, `TimeOptionsProperty`, `TimeModeProperty`; `ViewStateRequested`; `JumpToLatest()`. |
+| `IConsoleClipboard` | `SetText(text)`. |
+| `IConsoleLinkOpener` | `GetUnavailableReason(target)`, `Open(target)`. |
+
 ## Synchronization and reused Core mechanisms
 
 `LogStore._gate` protects admission queues, unpublished writer ownership, cleanup queues, rejection count, the next sequence, generation, readiness, disposal, subscriptions, and the published reference.
@@ -600,7 +618,7 @@ through `RequestViewState`; they do not replace the controller's state directly.
 
 The time API is BCL `TimeProvider`.
 Tests reuse Core's `Time.DelegateTimeProvider`.
-Lifecycle in the implementation baseline has no reusable generation helper.
+The shared lifecycle utilities have no store-compatible generation helper.
 It has only `CoalescedRefresh` and `UndoService`.
 The former cannot atomically combine ready state with the store's pending work.
 MessageCenter's generation belongs to its modal session.
@@ -617,18 +635,15 @@ Unicode and quote grammar across read boundaries, target length limits, structur
 and async-only stream export. Search uses one chunk buffer per projection.
 The deterministic scanner corpus checks every split against independent expected spans.
 The generated quote oracle constructs expected links from text parts, including adjacent CJK prose and later quotes, and checks both entry points at every storage and scanner read split.
-The performance test is opt-in with `NVT_CORE_PERF=1` and has no timing assertion.
+The non-UI projection benchmark is opt-in with `NVT_CORE_PERF=1` and has no timing assertion.
 
 ```powershell
 dotnet build Nvt.Core.sln --no-restore
 dotnet test Nvt.Core.sln --no-build --no-restore
 ```
 
-The Avalonia header, toolbar, empty-state accessibility, their visual evidence and the list view are implemented.
-Link and selection pointer interaction, console keyboard commands, and host accessibility and visual
-verification of the whole console remain for later UI slices; clipboard and file adapters remain app-owned.
-Host adoption remains separate.
-Path policy, opening, clipboard, and spill-store integration remain app responsibilities.
+The Console controls, link and selection interaction, keyboard commands, accessibility and visual evidence are implemented.
+The host supplies path policy, opening, clipboard and file adapters, the storage dialog, theme and the app log directory.
 
 ## List view
 
@@ -642,15 +657,15 @@ It has no dependency on a panel controller or an app type.
 
 | Member | Caller contract |
 |---|---|
-| `Projection` / `ProjectionProperty` | Borrowed `ConsoleProjection`; the caller keeps its leases alive until replacement and owns disposal. |
+| `Projection` / `ProjectionProperty` | Borrowed `ConsoleProjection`; its owner keeps leases alive until replacement. A controller owns disposal of its own projection. |
 | `ViewState` / `ViewStateProperty` | The caller's immutable `ConsoleViewState`; expansion, pause and resume are never assigned by the list. |
 | `TimeOptions` / `TimeOptionsProperty` | Explicit `ConsoleProjectionOptions` culture, relative template and absolute zone. `SourceRegistry` is ignored; the source column displays the source ID. |
 | `TimeMode` / `TimeModeProperty` | `ConsoleTimeMode`, default Absolute; Hidden removes the time column. |
 | `ViewStateRequested` | `EventHandler<ConsoleViewState>` carrying the requested replacement state. |
 | `JumpToLatest()` | Requests Resume; a host command can bind Ctrl+End here. |
 
-Assign inputs and accept requests on the UI thread. The caller decides whether to accept a request,
-replaces its own state, and assigns the accepted `ViewState`.
+Assign inputs and accept requests on the UI thread. With a controller, route requests to `RequestViewState`
+and bind its accepted `ViewState`. A standalone list caller owns and replaces that state.
 The list never invokes `ConsoleProjector`, subscribes to a store, or disposes a projection.
 Projection assignment synchronously rebinds surviving presenters, so the caller can dispose the preceding
 projection immediately after the assignment returns, even before layout or another replacement.
@@ -858,7 +873,7 @@ Layout uses Avalonia's render-scaling seam: row bounds follow layout rounding, w
 retains its DIP thickness. A fractional device-pixel stroke is antialiased; its outward raster envelope
 rounds up. The dense row's expand target covers the full reserved arrow column, including its centered
 glyph's side spaces: 24 DIP wide and 20 DIP high. The 20 DIP height is the row height approved with the
-K2b geometry. Existing interactive controls use `NfcControlHeight` (32 DIP), so this target is 12 DIP
+Console geometry. Existing interactive controls use `NfcControlHeight` (32 DIP), so this target is 12 DIP
 shorter. Its height is also below 24 DIP. Core has no written minimum for it, so this is an explicit
 recorded exception. Enter on the focused row and the row peer's expand pattern both change
 expansion (their selection/focus effects differ as described above), so no function depends on

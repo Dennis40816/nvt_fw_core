@@ -64,41 +64,73 @@ internal static class ConsoleInteractionWindow
 internal sealed class ConsoleInteractionScene : IDisposable
 {
     private readonly ConsoleTestStore _store;
+    // UI thread only. Null means the caller owns the shared store; the surface owns host bindings.
+    private readonly ConsoleTestStore? _ownedStore;
+    private readonly ConsoleController? _ownedController;
+    private readonly Control _surface;
     internal ConsoleInteractionAdapters Adapters { get; } = new();
     internal ConsoleController Controller { get; }
     internal ConsoleListView View { get; }
     internal Window Window { get; }
     internal ConsoleHeader? Header { get; }
     internal ConsoleToolbar? Toolbar { get; }
+    internal ConsoleEmptyState? EmptyState { get; }
     internal ConsoleInteractionScene(int count = 4, string? message = null, bool clipboard = true, bool opener = true,
-        ILogTextContent? content = null, bool composed = false)
+        ILogTextContent? content = null, bool composed = false, ConsoleTestStore? store = null, ConsoleController? controller = null)
     {
-        _store = new(count + 10);
+        _ownedStore = store is null ? new(count + 10) : null;
+        _store = store ?? _ownedStore!;
         for (var index = 1; index <= count; index++)
         {
             if (index == 1 && content is not null) _store.Store.Add(new LogWrite(LogLevel.Info, "app", content));
             else _store.Store.Add(LogLevel.Info, index % 2 == 0 ? "dxf" : "app", message ?? $"https://example.test/{index}\nsecond line");
         }
         _store.Fence();
-        Controller = _store.Controller(clipboard: clipboard ? Adapters : null, opener: opener ? Adapters : null);
+        _ownedController = controller is null ? _store.Controller(clipboard: clipboard ? Adapters : null, opener: opener ? Adapters : null) : null;
+        Controller = controller ?? _ownedController!;
         View = new() { Controller = Controller, Projection = Controller.Projection, ViewState = Controller.ViewState };
         View.ViewStateRequested += Requested;
-        Controller.PropertyChanged += Changed;
         Control surface = View;
         if (composed)
         {
             Header = new() { Controller = Controller };
             Toolbar = new() { Controller = Controller };
+            EmptyState = new() { Controller = Controller };
             var grid = new Grid { RowDefinitions = new("Auto,Auto,*") };
             grid.Children.Add(Header);
             grid.Children.Add(Toolbar);
             grid.Children.Add(View);
+            grid.Children.Add(EmptyState);
             Grid.SetRow(Toolbar, 1);
             Grid.SetRow(View, 2);
+            Grid.SetRow(EmptyState, 2);
             surface = grid;
         }
+        _surface = surface;
+        surface.AttachedToVisualTree += Attached;
+        surface.DetachedFromVisualTree += Detached;
         Window = ConsoleInteractionWindow.Create(surface);
     }
+    private void Attached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        Controller.PropertyChanged += Changed;
+        Changed(null, new(null));
+    }
+    private void Detached(object? sender, VisualTreeAttachmentEventArgs e) => Controller.PropertyChanged -= Changed;
+    internal void Detach() => Window.Content = null;
+    internal void Attach()
+    {
+        Window.Content = _surface;
+        ConsoleInteractionWindow.Pump(Window);
+    }
+    internal void Publish(string message)
+    {
+        _store.Store.Add(LogLevel.Info, "app", message);
+        _store.Fence();
+    }
+    internal int PendingOperationCount => Controller.PendingOperationCount
+        + (View.AttachmentSession?.PendingOperation is null ? 0 : 1)
+        + (View.AttachmentSession?.DeferredOperation is null ? 0 : 1);
     private void Requested(object? sender, ConsoleViewState state) => Controller.RequestViewState(state);
     private void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -132,8 +164,8 @@ internal sealed class ConsoleInteractionScene : IDisposable
         Window.Close();
         Controller.PropertyChanged -= Changed;
         View.ViewStateRequested -= Requested;
-        Controller.Dispose();
-        _store.Dispose();
+        _ownedController?.Dispose();
+        _ownedStore?.Dispose();
     }
 }
 
