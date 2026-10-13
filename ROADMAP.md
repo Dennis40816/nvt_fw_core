@@ -1,6 +1,6 @@
 # Roadmap
 
-This file is the one place for Core's planned work. Status as of 2026-10-12.
+This file is the one place for Core's planned work. Status as of 2026-10-13.
 
 The owner asked on 2026-10-07 for one roadmap per repository, with Core adoption tracked as progress: 「我認為需要重新整理各專案 Todo 規劃，也要把整合 core 納入進度，要不然很難做 hotfix」 ("I think we need to reorganize each project's to-do plan and include Core integration in the progress; otherwise hotfixes are hard to do.")
 
@@ -99,7 +99,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Health bundle: PublicAPI files are required next to the project, duplicate `AdditionalFiles` removed | 1.0.0 | Merged | [#214](https://github.com/Dennis40816/nvt_fw_core/pull/214) |
 | Application CI wiring guide | 1.0.0 | Merged | [#217](https://github.com/Dennis40816/nvt_fw_core/pull/217), [guide](tools/repo-checks/csharp/README.md#application-ci-wiring) |
 | Ledgers: remove the placeholder `removeBy` dates | 1.0.0 | Guide merged. Each application removes its dates after its pin synchronization | [#218](https://github.com/Dennis40816/nvt_fw_core/pull/218), [guide](tools/repo-checks/ledger-operation.md#remove-the-removeby-dates-of-a-ledger) |
-| Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Open | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
+| Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Done ([#220](https://github.com/Dennis40816/nvt_fw_core/pull/220)) | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
 
 **5. Shared UI classes**
 
@@ -116,7 +116,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138), [#146](https://github.com/Dennis40816/nvt_fw_core/pull/146) |
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list and row interaction merged. Accessibility peers are in review | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list, row interaction, accessibility peers and lifecycle merged. Release in 0.9.1 (planned 2026-10-15). NFH adopts the Console in K2e | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205), [#221](https://github.com/Dennis40816/nvt_fw_core/pull/221) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
 | `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
