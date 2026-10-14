@@ -1,0 +1,54 @@
+Nvt.Core component license
+
+Part 1. Files without a license of their own
+
+Copyright (c) 2026 Dennis Liu. All rights reserved.
+
+This part applies to the files of this repository that have no
+SPDX-License-Identifier header and no license file of their own.
+It does not apply to the files in Part 2, or to the font files in
+src/Nvt.Core.Fonts/licenses/, which have their own license texts.
+
+Permission is granted only to:
+
+1. Integrate these files into NVT FW Combiner, Freeform Helper, and NVT FW UTIL.
+2. Deliver these files as part of those tools' releases.
+3. Use these files within those tools as an end user.
+
+No other rights are granted.
+A tool's own license does not grant any right beyond these terms.
+
+
+Part 2. Files under the MIT License
+
+The files that have the header "SPDX-License-Identifier: MIT" are licensed
+under the MIT License below. They are:
+
+- the files in src/Nvt.Core.Avalonia/Theme, except UiResourceResolver.cs
+- the files in src/Nvt.Core.Avalonia/Icons, except ConsoleGlyphs.cs
+- src/Nvt.Core.Fonts/FontRoles.axaml
+
+The font files and the Material Symbols code point source are not part of
+this license. See THIRD-PARTY-NOTICES.md.
+
+MIT License
+
+Copyright (c) 2026 Dennis Liu
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

@@ -1,0 +1,13 @@
+<Project>
+  <!-- NuGet keeps the file name of a packed file. This target copies LICENSE-COMPONENTS.txt to a file named LICENSE
+       so that the package carries it as LICENSE, the name that PackageLicenseFile and the tool releases use. -->
+  <PropertyGroup>
+    <PackageLicenseStaging>$(MSBuildProjectDirectory)\obj\package-license\</PackageLicenseStaging>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(PackageLicenseStaging)LICENSE" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <Target Name="StagePackageLicense" BeforeTargets="CoreCompile;_GetPackageFiles;GenerateNuspec">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\LICENSE-COMPONENTS.txt" DestinationFiles="$(PackageLicenseStaging)LICENSE" />
+  </Target>
+</Project>

@@ -6,6 +6,10 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Changed
+
+- Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
+
 ## 0.9.4 - 2026-10-14
 
 Tag `core-v0.9.4` on commit `f6f44e02a8ff79417709a3fd8c23aa22f594f2cf` (#237).

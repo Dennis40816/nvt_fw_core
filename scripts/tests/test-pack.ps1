@@ -289,8 +289,9 @@ if ($FontsPackagePath) {
 
             foreach ($file in @('LICENSE', 'README.md')) {
                 $actual = [Convert]::ToHexString((Read-PackageBytes $file))
-                $expected = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $repository $file)))
-                if ($actual -cne $expected) { throw "Package $file differs from its source." }
+                $source = if ($file -ceq 'LICENSE') { 'LICENSE-COMPONENTS.txt' } else { $file }
+                $expected = [Convert]::ToHexString([IO.File]::ReadAllBytes((Join-Path $repository $source)))
+                if ($actual -cne $expected) { throw "Package $file differs from its source $source." }
             }
             $fontsRoot = Join-Path $repository 'src/Nvt.Core.Fonts'
             foreach ($file in Get-ChildItem -LiteralPath (Join-Path $fontsRoot 'licenses') -Recurse -File) {

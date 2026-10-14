@@ -1,6 +1,6 @@
 # Verified Core source consumption
 
-NFC uses the canonical [UiEventRunner.cs](../../src/Nvt.Core/Threading/UiEventRunner.cs) without a Core runtime dependency. NFH and NFU use the public type from the Core package. Keep the copied source byte-for-byte identical; retain its copyright header and comply with the repository [license](../../LICENSE).
+NFC uses the canonical [UiEventRunner.cs](../../src/Nvt.Core/Threading/UiEventRunner.cs) without a Core runtime dependency. NFH and NFU use the public type from the Core package. Keep the copied source byte-for-byte identical; retain its copyright header and comply with the [component license](../../LICENSE-COMPONENTS.txt).
 
 [manifest.json](manifest.json) has schema version 1 and a `files` array. Each entry contains only the repository-relative `path`, `compileSymbol`, lowercase `sha256`, and `byteLength` of the exact UTF-8 source bytes with LF line endings. The version describes the manifest schema.
 

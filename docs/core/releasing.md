@@ -140,7 +140,9 @@ For a sandbox without network, download on the host first, then run the script w
 To upgrade, use the new Release's asset names and `SHA256SUMS` values in the manifest, then update the lock files.
 To roll back, put the earlier Release's values back in the manifest and restore its package references and lock files.
 
-Deliver Core only under its proprietary `LICENSE`, including inside designated tools' releases.
+Deliver Core only under the license in `LICENSE-COMPONENTS.txt`, including inside designated tools' releases.
+Part 1 of that file grants the three designated tools their rights. Part 2 holds the MIT License text for the files with an `SPDX-License-Identifier: MIT` header.
+Each package carries that file as `LICENSE`. The repository root `LICENSE` grants nothing and points to it.
 Each tool release takes `LICENSE` from a verified downloaded package and ships it as `licenses/Nvt.Core/LICENSE`.
 It covers Core package code, including Fonts.
 Tools using Fonts also ship the font `licenses/` folder and preserve Inter dependency licenses and notices.

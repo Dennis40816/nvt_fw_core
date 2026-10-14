@@ -1,10 +1,17 @@
 Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-This software is proprietary. Permission is granted only to:
+This file grants no license.
+A file or folder is licensed only by a license file that applies to it, or by an SPDX-License-Identifier header in the file itself.
+Every other file remains all rights reserved.
 
-1. Integrate this software into NVT FW Combiner, Freeform Helper, and NVT FW UTIL.
-2. Deliver this software as part of those tools' releases.
-3. Use this software within those tools as an end user.
+Licenses in this repository:
 
-No other rights are granted.
-A tool's own license does not change these terms.
+1. Files with the header "SPDX-License-Identifier: MIT" are licensed under the MIT License.
+   The license text is in the LICENSE file of the folder that holds them:
+   - src/Nvt.Core.Avalonia/Theme/LICENSE
+   - src/Nvt.Core.Avalonia/Icons/LICENSE
+   - src/Nvt.Core.Fonts/LICENSE
+2. The other Nvt.Core files are licensed only as stated in Part 1 of LICENSE-COMPONENTS.txt.
+   Part 2 of that file repeats the MIT License text. NuGet packages and tool releases carry that file as LICENSE.
+3. Font files and their license texts are in src/Nvt.Core.Fonts/licenses/.
+   Third-party notices are in THIRD-PARTY-NOTICES.md.
