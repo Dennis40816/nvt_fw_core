@@ -255,6 +255,37 @@
     <Setter Property="Opacity" Value="1"/>
   </Style>
 
+  <!-- flat: a rectangular ghost with no border in any state. A selected flat ghost shows the accent surface and text only. -->
+  <Style Selector="Button.actionGhost.flat, ToggleButton.actionGhost.flat">
+    <Setter Property="CornerRadius" Value="0"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat:disabled, ToggleButton.actionGhost.flat:disabled">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.active:not(:disabled), ToggleButton.actionGhost.flat.active:not(:disabled), ToggleButton.actionGhost.flat:checked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.active:not(:disabled):pointerover:not(:disabled), ToggleButton.actionGhost.flat.active:not(:disabled):pointerover:not(:disabled), ToggleButton.actionGhost.flat:checked:not(:disabled):pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.active:not(:disabled):pressed:not(:disabled), ToggleButton.actionGhost.flat.active:not(:disabled):pressed:not(:disabled), ToggleButton.actionGhost.flat:checked:not(:disabled):pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
   <Style Selector="Button.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder, ToggleButton.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder">
     <Setter Property="IsVisible" Value="True"/>
   </Style>
