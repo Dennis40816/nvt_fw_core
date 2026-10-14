@@ -33,7 +33,7 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.9.1 | 2026-10-13 | Console interaction, accessibility and lifecycle for the first host adoption (NFH K2e). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.1) |
 | 0.9.2 | 2026-10-13 | Console font zoom for the first host adoption (NFH). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.2) |
 | 0.9.3 | 2026-10-14 | Console toolbar rework for the first host adoption (NFH): one level label that opens on hover, one visibility rule and four regions. Breaks three resource names and one breakpoint default. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.3) |
-| 0.9.4 | 2026-10-14 | The borderless `actionGhost.flat` role for selected controls, such as the NFU Settings tab list. A style addition only; no C# API changes. | Planned |
+| 0.9.4 | 2026-10-14 | The borderless `actionGhost.flat` role for selected controls, such as the NFU Settings tab list. A style addition only; no C# API changes. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.4) |
 | 1.0.0 | Target 2026-10-19, earliest 2026-10-17 | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
 | Fonts 0.1.1 | 2026-10-10 | Independent font package. `core-fonts-v0.1.0` came first and `0.1.1` adds the Inter license. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-fonts-v0.1.1) |
 
