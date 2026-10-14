@@ -8,6 +8,8 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.4 - 2026-10-14
 
+Tag `core-v0.9.4` on commit `f6f44e02a8ff79417709a3fd8c23aa22f594f2cf` (#237).
+
 A style addition for the NFU Settings tab list, and for any host that needs a selected control without a rounded border.
 It changes no C# API and no existing role, so `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.3 entries.
 
