@@ -37,6 +37,8 @@ public sealed class ButtonThemeTests
     [InlineData("actionIconButton", "actionGhost")]
     [InlineData("", "chipAction")]
     [InlineData("", "chipAction active")]
+    [InlineData("", "actionGhost flat")]
+    [InlineData("", "actionGhost flat active")]
     public void ActionStatesResolveMappedColors(string primitive, string role)
     {
         foreach (bool dark in new[] { false, true })
@@ -370,6 +372,31 @@ public sealed class ButtonThemeTests
             }
     }
 
+    /// <summary>A flat ghost is rectangular, draws no border in any state, and keeps a square keyboard ring.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FlatGhostIsRectangularWithASquareRing(bool toggle)
+    {
+        foreach (bool dark in new[] { false, true })
+        {
+            Button button = CreateButton("", "actionGhost flat active", toggle, new TextBlock { Text = "Action" });
+            Window host = CreateHost(button, dark);
+            try
+            {
+                Show(host);
+                Assert.Equal(new CornerRadius(0), button.CornerRadius);
+                Assert.Equal(new CornerRadius(0), Frame(button).CornerRadius);
+                Assert.True(button.Focus(NavigationMethod.Tab));
+                Show(host);
+                Border ring = Assert.Single(Rings(button));
+                Assert.Equal(new CornerRadius(4), ring.CornerRadius);
+                Assert.True(ring.BorderThickness.Left > 0);
+            }
+            finally { host.Close(); }
+        }
+    }
+
     /// <summary>The ring follows each rectangular corner and live radius changes with its four-pixel outset.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
@@ -607,11 +634,14 @@ public sealed class ButtonThemeTests
 
     private static (string Background, string Border, string Foreground) ExpectedColors(string role, string state, bool dark)
     {
-        bool selected = state.Contains("checked", StringComparison.OrdinalIgnoreCase) || role == "chipAction active";
+        bool selected = state.Contains("checked", StringComparison.OrdinalIgnoreCase) || role is "chipAction active" or "actionGhost flat active";
         bool hover = state.Contains("hover", StringComparison.OrdinalIgnoreCase);
         bool pressed = state.Contains("pressed", StringComparison.OrdinalIgnoreCase);
+        bool flat = role.StartsWith("actionGhost flat", StringComparison.Ordinal);
         if (state.StartsWith("disabled", StringComparison.Ordinal))
-            return ("NfcSurfaceSubtleBrush", "NfcBorderMutedBrush", "NfcTextDisabledBrush");
+            return flat ? ("Transparent", "Transparent", "NfcTextDisabledBrush") : ("NfcSurfaceSubtleBrush", "NfcBorderMutedBrush", "NfcTextDisabledBrush");
+        if (flat && selected) return (pressed ? "NfcSecondaryActionPressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "NfcAccentSurfaceBrush",
+            "Transparent", "NfcAccentStrongBrush");
         if (role == "actionDanger")
         {
             if (pressed) return ("NfcCriticalSurfaceBrush", "NfcCriticalBorderBrush", "NfcDangerTextStrongBrush");
@@ -623,7 +653,7 @@ public sealed class ButtonThemeTests
             hover || pressed ? "NfcAccentBorderStrongBrush" : "NfcAccentBorderBrush", "NfcAccentStrongBrush");
         if (role == "actionPrimary") return (hover || pressed ? "NfcAccentStrongBrush" : "NfcAccentBrush",
             hover || pressed ? "NfcAccentStrongBrush" : "NfcAccentBrush", dark ? "NfcAppBackgroundBrush" : "NfcSurfaceBrush");
-        if (role == "actionGhost") return (pressed ? "NfcSecondaryActionPressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "Transparent",
+        if (role is "actionGhost" or "actionGhost flat") return (pressed ? "NfcSecondaryActionPressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "Transparent",
             "Transparent", hover || pressed ? "NfcTextBrush" : "NfcTextSecondaryBrush");
         return (pressed ? "NfcSecondaryActionPressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "NfcSurfaceBrush",
             "NfcBorderBrush", "NfcTextBrush");

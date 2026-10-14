@@ -133,7 +133,7 @@ All values are logical pixels; do not multiply by DPI again. Button content is c
 
 ## Button roles and states
 
-Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhost`, `actionIconButton`, `chipAction` and `Border.chipStatus`. Interactive roles support both `Button` and `ToggleButton`; a role alone gives the complete look. Former layout classes `actionTextButton`, `actionChip` and `actionButton` are not public roles. No global Button/ToggleButton rule exists; controls without a role receive no setters from this file.
+Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhost`, `actionIconButton`, `chipAction` and `Border.chipStatus`. `flat` is a modifier class for `actionGhost`. Interactive roles support both `Button` and `ToggleButton`; a role alone gives the complete look. Former layout classes `actionTextButton`, `actionChip` and `actionButton` are not public roles. No global Button/ToggleButton rule exists; controls without a role receive no setters from this file.
 
 | Role | State | Background | Border | Foreground |
 |---|---|---|---|---|
@@ -165,6 +165,11 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 | `actionGhost` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionGhost` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
 | `actionGhost` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionGhost.flat` | rest / hover / pressed | same as `actionGhost` | `Transparent` | same as `actionGhost` |
+| `actionGhost.flat` | disabled | `Transparent` | `Transparent` | `NfcTextDisabledBrush` |
+| `actionGhost.flat` | active / checked | `NfcAccentSurfaceBrush` | `Transparent` | `NfcAccentStrongBrush` |
+| `actionGhost.flat` | active_hover / checked_hover | `NfcSelectionSurfaceBrush` | `Transparent` | `NfcAccentStrongBrush` |
+| `actionGhost.flat` | active_pressed / checked_pressed | `NfcSecondaryActionPressedBrush` | `Transparent` | `NfcAccentStrongBrush` |
 | `chipStatus` | rest / disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextSecondaryBrush` |
 | `chipStatus.warning` | rest / disabled | `NfcWarningSurfaceBrush` | `NfcWarningBorderBrush` | `NfcWarningTextBrush` |
 | `chipStatus.danger` | rest / disabled | `NfcDangerSurfaceBrush` | `NfcDangerBorderBrush` | `NfcDangerTextBrush` |
@@ -172,7 +177,9 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 
 `actionIconButton` defaults to `actionNeutral` and composes with any of the four color roles, inheriting every state. `chipAction` follows neutral colors; `chipAction.active` and a ToggleButton's checked state follow the same selected rules. Selected hover uses the subtle accent surface; selected press uses the neutral pressed surface, retaining strong accent text and border. Ordinary Button has no checked state. Status warning/danger/success modifiers use the semantic surfaces, text and borders above. Statuses have no interactive, selected or focus state and retain informative colors and opacity 1 when disabled.
 
-Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrush`, `NfcBorderMutedBrush`, `NfcTextDisabledBrush` and opacity 1 over hover, press, checked and active. Disabled ghost buttons use the same subtle surface. No double dimming remains.
+`actionGhost.flat` is a modifier class for `actionGhost`. It is rectangular (corner radius 0) and draws no border in any state, so a selected control shows only the accent surface and text. Use `Button.actionGhost.flat.active` or `ToggleButton.actionGhost.flat:checked`. The keyboard ring stays and follows the square corners. Disabled keeps no surface, unlike the other roles. The bordered `actionGhost:checked` pill is unchanged.
+
+Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrush`, `NfcBorderMutedBrush`, `NfcTextDisabledBrush` and opacity 1 over hover, press, checked and active. Disabled ghost buttons use the same subtle surface. The one exception is `actionGhost.flat`, which stays `Transparent` with no border. No double dimming remains.
 
 Background, border and foreground transitions last 120 ms. Pressing disables transitions; the primary pressed inner 2 px edge is an overlay that does not move content. Focus appears immediately. `.reducedMotion` on the control or any ancestor disables transitions.
 
