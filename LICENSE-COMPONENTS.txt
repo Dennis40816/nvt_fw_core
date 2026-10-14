@@ -5,9 +5,10 @@ Part 1. Files without a license of their own
 Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 This part applies to the files of this repository that have no
-SPDX-License-Identifier header and no license file of their own.
-It does not apply to the files in Part 2, or to the font files in
-src/Nvt.Core.Fonts/licenses/, which have their own license texts.
+SPDX-License-Identifier header, except the font files in
+src/Nvt.Core.Fonts/Assets/ and the third-party license texts in
+src/Nvt.Core.Fonts/licenses/. Those have their own license terms (Part 3).
+It does not apply to the files in Part 2.
 
 Permission is granted only to:
 
@@ -27,9 +28,6 @@ under the MIT License below. They are:
 - the files in src/Nvt.Core.Avalonia/Theme, except UiResourceResolver.cs
 - the files in src/Nvt.Core.Avalonia/Icons, except ConsoleGlyphs.cs
 - src/Nvt.Core.Fonts/FontRoles.axaml
-
-The font files and the Material Symbols code point source are not part of
-this license. See THIRD-PARTY-NOTICES.md.
 
 MIT License
 
@@ -52,3 +50,47 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+Part 3. Third-party notices
+
+The control styles in src/Nvt.Core.Avalonia/Theme are modelled on the
+structure and the template part names of the Avalonia Fluent templates and
+may contain portions of Avalonia. The Avalonia license text follows.
+
+The MIT License (MIT)
+
+Copyright (c) AvaloniaUI OÜ
+All Rights Reserved
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Material Symbols: the icon names and code points in
+src/Nvt.Core.Avalonia/Icons follow the code point table of Google's
+material-design-icons repository (https://github.com/google/material-design-icons),
+commit 737e3324305806514d7909874fa1818ae1808232, licensed under the Apache
+License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+Font files: the font files in src/Nvt.Core.Fonts/Assets/ keep their own
+licenses. Each license text is in src/Nvt.Core.Fonts/licenses/ and in the
+Nvt.Core.Fonts package under licenses/. They are Inter (SIL Open Font License
+1.1), Cascadia Mono (SIL Open Font License 1.1), Noto Sans TC (SIL Open Font
+License 1.1) and Material Symbols Outlined (Apache License 2.0).
+
+More detail is in THIRD-PARTY-NOTICES.md of the repository.

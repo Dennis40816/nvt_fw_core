@@ -2,7 +2,7 @@
   <!-- NuGet keeps the file name of a packed file. This target copies LICENSE-COMPONENTS.txt to a file named LICENSE
        so that the package carries it as LICENSE, the name that PackageLicenseFile and the tool releases use. -->
   <PropertyGroup>
-    <PackageLicenseStaging>$(MSBuildProjectDirectory)\obj\package-license\</PackageLicenseStaging>
+    <PackageLicenseStaging>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', 'package-license'))</PackageLicenseStaging>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(PackageLicenseStaging)LICENSE" Pack="true" PackagePath="" />

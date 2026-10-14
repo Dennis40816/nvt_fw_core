@@ -28,4 +28,4 @@ This license applies only to FontRoles.axaml, which has the header
 It does not apply to the other files in this folder, which are licensed as
 stated in Part 1 of LICENSE-COMPONENTS.txt at the repository root.
 It does not apply to the font files in Assets/. Their license texts are in
-licenses/.
+licenses/. See also Part 3 of LICENSE-COMPONENTS.txt and THIRD-PARTY-NOTICES.md.

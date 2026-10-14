@@ -1,6 +1,6 @@
 # Third-party notices
 
-These notices cover the files under the MIT License: `src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`. See [LICENSE](LICENSE). They refer to the following works.
+These notices cover the files under the MIT License: `src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`. See [LICENSE-COMPONENTS.txt](LICENSE-COMPONENTS.txt), which the packages carry as `LICENSE` and which repeats the Avalonia text below. They refer to the following works.
 
 ## Avalonia (MIT)
 
