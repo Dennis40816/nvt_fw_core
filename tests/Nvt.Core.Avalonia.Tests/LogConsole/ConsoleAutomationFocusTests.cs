@@ -17,7 +17,7 @@ public sealed class ConsoleAutomationFocusTests
     {
         using var scene = new ConsoleInteractionScene(composed: true);
         var next = AddNext(scene);
-        scene.Header!.FindControl<TextBox>("SearchBox")!.Focus(NavigationMethod.Tab);
+        scene.Header!.FindControl<Button>("Display")!.Focus(NavigationMethod.Tab);
         var order = TabOrder(scene, next);
         Assert.Equal(["header", "toolbar", "list", "next"], order.Distinct());
         Assert.Single(order, entry => string.Equals(entry, "list", StringComparison.Ordinal));
@@ -29,7 +29,7 @@ public sealed class ConsoleAutomationFocusTests
         using var scene = new ConsoleInteractionScene(composed: true);
         scene.View.Focus(NavigationMethod.Tab);
         scene.SendKey(Key.Tab, RawInputModifiers.Shift);
-        Assert.Same(scene.Toolbar!.FindControl<global::Avalonia.Controls.Primitives.ToggleButton>("Dedupe"), scene.Window.FocusManager!.GetFocusedElement());
+        Assert.Same(scene.Toolbar!.FindControl<Button>("Jump"), scene.Window.FocusManager!.GetFocusedElement());
     }
     [AvaloniaFact]
     public void Focus_RowNavigation_ReportsThatRowsPeer()

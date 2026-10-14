@@ -2,7 +2,7 @@
 
 # Icons
 
-Icons provides 68 named Material Symbols glyphs and an opt-in TextBlock style.
+Icons provides 72 named Material Symbols glyphs and an opt-in TextBlock style.
 Applications share icon names without copying codepoints or icon styles.
 The namespace is `Nvt.Core.Avalonia.Icons` in `Nvt.Core.Avalonia`.
 
@@ -94,7 +94,9 @@ Names follow the pinned [upstream codepoint table](https://github.com/google/mat
 | `AreaChart` | U+E770 | Area chart |
 | `ArrowDownward` | U+E5DB | Move downward |
 | `Block` | U+F08C | Block an action |
+| `BugReport` | U+E868 | Debug a problem |
 | `CallSplit` | U+E0B6 | Split a path |
+| `Cancel` | U+E5C9 | Cancel or fatal status |
 | `Check` | U+E668 | Confirm or complete |
 | `ChevronLeft` | U+E5CB | Navigate left |
 | `ChevronRight` | U+E5CC | Navigate right |
@@ -103,6 +105,7 @@ Names follow the pinned [upstream codepoint table](https://github.com/google/mat
 | `ContentCopy` | U+E14D | Copy content |
 | `ContentPaste` | U+E14F | Paste content |
 | `ContentPasteOff` | U+E4F8 | Disable pasting |
+| `CopyAll` | U+E2EC | Copy all items |
 | `CropSquare` | U+E3C6 | Single window outline |
 | `DataObject` | U+EAD3 | Structured data |
 | `Delete` | U+E92E | Delete an item |
@@ -128,6 +131,7 @@ Names follow the pinned [upstream codepoint table](https://github.com/google/mat
 | `Menu` | U+E5D2 | Open navigation |
 | `Merge` | U+EB98 | Merge paths |
 | `Minimize` | U+E931 | Minimize extent |
+| `MoreHoriz` | U+E5D3 | More horizontal detail |
 | `MoreVert` | U+E5D4 | More actions |
 | `NotificationsOff` | U+E7F6 | Mute notifications |
 | `OpenInNew` | U+E89E | Open another window |

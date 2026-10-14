@@ -15,6 +15,7 @@ construction ea3c
 content_copy e14d
 content_paste e14f
 content_paste_off e4f8
+copy_all e2ec
 crop_square e3c6
 data_object ead3
 delete e92e

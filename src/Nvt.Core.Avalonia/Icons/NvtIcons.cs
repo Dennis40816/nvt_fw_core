@@ -54,6 +54,9 @@ public static class NvtIcons
     /// <summary>Disable pasting.</summary>
     public const string ContentPasteOff = "\uE4F8";
 
+    /// <summary>Copy all items.</summary>
+    public const string CopyAll = "\uE2EC";
+
     /// <summary>Single window outline.</summary>
     public const string CropSquare = "\uE3C6";
 

@@ -26,6 +26,11 @@ internal sealed class ConsoleValueConverter : IValueConverter, IMultiValueConver
         {
             "HasEvents" => value is int count && count != 0,
             "EmptyText" => string.IsNullOrEmpty(value as string),
+            "HasText" => !string.IsNullOrEmpty(value as string),
+            "NotNull" => value is not null,
+            "CanZoomOut" => value is double zoomOut && zoomOut > ConsoleListView.MinimumZoom + 1e-9,
+            "CanZoomIn" => value is double zoomIn && zoomIn < ConsoleListView.MaximumZoom - 1e-9,
+            "OnlyMatchesGlyph" => value is true ? Icons.NvtIcons.FilterAlt : Icons.NvtIcons.FilterAltOff,
             "AllSources" when value is ConsoleFilter filter => filter.SelectedSources.IsEmpty,
             _ => value,
         };
@@ -47,6 +52,8 @@ internal sealed class ConsoleValueConverter : IValueConverter, IMultiValueConver
         if (values.Count != 2 || values[0] is not ConsoleFilter filter || values[1] is not ConsoleProjection projection)
             return false;
         var key = parameter as string ?? string.Empty;
+        if (key == "HasHiddenErrors") return ConsoleLevelSummary.HiddenErrors(filter, projection) > 0;
+        if (key == "HiddenErrors") return ConsoleLevelSummary.HiddenErrors(filter, projection).ToString("N0", culture);
         if (key == "AllSources") return filter.SelectedSources.IsEmpty;
         if (!key.StartsWith("Source:", StringComparison.Ordinal)) return false;
         var id = key[7..];

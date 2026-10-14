@@ -17,6 +17,7 @@
   <x:String x:Key="Nvt.Icon.ContentCopy">&#xE14D;</x:String>
   <x:String x:Key="Nvt.Icon.ContentPaste">&#xE14F;</x:String>
   <x:String x:Key="Nvt.Icon.ContentPasteOff">&#xE4F8;</x:String>
+  <x:String x:Key="Nvt.Icon.CopyAll">&#xE2EC;</x:String>
   <x:String x:Key="Nvt.Icon.CropSquare">&#xE3C6;</x:String>
   <x:String x:Key="Nvt.Icon.DataObject">&#xEAD3;</x:String>
   <x:String x:Key="Nvt.Icon.Delete">&#xE92E;</x:String>

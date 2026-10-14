@@ -377,7 +377,7 @@ Formatting methods accept an existing projection and do not acquire or refresh s
 - [ ] Register the running dispatcher with `UiThread.RegisterRunningDispatcher` on the UI thread. Load Core theme tokens, font roles, `LogConsole/LogConsoleStyles.axaml` and `LogConsole/ConsoleListStyles.axaml`; configure fonts with `WithNvtCoreFonts()`.
 - [ ] Keep an app-owned `LogStore` alive for the controller's lifetime. Construct `ConsoleController(store, sources, options)` on that dispatcher. Supply an immutable `ConsoleSource` registry through `sources`, and explicit template, culture and absolute time zone through `ConsoleProjectionOptions`. A nonempty `options.SourceRegistry` must agree with `sources`.
 - [ ] Set the controller's init properties `LinkOpener` and `Clipboard` before binding. Supply the host's path resolver, cached availability and opening policy through `IConsoleLinkOpener`. Supply platform clipboard dispatch through `IConsoleClipboard`. Adapter methods run on the UI thread and must return promptly; perform IO and asynchronous work in the host.
-- [ ] Compose a `ConsoleToolbar`, `ConsoleListView` and `ConsoleEmptyState`, with an optional `ConsoleHeader`. Assign the same `Controller` to each. Bind the list's `Projection`, `ViewState`, `TimeOptions` and `TimeMode` to that controller's `Projection`, `ViewState`, `Options` and `Filter.TimeMode`. Route `ViewStateRequested` to `RequestViewState` and return accepted state through the binding. The empty state derives its visibility from the projection.
+- [ ] Compose a `ConsoleToolbar`, `ConsoleListView` and `ConsoleEmptyState`, with an optional `ConsoleHeader`. Assign the same `Controller` to each. Set the toolbar's `List` to the list and its `CopyVisibleCommand` to the header's app command. Bind the list's `Projection`, `ViewState`, `TimeOptions` and `TimeMode` to that controller's `Projection`, `ViewState`, `Options` and `Filter.TimeMode`. Route `ViewStateRequested` to `RequestViewState` and return accepted state through the binding. The empty state derives its visibility from the projection.
 - [ ] Let the controller own filters, following or the paused anchor, expansion, selection and projection leases. Controls borrow those inputs and own only attachment-local interaction, handlers and display caches. The host owns the store, injected adapters, theme, app log directory, copy-visible/file commands and storage dialog. An optional header can use `CopySelectionCommand` for `CopySelectedCommand`; the host supplies `CopyVisibleCommand` and `SaveLogCommand`.
 - [ ] Keep the same controller when hiding a page. Construction subscribes before startup capture. Once Console controls are hosted, they share the controller's store subscription while any remain attached. Detaching the last control unsubscribes and aborts its queued refresh; it retains durable controller state. List detach clears hover, pressed links, pointer capture, focus/range origin, menus and deferred scroll/drag intent. Reattaching restores accepted reading state and refreshes from the latest published store snapshot. Independent controllers over the same store have independent attachment lifetimes. A view that is dropped without leaving the visual tree never detaches, so the controller stays subscribed until disposal. If the app disposed the store, a controller that was detached once stays detached when a control attaches again and shows the last projection. A controller that never had a hosted control reports the failed refresh through `RefreshError`.
 - [ ] Release any host-owned event subscriptions when abandoning a view. Dispose the controller on the UI thread when the page is permanently discarded; repeated `Dispose()` is harmless and releases its owned projection/snapshot leases and commands. Dispose the app-owned store separately after its consumers finish. A controller that has never had a hosted control observes until disposal. Controller construction calls `SetReady(true)` for the store; detach and disposal leave that store-wide readiness unchanged.
@@ -450,12 +450,26 @@ All intents and disposal require the UI thread. Export flags belong to
 `ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
 styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
 entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
-Fonts roles and keep the console at least 640 DIP wide. The wide layout places
-search beside the title at wide widths, with levels and sources in the filter row.
-At 960 DIP and below, search and Only matches move to the second filter row; Display
-contains time and dedupe, and More contains export and clear. Header height is 48 DIP;
-the filter row is 48 DIP wide and 88 DIP narrow. Resting actions have no fill or border;
-level buttons show semantic icons with complete raw counts in Core tooltips. Shared
+Fonts roles and keep the console at least 640 DIP wide. The header is 40 DIP high.
+It holds the title, the Display menu (time mode and dedupe) and the More menu (copy, save,
+export options and clear). The toolbar is one 40 DIP row. From left to right it holds the
+level summary, the search field and the actions: Sources, Copy selected, Copy visible rows,
+Clear, zoom out, zoom value, zoom in and Jump to latest. Only the search field stretches.
+The level summary is a text button such as `All levels` or `Debug and above`. Hovering it
+for 300 ms opens the six level toggles to its right on the same row, and the row closes
+500 ms after the pointer leaves the toolbar. Leaving the label early opens nothing. A click,
+Enter, Space, Down or Right (Left in a right-to-left layout) pins the row open until
+Escape, a second click, a press outside it or focus leaving it. Touch never opens the row by
+hover. While Error or Fatal entries are hidden by the level filter, a closed row shows an
+error icon and their count next to the summary. The search field holds the search glyph,
+Clear search, and the Only matches toggle, which shows a funnel while it is on and a crossed
+funnel while it is off. The toolbar has three width tiers. Below `NarrowBreakpoint` it is
+compact: Sources shows only its icon, the level toggles drop their names, and the zoom steps
+and Copy visible rows are hidden (the More menu still has it). An open level row hides the search field and the actions,
+except Jump to latest, until the width reaches `WideBreakpoint`. At that width the open row
+shares the line with both, and Sources shows only its icon. Resting actions have no fill or
+border; level toggles show a semantic icon, the name and the complete raw count. An open row that does not fit drops the
+names first and the counts next; the tooltip and the accessible name keep both. Shared
 icon corrections follow rendering scale and unsubscribe on detach. The empty view
 is visible when `Projection.IsEmpty`. With no retained events (`Projection.EventCount == 0`),
 it shows the no-events message and hides Reset filters. A filtered empty result shows
@@ -466,7 +480,9 @@ labels. Other controls retain their existing font roles.
 
 The header's `Title` defaults to Console. The app binds `CopySelectedCommand`,
 `CopyVisibleCommand`, and `SaveLogCommand`; the menu supplies the independent Include
-time and Include level options. Header menu bindings follow the header's current
+time and Include level options. The toolbar takes the same app command through its own
+`CopyVisibleCommand`, and its `List` names the `ConsoleListView` that zoom and Jump to latest act on;
+both buttons stay disabled while `List` is null. Header menu bindings follow the header's current
 controller directly, so popup dismissal does not disconnect an executing command.
 The host provides clipboard and file adapters; `ConsoleListView` provides row navigation and rendering.
 
@@ -492,12 +508,15 @@ merged by `LogConsoleStyles.axaml`. Controls include the resource-free control s
 their dynamic resource bindings use the same dictionary only as a fallback for missing keys.
 Hosts can override `Nvt.Console.*` in application, window, or console ancestor resources,
 including at runtime. Malformed host templates fall back to the built-in English template on `FormatException`.
-`MinimumWidth` and `NarrowBreakpoint` are the single shared definitions
+`MinimumWidth`, `NarrowBreakpoint` and `WideBreakpoint` are the single shared definitions
 for all console surfaces. Composed heights follow the existing dynamic control and spacing tokens.
 
 Time modes and level labels are mapped through keys. The controller exposes filter data;
 `FilterSummary` is no longer public API. The view derives summary text from resource templates.
 `Count` accepts a label and raw count; `Sources.Selected` and `Dedupe.Count` accept a count.
+`Levels.AndAbove` accepts the lowest shown level name, `Levels.Some` the shown and total level counts,
+`Levels.Name` the summary text, `Levels.NameHidden` the summary text and the hidden error count,
+`Levels.ErrorsHidden` the hidden error count, and `Zoom.Value` and `Zoom.Name` a zoom factor.
 `Empty.NoMatches` accepts the derived filter summary. `Filter.Search` accepts the literal query
 and search-mode label; `Filter.Summary` accepts levels, sources, search suffix, and dedupe suffix.
 Keep these composite placeholders valid. `Title` is the default title; an explicit host title wins.
@@ -506,19 +525,20 @@ The separate injected `ConsoleProjectionOptions.RelativeTimeTemplate` continues 
 | Key | English default / DIP value |
 | --- | --- |
 | `Nvt.Console.MinimumWidth` | `640` |
-| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.NarrowBreakpoint` | `700` |
+| `Nvt.Console.WideBreakpoint` | `1180` |
+| `Nvt.Console.ZoomValueWidth` | `48` |
 | `Nvt.Console.Title` | `Console` |
 | `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
 | `Nvt.Console.Search.Name` | `Search console` |
 | `Nvt.Console.Search.Clear` | `Clear search` |
 | `Nvt.Console.OnlyMatches` | `Only matches` |
-| `Nvt.Console.Export` | `Export` |
-| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.OnlyMatches.On` | `Only matches: on` |
+| `Nvt.Console.OnlyMatches.Off` | `Only matches: off` |
 | `Nvt.Console.Display` | `Display` |
 | `Nvt.Console.Display.Name` | `Display console` |
 | `Nvt.Console.More` | `More` |
 | `Nvt.Console.More.Name` | `More console actions` |
-| `Nvt.Console.Time.Name` | `Time display` |
 | `Nvt.Console.Time.Absolute` | `Absolute time` |
 | `Nvt.Console.Time.Relative` | `Relative time` |
 | `Nvt.Console.Time.Hidden` | `Hidden time` |
@@ -550,6 +570,21 @@ The separate injected `ConsoleProjectionOptions.RelativeTimeTemplate` continues 
 | `Nvt.Console.Level.Warn` | `Warn` |
 | `Nvt.Console.Level.Error` | `Error` |
 | `Nvt.Console.Level.Fatal` | `Fatal` |
+| `Nvt.Console.Levels.All` | `All levels` |
+| `Nvt.Console.Levels.AndAbove` | `{0} and above` |
+| `Nvt.Console.Levels.FatalOnly` | `Fatal only` |
+| `Nvt.Console.Levels.Some` | `{0} of {1} levels` |
+| `Nvt.Console.Levels.None` | `No levels` |
+| `Nvt.Console.Levels.Name` | `Levels: {0}` |
+| `Nvt.Console.Levels.NameHidden` | `Levels: {0}, hidden error entries: {1}` |
+| `Nvt.Console.Levels.ErrorsHidden` | `Hidden error entries: {0}` |
+| `Nvt.Console.Levels.Group` | `Level filters` |
+| `Nvt.Console.Zoom.Value` | `{0:P0}` |
+| `Nvt.Console.Zoom.Name` | `Zoom {0:P0}` |
+| `Nvt.Console.Zoom.Out` | `Zoom out` |
+| `Nvt.Console.Zoom.In` | `Zoom in` |
+| `Nvt.Console.Zoom.Reset` | `Reset zoom to 100 percent` |
+| `Nvt.Console.Jump` | `Jump to latest` |
 
 ## Public API
 
@@ -595,7 +630,7 @@ Declared public types and members of `Nvt.Core.Avalonia.LogConsole` are listed b
 | --- | --- |
 | `ConsoleController` | Constructor `(store, sources, options = null)`; `PropertyChanged`; read-only `Filter`, `ViewState`, `Options`, `Projection`, `ExportOptions`, `RefreshError`, `CopySelectionCommand`, `ToggleLevelCommand`, `ToggleOnlyMatchesCommand`, `ToggleDedupeCommand`, `SetTimeModeCommand`, `ClearCommand`, `ResetFiltersCommand`, `ToggleExportTimeCommand`, `ToggleExportLevelCommand`; get/init `Clipboard`, `LinkOpener`; `SetSelectedSources(sources)`, `SetSearchText(text)`, `RequestViewState(state)`, `Pause(rowId = null, textOffset = 0, pixelOffset = 0)`, `Resume()`, `Dispose()`. |
 | `ConsoleHeader` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`, `Title`, `CopySelectedCommand`, `CopyVisibleCommand`, `SaveLogCommand`; static readonly `ControllerProperty`, `TitleProperty`, `CopySelectedCommandProperty`, `CopyVisibleCommandProperty`, `SaveLogCommandProperty`. |
-| `ConsoleToolbar` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
+| `ConsoleToolbar` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`, `CopyVisibleCommand`, `List`; static readonly `ControllerProperty`, `CopyVisibleCommandProperty`, `ListProperty`. |
 | `ConsoleEmptyState` | Constructor `()`; generated `InitializeComponent(loadXaml = true)`; get/set `Controller`; static readonly `ControllerProperty`. |
 | `ConsoleListView` | Constructor `()`; get/set `Controller`, `Projection`, `ViewState`, `TimeOptions`, `TimeMode`; static readonly `ControllerProperty`, `ProjectionProperty`, `ViewStateProperty`, `TimeOptionsProperty`, `TimeModeProperty`; `ViewStateRequested`; `JumpToLatest()`; get/set `Zoom`; static readonly `ZoomProperty`; const `MinimumZoom`, `MaximumZoom`, `ZoomStep`; `ZoomChanged`; `ZoomIn()`, `ZoomOut()`, `ResetZoom()`. |
 | `IConsoleClipboard` | `SetText(text)`. |
@@ -813,6 +848,7 @@ The host owns failures of its queued platform operations.
 The list zooms its rows. `Zoom` is a factor from 0.8 to 3.0 with a default of 1.0, and `ZoomStep` is 0.1.
 The zoom scales the row height, the five column widths and the four row font sizes.
 It does not scale the toolbar, the header, the jump button, the retention notice or the row padding.
+The toolbar's zoom group steps the factor by `ZoomStep`, shows it as a percentage, and resets it to 1.0 when pressed.
 A paused list keeps its first visible row and its offset inside that row.
 While the list has focus, Ctrl+Plus (also Ctrl+= and the number pad plus) zooms in, Ctrl+Minus zooms out, and Ctrl+0 resets.
 Ctrl with the mouse wheel over the list zooms too, with or without focus. One notch is one step, and a touchpad adds up its fractions.

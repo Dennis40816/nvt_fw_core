@@ -309,7 +309,7 @@ Formatter 接受既有 projection，不自行擷取或更新 store 狀態。
 - [ ] 在 UI 執行緒以 `UiThread.RegisterRunningDispatcher` 註冊正在執行的 dispatcher。載入 Core theme tokens、字型角色、`LogConsole/LogConsoleStyles.axaml` 與 `LogConsole/ConsoleListStyles.axaml`，並以 `WithNvtCoreFonts()` 設定字型。
 - [ ] 讓 app 擁有的 `LogStore` 存活至控制器生命週期結束。在該 dispatcher 上建立 `ConsoleController(store, sources, options)`。透過 `sources` 提供不可變的 `ConsoleSource` registry，並透過 `ConsoleProjectionOptions` 明確提供時間模板、文化設定與絕對時間時區。非空的 `options.SourceRegistry` 必須與 `sources` 一致。
 - [ ] 在綁定前設定控制器的 init properties `LinkOpener` 與 `Clipboard`。透過 `IConsoleLinkOpener` 的實作提供宿主的路徑解析器、快取可用性與開啟政策；透過 `IConsoleClipboard` 提供平台 clipboard dispatch。Adapter 方法在 UI 執行緒呼叫，必須立即返回；IO 與非同步工作由宿主執行。
-- [ ] 組合 `ConsoleToolbar`、`ConsoleListView`、`ConsoleEmptyState`，並可加入 `ConsoleHeader`。每個控制項指派同一個 `Controller`。將列表的 `Projection`、`ViewState`、`TimeOptions`、`TimeMode` 分別綁定該控制器的 `Projection`、`ViewState`、`Options`、`Filter.TimeMode`。將 `ViewStateRequested` 交給 `RequestViewState`，再透過 binding 傳回接受的狀態。空狀態從投影推導自身可見性。
+- [ ] 組合 `ConsoleToolbar`、`ConsoleListView`、`ConsoleEmptyState`，並可加入 `ConsoleHeader`。每個控制項指派同一個 `Controller`。將工具列的 `List` 設為該列表，`CopyVisibleCommand` 設為與標題相同的 App command。將列表的 `Projection`、`ViewState`、`TimeOptions`、`TimeMode` 分別綁定該控制器的 `Projection`、`ViewState`、`Options`、`Filter.TimeMode`。將 `ViewStateRequested` 交給 `RequestViewState`，再透過 binding 傳回接受的狀態。空狀態從投影推導自身可見性。
 - [ ] 讓控制器持有篩選、跟隨或暫停錨點、展開、選取與投影 leases。控制項借用這些輸入，只持有 attachment-local 的互動、handlers 與顯示快取。宿主持有 store、注入的 adapters、theme、app log 目錄、copy-visible／檔案 commands 與儲存對話框。選用的標頭可將 `CopySelectionCommand` 指派給 `CopySelectedCommand`；`CopyVisibleCommand` 與 `SaveLogCommand` 由宿主提供。
 - [ ] 隱藏頁面時保留同一個控制器。建構時先訂閱，再擷取啟動快照。Console 控制項開始被宿主掛載後，只要仍有控制項 attach，就共用控制器的 store 訂閱。最後一個控制項 detach 時解除訂閱並取消排隊更新，保留控制器的持久狀態。列表 detach 清除 hover、按下中的連結、pointer capture、焦點／範圍起點、選單與延後的捲動／拖曳意圖。重新 attach 恢復已接受的閱讀狀態，並從最新已發布的 store 快照更新。共用 store 的不同控制器各自管理 attachment 生命週期。未離開視覺樹就被丟棄的檢視不會 detach，控制器會持續訂閱，直到 Dispose。App 已 Dispose store 時，曾經 detach 過的控制器在控制項再次 attach 後仍維持 detached，並顯示最後一次投影。從未掛載過控制項的控制器，會透過 `RefreshError` 回報更新失敗。
 - [ ] 放棄檢視時釋放宿主自行建立的事件訂閱。永久丟棄頁面時，在 UI 執行緒 Dispose 控制器；重複呼叫 `Dispose()` 安全，會釋放其投影／快照 leases 與 commands。等 consumers 結束後，另行 Dispose app 擁有的 store。從未掛載過控制項的控制器持續觀察 store，直到 Dispose。控制器建構時對 store 呼叫 `SetReady(true)`；detach 與 Dispose 保留這個 store-wide 就緒狀態。
@@ -365,18 +365,28 @@ View 直接以項目和投影比較來源成員，不另存來源目錄。不存
 
 `ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
 取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
-會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。寬版
-配置把搜尋放在標題旁，等級與來源放在篩選列。960 DIP 以下含邊界時，搜尋與
-Only matches 移到篩選區第二行；Display 收納時間與去重，More 收納匯出與清除。標題高
-48 DIP；篩選區寬版高 48 DIP、窄版高 88 DIP。休止動作沒有底色或外框，等級按鈕使用
-語意圖示，Core tooltip 顯示完整原始筆數。共用圖示校正依渲染尺度更新，detach 時解除
-訂閱。只有 `Projection.IsEmpty` 時顯示空狀態。若 `Projection.EventCount == 0`，使用尚無事件
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。標題高
+40 DIP，包含標題、Display 選單（時間模式與去重）與 More 選單（複製、儲存、匯出選項與清除）。
+工具列是單一 40 DIP 的列，由左到右為等級摘要、搜尋欄與動作：Sources、Copy selected、
+Copy visible rows、Clear、縮小、縮放值、放大與 Jump to latest。只有搜尋欄會伸縮。
+等級摘要是文字按鈕，例如 `All levels` 或 `Debug and above`。游標停留 300 ms 後，六個等級
+開關在同一列右側展開；游標離開工具列 500 ms 後收合，提早離開標籤則不展開。點擊、Enter、Space、Down 或 Right（由右至左版面為 Left）會把展開的列
+釘住，直到 Escape、再次點擊、點擊列外或焦點離開。觸控不會以停留展開。等級篩選隱藏了
+Error 或 Fatal 項目時，收合的列會在摘要旁顯示錯誤圖示與筆數。搜尋欄內含搜尋圖示、
+Clear search 與 Only matches 開關；開啟時顯示漏斗，關閉時顯示斜線漏斗。工具列分三個寬度
+層級。寬度小於 `NarrowBreakpoint` 時為精簡層級：Sources 只顯示圖示，等級開關不顯示名稱，
+縮放步進與 Copy visible rows 隱藏（More 選單仍有後者）。展開的等級列在寬度達到 `WideBreakpoint`
+之前，會隱藏搜尋欄與除 Jump to latest 以外的動作；達到後，展開的列與兩者同列，
+Sources 只顯示圖示。休止動作沒有底色或外框；等級開關顯示語意圖示、名稱與完整原始筆數。展開的列放不下時，先隱藏名稱，再隱藏筆數；提示與無障礙名稱仍保留兩者。
+共用圖示校正依渲染尺度更新，detach 時解除訂閱。只有 `Projection.IsEmpty` 時顯示空狀態。若 `Projection.EventCount == 0`，使用尚無事件
 的文案並隱藏 Reset filters；篩選後沒有符合項目時，顯示本地化篩選摘要與 Reset filters。
 Console 動作按鈕與選單項目以區域 DynamicResource 樣式，直接將字型 family、size、weight
 綁定 Core Body role，包含中文來源名稱；其他控制項保留既有字型角色。
 
 標題的 `Title` 預設為 Console。App 綁定 `CopySelectedCommand`、`CopyVisibleCommand`、
-`SaveLogCommand`；選單提供獨立的 Include time 與 Include level。標題選單的 binding
+`SaveLogCommand`；選單提供獨立的 Include time 與 Include level。工具列以自己的
+`CopyVisibleCommand` 接同一個 App command，並以 `List` 指定縮放與 Jump to latest 作用的
+`ConsoleListView`；`List` 為 null 時這兩個按鈕維持停用。標題選單的 binding
 直接跟隨標題的目前 Controller，避免 popup 關閉時中斷正在執行的 command。
 Clipboard 與檔案 adapter 由宿主提供；列導覽與列表渲染由 `ConsoleListView` 提供。
 
@@ -400,12 +410,15 @@ lease。輸入通知之前就會排定更新，即使 observer 丟出例外仍�
 僅在宿主未提供 key 時，才使用同一份字典的預設值。宿主可在 application、window 或
 console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換。
 宿主範本發生 `FormatException` 時，會改用內建英文範本。
-`MinimumWidth` 與 `NarrowBreakpoint` 是所有 console 區塊共用的唯一定義；
+`MinimumWidth`、`NarrowBreakpoint` 與 `WideBreakpoint` 是所有 console 區塊共用的唯一定義；
 組合高度會跟隨既有控制高度與 spacing 的動態 tokens。
 
 時間模式與等級標籤透過 keys 對應。控制器只提供篩選資料，`FilterSummary` 不再是公開 API；
 檢視從資源模板推導摘要。`Count` 接受標籤與原始筆數，`Sources.Selected` 與 `Dedupe.Count`
-接受筆數，`Empty.NoMatches` 接受篩選摘要。`Filter.Search` 接受搜尋原文與搜尋模式標籤，
+接受筆數，`Levels.AndAbove` 接受顯示的最低等級名稱，`Levels.Some` 接受顯示與總等級數，
+`Levels.Name` 接受摘要文字，`Levels.NameHidden` 接受摘要文字與被隱藏的錯誤筆數，
+`Levels.ErrorsHidden` 接受被隱藏的錯誤筆數，`Zoom.Value` 與 `Zoom.Name` 接受縮放倍率，
+`Empty.NoMatches` 接受篩選摘要。`Filter.Search` 接受搜尋原文與搜尋模式標籤，
 `Filter.Summary` 接受等級、來源、搜尋後綴與去重後綴；請保留有效的 composite placeholders。
 `Title` 是預設標題，宿主明確指定的標題優先。獨立注入的
 `ConsoleProjectionOptions.RelativeTimeTemplate` 仍負責格式化事件時間。
@@ -413,19 +426,20 @@ console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換
 | 資源鍵 | 英文預設值／DIP 尺寸 |
 | --- | --- |
 | `Nvt.Console.MinimumWidth` | `640` |
-| `Nvt.Console.NarrowBreakpoint` | `960` |
+| `Nvt.Console.NarrowBreakpoint` | `700` |
+| `Nvt.Console.WideBreakpoint` | `1180` |
+| `Nvt.Console.ZoomValueWidth` | `48` |
 | `Nvt.Console.Title` | `Console` |
 | `Nvt.Console.Search.Placeholder` | `Search messages, sources or paths` |
 | `Nvt.Console.Search.Name` | `Search console` |
 | `Nvt.Console.Search.Clear` | `Clear search` |
 | `Nvt.Console.OnlyMatches` | `Only matches` |
-| `Nvt.Console.Export` | `Export` |
-| `Nvt.Console.Export.Name` | `Export console` |
+| `Nvt.Console.OnlyMatches.On` | `Only matches: on` |
+| `Nvt.Console.OnlyMatches.Off` | `Only matches: off` |
 | `Nvt.Console.Display` | `Display` |
 | `Nvt.Console.Display.Name` | `Display console` |
 | `Nvt.Console.More` | `More` |
 | `Nvt.Console.More.Name` | `More console actions` |
-| `Nvt.Console.Time.Name` | `Time display` |
 | `Nvt.Console.Time.Absolute` | `Absolute time` |
 | `Nvt.Console.Time.Relative` | `Relative time` |
 | `Nvt.Console.Time.Hidden` | `Hidden time` |
@@ -457,6 +471,21 @@ console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換
 | `Nvt.Console.Level.Warn` | `Warn` |
 | `Nvt.Console.Level.Error` | `Error` |
 | `Nvt.Console.Level.Fatal` | `Fatal` |
+| `Nvt.Console.Levels.All` | `All levels` |
+| `Nvt.Console.Levels.AndAbove` | `{0} and above` |
+| `Nvt.Console.Levels.FatalOnly` | `Fatal only` |
+| `Nvt.Console.Levels.Some` | `{0} of {1} levels` |
+| `Nvt.Console.Levels.None` | `No levels` |
+| `Nvt.Console.Levels.Name` | `Levels: {0}` |
+| `Nvt.Console.Levels.NameHidden` | `Levels: {0}, hidden error entries: {1}` |
+| `Nvt.Console.Levels.ErrorsHidden` | `Hidden error entries: {0}` |
+| `Nvt.Console.Levels.Group` | `Level filters` |
+| `Nvt.Console.Zoom.Value` | `{0:P0}` |
+| `Nvt.Console.Zoom.Name` | `Zoom {0:P0}` |
+| `Nvt.Console.Zoom.Out` | `Zoom out` |
+| `Nvt.Console.Zoom.In` | `Zoom in` |
+| `Nvt.Console.Zoom.Reset` | `Reset zoom to 100 percent` |
+| `Nvt.Console.Jump` | `Jump to latest` |
 
 ## 公開 API
 
@@ -502,7 +531,7 @@ console 祖先的 resources 覆寫 `Nvt.Console.*`，也能在執行期間替換
 | --- | --- |
 | `ConsoleController` | 建構子 `(store, sources, options = null)`；`PropertyChanged`；唯讀 `Filter`、`ViewState`、`Options`、`Projection`、`ExportOptions`、`RefreshError`、`CopySelectionCommand`、`ToggleLevelCommand`、`ToggleOnlyMatchesCommand`、`ToggleDedupeCommand`、`SetTimeModeCommand`、`ClearCommand`、`ResetFiltersCommand`、`ToggleExportTimeCommand`、`ToggleExportLevelCommand`；get/init `Clipboard`、`LinkOpener`；`SetSelectedSources(sources)`、`SetSearchText(text)`、`RequestViewState(state)`、`Pause(rowId = null, textOffset = 0, pixelOffset = 0)`、`Resume()`、`Dispose()`。 |
 | `ConsoleHeader` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`、`Title`、`CopySelectedCommand`、`CopyVisibleCommand`、`SaveLogCommand`；static readonly `ControllerProperty`、`TitleProperty`、`CopySelectedCommandProperty`、`CopyVisibleCommandProperty`、`SaveLogCommandProperty`。 |
-| `ConsoleToolbar` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`；static readonly `ControllerProperty`。 |
+| `ConsoleToolbar` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`、`CopyVisibleCommand`、`List`；static readonly `ControllerProperty`、`CopyVisibleCommandProperty`、`ListProperty`。 |
 | `ConsoleEmptyState` | 建構子 `()`；自動產生 `InitializeComponent(loadXaml = true)`；get/set `Controller`；static readonly `ControllerProperty`。 |
 | `ConsoleListView` | 建構子 `()`；get/set `Controller`、`Projection`、`ViewState`、`TimeOptions`、`TimeMode`；static readonly `ControllerProperty`、`ProjectionProperty`、`ViewStateProperty`、`TimeOptionsProperty`、`TimeModeProperty`；`ViewStateRequested`；`JumpToLatest()`；get/set `Zoom`；static readonly `ZoomProperty`；const `MinimumZoom`、`MaximumZoom`、`ZoomStep`；`ZoomChanged`；`ZoomIn()`、`ZoomOut()`、`ResetZoom()`。 |
 | `IConsoleClipboard` | `SetText(text)`。 |
@@ -701,6 +730,7 @@ Detach 釋放列選單 commands 的 delegates 與 subscribers；Dispose 也釋�
 
 列表可縮放列內容。`Zoom` 的範圍是 0.8 到 3.0，預設 1.0，每階 `ZoomStep` 為 0.1。
 縮放會改變列高、五個欄寬與四個列字型大小，不改變工具列、標頭、跳到最新按鈕、保留提示與列內距。
+工具列的縮放群組以 `ZoomStep` 調整倍率、以百分比顯示，按下顯示值會重設為 1.0。
 暫停中的列表保留第一個可見列，以及視窗在該列內的位移。
 列表有焦點時，Ctrl+加號（也接受 Ctrl+= 與數字鍵盤加號）放大，Ctrl+減號縮小，Ctrl+0 還原。
 滑鼠在列表上時，Ctrl 加滾輪也會縮放，不需要焦點。滾輪一格為一階，觸控板的小數位移會累加。

@@ -15,13 +15,11 @@ public sealed class ConsoleDimensionResourceTests
 {
     /// <summary>Each search inset recomputes when its dimension token changes at runtime.</summary>
     [AvaloniaTheory]
-    [InlineData(1200, 0, "NfcControlHeight", 40, 12, 4, 44)]
-    [InlineData(640, 1, "NfcControlHeight", 40, 12, 4, 44)]
-    [InlineData(1200, 0, "NfcSpace12", 16, 16, 4, 36)]
-    [InlineData(640, 1, "NfcSpace12", 16, 16, 4, 36)]
-    [InlineData(1200, 0, "NfcSpace4", 6, 12, 6, 38)]
-    [InlineData(640, 1, "NfcSpace4", 6, 12, 6, 38)]
-    public void SearchPaddingHostChangesDimensionUpdatesInsets(int width, int row, string key,
+    [InlineData(1200, "NfcControlHeight", 40, 44, 4, 80)]
+    [InlineData(640, "NfcControlHeight", 40, 44, 4, 80)]
+    [InlineData(1200, "NfcSpace4", 6, 38, 6, 64)]
+    [InlineData(640, "NfcSpace4", 6, 38, 6, 64)]
+    public void SearchPaddingHostChangesDimensionUpdatesInsets(int width, string key,
         double value, double left, double vertical, double right)
     {
         using var fixture = new ConsoleTestStore();
@@ -30,7 +28,7 @@ public sealed class ConsoleDimensionResourceTests
         var window = ConsoleTestView.Create(surface, width: width, height: 300);
         try
         {
-            var search = ((UserControl)surface.Children[row]).FindControl<TextBox>("SearchBox")!;
+            var search = ((UserControl)surface.Children[1]).FindControl<TextBox>("SearchBox")!;
             window.Resources[key] = value;
             ConsoleTestView.Pump(window);
             Assert.Equal(new Thickness(left, vertical, right, vertical), search.Padding);
@@ -38,9 +36,8 @@ public sealed class ConsoleDimensionResourceTests
         finally { window.Close(); }
     }
 
-    /// <summary>Both focus templates derive their outward margin from the current spacing token.</summary>
+    /// <summary>The search focus template derives its outward margin from the current spacing token.</summary>
     [AvaloniaTheory]
-    [InlineData("LevelInfo", "LevelFocus")]
     [InlineData("SearchBox", "SearchFocus")]
     public void FocusMarginHostChangesSpacingUpdatesInset(string controlName, string borderName)
     {

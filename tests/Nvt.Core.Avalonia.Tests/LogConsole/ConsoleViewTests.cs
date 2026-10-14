@@ -10,6 +10,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
+using Nvt.Core.Avalonia.Icons;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.Avalonia.Theme;
 using Nvt.Core.LogConsole;
@@ -35,50 +36,94 @@ public sealed class ConsoleViewTests
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var surface = ConsoleTestView.Surface(controller);
-        var window = ConsoleTestView.Create(surface, dark, shape, width, width <= 960 ? 184 : 144);
+        var window = ConsoleTestView.Create(surface, dark, shape, width, 144);
         try
         {
             var header = Assert.IsType<ConsoleHeader>(surface.Children[0]);
             var toolbar = Assert.IsType<ConsoleToolbar>(surface.Children[1]);
             Assert.True(((ConsoleEmptyState)surface.Children[2]).IsVisible);
-            Assert.Equal(48, header.Bounds.Height);
-            Assert.Equal(width <= 960 ? 88 : 48, toolbar.Bounds.Height);
-            Assert.Equal(width <= 960, toolbar.FindControl<Grid>("NarrowSearchRow")!.IsVisible);
-            Assert.Equal(width > 960, header.FindControl<Grid>("WideSearch")!.IsVisible);
+            Assert.Equal(40, header.Bounds.Height);
+            Assert.Equal(40, toolbar.Bounds.Height);
+            var compact = width < 700;
+            Assert.True(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
+            Assert.False(toolbar.FindControl<StackPanel>("LevelItems")!.IsVisible);
+            Assert.Equal(compact, toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
+            Assert.Equal(!compact, toolbar.FindControl<StackPanel>("SourceText")!.IsVisible);
+            Assert.Equal(!compact, toolbar.FindControl<Button>("ZoomOut")!.IsVisible);
+            Assert.Equal(!compact, toolbar.FindControl<Button>("ZoomIn")!.IsVisible);
+            Assert.Equal(!compact, toolbar.FindControl<Button>("CopyVisible")!.IsVisible);
+            Assert.True(toolbar.FindControl<Button>("Jump")!.IsVisible);
             Assert.All(surface.GetVisualDescendants().OfType<Button>(), button =>
             {
                 Assert.False(string.IsNullOrWhiteSpace(AutomationProperties.GetName(button)), button.Name);
                 Assert.NotNull(ControlAutomationPeer.CreatePeerForElement(button));
             });
-            using var frame = new RenderTargetBitmap(new PixelSize(width, width <= 960 ? 184 : 144), new Vector(96, 96));
+            using var frame = new RenderTargetBitmap(new PixelSize(width, 144), new Vector(96, 96));
             frame.Render(window);
-
         }
         finally { window.Close(); }
     }
 
-    /// <summary>Crossing the breakpoint relocates search and preserves access to display, export, and clear.</summary>
+    /// <summary>The compact tier starts at 700 DIP and drops zoom steps, copy-all and the Sources text.</summary>
     [AvaloniaTheory]
-    [InlineData(960, true)]
-    [InlineData(961, false)]
-    [InlineData(840, true)]
-    public void BreakpointMovesSearchDisplayExportAndClear(double width, bool narrow)
+    [InlineData(640, true)]
+    [InlineData(699, true)]
+    [InlineData(700, false)]
+    [InlineData(790, false)]
+    [InlineData(1280, false)]
+    public void WidthTiersSwitchCompactActionsAtTheNarrowBreakpoint(double width, bool compact)
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
-        var surface = ConsoleTestView.Surface(controller);
-        var window = ConsoleTestView.Create(surface, width: width, height: 200);
+        var toolbar = new ConsoleToolbar { Controller = controller };
+        var window = ConsoleTestView.Create(toolbar, width: width, height: 40);
         try
         {
-            var header = (ConsoleHeader)surface.Children[0];
-            var toolbar = (ConsoleToolbar)surface.Children[1];
-            Assert.Equal(narrow, header.FindControl<StackPanel>("NarrowActions")!.IsVisible);
-            Assert.Equal(!narrow, header.FindControl<StackPanel>("WideActions")!.IsVisible);
-            Assert.Equal(!narrow, toolbar.FindControl<ToggleButton>("Dedupe")!.IsVisible);
-            Assert.Equal(narrow, toolbar.FindControl<Grid>("NarrowSearchRow")!.IsVisible);
-            window.Width = narrow ? 1200 : 640;
+            Assert.Equal(compact, toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
+            Assert.Equal(compact, !toolbar.FindControl<Button>("ZoomOut")!.IsVisible);
+            Assert.Equal(compact, !toolbar.FindControl<Button>("ZoomIn")!.IsVisible);
+            Assert.Equal(compact, !toolbar.FindControl<Button>("CopyVisible")!.IsVisible);
+            Assert.True(toolbar.FindControl<Button>("ZoomValue")!.IsVisible);
+            Assert.True(toolbar.FindControl<Button>("CopySelected")!.IsVisible);
+            Assert.True(toolbar.FindControl<Button>("ClearConsole")!.IsVisible);
+            window.Width = compact ? 1200 : 640;
             ConsoleTestView.Pump(window);
-            Assert.Equal(narrow ? 48 : 88, toolbar.Bounds.Height);
+            Assert.Equal(!compact, toolbar.FindControl<TextBlock>("SourceIcon")!.IsVisible);
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>An open level row takes the row at 790 DIP, and shares it with the actions at 1280 DIP.</summary>
+    [AvaloniaTheory]
+    [InlineData(790, false)]
+    [InlineData(640, false)]
+    [InlineData(1179, false)]
+    [InlineData(1180, true)]
+    [InlineData(1280, true)]
+    public void OpenLevelRowHidesSearchAndActionsUnlessWide(double width, bool shared)
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        var toolbar = new ConsoleToolbar { Controller = controller };
+        var window = ConsoleTestView.Create(toolbar, width: width, height: 40);
+        try
+        {
+            ConsoleTestView.OpenLevels(window, toolbar);
+            Assert.True(toolbar.FindControl<StackPanel>("LevelItems")!.IsVisible);
+            Assert.Equal(shared, toolbar.FindControl<Border>("SearchHost")!.IsVisible);
+            Assert.Equal(shared, toolbar.FindControl<StackPanel>("Actions")!.IsVisible);
+            Assert.True(toolbar.FindControl<Button>("Jump")!.IsVisible);
+            // The open row never pushes the search field or the actions past the toolbar edge.
+            var row = toolbar.FindControl<Grid>("Row")!;
+            var edge = row.TranslatePoint(new Point(row.Bounds.Width, 0), toolbar)!.Value.X;
+            Assert.All(toolbar.GetVisualDescendants().OfType<Button>().Where(button => button.IsEffectivelyVisible), button =>
+            {
+                var right = button.TranslatePoint(new Point(button.Bounds.Width, 0), toolbar)!.Value.X;
+                Assert.True(right <= edge + 0.5, button.Name);
+            });
+            ConsoleTestView.OpenLevels(window, toolbar);
+            Assert.False(toolbar.FindControl<StackPanel>("LevelItems")!.IsVisible);
+            Assert.True(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
         }
         finally { window.Close(); }
     }
@@ -92,9 +137,10 @@ public sealed class ConsoleViewTests
         fixture.Fence();
         using var controller = fixture.Controller();
         var toolbar = new ConsoleToolbar { Controller = controller };
-        var window = ConsoleTestView.Create(toolbar, height: 48);
+        var window = ConsoleTestView.Create(toolbar, height: 40);
         try
         {
+            ConsoleTestView.OpenLevels(window, toolbar);
             var error = toolbar.FindControl<ToggleButton>("LevelError")!;
             Assert.Equal("Error · 1", ToolTip.GetTip(error));
             Assert.Equal("Error · 1", AutomationProperties.GetName(error));
@@ -126,7 +172,7 @@ public sealed class ConsoleViewTests
         {
             var header = (ConsoleHeader)surface.Children[0];
             var toolbar = (ConsoleToolbar)surface.Children[1];
-            var search = header.FindControl<TextBox>("SearchBox")!;
+            var search = toolbar.FindControl<TextBox>("SearchBox")!;
             Assert.NotEmpty(search.GetVisualDescendants());
             search.Focus();
             window.KeyTextInput("needle");
@@ -140,11 +186,19 @@ public sealed class ConsoleViewTests
             window.KeyTextInput("needle");
             ConsoleTestView.Pump(window);
             Assert.Equal("needle", controller.Filter.SearchText);
-            ConsoleTestView.Click(window, header.FindControl<ToggleButton>("OnlyMatches")!);
-            ConsoleTestView.Click(window, toolbar.FindControl<ToggleButton>("Dedupe")!);
+            var onlyMatches = toolbar.FindControl<ToggleButton>("OnlyMatches")!;
+            Assert.Equal(NvtIcons.FilterAlt, Assert.IsType<TextBlock>(onlyMatches.Content).Text);
+            ConsoleTestView.Click(window, onlyMatches);
+            Assert.Equal(NvtIcons.FilterAltOff, Assert.IsType<TextBlock>(onlyMatches.Content).Text);
+            var display = header.FindControl<Button>("Display")!;
+            var menu = Assert.IsType<MenuFlyout>(display.Flyout);
+            menu.ShowAt(display);
+            ConsoleTestView.Pump(window);
+            menu.Items.OfType<MenuItem>().Last().Command!.Execute(null);
+            menu.Hide();
             Assert.False(controller.Filter.OnlyMatches);
             Assert.True(controller.Filter.Deduplicate);
-            ConsoleTestView.Click(window, header.FindControl<Button>("ClearSearch")!);
+            ConsoleTestView.Click(window, toolbar.FindControl<Button>("ClearSearch")!);
             ConsoleTestView.Pump(window);
             Assert.Empty(controller.Filter.SearchText);
             controller.SetSelectedSources(["idle"]);
@@ -217,9 +271,9 @@ public sealed class ConsoleViewTests
         finally { window.Close(); }
     }
 
-    /// <summary>Wide and narrow export menus invoke all host commands and independent inclusion options.</summary>
+    /// <summary>The More menu invokes all host commands and independent inclusion options.</summary>
     [AvaloniaFact]
-    public void ExportBindingsAndIncludeFlagsWorkInWideAndMoreMenus()
+    public void ExportBindingsAndIncludeFlagsWorkInMoreMenu()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
@@ -231,28 +285,43 @@ public sealed class ConsoleViewTests
             CopyVisibleCommand = new RelayCommand(() => calls++),
             SaveLogCommand = new RelayCommand(() => calls++)
         };
-        var window = ConsoleTestView.Create(header, height: 48);
+        var window = ConsoleTestView.Create(header, height: 40);
         try
         {
-            InvokeExportMenu(header, "Export", window);
             InvokeExportMenu(header, "More", window);
-            Assert.Equal(6, calls);
-            Assert.True(controller.ExportOptions.IncludeTime);
-            Assert.True(controller.ExportOptions.IncludeLevel);
+            Assert.Equal(3, calls);
+            // Both options start on, and the menu toggles each once.
+            Assert.False(controller.ExportOptions.IncludeTime);
+            Assert.False(controller.ExportOptions.IncludeLevel);
         }
         finally { window.Close(); }
     }
-    /// <summary>Time choices and narrow display grouping use controller commands and checked state.</summary>
+    /// <summary>The toolbar's copy-all button runs the command that the host supplies.</summary>
     [AvaloniaFact]
-    public void TimeAndNarrowDisplayMenusReflectControllerState()
+    public void ToolbarCopyVisibleButtonRunsHostCommand()
+    {
+        using var fixture = new ConsoleTestStore();
+        using var controller = fixture.Controller();
+        var calls = 0;
+        var toolbar = new ConsoleToolbar { Controller = controller, CopyVisibleCommand = new RelayCommand(() => calls++) };
+        var window = ConsoleTestView.Create(toolbar, height: 40);
+        try
+        {
+            ConsoleTestView.Click(window, toolbar.FindControl<Button>("CopyVisible")!);
+            Assert.Equal(1, calls);
+        }
+        finally { window.Close(); }
+    }
+    /// <summary>Time choices and the duplicate toggle in the Display menu use controller commands and checked state.</summary>
+    [AvaloniaFact]
+    public void DisplayMenuReflectsControllerState()
     {
         using var fixture = new ConsoleTestStore();
         using var controller = fixture.Controller();
         var header = new ConsoleHeader { Controller = controller };
-        var window = ConsoleTestView.Create(header, height: 48);
+        var window = ConsoleTestView.Create(header, height: 40);
         try
         {
-            AssertTimeMenu(header, "Time", controller, window);
             AssertTimeMenu(header, "Display", controller, window);
         }
         finally { window.Close(); }

@@ -43,12 +43,16 @@ public sealed class ConsoleIconTests(ITestOutputHelper output)
             Grid.SetColumn(label, index);
             labels.Children.Add(label);
         }
-        var content = new StackPanel { Children = { toolbar, labels } };
+        // The toolbar row is centred in a 48 DIP band, so the icon and label centres stay 40 DIP apart as in the approved measurement.
+        toolbar.VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center;
+        var content = new StackPanel { Children = { new Border { Height = 48, Child = toolbar }, labels } };
         content.Bind(Panel.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceSubtleBrush"));
         var window = ConsoleTestView.Create(content, dark, height: 80);
         try
         {
             window.SetRenderScaling(scale);
+            // The level toggles show only while the row is open.
+            ConsoleTestView.OpenLevels(window, toolbar);
             ConsoleTestView.Pump(window);
             using var frame = new RenderTargetBitmap(new PixelSize((int)(1200 * scale), (int)(80 * scale)), new Vector(96 * scale, 96 * scale));
             frame.Render(window);
@@ -56,14 +60,19 @@ public sealed class ConsoleIconTests(ITestOutputHelper output)
             var pinned = GCHandle.Alloc(bytes, GCHandleType.Pinned);
             try { frame.CopyPixels(new PixelRect(frame.PixelSize), pinned.AddrOfPinnedObject(), bytes.Length, frame.PixelSize.Width * 4); }
             finally { pinned.Free(); }
+            var misaligned = new List<string>();
             for (var index = 0; index < levels.Length; index++)
             {
-                var iconCenter = InkCenter(bytes, frame.PixelSize.Width, (int)((16 + 40 * index) * scale), (int)(8 * scale), (int)(32 * scale), (int)(32 * scale));
+                var icon = toolbar.FindControl<TextBlock>("Level" + levels[index] + "Icon")!;
+                var origin = icon.TranslatePoint(new Point(0, 0), window)!.Value;
+                // The band stays inside the soft toggle fill, so only the glyph differs from its first pixel.
+                var iconCenter = InkCenter(bytes, frame.PixelSize.Width, (int)(origin.X * scale), (int)(12 * scale), (int)(icon.Bounds.Width * scale), (int)(24 * scale));
                 var textCenter = InkCenter(bytes, frame.PixelSize.Width, (int)((16 + 120 * index) * scale), (int)(48 * scale), (int)(100 * scale), (int)(32 * scale));
                 var delta = iconCenter - textCenter + 40 * scale;
                 output.WriteLine($"{levels[index]} @ {scale}: icon/text ink delta {delta}");
-                Assert.InRange(delta, -0.5, 0.5);
+                if (delta is < -0.5 or > 0.5) misaligned.Add($"{levels[index]} {delta}");
             }
+            Assert.Empty(misaligned);
         }
         finally { window.Close(); }
     }
