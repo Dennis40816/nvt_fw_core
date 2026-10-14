@@ -6,6 +6,12 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 1.0.0
+
+Core 1.0.0 declares the public API of 0.9.3 stable. There is no code change since 0.9.3.
+From this version, 1.x makes no breaking changes. A change that would break a host waits for 2.0.0.
+`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.3 entries.
+
 ## 0.9.3 - 2026-10-14
 
 Tag `core-v0.9.3` on commit `869644adb183df93ddbc46bff2538316e5e74404` (#232).

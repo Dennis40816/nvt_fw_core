@@ -78,8 +78,8 @@ Its all-zero Fonts SHA-256 is a placeholder. Replace it with the published Relea
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Nvt.Core" Version="0.9.3" />
-  <PackageReference Include="Nvt.Core.Avalonia" Version="0.9.3" />
+  <PackageReference Include="Nvt.Core" Version="1.0.0" />
+  <PackageReference Include="Nvt.Core.Avalonia" Version="1.0.0" />
   <PackageReference Include="Nvt.Core.Fonts" Version="0.1.0" />
 </ItemGroup>
 ```
