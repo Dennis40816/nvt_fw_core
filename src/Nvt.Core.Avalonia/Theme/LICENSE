@@ -28,4 +28,5 @@ This license applies only to the files in this folder that have the header
 It does not apply to UiResourceResolver.cs. That file is licensed as stated in
 Part 1 of LICENSE-COMPONENTS.txt at the repository root.
 Several style files are modelled on Avalonia templates. The Avalonia notice is
-in Part 3 of LICENSE-COMPONENTS.txt and in THIRD-PARTY-NOTICES.md.
+in Part 3 of LICENSE-COMPONENTS.txt and in THIRD-PARTY-NOTICES.md, both at the
+repository root.

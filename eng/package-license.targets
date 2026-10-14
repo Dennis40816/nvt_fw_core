@@ -8,6 +8,6 @@
     <None Include="$(PackageLicenseStaging)LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
   <Target Name="StagePackageLicense" BeforeTargets="CoreCompile;_GetPackageFiles;GenerateNuspec">
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\LICENSE-COMPONENTS.txt" DestinationFiles="$(PackageLicenseStaging)LICENSE" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\LICENSE-COMPONENTS.txt" DestinationFiles="$(PackageLicenseStaging)LICENSE" SkipUnchangedFiles="true" />
   </Target>
 </Project>

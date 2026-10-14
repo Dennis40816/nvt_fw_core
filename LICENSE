@@ -11,7 +11,7 @@ Licenses in this repository:
    - src/Nvt.Core.Avalonia/Theme/LICENSE
    - src/Nvt.Core.Avalonia/Icons/LICENSE
    - src/Nvt.Core.Fonts/LICENSE
-2. The other Nvt.Core files are licensed only as stated in Part 1 of LICENSE-COMPONENTS.txt.
+2. All other files, except those named in item 3, are licensed only as stated in Part 1 of LICENSE-COMPONENTS.txt.
    Part 2 of that file repeats the MIT License text. NuGet packages and tool releases carry that file as LICENSE.
 3. Font files are in src/Nvt.Core.Fonts/Assets/. Their license texts are in src/Nvt.Core.Fonts/licenses/.
    Third-party notices are in Part 3 of LICENSE-COMPONENTS.txt and in THIRD-PARTY-NOTICES.md.

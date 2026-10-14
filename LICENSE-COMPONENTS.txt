@@ -88,9 +88,10 @@ commit 737e3324305806514d7909874fa1818ae1808232, licensed under the Apache
 License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
 Font files: the font files in src/Nvt.Core.Fonts/Assets/ keep their own
-licenses. Each license text is in src/Nvt.Core.Fonts/licenses/ and in the
-Nvt.Core.Fonts package under licenses/. They are Inter (SIL Open Font License
-1.1), Cascadia Mono (SIL Open Font License 1.1), Noto Sans TC (SIL Open Font
-License 1.1) and Material Symbols Outlined (Apache License 2.0).
+licenses. They are Cascadia Mono (SIL Open Font License 1.1), Noto Sans TC
+(SIL Open Font License 1.1) and Material Symbols Outlined (Apache License 2.0).
+Inter (SIL Open Font License 1.1) comes from the Avalonia.Fonts.Inter
+dependency. Each license text, including Inter, is in
+src/Nvt.Core.Fonts/licenses/ and in the Nvt.Core.Fonts package under licenses/.
 
 More detail is in THIRD-PARTY-NOTICES.md of the repository.
