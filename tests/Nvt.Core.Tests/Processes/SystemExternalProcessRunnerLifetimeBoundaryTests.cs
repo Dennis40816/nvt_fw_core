@@ -83,58 +83,90 @@ public sealed class SystemExternalProcessRunnerLifetimeBoundaryTests
                 Assert.Equal(count + 1, capacity.InUse);
             }
 
-            // Every run saw its child exit and now waits on a held-output timer of the manual clock. Move the clock past
-            // the whole cleanup deadline in one step; no real time decides the outcome.
-            await time.WhenPendingAsync(limit, Fast.Deadline, TestToken).WaitAsync(Watchdog, TestToken);
-            time.Advance(Fast.Deadline);
-
-            foreach (RetainedReaders invocation in invocations)
-            {
-                ExternalProcessResult result = await invocation.Run.WaitAsync(Watchdog, TestToken);
-                await invocation.Detached.WaitAsync(Watchdog, TestToken);
-                Assert.Equal(0, result.ExitCode);
-                Assert.False(result.TimedOut);
-                Assert.Equal(ExternalProcessCleanup.OutputStreamHeldOpen, result.Cleanup);
-                Assert.False(invocation.Released.IsCompleted);
-            }
+            await AdvancePastCleanupDeadlineAsync(time, invocations);
             Assert.Equal(limit, capacity.InUse);
 
             var next = new SystemExternalProcessRunner(
                 ExternalProcessRunnerSeams.Production with { Capacity = capacity, Time = time });
-            ExternalProcessCleanupCapacityException refused = await Assert.ThrowsAsync<ExternalProcessCleanupCapacityException>(
-                () => next.RunAsync(request, TestToken).AsTask().WaitAsync(Watchdog, TestToken));
-            Assert.Equal(limit, refused.Limit);
-            Assert.Equal(limit, refused.InUseInvocations);
+            await AssertRefusedAtCapacityAsync(next, request, limit);
             Assert.Equal(limit, capacity.InUse);
 
-            RetainedReaders first = invocations[0];
-            Settle(first.Readers, settlement);
-            await first.Released.WaitAsync(Watchdog, TestToken);
-            Assert.Equal(limit - 1, capacity.InUse);
-
-            ExternalProcessResult accepted = await next.RunAsync(request, TestToken).AsTask().WaitAsync(Watchdog, TestToken);
-            Assert.Equal(0, accepted.ExitCode);
-            Assert.Equal(ExternalProcessCleanup.Complete, accepted.Cleanup);
-            Assert.Equal(limit - 1, capacity.InUse);
-
-            foreach (RetainedReaders invocation in invocations.Skip(1))
-            {
-                Settle(invocation.Readers, settlement);
-                await invocation.Released.WaitAsync(Watchdog, TestToken);
-            }
+            await SettleAndAdmitNextAsync(capacity, next, request, invocations, settlement);
             Assert.Equal(0, capacity.InUse);
         }
         finally
         {
-            foreach (RetainedReaders invocation in invocations)
-            {
-                _ = invocation.Readers.TrySetResult(new BoundedProcessOutput(string.Empty, true));
-            }
-            foreach (RetainedReaders invocation in invocations)
-            {
-                _ = await invocation.Run.WaitAsync(Watchdog, TestToken);
-                await invocation.Released.WaitAsync(Watchdog, TestToken);
-            }
+            await ReleaseAllAsync(invocations);
+        }
+    }
+
+    /// <summary>
+    /// Every run saw its child exit and now waits on a held-output timer of the manual clock. Move the clock past the
+    /// whole cleanup deadline in one step; no real time decides the outcome.
+    /// </summary>
+    private static async Task AdvancePastCleanupDeadlineAsync(ManualTimeProvider time, List<RetainedReaders> invocations)
+    {
+        await time.WhenPendingAsync(invocations.Count, Fast.Deadline, TestToken).WaitAsync(Watchdog, TestToken);
+        time.Advance(Fast.Deadline);
+        foreach (RetainedReaders invocation in invocations)
+        {
+            await AssertDetachedWithHeldOutputAsync(invocation);
+        }
+    }
+
+    private static async Task AssertRefusedAtCapacityAsync(SystemExternalProcessRunner runner, ExternalProcessStartInfo request, int limit)
+    {
+        ExternalProcessCleanupCapacityException refused = await Assert.ThrowsAsync<ExternalProcessCleanupCapacityException>(
+            () => runner.RunAsync(request, TestToken).AsTask().WaitAsync(Watchdog, TestToken));
+        Assert.Equal(limit, refused.Limit);
+        Assert.Equal(limit, refused.InUseInvocations);
+    }
+
+    private static async Task AssertDetachedWithHeldOutputAsync(RetainedReaders invocation)
+    {
+        ExternalProcessResult result = await invocation.Run.WaitAsync(Watchdog, TestToken);
+        await invocation.Detached.WaitAsync(Watchdog, TestToken);
+        Assert.Equal(0, result.ExitCode);
+        Assert.False(result.TimedOut);
+        Assert.Equal(ExternalProcessCleanup.OutputStreamHeldOpen, result.Cleanup);
+        Assert.False(invocation.Released.IsCompleted);
+    }
+
+    private static async Task SettleAndAdmitNextAsync(
+        ExternalProcessCapacity capacity,
+        SystemExternalProcessRunner next,
+        ExternalProcessStartInfo request,
+        List<RetainedReaders> invocations,
+        string settlement)
+    {
+        int limit = invocations.Count;
+        RetainedReaders first = invocations[0];
+        Settle(first.Readers, settlement);
+        await first.Released.WaitAsync(Watchdog, TestToken);
+        Assert.Equal(limit - 1, capacity.InUse);
+
+        ExternalProcessResult accepted = await next.RunAsync(request, TestToken).AsTask().WaitAsync(Watchdog, TestToken);
+        Assert.Equal(0, accepted.ExitCode);
+        Assert.Equal(ExternalProcessCleanup.Complete, accepted.Cleanup);
+        Assert.Equal(limit - 1, capacity.InUse);
+
+        foreach (RetainedReaders invocation in invocations.Skip(1))
+        {
+            Settle(invocation.Readers, settlement);
+            await invocation.Released.WaitAsync(Watchdog, TestToken);
+        }
+    }
+
+    private static async Task ReleaseAllAsync(List<RetainedReaders> invocations)
+    {
+        foreach (RetainedReaders invocation in invocations)
+        {
+            _ = invocation.Readers.TrySetResult(new BoundedProcessOutput(string.Empty, true));
+        }
+        foreach (RetainedReaders invocation in invocations)
+        {
+            _ = await invocation.Run.WaitAsync(Watchdog, TestToken);
+            await invocation.Released.WaitAsync(Watchdog, TestToken);
         }
     }
 

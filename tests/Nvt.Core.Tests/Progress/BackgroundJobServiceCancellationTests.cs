@@ -112,12 +112,8 @@ public sealed class BackgroundJobServiceCancellationTests
         {
             await started.Task.WaitAsync(TestContext.Current.CancellationToken);
             Assert.True(service.Cancel());
-            Assert.Null(observerFailure);
-            Assert.False(secondCancel);
-            Assert.False(tokenCancelledBeforeCompletion);
-            Assert.True(sourceAliveAfterCompletion);
-            Assert.True(token.IsCancellationRequested);
-            Assert.Equal(1, callbacks);
+            AssertObserverSawDeferredDisposal(
+                observerFailure, secondCancel, tokenCancelledBeforeCompletion, sourceAliveAfterCompletion, callbacks, token);
             Assert.Throws<ObjectDisposedException>(() => token.WaitHandle);
             var completed = await handle.Completion.WaitAsync(TestContext.Current.CancellationToken);
             Assert.Equal(BackgroundJobStatus.Cancelled, completed.Status);
@@ -133,8 +129,7 @@ public sealed class BackgroundJobServiceCancellationTests
             }
             else
             {
-                Assert.Same(completed, service.Snapshot);
-                Assert.False(service.Cancel());
+                AssertTerminalSnapshotRetained(service, completed);
             }
         }
         finally
@@ -145,6 +140,30 @@ public sealed class BackgroundJobServiceCancellationTests
             if (next is not null) await next.Completion.WaitAsync(TestContext.Current.CancellationToken);
             registration.Dispose();
         }
+    }
+
+    private static void AssertObserverSawDeferredDisposal(
+        Exception? observerFailure,
+        bool? secondCancel,
+        bool? tokenCancelledBeforeCompletion,
+        bool? sourceAliveAfterCompletion,
+        int callbacks,
+        CancellationToken token)
+    {
+        Assert.Null(observerFailure);
+        Assert.False(secondCancel);
+        Assert.False(tokenCancelledBeforeCompletion);
+        Assert.True(sourceAliveAfterCompletion);
+        Assert.True(token.IsCancellationRequested);
+        Assert.Equal(1, callbacks);
+    }
+
+    private static void AssertTerminalSnapshotRetained(
+        BackgroundJobService<string, string> service,
+        BackgroundJobSnapshot<string, string> completed)
+    {
+        Assert.Same(completed, service.Snapshot);
+        Assert.False(service.Cancel());
     }
 
     private static TaskCompletionSource Signal() => new(TaskCreationOptions.RunContinuationsAsynchronously);

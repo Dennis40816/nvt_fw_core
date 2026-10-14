@@ -72,24 +72,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
                         SetState(item, state);
                         Flush(host);
                     }
-                    Border indicator = Part(item, "ListSelectionIndicator");
-                    Assert.Equal(state.Selected, indicator.IsVisible);
-                    Assert.Equal(2, indicator.Width);
-                    Assert.Equal(12, indicator.Height);
-                    Assert.Equal(new Thickness(4, 0, 0, 0), indicator.Margin);
-                    if (state.Selected) Assert.True(Contrast(ColorOf(indicator.Background), background) >= 3);
-                    Border ring = Part(item, "ListFocusRing");
-                    Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                    Assert.Equal(new Thickness(2), ring.Margin);
-                    Assert.Equal(new Thickness(2), ring.BorderThickness);
-                    if (ring.IsVisible)
-                    {
-                        Assert.Equal(item.Bounds.Width - 4, ring.Bounds.Width);
-                        Assert.Equal(item.Bounds.Height - 4, ring.Bounds.Height);
-                    }
-                    double ringContrast = Contrast(ColorOf(ring.BorderBrush), background);
-                    Assert.True(ringContrast >= 3);
-                    ringMinimum = Math.Min(ringMinimum, ringContrast);
+                    ringMinimum = Math.Min(ringMinimum, AssertIndicatorAndFocusRing(item, state, background));
                 }
                 SetState(item, new ItemState("Rest"));
                 Color rest = ColorOf(item.Background);
@@ -103,6 +86,28 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
             finally { host.Close(); }
         }
         output.WriteLine($"{(dark ? "Dark" : "Light")}/{(square ? "Square" : "Pill")}: text {textMinimum:F3}:1, disabled {disabledMinimum:F3}:1, ring {ringMinimum:F3}:1");
+    }
+
+    private static double AssertIndicatorAndFocusRing(ListBoxItem item, ItemState state, Color background)
+    {
+        Border indicator = Part(item, "ListSelectionIndicator");
+        Assert.Equal(state.Selected, indicator.IsVisible);
+        Assert.Equal(2, indicator.Width);
+        Assert.Equal(12, indicator.Height);
+        Assert.Equal(new Thickness(4, 0, 0, 0), indicator.Margin);
+        if (state.Selected) Assert.True(Contrast(ColorOf(indicator.Background), background) >= 3);
+        Border ring = Part(item, "ListFocusRing");
+        Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
+        Assert.Equal(new Thickness(2), ring.Margin);
+        Assert.Equal(new Thickness(2), ring.BorderThickness);
+        if (ring.IsVisible)
+        {
+            Assert.Equal(item.Bounds.Width - 4, ring.Bounds.Width);
+            Assert.Equal(item.Bounds.Height - 4, ring.Bounds.Height);
+        }
+        double ringContrast = Contrast(ColorOf(ring.BorderBrush), background);
+        Assert.True(ringContrast >= 3);
+        return ringContrast;
     }
 
     /// <summary>Checks menu states, checked marks, gesture contrast, icons, separators, and popup tokens.</summary>
@@ -141,40 +146,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
             Assert.Contains("O", gesture.Text, StringComparison.Ordinal);
             foreach (ItemState state in States)
             {
-                SetState(item, state);
-                Flush(host);
-                item.ToggleType = MenuItemToggleType.CheckBox;
-                item.IsChecked = state.Selected;
-                Flush(host);
-                Border body = Part(item, "PART_LayoutRoot");
-                Assert.Equal(32, body.Bounds.Height);
-                string fill = state.Disabled ? "Nvt.List.TransparentBrush"
-                    : state.Selected ? state.Pressed ? "Nvt.Controls.SelectedPressedBrush" : state.Hover || state.Focus ? "Nvt.Controls.SelectedPointerOverBrush" : "Nvt.Controls.SelectedBrush"
-                    : state.Pressed ? "NfcSecondaryActionPressedBrush"
-                    : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush";
-                Assert.Equal(ResourceColor(item, fill), ColorOf(body.Background));
-                Color background = ColorOf(body.Background);
-                if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
-                Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
-                Assert.True(Contrast(ColorOf(item.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-                Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
-                Assert.True(Contrast(ColorOf(gesture.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-                Border ring = Part(item, "MenuFocusRing");
-                Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                if (ring.IsVisible)
-                {
-                    Assert.Equal(body.Bounds.Width - 4, ring.Bounds.Width);
-                    Assert.Equal(body.Bounds.Height - 4, ring.Bounds.Height);
-                }
-                Assert.Equal(new Thickness(2), ring.BorderThickness);
-                Assert.True(Contrast(ColorOf(ring.BorderBrush), background) >= 3);
-                Assert.Null(item.FocusAdorner);
-                item.ToggleType = MenuItemToggleType.CheckBox;
-                item.IsChecked = state.Selected;
-                Flush(host);
-                var check = Assert.Single(item.GetVisualDescendants().OfType<global::Avalonia.Controls.Shapes.Path>(), child => child.Name == "MenuCheck");
-                Assert.Equal(state.Selected, check.IsVisible);
-                Assert.Equal(ColorOf(item.Foreground), ColorOf(check.Stroke));
+                AssertMenuItemState(host, item, gesture, state);
             }
             foreach (Control control in new Control[] { separator, legacySeparator })
             {
@@ -190,6 +162,44 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
             parent.IsSubMenuOpen = false;
         }
         finally { host.Close(); }
+    }
+
+    private static void AssertMenuItemState(Window host, MenuItem item, TextBlock gesture, ItemState state)
+    {
+        SetState(item, state);
+        Flush(host);
+        item.ToggleType = MenuItemToggleType.CheckBox;
+        item.IsChecked = state.Selected;
+        Flush(host);
+        Border body = Part(item, "PART_LayoutRoot");
+        Assert.Equal(32, body.Bounds.Height);
+        string fill = state.Disabled ? "Nvt.List.TransparentBrush"
+            : state.Selected ? state.Pressed ? "Nvt.Controls.SelectedPressedBrush" : state.Hover || state.Focus ? "Nvt.Controls.SelectedPointerOverBrush" : "Nvt.Controls.SelectedBrush"
+            : state.Pressed ? "NfcSecondaryActionPressedBrush"
+            : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush";
+        Assert.Equal(ResourceColor(item, fill), ColorOf(body.Background));
+        Color background = ColorOf(body.Background);
+        if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
+        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
+        Assert.True(Contrast(ColorOf(item.Foreground), background) >= (state.Disabled ? 3 : 4.5));
+        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
+        Assert.True(Contrast(ColorOf(gesture.Foreground), background) >= (state.Disabled ? 3 : 4.5));
+        Border ring = Part(item, "MenuFocusRing");
+        Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
+        if (ring.IsVisible)
+        {
+            Assert.Equal(body.Bounds.Width - 4, ring.Bounds.Width);
+            Assert.Equal(body.Bounds.Height - 4, ring.Bounds.Height);
+        }
+        Assert.Equal(new Thickness(2), ring.BorderThickness);
+        Assert.True(Contrast(ColorOf(ring.BorderBrush), background) >= 3);
+        Assert.Null(item.FocusAdorner);
+        item.ToggleType = MenuItemToggleType.CheckBox;
+        item.IsChecked = state.Selected;
+        Flush(host);
+        var check = Assert.Single(item.GetVisualDescendants().OfType<global::Avalonia.Controls.Shapes.Path>(), child => child.Name == "MenuCheck");
+        Assert.Equal(state.Selected, check.IsVisible);
+        Assert.Equal(ColorOf(item.Foreground), ColorOf(check.Stroke));
     }
 
     /// <summary>Menu-bar items that toggle keep their check mark, including when disabled. Plain menu-bar items hide the slot.</summary>

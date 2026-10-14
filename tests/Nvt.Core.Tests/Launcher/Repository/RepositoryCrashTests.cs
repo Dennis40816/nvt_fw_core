@@ -31,15 +31,7 @@ public sealed class RepositoryCrashTests
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
-        start.ArgumentList.Add("-NoProfile");
-        start.ArgumentList.Add("-NonInteractive");
-        start.ArgumentList.Add("-EncodedCommand");
-        start.ArgumentList.Add(Convert.ToBase64String(Encoding.Unicode.GetBytes(ChildScript)));
-        start.Environment["NVT_REPOSITORY_PROBE_CORE"] = typeof(FileSystemManagedVersionRepository).Assembly.Location;
-        start.Environment["NVT_REPOSITORY_PROBE_TESTS"] = Assembly.GetExecutingAssembly().Location;
-        start.Environment["NVT_REPOSITORY_PROBE_ROOT"] = Path.GetDirectoryName(fixture.ManagedRoot)!;
-        start.Environment["NVT_REPOSITORY_PROBE_MARKER"] = marker;
-        start.Environment["NVT_REPOSITORY_PROBE_STAGE"] = afterPromotion ? "1" : "0";
+        ConfigureProbeStart(start, fixture, marker, afterPromotion);
         Process? child;
         try
         {
@@ -73,20 +65,7 @@ public sealed class RepositoryCrashTests
             process.Kill(entireProcessTree: true);
             await process.WaitForExitAsync(TestContext.Current.CancellationToken);
             await Task.WhenAll(stdout, stderr);
-            var inventory = await fixture.Repository.InventoryAsync(fixture.ManagedRoot, [], null, null, null,
-                TestContext.Current.CancellationToken);
-            Assert.True(inventory.IsSuccess);
-            if (afterPromotion)
-            {
-                var row = Assert.Single(inventory.Inventory!.Versions);
-                Assert.Equal(ManagedVersionAdmissionState.Unadmitted, row.AdmissionState);
-                Assert.Equal(ManagedVersionIntegrity.Healthy, row.Integrity);
-            }
-            else
-            {
-                Assert.Empty(inventory.Inventory!.Versions);
-                Assert.True(Directory.Exists(observed));
-            }
+            await AssertInventoryAfterHardStopAsync(fixture, observed, afterPromotion);
             var restarted = await fixture.InstallAsync();
             Assert.True(restarted.IsSuccess, restarted.Issue.ToString());
             Assert.Equal(afterPromotion, restarted.WasAlreadyInstalled);
@@ -98,6 +77,37 @@ public sealed class RepositoryCrashTests
                 process.Kill(entireProcessTree: true);
                 await process.WaitForExitAsync(TestContext.Current.CancellationToken);
             }
+        }
+    }
+
+    private static void ConfigureProbeStart(ProcessStartInfo start, RepositoryFixture fixture, string marker, bool afterPromotion)
+    {
+        start.ArgumentList.Add("-NoProfile");
+        start.ArgumentList.Add("-NonInteractive");
+        start.ArgumentList.Add("-EncodedCommand");
+        start.ArgumentList.Add(Convert.ToBase64String(Encoding.Unicode.GetBytes(ChildScript)));
+        start.Environment["NVT_REPOSITORY_PROBE_CORE"] = typeof(FileSystemManagedVersionRepository).Assembly.Location;
+        start.Environment["NVT_REPOSITORY_PROBE_TESTS"] = Assembly.GetExecutingAssembly().Location;
+        start.Environment["NVT_REPOSITORY_PROBE_ROOT"] = Path.GetDirectoryName(fixture.ManagedRoot)!;
+        start.Environment["NVT_REPOSITORY_PROBE_MARKER"] = marker;
+        start.Environment["NVT_REPOSITORY_PROBE_STAGE"] = afterPromotion ? "1" : "0";
+    }
+
+    private static async Task AssertInventoryAfterHardStopAsync(RepositoryFixture fixture, string observed, bool afterPromotion)
+    {
+        var inventory = await fixture.Repository.InventoryAsync(fixture.ManagedRoot, [], null, null, null,
+            TestContext.Current.CancellationToken);
+        Assert.True(inventory.IsSuccess);
+        if (afterPromotion)
+        {
+            var row = Assert.Single(inventory.Inventory!.Versions);
+            Assert.Equal(ManagedVersionAdmissionState.Unadmitted, row.AdmissionState);
+            Assert.Equal(ManagedVersionIntegrity.Healthy, row.Integrity);
+        }
+        else
+        {
+            Assert.Empty(inventory.Inventory!.Versions);
+            Assert.True(Directory.Exists(observed));
         }
     }
 
