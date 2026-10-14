@@ -372,7 +372,7 @@ public sealed class ButtonThemeTests
             }
     }
 
-    /// <summary>A flat ghost is rectangular, draws no border in any state, and keeps a square keyboard ring.</summary>
+    /// <summary>A flat ghost has corner radius 0 and keeps a keyboard ring whose corners are the radius plus 4.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
