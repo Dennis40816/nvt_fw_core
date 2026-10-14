@@ -78,38 +78,9 @@ public sealed partial class SystemExternalProcessRunnerLifetimeTests
         for (int iteration = 0; iteration < 10; iteration++)
         {
             var capacity = new ExternalProcessCapacity(limit);
-            var releaseExit = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             using var startLine = new Barrier(total + 1);
-            int started = 0;
-            int released = 0;
-
-            // A started run parks in the exit observation until released, so its slot is held for the whole burst.
-            // A refused run throws before ProcessLaunchGate.Start, so it never reaches this. The gate only holds the
-            // observation back: after it opens, the seam still waits for the real process exit, and a cancelled
-            // observation surfaces as cancellation instead of being turned into an exit.
-            async Task HeldExitAsync(Process process, CancellationToken observationToken)
-            {
-                _ = Interlocked.Increment(ref started);
-                await releaseExit.Task.WaitAsync(observationToken).ConfigureAwait(false);
-                await process.WaitForExitAsync(observationToken).ConfigureAwait(false);
-            }
-
-            void Observe(ExternalProcessRunnerPhase phase)
-            {
-                if (phase == ExternalProcessRunnerPhase.ResourcesReleased)
-                {
-                    _ = Interlocked.Increment(ref released);
-                }
-            }
-
-            ExternalProcessRunnerSeams seams = ExternalProcessRunnerSeams.Production with
-            {
-                Timing = Fast,
-                TerminateTree = KillTree,
-                ObserveExit = HeldExitAsync,
-                Observe = Observe,
-                Capacity = capacity,
-            };
+            var burst = new ConcurrentStartBurst();
+            ExternalProcessRunnerSeams seams = CreateBurstSeams(capacity, burst);
 
             // Dedicated threads, so a busy thread pool cannot serialize the start; each blocks at the barrier and
             // then calls RunAsync synchronously, so the reservations compete at once.
@@ -134,20 +105,15 @@ public sealed partial class SystemExternalProcessRunnerLifetimeTests
                 startLine.SignalAndWait(TestToken);
 
                 await SpinUntilAsync(
-                    () => Volatile.Read(ref started) == limit &&
+                    () => burst.Started == limit &&
                         runs.Count(run => run.IsFaulted) == total - limit,
                     Watchdog);
 
-                Assert.Equal(limit, Volatile.Read(ref started));
-                Assert.Equal(limit, capacity.InUse);
-                int refused = runs.Count(run =>
-                    run.Exception is { } aggregate &&
-                    aggregate.Flatten().InnerExceptions.Any(inner => inner is ExternalProcessCleanupCapacityException));
-                Assert.Equal(total - limit, refused);
+                AssertBurstAdmittedExactlyTheLimit(runs, burst, capacity, limit, total);
             }
             finally
             {
-                _ = releaseExit.TrySetResult();
+                _ = burst.ReleaseExit.TrySetResult();
             }
 
             // Every admitted run completes as a normal, fully observed run: exit code 0 and complete cleanup.
@@ -164,19 +130,51 @@ public sealed partial class SystemExternalProcessRunnerLifetimeTests
                 }
             }
 
-            Assert.Equal(limit, admitted.Count);
-            Assert.All(admitted, result =>
-            {
-                Assert.Equal(0, result.ExitCode);
-                Assert.False(result.TimedOut);
-                Assert.Equal(ExternalProcessCleanup.Complete, result.Cleanup);
-            });
+            AssertAdmittedRunsCompletedCleanly(admitted, limit);
 
             // Every started run publishes ResourcesReleased only after returning its slot, so once all of them have
             // published, the capacity must be back to zero.
-            await SpinUntilAsync(() => Volatile.Read(ref released) == limit, Watchdog);
+            await SpinUntilAsync(() => burst.Released == limit, Watchdog);
             Assert.Equal(0, capacity.InUse);
         }
+    }
+
+    private static ExternalProcessRunnerSeams CreateBurstSeams(ExternalProcessCapacity capacity, ConcurrentStartBurst burst)
+    {
+        return ExternalProcessRunnerSeams.Production with
+        {
+            Timing = Fast,
+            TerminateTree = KillTree,
+            ObserveExit = burst.HeldExitAsync,
+            Observe = burst.Observe,
+            Capacity = capacity,
+        };
+    }
+
+    private static void AssertBurstAdmittedExactlyTheLimit(
+        Task<ExternalProcessResult>[] runs,
+        ConcurrentStartBurst burst,
+        ExternalProcessCapacity capacity,
+        int limit,
+        int total)
+    {
+        Assert.Equal(limit, burst.Started);
+        Assert.Equal(limit, capacity.InUse);
+        int refused = runs.Count(run =>
+            run.Exception is { } aggregate &&
+            aggregate.Flatten().InnerExceptions.Any(inner => inner is ExternalProcessCleanupCapacityException));
+        Assert.Equal(total - limit, refused);
+    }
+
+    private static void AssertAdmittedRunsCompletedCleanly(List<ExternalProcessResult> admitted, int limit)
+    {
+        Assert.Equal(limit, admitted.Count);
+        Assert.All(admitted, result =>
+        {
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(result.TimedOut);
+            Assert.Equal(ExternalProcessCleanup.Complete, result.Cleanup);
+        });
     }
 
     /// <summary>
@@ -316,6 +314,39 @@ public sealed partial class SystemExternalProcessRunnerLifetimeTests
         {
             termination.Open();
             termination.KillCaptured();
+        }
+    }
+
+    /// <summary>Counts started runs and published releases, and holds each exit observation until the gate opens.</summary>
+    private sealed class ConcurrentStartBurst
+    {
+        // Guard: Interlocked writes and Volatile reads.
+        private int _started;
+        private int _released;
+
+        internal TaskCompletionSource ReleaseExit { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        internal int Started => Volatile.Read(ref _started);
+
+        internal int Released => Volatile.Read(ref _released);
+
+        // A started run parks in the exit observation until released, so its slot is held for the whole burst.
+        // A refused run throws before ProcessLaunchGate.Start, so it never reaches this. The gate only holds the
+        // observation back: after it opens, the seam still waits for the real process exit, and a cancelled
+        // observation surfaces as cancellation instead of being turned into an exit.
+        internal async Task HeldExitAsync(Process process, CancellationToken observationToken)
+        {
+            _ = Interlocked.Increment(ref _started);
+            await ReleaseExit.Task.WaitAsync(observationToken).ConfigureAwait(false);
+            await process.WaitForExitAsync(observationToken).ConfigureAwait(false);
+        }
+
+        internal void Observe(ExternalProcessRunnerPhase phase)
+        {
+            if (phase == ExternalProcessRunnerPhase.ResourcesReleased)
+            {
+                _ = Interlocked.Increment(ref _released);
+            }
         }
     }
 

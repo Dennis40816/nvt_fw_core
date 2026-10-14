@@ -123,7 +123,9 @@ public sealed class ScannerCorpusTests(ITestOutputHelper output)
     private static bool IsRooted(string path) => path.StartsWith('/') || path.StartsWith('\\')
         || path.Length >= 3 && char.IsAsciiLetter(path[0]) && path[1] == ':' && path[2] is '/' or '\\';
 
-    private static IEnumerable<LineCase> Corpus()
+    private static IEnumerable<LineCase> Corpus() => LocationAndQuoteCorpus().Concat(SeparatorUrlAndFolderCorpus());
+
+    private static IEnumerable<LineCase> LocationAndQuoteCorpus()
     {
         // Both location forms on names covering all M* categories, normalization forms and scalar widths.
         foreach (var path in new[]
@@ -170,6 +172,10 @@ public sealed class ScannerCorpusTests(ITestOutputHelper output)
                     expected.Add(new ConsoleLinkSpan(candidate.Length + 1, later.Length, new LinkTarget(LinkKind.File, later))));
             }
         }
+    }
+
+    private static IEnumerable<LineCase> SeparatorUrlAndFolderCorpus()
+    {
         yield return Path(@"C:\Demo\file.cs", before: "檔案", after: "。", rooted: true);
         yield return Path(@"\\server\share\檔案.log", before: "開啟", after: "。", rooted: true);
         yield return Path("D:/Demo/檔案.log", before: "𠀀", after: "。完成", rooted: true);

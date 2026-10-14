@@ -47,21 +47,7 @@ public sealed class PaletteContrastTests
             var palette = theme.Elements().Where(element => element.Name.LocalName == "SolidColorBrush")
                 .ToDictionary(element => element.Attribute(ThemeContractTests.Xaml + "Key")!.Value,
                     element => ReadColor(host, element.Attribute(ThemeContractTests.Xaml + "Key")!.Value), StringComparer.Ordinal);
-            var overrides = new Dictionary<string, Color>(StringComparer.Ordinal)
-            {
-                ["NfcAccentBrush"] = Color.Parse(accent),
-                ["NfcAccentStrongBrush"] = Color.Parse(strong),
-                ["NfcAccentSurfaceBrush"] = Color.Parse(surface),
-                ["NfcAccentSurfaceSubtleBrush"] = Color.Parse(subtle),
-                ["NfcAccentBorderBrush"] = Color.Parse(accent),
-                ["NfcAccentBorderStrongBrush"] = Color.Parse(strong),
-                ["NfcAccentBorderLightBrush"] = Color.Parse(accent),
-            };
-            foreach ((string key, Color value) in overrides)
-            {
-                if (tool == "NFC") Assert.Equal(value, palette[key]);
-                palette[key] = value;
-            }
+            ApplyAccentOverrides(palette, tool, accent, strong, surface, subtle);
 
             string[] commonSurfaces = [.. palette.Keys.Where(key => !key.StartsWith("NfcAccent", StringComparison.Ordinal) &&
                 (key.Contains("Surface", StringComparison.Ordinal) || key is "NfcAppBackgroundBrush" or "NfcSecondaryActionPressedBrush"))];
@@ -114,6 +100,26 @@ public sealed class PaletteContrastTests
             }
         }
         finally { host.Close(); }
+    }
+
+    private static void ApplyAccentOverrides(Dictionary<string, Color> palette, string tool, string accent,
+        string strong, string surface, string subtle)
+    {
+        var overrides = new Dictionary<string, Color>(StringComparer.Ordinal)
+        {
+            ["NfcAccentBrush"] = Color.Parse(accent),
+            ["NfcAccentStrongBrush"] = Color.Parse(strong),
+            ["NfcAccentSurfaceBrush"] = Color.Parse(surface),
+            ["NfcAccentSurfaceSubtleBrush"] = Color.Parse(subtle),
+            ["NfcAccentBorderBrush"] = Color.Parse(accent),
+            ["NfcAccentBorderStrongBrush"] = Color.Parse(strong),
+            ["NfcAccentBorderLightBrush"] = Color.Parse(accent),
+        };
+        foreach ((string key, Color value) in overrides)
+        {
+            if (tool == "NFC") Assert.Equal(value, palette[key]);
+            palette[key] = value;
+        }
     }
 
     private static Color ReadColor(Control host, string key)
