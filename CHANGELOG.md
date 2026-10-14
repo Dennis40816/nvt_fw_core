@@ -6,6 +6,11 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 0.9.3 - 2026-10-14
+
+The Console toolbar rework that the owner chose in #226 (direction C), for the NFH adoption.
+It breaks one breakpoint default and three resource names, listed below. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.2 entries.
+
 ### Changed
 
 - Console toolbar rework (owner direction C of #226). The toolbar has four regions: level filter, search, actions and zoom. The level filter shows one text label such as `All levels` or `Debug and above`.

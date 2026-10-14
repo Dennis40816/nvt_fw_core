@@ -106,7 +106,11 @@ Nvt.Core.Avalonia.LogConsole.ConsoleToolbar
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ConsoleToolbar() -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.get -> Nvt.Core.Avalonia.LogConsole.ConsoleController?
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.Controller.set -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommand.get -> System.Windows.Input.ICommand?
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommand.set -> void
 Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.InitializeComponent(bool loadXaml = true) -> void
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.List.get -> Nvt.Core.Avalonia.LogConsole.ConsoleListView?
+Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.List.set -> void
 Nvt.Core.Avalonia.LogConsole.IConsoleClipboard
 Nvt.Core.Avalonia.LogConsole.IConsoleClipboard.SetText(string! text) -> void
 Nvt.Core.Avalonia.LogConsole.IConsoleLinkOpener
@@ -355,6 +359,7 @@ const Nvt.Core.Avalonia.Icons.NvtIcons.Construction = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.ContentCopy = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.ContentPaste = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.ContentPasteOff = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.CopyAll = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.CropSquare = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.DataObject = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.Delete = "" -> string!
@@ -476,6 +481,8 @@ static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.TimeOptionsProperty
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ViewStateProperty -> Avalonia.StyledProperty<Nvt.Core.LogConsole.ConsoleViewState!>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleListView.ZoomProperty -> Avalonia.StyledProperty<double>!
 static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ControllerProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleController?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
+static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ListProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleListView?>!
 static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.DefaultExpandedProperty -> Avalonia.StyledProperty<bool>!
 static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.HeaderRightProperty -> Avalonia.StyledProperty<object?>!
 static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.IsCollapsibleProperty -> Avalonia.StyledProperty<bool>!

@@ -1,8 +1,1 @@
 #nullable enable
-const Nvt.Core.Avalonia.Icons.NvtIcons.CopyAll = "" -> string!
-Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommand.get -> System.Windows.Input.ICommand?
-Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommand.set -> void
-Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.List.get -> Nvt.Core.Avalonia.LogConsole.ConsoleListView?
-Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.List.set -> void
-static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.CopyVisibleCommandProperty -> Avalonia.StyledProperty<System.Windows.Input.ICommand?>!
-static readonly Nvt.Core.Avalonia.LogConsole.ConsoleToolbar.ListProperty -> Avalonia.StyledProperty<Nvt.Core.Avalonia.LogConsole.ConsoleListView?>!
