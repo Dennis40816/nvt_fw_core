@@ -118,7 +118,7 @@ A tool release takes `LICENSE` from a verified downloaded Core package and ships
 That license covers Core package code, including Fonts.
 A tool using Fonts also ships the package's `licenses/` folder and preserves Inter dependency licenses and notices.
 See [Fonts license duties](../../docs/core/modules/Fonts.md#license-duties-and-updates).
-Deliver Core only under its proprietary `LICENSE`.
+Deliver Core only under that `LICENSE`. It is the file `LICENSE-COMPONENTS.txt` of the Core repository: Part 1 for the files without a license of their own, Part 2 for the files with an `SPDX-License-Identifier: MIT` header.
 The tool's own license does not relicense Core.
 
 ## A sandbox without network

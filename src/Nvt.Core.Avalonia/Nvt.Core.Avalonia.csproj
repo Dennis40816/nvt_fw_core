@@ -11,9 +11,9 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
+  <Import Project="..\..\eng\package-license.targets" />
   <ItemGroup>
     <ProjectReference Include="..\Nvt.Core\Nvt.Core.csproj" />
   </ItemGroup>
