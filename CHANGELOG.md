@@ -8,7 +8,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ### Added
 
-- `actionGhost.flat`: a borderless, rectangular `actionGhost` for selected or status controls that must not show a rounded border, such as a Settings tab list.
+- `actionGhost.flat`: a borderless (`BorderThickness` 0), rectangular `actionGhost` for selected or status controls that must not show a rounded border, such as a Settings tab list.
   `Button.actionGhost.flat.active` and `ToggleButton.actionGhost.flat:checked` show the accent surface and accent text with a transparent border. Hover uses the neutral selection surface and press uses the neutral pressed surface, so hover and press each look stronger than the selected rest state. The keyboard focus ring stays and follows the square corners.
   The bordered `ToggleButton.actionGhost:checked` pill is unchanged. This is a style addition only. No public C# API changes.
 

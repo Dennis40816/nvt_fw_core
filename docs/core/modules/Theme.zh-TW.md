@@ -177,7 +177,7 @@ Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具�
 
 `actionIconButton` 預設採 `actionNeutral`；可與四種色彩角色組合，採其所有狀態。`chipAction` 採中性色角色；`chipAction.active` 與 ToggleButton 的 checked 使用相同選取規則。active／checked 滑入採淡主色底色，按下採中性按下底色，保留強主色文字與強邊界。一般 Button 沒有 checked。`chipStatus` 的 warning／danger／success 使用上表語意底色、文字與邊界；無互動、選取或焦點狀態，停用仍保留資訊顏色與 opacity 1。
 
-`actionGhost.flat` 是 `actionGhost` 的修飾 class。它是矩形（圓角 0），任何狀態都不畫邊框，選取時只顯示主色底色與文字。使用 `Button.actionGhost.flat.active` 或 `ToggleButton.actionGhost.flat:checked`。鍵盤焦點框保留，並跟隨直角。停用時不畫底色，與其他角色不同。有邊框的 `actionGhost:checked` 膠囊不變。
+`actionGhost.flat` 是 `actionGhost` 的修飾 class。它是矩形（圓角 0），任何狀態都沒有邊框（`BorderThickness` 0，所以每個方向比膠囊小 2 DIP），選取時只顯示主色底色與文字。使用 `Button.actionGhost.flat.active` 或 `ToggleButton.actionGhost.flat:checked`。鍵盤焦點框保留，並跟隨直角。停用時不畫底色，與其他角色不同。有邊框的 `actionGhost:checked` 膠囊不變。
 
 停用最優先：所有互動角色採 `NfcSurfaceSubtleBrush`、`NfcBorderMutedBrush`、`NfcTextDisabledBrush`、opacity 1，覆蓋滑入、按下、checked 與 active。ghost 停用也採相同次表面，唯一例外是 `actionGhost.flat`，停用時維持 `Transparent` 且無邊框。沒有雙重淡化。
 

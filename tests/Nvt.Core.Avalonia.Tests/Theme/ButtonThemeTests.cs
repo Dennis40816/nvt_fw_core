@@ -69,7 +69,7 @@ public sealed class ButtonThemeTests
                         AssertBrush(button, foreground, text.Foreground);
                         Assert.Equal(1, button.Opacity);
                         if (!button.IsEnabled) Assert.NotEqual(restText, Assert.IsAssignableFrom<ISolidColorBrush>(button.Foreground).Color);
-                        Assert.Equal(new Thickness(1), button.BorderThickness);
+                        Assert.Equal(role.StartsWith("actionGhost flat", StringComparison.Ordinal) ? new Thickness(0) : new Thickness(1), button.BorderThickness);
                         Border overlay = Assert.Single(button.GetVisualDescendants().OfType<Border>(), b => b.Name == "PrimaryPressedBorder");
                         Assert.Equal(role == "actionPrimary" && state.Contains("pressed", StringComparison.OrdinalIgnoreCase) && button.IsEnabled, overlay.IsVisible);
                         Assert.Equal(new Thickness(2), overlay.BorderThickness);

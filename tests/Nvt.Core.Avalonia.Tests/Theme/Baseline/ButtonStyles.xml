@@ -258,6 +258,8 @@
   <!-- flat: a rectangular ghost with no border in any state. A selected flat ghost shows the accent surface and text only. -->
   <Style Selector="Button.actionGhost.flat, ToggleButton.actionGhost.flat">
     <Setter Property="CornerRadius" Value="0"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
   </Style>
 
   <Style Selector="Button.actionGhost.flat:disabled, ToggleButton.actionGhost.flat:disabled">
