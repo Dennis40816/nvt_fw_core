@@ -364,6 +364,27 @@ against build findings in the ledger, per project. LowerBaseline lowers both the
 ledger and generated warning-ID block; it never enrolls. Tooling/function-only
 loading supports provider tests, and never executes enrollment or verification.
 
+## Run Verify on a developer machine
+
+Use `tools/repo-checks/run-verify.ps1` for a local run of Verify. It does not change `repo-health.ps1`, so it is not part of the checker bundle.
+
+```powershell
+pwsh -NoProfile -File tools/repo-checks/run-verify.ps1 -Repo core -Solution Nvt.Core.sln -BaseRef origin/main
+```
+
+Verify can fail on code that did not change, for two reasons that come from the machine and not from the code:
+
+- A build server that another process started earlier (`VBCSCompiler`) keeps its own UI culture. A build that reuses it can print a localized message, which is a new fingerprint. The environment variables of `repo-health.ps1` do not change a server that is already running.
+- A build that finds old output can print no analyzer message, so a finding looks gone (for example `EnableGenerateDocumentationFile` goes from 1 to 0).
+
+The script stops every build server and deletes the `bin` and `obj` folders that sit directly next to a `*.csproj` file of the repository. Then it restores with `--locked-mode` and runs Verify. CI runs on a fresh runner and does not need it.
+
+Safety rules of the script:
+
+- It stops the compile server of every session on the machine. A build that runs in another session can fail, so run it when no other build runs.
+- `-Root` must be the top of the Git working tree. It defaults to the repository that contains the script. Any other value stops the script before it deletes anything.
+- It skips a project below a link, a `bin` or `obj` that is a link, and a project outside the root. Links inside `bin` or `obj` are removed as part of the folder.
+
 ## Known limitations
 
 An independent review of the first gate found six gaps. The gate does not close them yet. Each has an Issue.
