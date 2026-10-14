@@ -1,6 +1,6 @@
 # Roadmap
 
-This file is the one place for Core's planned work. Status as of 2026-10-13.
+This file is the one place for Core's planned work. Status as of 2026-10-14.
 
 The owner asked on 2026-10-07 for one roadmap per repository, with Core adoption tracked as progress: 「我認為需要重新整理各專案 Todo 規劃，也要把整合 core 納入進度，要不然很難做 hotfix」 ("I think we need to reorganize each project's to-do plan and include Core integration in the progress; otherwise hotfixes are hard to do.")
 
@@ -32,7 +32,7 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.9.0 | 2026-10-11 | Feature freeze. Every public API is reviewed and listed. After it, only fixes. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.0) |
 | 0.9.1 | 2026-10-13 | Console interaction, accessibility and lifecycle for the first host adoption (NFH K2e). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.1) |
 | 0.9.2 | 2026-10-13 | Console font zoom for the first host adoption (NFH). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.2) |
-| 0.9.3 | 2026-10-14 | Console toolbar rework for the first host adoption (NFH): one level label that opens on hover, one visibility rule and four regions. Breaks three resource names and one breakpoint default. | Planned |
+| 0.9.3 | 2026-10-14 | Console toolbar rework for the first host adoption (NFH): one level label that opens on hover, one visibility rule and four regions. Breaks three resource names and one breakpoint default. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.3) |
 | 1.0.0 | Target 2026-10-19, earliest 2026-10-17 | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
 | Fonts 0.1.1 | 2026-10-10 | Independent font package. `core-fonts-v0.1.0` came first and `0.1.1` adds the Inter license. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-fonts-v0.1.1) |
 
@@ -118,7 +118,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138), [#146](https://github.com/Dennis40816/nvt_fw_core/pull/146) |
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list, row interaction, accessibility peers and lifecycle merged. Released in 0.9.1 (2026-10-13). NFH adopts the Console in K2e. Font zoom (80 to 300 percent, Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+wheel) was added after the freeze at the owner's request and released in 0.9.2 (2026-10-13). The toolbar rework (level label that opens on hover) is planned for 0.9.3 | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205), [#221](https://github.com/Dennis40816/nvt_fw_core/pull/221) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list, row interaction, accessibility peers and lifecycle merged. Released in 0.9.1 (2026-10-13). NFH adopts the Console in K2e. Font zoom (80 to 300 percent, Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+wheel) was added after the freeze at the owner's request and released in 0.9.2 (2026-10-13). The toolbar rework (level label that opens on hover) was released in 0.9.3 (2026-10-14). | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205), [#221](https://github.com/Dennis40816/nvt_fw_core/pull/221) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
 | `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
