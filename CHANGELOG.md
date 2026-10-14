@@ -8,9 +8,14 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 1.0.0
 
-Core 1.0.0 declares the public API of 0.9.3 stable. The only change since 0.9.3 is one style addition, listed below. It adds no C# API.
+Core 1.0.0 declares the public API of 0.9.4 stable. It has the same content as 0.9.4 and adds no change of its own.
 From this version, 1.x makes no breaking changes. A change that would break a host waits for 2.0.0.
-`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.3 entries.
+`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
+
+## 0.9.4 - 2026-10-14
+
+A style addition for the NFU Settings tab list, and for any host that needs a selected control without a rounded border.
+It changes no C# API and no existing role, so `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.3 entries.
 
 ### Added
 
