@@ -8,6 +8,8 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.3 - 2026-10-14
 
+Tag `core-v0.9.3` on commit `869644adb183df93ddbc46bff2538316e5e74404` (#232).
+
 The Console toolbar rework that the owner chose in #226 (direction C), for the NFH adoption.
 It breaks one breakpoint default and three resource names, listed below. `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.2 entries.
 
