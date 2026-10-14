@@ -35,42 +35,7 @@ internal static class WindowsProcess
         {
             if (holdStandardPipes)
             {
-                using var nullDevice = File.OpenHandle("NUL", FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
-                duplicates.Add(Duplicate(nullDevice.DangerousGetHandle()));
-                foreach (int kind in new[] { -11, -12 })
-                {
-                    IntPtr standard = GetStdHandle(kind);
-                    duplicates.Add(Duplicate(standard is 0 or -1 ? nullDevice.DangerousGetHandle() : standard));
-                }
-                startup.StartupInfo.Size = (uint)Marshal.SizeOf<StartupInfoEx>();
-                startup.StartupInfo.Flags = 0x00000100; // STARTF_USESTDHANDLES
-                startup.StartupInfo.StandardInput = duplicates[0].DangerousGetHandle();
-                startup.StartupInfo.StandardOutput = duplicates[1].DangerousGetHandle();
-                startup.StartupInfo.StandardError = duplicates[2].DangerousGetHandle();
-                nuint size = 0;
-                _ = InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
-                if (size == 0 || Marshal.GetLastPInvokeError() != 122)
-                {
-                    throw NativeFailure();
-                }
-                attributes = Marshal.AllocHGlobal(checked((nint)size));
-                if (!InitializeProcThreadAttributeList(attributes, 1, 0, ref size))
-                {
-                    throw NativeFailure();
-                }
-                initialized = true;
-                handles = Marshal.AllocHGlobal(IntPtr.Size * duplicates.Count);
-                for (int index = 0; index < duplicates.Count; index++)
-                {
-                    Marshal.WriteIntPtr(handles, index * IntPtr.Size, duplicates[index].DangerousGetHandle());
-                }
-                if (!UpdateProcThreadAttribute(attributes, 0, 0x00020002, handles,
-                    (nuint)(IntPtr.Size * duplicates.Count), IntPtr.Zero, IntPtr.Zero))
-                {
-                    throw NativeFailure();
-                }
-                startup.AttributeList = attributes;
-                flags |= 0x00080000; // EXTENDED_STARTUPINFO_PRESENT
+                PrepareStandardHandles(ref startup, duplicates, ref attributes, ref handles, ref initialized, ref flags);
             }
             if (!CreateProcess(executable, command, IntPtr.Zero, IntPtr.Zero, holdStandardPipes,
                 flags, IntPtr.Zero, null, ref startup, out information))
@@ -120,6 +85,47 @@ internal static class WindowsProcess
                 duplicate.Dispose();
             }
         }
+    }
+
+    private static void PrepareStandardHandles(ref StartupInfoEx startup, List<SafeFileHandle> duplicates,
+        ref IntPtr attributes, ref IntPtr handles, ref bool initialized, ref uint flags)
+    {
+        using var nullDevice = File.OpenHandle("NUL", FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+        duplicates.Add(Duplicate(nullDevice.DangerousGetHandle()));
+        foreach (int kind in new[] { -11, -12 })
+        {
+            IntPtr standard = GetStdHandle(kind);
+            duplicates.Add(Duplicate(standard is 0 or -1 ? nullDevice.DangerousGetHandle() : standard));
+        }
+        startup.StartupInfo.Size = (uint)Marshal.SizeOf<StartupInfoEx>();
+        startup.StartupInfo.Flags = 0x00000100; // STARTF_USESTDHANDLES
+        startup.StartupInfo.StandardInput = duplicates[0].DangerousGetHandle();
+        startup.StartupInfo.StandardOutput = duplicates[1].DangerousGetHandle();
+        startup.StartupInfo.StandardError = duplicates[2].DangerousGetHandle();
+        nuint size = 0;
+        _ = InitializeProcThreadAttributeList(IntPtr.Zero, 1, 0, ref size);
+        if (size == 0 || Marshal.GetLastPInvokeError() != 122)
+        {
+            throw NativeFailure();
+        }
+        attributes = Marshal.AllocHGlobal(checked((nint)size));
+        if (!InitializeProcThreadAttributeList(attributes, 1, 0, ref size))
+        {
+            throw NativeFailure();
+        }
+        initialized = true;
+        handles = Marshal.AllocHGlobal(IntPtr.Size * duplicates.Count);
+        for (int index = 0; index < duplicates.Count; index++)
+        {
+            Marshal.WriteIntPtr(handles, index * IntPtr.Size, duplicates[index].DangerousGetHandle());
+        }
+        if (!UpdateProcThreadAttribute(attributes, 0, 0x00020002, handles,
+            (nuint)(IntPtr.Size * duplicates.Count), IntPtr.Zero, IntPtr.Zero))
+        {
+            throw NativeFailure();
+        }
+        startup.AttributeList = attributes;
+        flags |= 0x00080000; // EXTENDED_STARTUPINFO_PRESENT
     }
 
     private static SafeFileHandle Duplicate(IntPtr source)

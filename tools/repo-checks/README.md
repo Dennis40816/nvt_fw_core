@@ -7,6 +7,7 @@ Python 3.10 or later supports their type syntax.
 
 See [C# syntax health ratchet](repo-health.md) for the SDK Roslyn checker and baseline modes.
 See [Operating the debt ledger](ledger-operation.md) before you refactor code that carries debt.
+Run Verify on a developer machine with [run-verify.ps1](repo-health.md#run-verify-on-a-developer-machine). It stops stale build servers and removes old build output first.
 
 The caller imports the files from `tools/repo-checks`.
 The engines return measurements and diagnostics.

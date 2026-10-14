@@ -83,25 +83,9 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                         knobMinimum = Math.Min(knobMinimum, contrast);
                         VerifyKnob(button, state.Checked);
                     }
-                    Border ring = Part(button, "ToggleFocusRing");
-                    Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
-                    Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
-                    foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
-                    {
-                        double contrast = Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface));
-                        Assert.True(contrast >= 3, $"{dark}/{role}: ring {contrast:F3}");
-                        ringMinimum = Math.Min(ringMinimum, contrast);
-                    }
+                    ringMinimum = AssertFocusRing(button, role, state, dark, ringMinimum);
                 }
-                foreach (ToggleState state in States.Where(state => state.Disabled))
-                {
-                    SetState(button, state with { Hover = true, Pressed = true, Focus = true });
-                    Flush(host);
-                    (string background, string foreground) = Expected(role, state);
-                    Assert.Equal(ResourceColor(button, background), ColorOf(button.Background));
-                    Assert.Equal(ResourceColor(button, foreground), ColorOf(button.Foreground));
-                    Assert.False(Part(button, "ToggleFocusRing").IsVisible);
-                }
+                AssertDisabledStatesIgnoreInteractions(host, button, role);
             }
             finally { host.Close(); }
         }
@@ -215,6 +199,33 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                 }
         }
         finally { host.Close(); }
+    }
+
+    private static double AssertFocusRing(ToggleButton button, string role, ToggleState state, bool dark, double ringMinimum)
+    {
+        Border ring = Part(button, "ToggleFocusRing");
+        Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
+        Assert.Equal(ResourceColor(button, role == "toggleSoft" ? "Nvt.Controls.FocusBrush" : "Nvt.Focus.RingBrush"), ColorOf(ring.BorderBrush));
+        foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSelectionSurfaceBrush" })
+        {
+            double contrast = Contrast(ColorOf(ring.BorderBrush), ResourceColor(button, surface));
+            Assert.True(contrast >= 3, $"{dark}/{role}: ring {contrast:F3}");
+            ringMinimum = Math.Min(ringMinimum, contrast);
+        }
+        return ringMinimum;
+    }
+
+    private static void AssertDisabledStatesIgnoreInteractions(Window host, ToggleButton button, string role)
+    {
+        foreach (ToggleState state in States.Where(state => state.Disabled))
+        {
+            SetState(button, state with { Hover = true, Pressed = true, Focus = true });
+            Flush(host);
+            (string background, string foreground) = Expected(role, state);
+            Assert.Equal(ResourceColor(button, background), ColorOf(button.Background));
+            Assert.Equal(ResourceColor(button, foreground), ColorOf(button.Foreground));
+            Assert.False(Part(button, "ToggleFocusRing").IsVisible);
+        }
     }
 
     internal static bool IsSwitch(string role) => role is "toggleSwitch" or "nativeSwitch";

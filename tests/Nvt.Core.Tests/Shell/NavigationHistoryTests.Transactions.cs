@@ -67,6 +67,11 @@ public sealed partial class NavigationHistoryTests
         host.History.CompleteNavigation(host.History.BackTarget, isBack: true);
         Assert.Equal(isBack ? "Home" : "A", host.SelectedPage);
         Assert.Equal(!isBack, host.History.CanGoBack);
+        AssertRetriedActivationTrace(host, isBack);
+    }
+
+    private static void AssertRetriedActivationTrace(HistoryHost host, bool isBack)
+    {
         AssertTrace(host, isBack ? """
             select:B
             activate:A:B:True:Home
