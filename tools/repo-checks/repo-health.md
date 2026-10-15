@@ -68,7 +68,7 @@ and contributing path. They never offset each other through repository totals.
 
 | Metric | Recognizer |
 | --- | --- |
-| `asyncVoid` | Async void methods/local functions; semantic void-delegate conversions of async lambdas/anonymous methods, using SDK framework references, the SDK implicit usings and same-project source. A lambda that is the argument of an unresolved call is not a finding (the build reports it as VSTHRD101). An unresolved event subscription (`+=`) remains a candidate. |
+| `asyncVoid` | Async void methods/local functions; semantic void-delegate conversions of async lambdas/anonymous methods, using SDK framework references, the SDK implicit usings and same-project source. When the repository references `Microsoft.VisualStudio.Threading.Analyzers`, a lambda that is the argument of an unresolved call is not a finding (the build reports it as VSTHRD101) and an unresolved event subscription (`+=`) remains a candidate. Without that reference every unresolved conversion remains a candidate. |
 | `blockingWait` | Syntax candidates: `.Result`/`?.Result`, `Wait`, `WaitAll`, `WaitAny`, and `GetAwaiter().GetResult()`. Domain results, signal waits and bridges need classification. |
 | `stateMembers` | Mutable non-const/non-readonly field variables and auto/partial properties with set/init, per qualified type across partials. Positional record properties count; readonly record structs do not. Observable backing is counted once; partial properties deduplicate by name. Manual properties and readonly collections remain review items. |
 | `fileLines` | Physical lines, including blank/comment/literal lines; limit 800. Final newline does not create an extra line. |
@@ -359,10 +359,16 @@ delegates are counted in the ledger but do not fail the build.
 
 The syntax measurement has framework references only. It adds the global usings that
 `ImplicitUsings` gives at build time, so `Task`, `Func<Task>` and `Action` resolve. It has no NuGet or project
-references. An async lambda whose delegate type is still unresolved is a finding only when it is an event
-subscription (`x.Opened += async ...`), because an event handler returns void. An async lambda that is the
-argument of an unresolved call (`Assert.ThrowsAsync(async () => ...)`) is not a finding. A real async void
-lambda in that position is reported by VSTHRD101 in the build.
+references, so a lambda can stay unresolved (an argument of an xunit or Avalonia call, for example).
+The checker looks for `Microsoft.VisualStudio.Threading.Analyzers` in the root `Directory.Packages.props` and
+`Directory.Build.props`, in `eng/core-health/Directory.Build.props` and in every `*.csproj`.
+- Referenced: VSTHRD101 reports a real async void lambda in the build. An unresolved async lambda is then a
+  finding only as an event subscription (`x.Opened += async ...`), because an event handler returns void. The
+  argument of an unresolved call (`Assert.ThrowsAsync(async () => ...)`) is not a finding.
+- Not referenced: nothing else would report it, so every unresolved async lambda stays a candidate.
+
+An application that does not reference the analyzer has to add it before it gets the relaxation. That is part
+of its pin move.
 
 The ledger stores H02 structural excess and syntax findings plus analyzer and
 format debt. Entities use issue health-refactor/2026-10-31 (Adopt writes health-refactor/adopted); findings have no removeBy,

@@ -118,16 +118,35 @@ class One {
         self.assertTrue(any("local:Local" in x["member"] for x in f))
         self.assertTrue(any("N.Sink" in x["symbol"] for x in f))
 
-    def test_async_lambda_argument_of_unresolved_call_is_not_a_finding(self) -> None:
+    ANALYZER_PROPS = '<Project><ItemGroup><PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" /></ItemGroup></Project>'
+
+    def test_async_lambda_argument_of_unresolved_call_is_not_a_finding_with_the_analyzer(self) -> None:
+        self.write("Directory.Packages.props", self.ANALYZER_PROPS)
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         self.assertEqual([], self.measure()["findings"])
 
-    def test_async_lambda_subscription_with_unresolved_delegate_is_candidate(self) -> None:
-        self.write("src/Fixture/One.cs", "class One { void Run(Window w) { w.Opened += async (_, _) => {}; } }")
+    def test_async_lambda_argument_of_unresolved_call_is_candidate_without_the_analyzer(self) -> None:
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         f = self.measure()["findings"]
         self.assertEqual(1, len(f))
         self.assertEqual("asyncVoid", f[0]["rule"])
         self.assertTrue(f[0]["candidate"])
+
+    def test_analyzer_reference_in_a_project_file_counts(self) -> None:
+        self.write("src/Fixture/Fixture.csproj", '<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" /></ItemGroup></Project>')
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        self.assertEqual([], self.measure()["findings"])
+
+    def test_async_lambda_subscription_with_unresolved_delegate_is_candidate(self) -> None:
+        for analyzer in (True, False):
+            with self.subTest(analyzer=analyzer):
+                if analyzer:
+                    self.write("Directory.Packages.props", self.ANALYZER_PROPS)
+                self.write("src/Fixture/One.cs", "class One { void Run(Window w) { w.Opened += async (_, _) => {}; } }")
+                f = self.measure()["findings"]
+                self.assertEqual(1, len(f))
+                self.assertEqual("asyncVoid", f[0]["rule"])
+                self.assertTrue(f[0]["candidate"])
 
     def test_async_lambda_resolves_through_sdk_implicit_usings(self) -> None:
         # No using directive: Task, Func and SendOrPostCallback resolve only through the implicit usings.
