@@ -76,7 +76,7 @@ public sealed class ProcessLaunchGateTests
                 ProcessInheritedHandle.Parse(
                     "CORE_TEST_VALID_HANDLE",
                     cleanupPipe.GetClientHandleAsString()),
-                new ProcessInheritedHandle("CORE_TEST_INVALID_HANDLE", new IntPtr(0x12345)),
+                new ProcessInheritedHandle("CORE_TEST_INVALID_HANDLE", new IntPtr(ProcessLaunchGateBoundaryTests.NeverAHandle)),
             ]));
         Assert.False(File.Exists(failedMarker));
         cleanupPipe.DisposeLocalCopyOfClientHandle();
