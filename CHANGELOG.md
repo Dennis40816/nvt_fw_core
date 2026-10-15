@@ -6,6 +6,10 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Added
+
+- Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
+
 ### Changed
 
 - Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
