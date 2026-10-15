@@ -3,8 +3,8 @@
 <#
 C# health enforcement; syntax measurement contract roslyn-physical-v1. No package restore.
 The embedded host uses the global.json-selected SDK's Roslyn, in an isolated ALC.
-Narrow discovery choices (also in repo-health.md): unresolved async lambdas remain
-candidates; blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
+Narrow discovery choices (also in repo-health.md): an unresolved async lambda is a candidate
+only as an event subscription (+=); blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
 a code-only Avalonia view above it;
 clock candidates are TimeProvider descendants or Fake/Manual/Test*Clock,
 Fake/Manual/Test*TimeProvider, ClockState; workspace lifecycle candidates contain
@@ -1229,9 +1229,12 @@ public static class HealthSyntaxHost
             units.Add(new Unit { Path=paths[i], Project=projects[i], Tree=tree });
         }
         var references = referencePaths.Select(p => MetadataReference.CreateFromFile(p)).ToArray();
+        // The SDK adds these global usings (ImplicitUsings) at build time. This syntax-only compilation has no MSBuild
+        // evaluation, so without them Task, Func and Action do not resolve in files that rely on implicit usings.
+        var implicitUsings = CSharpSyntaxTree.ParseText("global using global::System; global using global::System.Collections.Generic; global using global::System.IO; global using global::System.Linq; global using global::System.Net.Http; global using global::System.Threading; global using global::System.Threading.Tasks;", new CSharpParseOptions(LanguageVersion.Latest), "ImplicitUsings.g.cs");
         foreach (var group in units.GroupBy(u => u.Project))
         {
-            var compilation = CSharpCompilation.Create("Health_" + group.Key, group.Select(u => u.Tree), references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe:true));
+            var compilation = CSharpCompilation.Create("Health_" + group.Key, group.Select(u => u.Tree).Append(implicitUsings), references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe:true));
             foreach (var u in group) u.Model = compilation.GetSemanticModel(u.Tree, ignoreAccessibility:true);
         }
         foreach (var u in units)
@@ -1314,8 +1317,15 @@ public static class HealthSyntaxHost
             foreach (var lambda in nodes.OfType<AnonymousFunctionExpressionSyntax>().Where(l => l.AsyncKeyword.IsKind(SyntaxKind.AsyncKeyword)))
             {
                 var converted = u.Model.GetTypeInfo(lambda).ConvertedType as INamedTypeSymbol;
-                if (converted?.DelegateInvokeMethod?.ReturnsVoid == true || converted?.DelegateInvokeMethod == null)
-                    Find("asyncVoid",lambda,"async-lambda:" + (converted?.ToDisplayString() ?? "unresolved-void-delegate"),null,converted?.DelegateInvokeMethod == null,"Unresolved conversions are retained as candidates; H03 resolves project references.");
+                var invoke = converted?.DelegateInvokeMethod;
+                // Resolved to a void delegate: a finding. Resolved to any other delegate: not one.
+                if (invoke?.ReturnsVoid == true)
+                    Find("asyncVoid",lambda,"async-lambda:" + converted.ToDisplayString(),null);
+                // Not resolved (this compilation has framework references only, no NuGet or project references). An argument of
+                // an unresolved call is not a finding: nearly all are Func<Task> parameters, and VSTHRD101 reports a real
+                // async void lambda in the build. A subscription (+=) stays a candidate, because an event handler returns void.
+                else if (invoke == null && lambda.Parent is AssignmentExpressionSyntax assignment && assignment.IsKind(SyntaxKind.AddAssignmentExpression))
+                    Find("asyncVoid",lambda,"async-lambda:unresolved-void-delegate",null,true,"Event subscription with an unresolved delegate type; an event handler returns void.");
             }
             foreach (var access in nodes.OfType<MemberAccessExpressionSyntax>().Where(m => Name(m.Name)=="Result")) Find("blockingWait",access,"Result",null,true,"Syntax candidate; domain Result access may need classification.");
             foreach (var access in nodes.OfType<MemberBindingExpressionSyntax>().Where(m => Name(m.Name)=="Result")) Find("blockingWait",access,"Result",null,true,"Conditional Result syntax candidate.");

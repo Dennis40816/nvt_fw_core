@@ -128,7 +128,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Item | Target | Status | Link |
 | --- | --- | --- | --- |
 | State contracts, package verification, state files, coordination, custody, installation | 1.0.0 | Merged | [#60](https://github.com/Dennis40816/nvt_fw_core/pull/60), [#67](https://github.com/Dennis40816/nvt_fw_core/pull/67), [#75](https://github.com/Dennis40816/nvt_fw_core/pull/75), [#78](https://github.com/Dennis40816/nvt_fw_core/pull/78), [#84](https://github.com/Dennis40816/nvt_fw_core/pull/84), [#89](https://github.com/Dennis40816/nvt_fw_core/pull/89) |
-| Remaining Launcher steps, including a second-app test for WorkStation | 1.0.0 | In progress (NFC) | [Launcher](docs/core/modules/Launcher.md) |
+| Remaining Launcher steps, including a second-app test for WorkStation | 1.0.0 | Not started | [Launcher](docs/core/modules/Launcher.md) |
 
 **7. Utility functions**
 

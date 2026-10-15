@@ -44,8 +44,8 @@
     },
     {
       "path": "repo-health.ps1",
-      "sha256": "04bf1910b9552f29a2ad25dc44bfbe694f072127e493eabfd2bda6ad34eae75a",
-      "byteLength": 137739
+      "sha256": "514fecb2cda5114c24358f67252c08ce9787aae80910f7cf9cb0b7b1a2cb72ad",
+      "byteLength": 139082
     }
   ]
 }

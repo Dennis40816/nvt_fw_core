@@ -8,6 +8,6 @@
     "BannedSymbols.Files.txt": "de16dd734fda8ee8bd1514eb52edb8873d5d21e1b6d7f3759b2094874bebc318",
     "BannedSymbols.Tests.txt": "a7c9797aac63eb1b4a4831ee0e8c4b5966aa4185528218cec5dbcb04579293f4",
     "schema.json": "2b811968ef8881056b20f87f622afc15d4204b588c1d06e8dd149600daa713ec",
-    "repo-health.ps1": "04bf1910b9552f29a2ad25dc44bfbe694f072127e493eabfd2bda6ad34eae75a"
+    "repo-health.ps1": "514fecb2cda5114c24358f67252c08ce9787aae80910f7cf9cb0b7b1a2cb72ad"
   }
 }

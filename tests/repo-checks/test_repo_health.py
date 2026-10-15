@@ -118,12 +118,32 @@ class One {
         self.assertTrue(any("local:Local" in x["member"] for x in f))
         self.assertTrue(any("N.Sink" in x["symbol"] for x in f))
 
-    def test_unresolved_async_lambda_is_retained_as_candidate(self) -> None:
+    def test_async_lambda_argument_of_unresolved_call_is_not_a_finding(self) -> None:
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        self.assertEqual([], self.measure()["findings"])
+
+    def test_async_lambda_subscription_with_unresolved_delegate_is_candidate(self) -> None:
+        self.write("src/Fixture/One.cs", "class One { void Run(Window w) { w.Opened += async (_, _) => {}; } }")
         f = self.measure()["findings"]
         self.assertEqual(1, len(f))
         self.assertEqual("asyncVoid", f[0]["rule"])
         self.assertTrue(f[0]["candidate"])
+
+    def test_async_lambda_resolves_through_sdk_implicit_usings(self) -> None:
+        # No using directive: Task, Func and SendOrPostCallback resolve only through the implicit usings.
+        self.write("src/Fixture/One.cs", '''namespace N;
+class One {
+    void Run(SynchronizationContext context) {
+        Task.Run(async () => { await Task.Yield(); });
+        Func<Task> work = async () => { await Task.Yield(); };
+        context.Post(async _ => { await Task.Yield(); }, null);
+    }
+}
+''')
+        f = [f for f in self.measure()["findings"] if f["rule"] == "asyncVoid"]
+        self.assertEqual(1, len(f))
+        self.assertIn("SendOrPostCallback", f[0]["symbol"])
+        self.assertFalse(f[0]["candidate"])
 
     def test_blocking_candidates_ignore_comments_and_literals(self) -> None:
         self.write("src/Fixture/One.cs", '''class One {
