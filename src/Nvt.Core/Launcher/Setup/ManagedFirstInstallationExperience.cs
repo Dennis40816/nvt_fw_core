@@ -19,6 +19,7 @@ public sealed class ManagedFirstInstallationExperience
     public static readonly TimeSpan DefaultAdmissionOperationCutoff = TimeSpan.FromSeconds(30);
 
     private readonly FirstInstallationServices _services;
+    private readonly Action<Exception>? _observerDiagnostics;
 
     /// <summary>Creates the one first-install orchestration owner.</summary>
     public ManagedFirstInstallationExperience(
@@ -31,7 +32,8 @@ public sealed class ManagedFirstInstallationExperience
         IImmutableBootstrapLeaseHandoff handoff,
         TimeSpan? admissionOperationCutoff = null,
         TimeSpan? completionOperationCutoff = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Action<Exception>? observerDiagnostics = null)
     {
         if (string.IsNullOrWhiteSpace(statePathIdentity) ||
             !Path.IsPathFullyQualified(statePathIdentity))
@@ -51,6 +53,7 @@ public sealed class ManagedFirstInstallationExperience
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(admissionOperationCutoffValue, TimeSpan.Zero, nameof(admissionOperationCutoff));
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(completionOperationCutoffValue, TimeSpan.Zero, nameof(completionOperationCutoff));
         TimeProvider timeProviderValue = timeProvider ?? TimeProvider.System;
+        _observerDiagnostics = observerDiagnostics;
         _services = new(statePathIdentityValue, stateStoreValue, rootProbeValue,
             payloadSourceValue, candidateSourceValue, rootMaterializerValue, handoffValue,
             new(admissionOperationCutoffValue, completionOperationCutoffValue), timeProviderValue);
@@ -131,7 +134,7 @@ public sealed class ManagedFirstInstallationExperience
         {
             IProgress<ManagedFirstInstallationProgress>? safeProgress = progress is null
                 ? null
-                : new NonThrowingProgress(progress);
+                : new NonThrowingProgress(progress, _observerDiagnostics);
             return await new FirstInstallationAttempt(_services, plan, safeProgress).RunAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -142,7 +145,8 @@ public sealed class ManagedFirstInstallationExperience
     }
 
     private sealed class NonThrowingProgress(
-        IProgress<ManagedFirstInstallationProgress> inner)
+        IProgress<ManagedFirstInstallationProgress> inner,
+        Action<Exception>? observerDiagnostics)
         : IProgress<ManagedFirstInstallationProgress>
     {
         private readonly IProgress<ManagedFirstInstallationProgress> _inner = inner ??
@@ -154,9 +158,17 @@ public sealed class ManagedFirstInstallationExperience
             {
                 _inner.Report(value);
             }
-            catch (Exception exception) when (SetupObserverExceptions.IsObservedAndIgnored(exception))
+            // Presentation observers cannot change installation; fatal exceptions still propagate.
+            catch (Exception exception) when (exception is not (OutOfMemoryException or AccessViolationException))
             {
-                // Presentation progress is non-authoritative and must never change installation.
+                try
+                {
+                    observerDiagnostics?.Invoke(exception);
+                }
+                // Diagnostics are non-authoritative observers too; fatal exceptions still propagate.
+                catch (Exception diagnosticException) when (diagnosticException is not (OutOfMemoryException or AccessViolationException))
+                {
+                }
             }
         }
     }

@@ -83,6 +83,7 @@ public sealed class ManagedLauncherEntryCoordinator
     private readonly ManagedAppVersion _runningLauncherVersion;
     private readonly IVersionManagerStateStore _stateStore;
     private readonly TimeProvider _timeProvider;
+    private readonly Action<Exception>? _observerDiagnostics;
     /// <summary>Creates the one bounded local entry coordinator.</summary>
     public ManagedLauncherEntryCoordinator(
         string defaultManagedRoot,
@@ -94,7 +95,8 @@ public sealed class ManagedLauncherEntryCoordinator
         TimeSpan? admissionOperationCutoff = null,
         TimeSpan? completionOperationCutoff = null,
         TimeProvider? timeProvider = null,
-        TimeSpan? healthObservationDeadline = null)
+        TimeSpan? healthObservationDeadline = null,
+        Action<Exception>? observerDiagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultManagedRoot);
         // Frozen ManagedLauncherEntry.cs:498-499 resolves relative default roots;
@@ -113,6 +115,7 @@ public sealed class ManagedLauncherEntryCoordinator
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(health, TimeSpan.Zero, nameof(healthObservationDeadline));
         _budgets = new(admission, completion, health);
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _observerDiagnostics = observerDiagnostics;
     }
     /// <summary>Routes one invocation without Registry, Catalog, package, or full inventory access.</summary>
     public async ValueTask<ManagedLauncherEntryResult> RunAsync(
@@ -525,7 +528,7 @@ public sealed class ManagedLauncherEntryCoordinator
             bootstrap);
     }
 
-    private static async ValueTask<T> AwaitIsolatedReadOnlyObservationAsync<T>(
+    private async ValueTask<T> AwaitIsolatedReadOnlyObservationAsync<T>(
         Func<CancellationToken, ValueTask<T>> observe,
         CancellationToken cancellationToken)
     {
@@ -542,15 +545,23 @@ public sealed class ManagedLauncherEntryCoordinator
         }
     }
 
-    private static async Task ObserveAbandonedReadOnlyTaskAsync(Task pending)
+    private async Task ObserveAbandonedReadOnlyTaskAsync(Task pending)
     {
         try
         {
             await pending.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception exception) when (SetupObserverExceptions.IsObservedAndIgnored(exception))
+        // The caller already has its timeout/cancellation result; fatal exceptions still propagate.
+        catch (Exception exception) when (exception is not (OutOfMemoryException or AccessViolationException))
         {
-            // The caller has already returned a typed timeout/cancellation result.
+            try
+            {
+                _observerDiagnostics?.Invoke(exception);
+            }
+            // Diagnostics cannot change the entry result; fatal exceptions still propagate.
+            catch (Exception diagnosticException) when (diagnosticException is not (OutOfMemoryException or AccessViolationException))
+            {
+            }
         }
     }
 

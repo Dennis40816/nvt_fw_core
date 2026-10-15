@@ -257,6 +257,44 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         Assert.False(handoff.AdmissionCancelled);
     }
 
+    /// <summary>Late read failures reach diagnostics even when the observer itself throws.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AbandonedReadDiagnosticsCannotChangeEntryResult(bool throwFromDiagnostics)
+    {
+        string root = Root("abandoned-read-diagnostics");
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var state = new PendingStateStore();
+        var observed = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Action<Exception> diagnostics = exception =>
+        {
+            observed.SetResult(exception);
+            if (throwFromDiagnostics)
+            {
+                throw new IOException("Diagnostics failure.");
+            }
+        };
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        ManagedLauncherEntryCoordinator coordinator = Create(
+            root, state, new RecordingRootProbe(ManagedInstallationRootStatus.Present), handoff,
+            timeProvider: time, observerDiagnostics: diagnostics);
+        Task<ManagedLauncherEntryResult> running = coordinator.RunAsync(
+            TestContext.Current.CancellationToken).AsTask();
+        await state.Entered.WaitAsync(TestContext.Current.CancellationToken);
+        time.Advance(ManagedLauncherEntryCoordinator.DefaultHealthObservationDeadline);
+        ManagedLauncherEntryResult result = await running.WaitAsync(TestContext.Current.CancellationToken);
+        var failure = new IOException("Abandoned read failure.");
+
+        state.Fail(failure);
+        Exception actual = await observed.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        Assert.Same(failure, actual);
+        Assert.Equal(ManagedLauncherEntryOutcome.HealthUnavailable, result.Outcome);
+        Assert.Equal(result, await running);
+        Assert.Equal(0, handoff.StartCount);
+    }
+
     private sealed class PendingStateStore : IVersionManagerStateStore
     {
         private readonly TaskCompletionSource<VersionManagerStateLoadResult> _pending =
@@ -269,6 +307,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         internal Task Pending => _pending.Task;
         internal Task Returned => _returned.Task;
         internal Task Entered => _entered.Task;
+
+        internal void Fail(Exception exception) => _pending.SetException(exception);
 
         internal void Complete(VersionManagerState state)
         {

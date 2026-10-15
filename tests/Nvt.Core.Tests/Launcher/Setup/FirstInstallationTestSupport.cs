@@ -32,7 +32,8 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
         IImmutableBootstrapLeaseHandoff handoff,
         TimeSpan? admissionOperationCutoff = null,
         TimeSpan? completionOperationCutoff = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Action<Exception>? observerDiagnostics = null)
     {
         return new(
             StatePath(),
@@ -44,7 +45,8 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
             handoff,
             admissionOperationCutoff,
             completionOperationCutoff,
-            timeProvider ?? new ManualTimeProvider(DateTimeOffset.UnixEpoch));
+            timeProvider ?? new ManualTimeProvider(DateTimeOffset.UnixEpoch),
+            observerDiagnostics);
     }
 
     internal static ManagedDistributionPayloadIdentity PayloadIdentity()
@@ -136,7 +138,8 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
             ManagedFirstInstallationMaterializationIssue.None,
         ImmutableBootstrapAdmissionOutcome admissionOutcome =
             ImmutableBootstrapAdmissionOutcome.Admitted,
-        VersionManagerStateLoadResult? finalState = null)
+        VersionManagerStateLoadResult? finalState = null,
+        Action<Exception>? observerDiagnostics = null)
     {
         string root = Root($"install-{Guid.NewGuid():N}");
         FreshInstallationCandidate candidate = Candidate();
@@ -157,7 +160,8 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
             payload,
             source,
             materializer,
-            handoff);
+            handoff,
+            observerDiagnostics: observerDiagnostics);
         ManagedFirstInstallationPlanResult prepared = await experience.PrepareAsync(
             root,
             TestContext.Current.CancellationToken);

@@ -23,7 +23,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         TimeSpan? healthObservationDeadline = null,
         TimeProvider? timeProvider = null,
         IManagedDistributionPayloadSource? payloadSource = null,
-        ManagedAppVersion? runningLauncherVersion = null)
+        ManagedAppVersion? runningLauncherVersion = null,
+        Action<Exception>? observerDiagnostics = null)
     {
         return new(
             root,
@@ -35,7 +36,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             admissionDeadline,
             completionDeadline,
             timeProvider ?? new ManualTimeProvider(DateTimeOffset.UnixEpoch),
-            healthObservationDeadline);
+            healthObservationDeadline,
+            observerDiagnostics);
     }
 
     private sealed class EntryPayloadSource : IManagedDistributionPayloadSource
