@@ -10,11 +10,8 @@ public enum ManagedFirstInstallationOutcome
 {
     /// <summary>One immutable plan is ready for user confirmation.</summary>
     ReadyToInstall,
-    /// <summary>The confirmed immutable plan is being installed.</summary>
-    // Public in frozen ManagedFirstInstallationContracts.cs:487-488.
-    Installing,
     /// <summary>The exact root completed Bootstrap READY and marker finalization.</summary>
-    Completed,
+    Completed = 2,
     /// <summary>The distribution payload is absent or could not be read.</summary>
     PayloadUnavailable,
     /// <summary>The distribution payload failed strict admission.</summary>
@@ -114,10 +111,8 @@ public enum ManagedFirstInstallationLaunchIssue
     Unavailable,
     /// <summary>The installed state requires the recovery owner.</summary>
     RecoveryRequired,
-    /// <summary>Root Bootstrap could not start the exact version Launcher.</summary>
-    LaunchFailed,
     /// <summary>The pre-launch health result could not be observed safely.</summary>
-    HealthUnavailable,
+    HealthUnavailable = 9,
     /// <summary>The Bootstrap state is invalid.</summary>
     InvalidState,
     /// <summary>The Bootstrap state is bound to a different managed root.</summary>
@@ -161,19 +156,19 @@ public sealed record ManagedFirstInstallationLaunchFailure(
     int? ExitCode = null)
 {
     /// <summary>Gets the exact non-empty post-promotion failure stage.</summary>
-    public ManagedFirstInstallationLaunchStage Stage { get; init; } =
+    public ManagedFirstInstallationLaunchStage Stage { get; } =
         !Enum.IsDefined(Stage) || Stage == ManagedFirstInstallationLaunchStage.None
             ? throw new ArgumentOutOfRangeException(nameof(Stage))
             : Stage;
 
     /// <summary>Gets the single authoritative path-free failure reason.</summary>
-    public ManagedFirstInstallationLaunchIssue Issue { get; init; } =
+    public ManagedFirstInstallationLaunchIssue Issue { get; } =
         !Enum.IsDefined(Issue) || Issue == ManagedFirstInstallationLaunchIssue.None
             ? throw new ArgumentOutOfRangeException(nameof(Issue))
             : Issue;
 
     /// <summary>Gets the optional exit code only when it agrees with the typed failure reason.</summary>
-    public int? ExitCode { get; init; } =
+    public int? ExitCode { get; } =
         HasValidFailureShape(Stage, Issue, ExitCode)
             ? ExitCode
             : throw new ArgumentException(
@@ -377,13 +372,19 @@ public sealed record ManagedFirstInstallationResult(
     ManagedFirstInstallationLaunchFailure? LaunchFailure = null)
 {
     /// <summary>Gets the defined execution outcome.</summary>
-    public ManagedFirstInstallationOutcome Outcome { get; init; } =
+    public ManagedFirstInstallationOutcome Outcome { get; } =
         Enum.IsDefined(Outcome)
             ? Outcome
             : throw new ArgumentOutOfRangeException(nameof(Outcome));
 
+    /// <summary>Gets the exact managed root supplied by the caller.</summary>
+    public string ManagedRoot { get; } = ManagedRoot;
+
+    /// <summary>Gets the exact selected application version.</summary>
+    public ManagedAppVersion Version { get; } = Version;
+
     /// <summary>Gets the exact post-promotion failure, when this result is launch-terminal.</summary>
-    public ManagedFirstInstallationLaunchFailure? LaunchFailure { get; init; } =
+    public ManagedFirstInstallationLaunchFailure? LaunchFailure { get; } =
         IsValidLaunchFailureShape(Outcome, LaunchFailure)
             ? LaunchFailure
             : throw new ArgumentException(
@@ -393,8 +394,7 @@ public sealed record ManagedFirstInstallationResult(
     /// <summary>Gets whether this is one complete terminal presentation result.</summary>
     public bool HasValidShape =>
         Enum.IsDefined(Outcome) &&
-        Outcome is not ManagedFirstInstallationOutcome.ReadyToInstall and
-            not ManagedFirstInstallationOutcome.Installing &&
+        Outcome != ManagedFirstInstallationOutcome.ReadyToInstall &&
         (LaunchFailure is not { } failure
             ? Outcome != ManagedFirstInstallationOutcome.InstalledButLaunchFailed
             : (Outcome is ManagedFirstInstallationOutcome.InstalledButLaunchFailed or

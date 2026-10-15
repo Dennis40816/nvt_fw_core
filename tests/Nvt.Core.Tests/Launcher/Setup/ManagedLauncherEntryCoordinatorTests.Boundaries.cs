@@ -4,6 +4,7 @@ using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.TestSupport;
+using Nvt.Core.Time;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
@@ -96,6 +97,37 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
 
         Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
         Assert.Equal(1, handoff.CompletionWaitCount);
+    }
+
+    /// <summary>The cancellation decision and remaining budget share one clock sample.</summary>
+    [Fact]
+    public async Task PreAdmissionDecisionSamplesClockOnce()
+    {
+        string root = Root("single-admission-sample");
+        var manual = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        // Guard: the awaited handoff callbacks and timestamp delegate serialize these observations.
+        int? admissionReads = null;
+        int? readsAtAdmission = null;
+        var time = new DelegateTimeProvider(manual.GetUtcNow, () =>
+        {
+            if (admissionReads is { } count)
+            {
+                admissionReads = count + 1;
+            }
+            return manual.GetTimestamp();
+        }, manual.TimestampFrequency);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        {
+            StartAction = () => admissionReads = 0,
+            AdmissionAction = () => { readsAtAdmission = admissionReads; admissionReads = null; },
+        };
+        ManagedLauncherEntryCoordinator coordinator = Create(root, new EntryStateStore(BoundState(root)),
+            new RecordingRootProbe(ManagedInstallationRootStatus.Present), handoff, timeProvider: time);
+
+        ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
+        Assert.Equal(1, readsAtAdmission);
     }
 
     /// <summary>Exact health expiry stops before handoff, including an uncooperative returned observation.</summary>

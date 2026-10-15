@@ -328,7 +328,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
-        Assert.False(handoff.Launch.Disposed);
+        ImmutableBootstrapStartResult returned = Assert.IsType<ImmutableBootstrapStartResult>(handoff.ReturnedStart);
+        Assert.Null(returned.Launch);
+        Assert.False(returned.HasValidShape);
+        Assert.Equal(root, result.ManagedRoot);
     }
 
     /// <summary>The child READY wait is independent from the local admission deadline.</summary>
@@ -700,7 +703,6 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     [Fact]
     public void PublishedStartupBudgetsMatchTheAcceptedContract()
     {
-        Assert.Equal(TimeSpan.FromMilliseconds(100), ManagedLauncherEntryCoordinator.HealthyRoutingP95Target);
         Assert.Equal(TimeSpan.FromMilliseconds(250), ManagedLauncherEntryCoordinator.ProgressDelay);
         Assert.Equal(
             ManagedLauncherEntryCoordinator.ProgressDelay,

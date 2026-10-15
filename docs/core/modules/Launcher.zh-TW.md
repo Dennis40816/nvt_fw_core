@@ -490,6 +490,10 @@ NFC 保留 entry composition、精確 installation-root admission、嚴格 manif
 
 兩個 Setup 建構函式均接受可選的 `observerDiagnostics`，用以回報非致命的進度與已停止等待之讀取例外；非致命的診斷回呼例外也會隔離，null 則保持靜默。
 
+安裝進度 observer 可能在持有 writer lease 時執行，必須儘快返回。
+
+安裝結果與 launch-failure record 的 property 均為唯讀，並在建構時驗證，因此 record copy 無法略過驗證；未產生的 outcome／issue 與未使用的路由目標已省略，其餘 enum 數值保持原樣。接管 promoted receipt 後，取消以外的非致命例外會轉為 recovery-owned 的 `RecoveryRequired`，且 launch failure 為 null；promotion 前的例外傳遞行為不變。
+
 Setup 建構函式的所有 deadline 與 cutoff override 必須為正值，且不得超過 **4,294,967,294 毫秒**（`uint.MaxValue - 1`，含上限）；超過時會在安裝作業開始前擲出帶有公開參數名稱的 `ArgumentOutOfRangeException`。若提早取消使 admission cleanup 區間超過此上限，其 timer 也會限制在相同上限。
 
 根目錄 promotion 開始後，`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 必須回傳具型別結果（包括取消），失敗時保留 recovery marker，並釋放未透過結果轉交的 custody。介面無法在擲出例外時傳達 promotion 狀態，進度也不代表 promotion；因此違反契約的 adapter 若未回傳 receipt 就擲出 caller cancellation，結果仍為 `Cancelled`，Core 無法接管或釋放未回傳的 custody。
@@ -504,7 +508,6 @@ Candidate projection 重查 revision／schema／length 正值、精確 catalog p
 
 | 機制 | 保留值 |
 | --- | --- |
-| 健康路由 P95 目標 | 100 ms，記錄的目標 |
 | Health observation 與 progress delay | 250 ms |
 | 現有入口 admission operation | 5 秒 |
 | 首次安裝 admission operation，自 Bootstrap launch record 後至 Launcher admission | 30 秒 |
@@ -535,8 +538,10 @@ Frozen test 位於 `tests/NvtFwCombiner.Application.Tests/VersionManagement/`；
 
 `SetupProjectionBoundaryTests` 驗證正值參數的零／負數、caller ceiling 與相鄰值、固定 512 字元 path grammar、40 字元 commit、64 字元 digest、正值 numeric projection 與不溢位 progress。`FirstInstallationProjectionTests` 驗證 preparation 中無效與過大的 projection。Entry boundary test 與 `FirstInstallationBudgetTests` 驗證精確 health／admission／completion／cleanup／writer budget、相鄰值與一 tick override。Receipt test 涵蓋畸形 success／failure、精確 revalidation、custody transfer 與 recovery ownership。`FirstInstallationTraceTests` 比較完整 recheck、progress、writer、handoff 與 finalization 順序。既有 Transport 與 Core-linked probe test 負責實際 Windows handle、Job、START、lifetime 與程序建立的證據。
 
+`FirstInstallationObserverTests` 與 abandoned-read 診斷案例涵蓋 observer 隔離；`FirstInstallationMaterializerCancellationTests` 固定 typed materializer 契約及未回傳 receipt 的限制；`FirstInstallationWriterAuthorityTests` 在兩個取得 writer 的位置拒絕其他路徑的 lease。建構函式邊界測試涵蓋每個 override 的 BCL timer 上限與上限加一毫秒；`PreAdmissionDecisionSamplesClockOnce` 驗證 admission 前的共同時鐘觀察；terminal-record 測試涵蓋建構驗證、不可變 copy 與保留的 enum 數值。
+
 NFC 保留 source selection／authority、嚴格 schema、embedded descriptor／Bootstrap resource、執行檔名稱、預設路徑、source adapter、root materialization、recovery storage 與 UI confirmation／progress composition。NFC 在 build time 透過 `core-packages.json` 下載並驗證具版本套件。Adoption 使用精確 `[x]` 版本、Release tag、SHA-256、locked restore 與受限 package source mapping。只有 retained adapter 重現 frozen 完整值、typed outcome、event trace、output bytes，以及適用時完全相同的 decoded UI pixels 後，NFC 才移除對應搬移實作。本抽取不授予 Bootstrap package wiring 權限。
 
-Entry 保留凍結 `ManagedLauncherEntry.cs:498–499` 將相對預設 root 正規化的行為；首次安裝 plan 准入仍要求完整絕對路徑。成功 capture 的 payload 身分不符時，保留 `ManagedInstallationSetup.cs:207–212,788–800` 的 `PayloadInvalid`。`Installing` 與 `HealthyRoutingP95Target` 保持公開，因為凍結合約也公開它們（`ManagedFirstInstallationContracts.cs:487–488`、`ManagedLauncherEntry.cs:446–447`）。Transport 要求 Busy、RecoveryRequired、LaunchFailed 與 TerminationUnconfirmed admission 提供具型別 exit issue；mapper 明確拒絕其沒有 issue 的分支。`FirstInstallationAdmissionInvariantTests` 涵蓋這些 invariant、所有編碼的 admission failure 與沒有 exit code 的 receipt；入口邊界測試涵蓋相對預設 root。
+Entry 保留凍結 `ManagedLauncherEntry.cs:498–499` 將相對預設 root 正規化的行為；首次安裝 plan 准入仍要求完整絕對路徑。成功 capture 的 payload 身分不符時，保留 `ManagedInstallationSetup.cs:207–212,788–800` 的 `PayloadInvalid`。Transport 要求 Busy、RecoveryRequired、LaunchFailed 與 TerminationUnconfirmed admission 提供具型別 exit issue；mapper 明確拒絕其沒有 issue 的分支。`FirstInstallationAdmissionInvariantTests` 涵蓋這些 invariant、所有編碼的 admission failure 與沒有 exit code 的 receipt；入口邊界測試涵蓋相對預設 root。
 
 Completion 以同一次 elapsed-time observation 判斷凍結的 cutoff 條件及其 issue／exit-code 組合；`FirstInstallationBudgetTests.CompletionSamplesElapsedOnceWhenClockCrossesCutoff` 以 manual clock 在原有讀取之間跨越 cutoff，分別驗證 rollback 與 failed completion。建構函式的 duration 例外使用公開參數名稱。

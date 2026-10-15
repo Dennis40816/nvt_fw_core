@@ -422,38 +422,52 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
 
     }
 
-    /// <summary>Record copies must be rechecked before their failure facts can be adopted.</summary>
+    /// <summary>Validated get-only records copy complete facts without permitting contradictory edits.</summary>
     [Fact]
     public void LaunchTerminalRecordCopiesRemainRechecked()
     {
         var valid = new ManagedFirstInstallationLaunchFailure(
             ManagedFirstInstallationLaunchStage.ApplicationReady,
             ManagedFirstInstallationLaunchIssue.StartFailed,
-            ImmutableBootstrapExitCodeCodec.EncodeFailure(
-                ImmutableBootstrapExitIssue.StartFailed));
-        Assert.True(valid.HasValidShape);
-        Assert.False((valid with { ExitCode = null }).HasValidShape);
-        Assert.False((valid with { Issue = ManagedFirstInstallationLaunchIssue.Busy }).HasValidShape);
-        Assert.False((valid with { Stage = ManagedFirstInstallationLaunchStage.PostPromotion }).HasValidShape);
+            ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.StartFailed));
+        ManagedFirstInstallationLaunchFailure copy = valid with { };
+        Assert.Equal(valid, copy);
+        Assert.True(copy.HasValidShape);
+        Assert.Throws<ArgumentException>(() => new ManagedFirstInstallationLaunchFailure(
+            valid.Stage, valid.Issue));
         var validResult = new ManagedFirstInstallationResult(
             ManagedFirstInstallationOutcome.InstalledButLaunchFailed,
-            Root("valid-result"),
-            ManagedAppVersion.Parse("1.0.7"),
-            valid);
-        Assert.True(validResult.HasValidShape);
-        Assert.True(validResult.IsRecoveryOwned);
+            Root("valid-result"), ManagedAppVersion.Parse("1.0.7"), valid);
+        ManagedFirstInstallationResult resultCopy = validResult with { };
+        Assert.Equal(validResult, resultCopy);
+        Assert.True(resultCopy.HasValidShape);
+        Assert.True(resultCopy.IsRecoveryOwned);
         Assert.False(new ManagedFirstInstallationResult(
             ManagedFirstInstallationOutcome.StateUnavailable,
-            Root("retryable-state"),
-            ManagedAppVersion.Parse("1.0.7")).IsRecoveryOwned);
-        Assert.False((validResult with
-        {
-            Outcome = ManagedFirstInstallationOutcome.RecoveryRequired,
-        }).HasValidShape);
-        _ = new ManagedFirstInstallationLaunchFailure(
+            Root("retryable-state"), ManagedAppVersion.Parse("1.0.7")).IsRecoveryOwned);
+        Assert.Throws<ArgumentException>(() => new ManagedFirstInstallationResult(
+            ManagedFirstInstallationOutcome.RecoveryRequired, validResult.ManagedRoot, validResult.Version, valid));
+        var rollback = new ManagedFirstInstallationLaunchFailure(
             ManagedFirstInstallationLaunchStage.ApplicationReady,
-            ManagedFirstInstallationLaunchIssue.RolledBack,
-            ImmutableBootstrapExitCodeCodec.RolledBack);
+            ManagedFirstInstallationLaunchIssue.RolledBack, ImmutableBootstrapExitCodeCodec.RolledBack);
+        Assert.True(rollback.HasValidShape);
+        Assert.Equal(ManagedFirstInstallationLaunchIssue.RolledBack, rollback.Issue);
+    }
+
+    /// <summary>Every terminal property is immutable, including when used through a record copy.</summary>
+    [Theory]
+    [InlineData(typeof(ManagedFirstInstallationLaunchFailure), nameof(ManagedFirstInstallationLaunchFailure.Stage))]
+    [InlineData(typeof(ManagedFirstInstallationLaunchFailure), nameof(ManagedFirstInstallationLaunchFailure.Issue))]
+    [InlineData(typeof(ManagedFirstInstallationLaunchFailure), nameof(ManagedFirstInstallationLaunchFailure.ExitCode))]
+    [InlineData(typeof(ManagedFirstInstallationResult), nameof(ManagedFirstInstallationResult.Outcome))]
+    [InlineData(typeof(ManagedFirstInstallationResult), nameof(ManagedFirstInstallationResult.ManagedRoot))]
+    [InlineData(typeof(ManagedFirstInstallationResult), nameof(ManagedFirstInstallationResult.Version))]
+    [InlineData(typeof(ManagedFirstInstallationResult), nameof(ManagedFirstInstallationResult.LaunchFailure))]
+    public void LaunchTerminalPropertiesHaveNoSetter(Type recordType, string propertyName)
+    {
+        var property = recordType.GetProperty(propertyName);
+        Assert.NotNull(property);
+        Assert.Null(property.SetMethod);
     }
 
     /// <summary>A no-exit cleanup failure is a valid typed termination receipt, not malformed data.</summary>
@@ -673,12 +687,19 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
         Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);
     }
 
-    /// <summary>The public typed outcome set includes the accepted planning and progress states.</summary>
+    /// <summary>Removing unused members preserves all produced numeric results.</summary>
     [Fact]
-    public void OutcomeContractIncludesInstallingAndCancelled()
+    public void OutcomeContractPreservesProducedValuesAndRejectsRemovedValues()
     {
-        Assert.Contains(ManagedFirstInstallationOutcome.Installing, Enum.GetValues<ManagedFirstInstallationOutcome>());
-        Assert.Contains(ManagedFirstInstallationOutcome.Cancelled, Enum.GetValues<ManagedFirstInstallationOutcome>());
+        Assert.Equal(2, (int)ManagedFirstInstallationOutcome.Completed);
+        Assert.Equal(15, (int)ManagedFirstInstallationOutcome.Cancelled);
+        Assert.Equal(9, (int)ManagedFirstInstallationLaunchIssue.HealthUnavailable);
+        Assert.False(Enum.IsDefined((ManagedFirstInstallationOutcome)1));
+        Assert.False(Enum.IsDefined((ManagedFirstInstallationLaunchIssue)8));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ManagedFirstInstallationResult(
+            (ManagedFirstInstallationOutcome)1, Root("removed-outcome"), ManagedAppVersion.Parse("1.0.7")));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ManagedFirstInstallationLaunchFailure(
+            ManagedFirstInstallationLaunchStage.LauncherAdmission, (ManagedFirstInstallationLaunchIssue)8));
     }
 
     private sealed class BlockingStartBootstrapHandoff(SequencedStateStore state)

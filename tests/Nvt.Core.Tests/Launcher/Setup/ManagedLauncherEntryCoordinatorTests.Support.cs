@@ -380,6 +380,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         ImmutableBootstrapStartIssue issue) : IImmutableBootstrapHandoff
     {
         internal CancellingStartLaunch Launch { get; } = new();
+        // Guard: one awaited RunAsync invocation publishes this complete returned receipt.
+        internal ImmutableBootstrapStartResult? ReturnedStart { get; private set; }
 
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
@@ -387,9 +389,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return ValueTask.FromResult(new ImmutableBootstrapStartResult(
-                attachLaunch ? Launch : null,
-                issue));
+            ReturnedStart = new(attachLaunch ? Launch : null, issue);
+            return ValueTask.FromResult(ReturnedStart);
         }
     }
 

@@ -40,10 +40,6 @@ public sealed record ManagedLauncherEntryResult(
 /// <summary>Single Application owner for Launcher-to-Setup-or-Bootstrap routing.</summary>
 public sealed class ManagedLauncherEntryCoordinator
 {
-    /// <summary>Accepted P95 target for local-only healthy-installation classification.</summary>
-    // Public in frozen ManagedLauncherEntry.cs:446-447.
-    public static readonly TimeSpan HealthyRoutingP95Target = TimeSpan.FromMilliseconds(100);
-
     /// <summary>Delay before Presentation may show non-blocking startup progress.</summary>
     public static readonly TimeSpan ProgressDelay = TimeSpan.FromMilliseconds(250);
 
@@ -238,7 +234,8 @@ public sealed class ManagedLauncherEntryCoordinator
         EntryContext context,
         CancellationToken cancellationToken)
     {
-        if (_timeProvider.GetElapsedTime(context.Started) >= _budgets.AdmissionOperationCutoff)
+        TimeSpan admissionDuration = _timeProvider.GetElapsedTime(context.Started);
+        if (admissionDuration >= _budgets.AdmissionOperationCutoff)
         {
             CancelDeadline(context.Deadline);
         }
@@ -246,7 +243,7 @@ public sealed class ManagedLauncherEntryCoordinator
             .WaitForAdmissionAsync(
                 Budget(
                     _budgets.AdmissionOperationCutoff,
-                    _timeProvider.GetElapsedTime(context.Started)),
+                    admissionDuration),
                 context.Linked.Token).ConfigureAwait(false);
         if (!admission.HasValidShape)
         {

@@ -367,6 +367,8 @@ internal sealed class RecordingRootMaterializer(SequencedStateStore state)
 internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
     : IManagedPromotedFirstInstallation
 {
+    internal bool ContractViolated { get; private set; }
+
     private sealed record Promotion(string ManagedRoot, ManagedVersionAdmission Admission);
     // Guard: the scenario driver initializes this complete observation before publishing the receipt.
     private Promotion? _promotion;
@@ -403,7 +405,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
         state.Observe?.Invoke("record-bootstrap-launch");
         RecordLaunchAction?.Invoke();
         cancellationToken.ThrowIfCancellationRequested();
-        Assert.True(state.LeaseActive);
+        ContractViolated |= !state.LeaseActive;
         return ValueTask.FromResult(RecordLaunchIssue);
     }
 
@@ -411,9 +413,9 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
         ManagedImmutableBootstrapIdentity expectedIdentity,
         CancellationToken cancellationToken)
     {
-        Assert.True(state.LeaseActive);
-        Assert.Equal(Bootstrap, expectedIdentity);
-        Assert.Equal(1, RecordLaunchCount);
+        ContractViolated |= !state.LeaseActive;
+        ContractViolated |= Bootstrap != expectedIdentity;
+        ContractViolated |= RecordLaunchCount != 1;
         BootstrapLeaseAcquireCount++;
         state.Events.Add("acquire-bootstrap-lease");
         state.Observe?.Invoke("acquire-bootstrap-lease");
@@ -444,7 +446,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Assert.True(state.LeaseActive);
+        ContractViolated |= !state.LeaseActive;
         CompleteCount++;
         state.Events.Add("complete");
         state.Observe?.Invoke("complete");

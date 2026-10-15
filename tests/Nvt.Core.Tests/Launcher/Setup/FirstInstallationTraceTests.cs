@@ -28,6 +28,7 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
             Assert.IsType<ManagedFirstInstallationPlan>(prepared.Plan), new TraceProgress(trace), TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
+        Assert.False(materializer.Transaction.ContractViolated);
         Assert.Equal(
             ["state-load", "root-observe", "destination-admit", "payload-inspect", "candidate-inspect",
                 "writer-acquire:1", "state-load", "root-observe", "destination-admit", "payload-capture",
@@ -63,6 +64,7 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
 
         Assert.Equal(ManagedFirstInstallationOutcome.RecoveryRequired, result.Outcome);
         Assert.True(result.HasValidShape);
+        Assert.False(harness.Materializer.Transaction.ContractViolated);
         Assert.True(result.IsRecoveryOwned);
         Assert.Null(result.LaunchFailure);
         Assert.Equal(
@@ -87,6 +89,7 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
 
         Assert.Equal(ManagedFirstInstallationOutcome.RecoveryRequired, result.Outcome);
         Assert.True(result.HasValidShape);
+        Assert.False(harness.Materializer.Transaction.ContractViolated);
         Assert.True(result.IsRecoveryOwned);
         Assert.Null(result.LaunchFailure);
         Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);

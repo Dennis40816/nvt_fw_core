@@ -221,13 +221,16 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
             root,
             TestContext.Current.CancellationToken);
 
+        var progress = new ThrowingProgress<ManagedFirstInstallationProgress>();
         ManagedFirstInstallationResult result = await experience.InstallAndLaunchAsync(
             Assert.IsType<ManagedFirstInstallationPlan>(prepared.Plan),
-            new ThrowingProgress<ManagedFirstInstallationProgress>(),
+            progress,
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
+        Assert.Equal(4, progress.ReportCount);
         Assert.Equal(1, materializer.MaterializeCount);
+        Assert.False(materializer.Transaction.ContractViolated);
     }
 
     /// <summary>Authority drift stops before any root materialization or Bootstrap start.</summary>
@@ -351,10 +354,14 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
         }
     }
 
+    // Guard: the single installation invocation serializes callbacks and the final assertion.
     private sealed class ThrowingProgress<T> : IProgress<T>
     {
+        internal int ReportCount { get; private set; }
+
         public void Report(T value)
         {
+            ReportCount++;
             throw new InvalidOperationException("Presentation observer must not control installation.");
         }
     }

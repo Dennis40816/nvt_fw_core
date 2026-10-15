@@ -101,13 +101,10 @@ Nvt.Core.Launcher.Setup.ManagedFirstInstallationExperience.ManagedFirstInstallat
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationExperience.PrepareAsync(string! managedRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedFirstInstallationPlanResult!>
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.ExitCode.get -> int?
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.ExitCode.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.HasValidShape.get -> bool
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.Issue.get -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.Issue.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.ManagedFirstInstallationLaunchFailure(Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchStage Stage, Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue Issue, int? ExitCode = null) -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.Stage.get -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchStage
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure.Stage.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.Busy = 3 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.Cancelled = 26 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
@@ -119,7 +116,6 @@ Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.InvalidInheritedCont
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.InvalidReceipt = 2 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.InvalidState = 10 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.InvariantViolation = 19 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.LaunchFailed = 8 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.ManagedRootMismatch = 11 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.MutationPending = 12 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue.None = 0 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchIssue
@@ -164,7 +160,6 @@ Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.Cancelled = 15 -> Nvt.Co
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.CandidateUnavailable = 7 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.Completed = 2 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.InstalledButLaunchFailed = 13 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.Installing = 1 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.InvalidDestination = 9 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.PayloadInvalid = 4 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome.PayloadUnavailable = 3 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
@@ -206,14 +201,10 @@ Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.HasValidShape.get -> bool
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.IsRecoveryOwned.get -> bool
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.LaunchFailure.get -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure?
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.LaunchFailure.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.ManagedFirstInstallationResult(Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome Outcome, string! ManagedRoot, Nvt.Core.Launcher.Contracts.ManagedAppVersion Version, Nvt.Core.Launcher.Setup.ManagedFirstInstallationLaunchFailure? LaunchFailure = null) -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.ManagedRoot.get -> string!
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.ManagedRoot.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.Outcome.get -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationOutcome
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.Outcome.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.Version.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
-Nvt.Core.Launcher.Setup.ManagedFirstInstallationResult.Version.init -> void
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationTransactionIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationTransactionIssue.None = 0 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationTransactionIssue
 Nvt.Core.Launcher.Setup.ManagedFirstInstallationTransactionIssue.RecoveryRequired = 1 -> Nvt.Core.Launcher.Setup.ManagedFirstInstallationTransactionIssue
@@ -261,5 +252,4 @@ static readonly Nvt.Core.Launcher.Setup.ManagedFirstInstallationExperience.Write
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultAdmissionOperationCutoff -> System.TimeSpan
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultCleanupObservationBudget -> System.TimeSpan
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultCompletionOperationCutoff -> System.TimeSpan
-static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.HealthyRoutingP95Target -> System.TimeSpan
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.ProgressDelay -> System.TimeSpan
