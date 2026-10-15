@@ -82,8 +82,17 @@ internal sealed class SetupBootstrapHandoff(SequencedStateStore state)
         ReceivedLease = ownedLease;
         state.Events.Add("handoff-owned-lease");
         state.Observe?.Invoke("handoff-owned-lease");
-        StartAction?.Invoke();
         StartCount++;
+        try
+        {
+            StartAction?.Invoke();
+        }
+        catch
+        {
+            // The start adapter still owns custody when its hook throws before returning a launch.
+            ownedLease.Dispose();
+            throw;
+        }
         if (StartIssue == ImmutableBootstrapStartIssue.None)
         {
             LastLaunch = new SetupBootstrapLaunch(

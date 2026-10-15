@@ -492,7 +492,7 @@ Both Setup constructors accept optional `observerDiagnostics`; nonfatal progress
 
 Installation progress observers can run while the writer lease is held and must return promptly.
 
-Terminal installation and launch-failure records have get-only properties validated at construction, so record copies cannot bypass validation. Unproduced outcome/issue members and the unused routing target are omitted; remaining enum numeric values are preserved. After a promoted receipt is adopted, nonfatal exceptions other than cancellation become recovery-owned `RecoveryRequired` with a null launch failure. Pre-promotion exception propagation is unchanged.
+Terminal installation and launch-failure records have get-only properties validated at construction, so record copies cannot bypass validation. Unproduced outcome/issue members and the unused routing target are omitted; remaining enum numeric values are preserved. After a promoted receipt is adopted, nonfatal exceptions other than a cancellation the caller requested become recovery-owned `RecoveryRequired` with a null launch failure. Pre-promotion exception propagation is unchanged.
 
 All Setup constructor deadline and cutoff overrides must be positive and at most **4,294,967,294 milliseconds** (`uint.MaxValue - 1`), inclusive; larger values throw `ArgumentOutOfRangeException` naming the public parameter before any install work. If early cancellation leaves an admission cleanup interval above that ceiling, its timer is capped at the same maximum.
 

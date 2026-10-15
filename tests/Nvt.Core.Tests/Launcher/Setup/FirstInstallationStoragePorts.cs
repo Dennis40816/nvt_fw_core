@@ -387,6 +387,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
     internal Action? DisposeAction { get; set; }
     internal RecordingExecutableLaunchLease? LastBootstrapLease { get; private set; }
     internal ManagedFirstInstallationTransactionIssue CompleteIssue { get; set; }
+    internal Action? CompleteAction { get; set; }
     internal int RecordLaunchCount { get; private set; }
     internal Action? RecordLaunchAction { get; set; }
     internal ManagedFirstInstallationTransactionIssue RecordLaunchIssue { get; set; }
@@ -452,6 +453,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ContractViolated |= !state.LeaseActive;
+        CompleteAction?.Invoke();
         CompleteCount++;
         state.Events.Add("complete");
         state.Observe?.Invoke("complete");

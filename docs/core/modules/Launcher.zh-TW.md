@@ -492,7 +492,7 @@ NFC 保留 entry composition、精確 installation-root admission、嚴格 manif
 
 安裝進度 observer 可能在持有 writer lease 時執行，必須儘快返回。
 
-安裝結果與 launch-failure record 的 property 均為唯讀，並在建構時驗證，因此 record copy 無法略過驗證；未產生的 outcome／issue 與未使用的路由目標已省略，其餘 enum 數值保持原樣。接管 promoted receipt 後，取消以外的非致命例外會轉為 recovery-owned 的 `RecoveryRequired`，且 launch failure 為 null；promotion 前的例外傳遞行為不變。
+安裝結果與 launch-failure record 的 property 均為唯讀，並在建構時驗證，因此 record copy 無法略過驗證；未產生的 outcome／issue 與未使用的路由目標已省略，其餘 enum 數值保持原樣。接管 promoted receipt 後，呼叫端要求的取消以外的非致命例外會轉為 recovery-owned 的 `RecoveryRequired`，且 launch failure 為 null；promotion 前的例外傳遞行為不變。
 
 Setup 建構函式的所有 deadline 與 cutoff override 必須為正值，且不得超過 **4,294,967,294 毫秒**（`uint.MaxValue - 1`，含上限）；超過時會在安裝作業開始前擲出帶有公開參數名稱的 `ArgumentOutOfRangeException`。若提早取消使 admission cleanup 區間超過此上限，其 timer 也會限制在相同上限。
 
