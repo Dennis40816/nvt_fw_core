@@ -1052,6 +1052,26 @@
       "path": "tests/Nvt.Core.Avalonia.Tests/Forms/FormStylesTests.cs"
     },
     {
+      "rule": "asyncVoid",
+      "syntaxHash": "cc5b560ecc608ee3650783c4908c3bf78e419604d75ea2c0cfa578afed55e9c4",
+      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotCaptureObservesCancellationAfterStarting()",
+      "count": 1,
+      "project": "Nvt.Core.Avalonia.Tests",
+      "owner": "NVT CORE",
+      "symbol": "async-lambda:unresolved-void-delegate",
+      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Cancellation.cs"
+    },
+    {
+      "rule": "asyncVoid",
+      "syntaxHash": "5ef4c719ed008c9b0bd3e5edc7d855a58074f6e3f083f2ab3e586da80bab5cb3",
+      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotCommittedCaptureIgnoresCancellationDuringCleanup()",
+      "count": 1,
+      "project": "Nvt.Core.Avalonia.Tests",
+      "owner": "NVT CORE",
+      "symbol": "async-lambda:unresolved-void-delegate",
+      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Cancellation.cs"
+    },
+    {
       "rule": "workspaceDuplicates",
       "syntaxHash": "65c90407b905ecd81c911c263ad135812c8afc346ee0bb938fc21f24f94d1de8",
       "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotWorkspace",
@@ -1060,6 +1080,26 @@
       "owner": "NVT CORE",
       "symbol": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotWorkspace",
       "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Screenshot.cs"
+    },
+    {
+      "rule": "asyncVoid",
+      "syntaxHash": "2a93749a617cca88482bf6f0053f66e6b71f6c36a214621ce9f65e1da5ef4dac",
+      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotDelegateOwnsLayoutAndReturnsExactData()",
+      "count": 1,
+      "project": "Nvt.Core.Avalonia.Tests",
+      "owner": "NVT CORE",
+      "symbol": "async-lambda:unresolved-void-delegate",
+      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Screenshot.cs"
+    },
+    {
+      "rule": "asyncVoid",
+      "syntaxHash": "531a05b6ca249cd28529425efc6640073792bc3a14599e873e77d29f9f74485c",
+      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ExitResponseSurvivesToolCloseStoppingHost()",
+      "count": 1,
+      "project": "Nvt.Core.Avalonia.Tests",
+      "owner": "NVT CORE",
+      "symbol": "async-lambda:unresolved-void-delegate",
+      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Shutdown.cs"
     },
     {
       "rule": "blockingWait",

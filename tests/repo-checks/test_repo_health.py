@@ -137,16 +137,18 @@ class One {
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         self.assertEqual([], self.measure()["findings"])
 
-    def test_async_lambda_subscription_with_unresolved_delegate_is_candidate(self) -> None:
-        for analyzer in (True, False):
-            with self.subTest(analyzer=analyzer):
-                if analyzer:
-                    self.write("Directory.Packages.props", self.ANALYZER_PROPS)
-                self.write("src/Fixture/One.cs", "class One { void Run(Window w) { w.Opened += async (_, _) => {}; } }")
-                f = self.measure()["findings"]
-                self.assertEqual(1, len(f))
-                self.assertEqual("asyncVoid", f[0]["rule"])
-                self.assertTrue(f[0]["candidate"])
+    def test_unresolved_async_lambda_outside_an_argument_is_candidate_with_the_analyzer(self) -> None:
+        self.write("Directory.Packages.props", self.ANALYZER_PROPS)
+        self.write("src/Fixture/One.cs", """class One {
+    void Subscribe(Window w) { w.Opened += async (_, _) => {}; }
+    void Assign(Holder h) { h.Handler = async () => {}; }
+    void Initialize() { Mystery m = async () => {}; }
+    void Parenthesized(Window w) { w.Closed += (async () => {}); }
+}
+""")
+        f = [x for x in self.measure()["findings"] if x["rule"] == "asyncVoid"]
+        self.assertEqual(["Assign", "Initialize", "Parenthesized", "Subscribe"], sorted(x["member"].split(".")[-1].split("(")[0] for x in f))
+        self.assertTrue(all(x["candidate"] for x in f))
 
     def test_async_lambda_resolves_through_sdk_implicit_usings(self) -> None:
         # No using directive: Task, Func and SendOrPostCallback resolve only through the implicit usings.

@@ -4,8 +4,8 @@
 C# health enforcement; syntax measurement contract roslyn-physical-v1. No package restore.
 The embedded host uses the global.json-selected SDK's Roslyn, in an isolated ALC.
 Narrow discovery choices (also in repo-health.md): an unresolved async lambda is a candidate;
-when the repository references Microsoft.VisualStudio.Threading.Analyzers (VSTHRD101 covers the build) only an event
-subscription (+=) is one; blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
+when the repository names Microsoft.VisualStudio.Threading.Analyzers (VSTHRD101 covers the build) only a direct call
+argument is not one; blockingWait is syntax only; viewTypeLines uses the 800-line budget, also for
 a code-only Avalonia view above it;
 clock candidates are TimeProvider descendants or Fake/Manual/Test*Clock,
 Fake/Manual/Test*TimeProvider, ClockState; workspace lifecycle candidates contain
@@ -1324,10 +1324,11 @@ public static class HealthSyntaxHost
                     Find("asyncVoid",lambda,"async-lambda:" + converted.ToDisplayString(),null);
                 // Not resolved (this compilation has framework references only, no NuGet or project references). A candidate
                 // when the tree does not reference Microsoft.VisualStudio.Threading.Analyzers: nothing else would report a
-                // real async void lambda. With the analyzer, VSTHRD101 reports it in the build, so an argument of an
-                // unresolved call is not a finding (nearly all are Func<Task> parameters). A subscription (+=) stays a
-                // candidate, because an event handler returns void.
-                else if (invoke == null && (!threadingAnalyzer || (lambda.Parent is AssignmentExpressionSyntax assignment && assignment.IsKind(SyntaxKind.AddAssignmentExpression))))
+                // real async void lambda. With the analyzer, VSTHRD101 reports it in the build, so a lambda that is a direct
+                // argument of an unresolved call is not a finding (nearly all are Func<Task> parameters). Every other
+                // position stays a candidate: a subscription (+=), an assignment, an initializer, a return value, or a
+                // parenthesized or cast operand.
+                else if (invoke == null && (!threadingAnalyzer || lambda.Parent is not ArgumentSyntax))
                     Find("asyncVoid",lambda,"async-lambda:" + (converted?.ToDisplayString() ?? "unresolved-void-delegate"),null,true,"Unresolved conversions are retained as candidates; H03 resolves project references.");
             }
             foreach (var access in nodes.OfType<MemberAccessExpressionSyntax>().Where(m => Name(m.Name)=="Result")) Find("blockingWait",access,"Result",null,true,"Syntax candidate; domain Result access may need classification.");
