@@ -67,7 +67,7 @@ public sealed class RepositoryCrashTests
             await Task.WhenAll(stdout, stderr);
             await AssertInventoryAfterHardStopAsync(fixture, observed, afterPromotion);
             var restarted = await fixture.InstallAsync();
-            Assert.True(restarted.IsSuccess, restarted.Issue.ToString());
+            Assert.True(restarted.IsSuccess, restarted.IsSuccess ? string.Empty : DescribeRestartFailure(fixture, process, restarted.Issue.ToString()));
             Assert.Equal(afterPromotion, restarted.WasAlreadyInstalled);
         }
         finally
@@ -78,6 +78,32 @@ public sealed class RepositoryCrashTests
                 await process.WaitForExitAsync(TestContext.Current.CancellationToken);
             }
         }
+    }
+
+    /// <summary>
+    /// Names the evidence that a failed restart needs: the issue, whether the probe root has exited, and the names and
+    /// sizes of everything under the fixture root. Paths are relative, so the message holds no machine path.
+    /// </summary>
+    private static string DescribeRestartFailure(RepositoryFixture fixture, Process probe, string issue)
+    {
+        var text = new StringBuilder("Restart issue ").Append(issue)
+            .Append(". Probe root exited: ").Append(probe.HasExited).Append('.');
+        string root = Path.GetDirectoryName(fixture.ManagedRoot)!;
+        try
+        {
+            text.Append(" Entries under the fixture root (relative path, bytes):");
+            foreach (string path in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories)
+                .Select(entry => Path.GetRelativePath(root, entry)).Order(StringComparer.Ordinal).Take(80))
+            {
+                string full = Path.Combine(root, path);
+                text.Append("\n  ").Append(path).Append(Directory.Exists(full) ? "/" : " " + new FileInfo(full).Length);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            text.Append(" The listing failed with ").Append(exception.GetType().Name).Append('.');
+        }
+        return text.ToString();
     }
 
     private static void ConfigureProbeStart(ProcessStartInfo start, RepositoryFixture fixture, string marker, bool afterPromotion)
