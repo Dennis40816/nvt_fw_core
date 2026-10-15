@@ -27,6 +27,20 @@ internal sealed class FirstInstallationAttempt(
 
     internal async ValueTask<ManagedFirstInstallationResult> RunAsync(CancellationToken cancellationToken)
     {
+        try
+        {
+            return await RunCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        // Once promoted, nonfatal adapter/contract failures leave the marker with recovery.
+        catch (Exception exception) when (_promoted is not null && exception is not
+            (OperationCanceledException or OutOfMemoryException or AccessViolationException))
+        {
+            return Result(_plan, ManagedFirstInstallationOutcome.RecoveryRequired);
+        }
+    }
+
+    private async ValueTask<ManagedFirstInstallationResult> RunCoreAsync(CancellationToken cancellationToken)
+    {
         if (!string.Equals(_plan.StatePathIdentity, _services.StatePathIdentity, StringComparison.Ordinal))
         {
             return Result(_plan, ManagedFirstInstallationOutcome.RecoveryRequired);

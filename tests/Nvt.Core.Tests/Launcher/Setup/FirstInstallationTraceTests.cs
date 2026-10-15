@@ -58,17 +58,60 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
         };
         harness.Payload.Observe = trace.Add;
 
-        IOException actual = await Assert.ThrowsAsync<IOException>(() =>
-            harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken).AsTask());
+        ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
+            harness.Plan, TestContext.Current.CancellationToken);
 
-        Assert.Same(failure, actual);
+        Assert.Equal(ManagedFirstInstallationOutcome.RecoveryRequired, result.Outcome);
+        Assert.True(result.HasValidShape);
+        Assert.True(result.IsRecoveryOwned);
+        Assert.Null(result.LaunchFailure);
         Assert.Equal(
             $"writer-acquire:1,state-load,payload-capture,{operationTrace},injected-failure,payload-dispose,writer-release:1",
             string.Join(',', trace));
         Assert.True(harness.Payload.LastCapture!.Disposed);
         Assert.False(harness.State.LeaseActive);
         Assert.Equal(1, harness.Materializer.Transaction.DisposeCount);
+        Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);
         Assert.Equal(0, harness.Handoff.StartCount);
+    }
+
+    /// <summary>Undefined transaction issues cannot escape after the irreversible promotion.</summary>
+    [Fact]
+    public async Task PostPromotionMapperViolationReturnsRecoveryWithoutLaunchFailure()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        harness.Materializer.Transaction.RecordLaunchIssue = (ManagedFirstInstallationTransactionIssue)int.MaxValue;
+
+        ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
+            harness.Plan, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedFirstInstallationOutcome.RecoveryRequired, result.Outcome);
+        Assert.True(result.HasValidShape);
+        Assert.True(result.IsRecoveryOwned);
+        Assert.Null(result.LaunchFailure);
+        Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);
+        Assert.Equal(1, harness.Materializer.Transaction.DisposeCount);
+        Assert.True(harness.Payload.LastCapture!.Disposed);
+        Assert.False(harness.State.LeaseActive);
+        Assert.Equal(0, harness.Handoff.StartCount);
+    }
+
+    /// <summary>Pre-promotion adapter exceptions retain their existing propagation.</summary>
+    [Fact]
+    public async Task PrePromotionExceptionStillEscapes()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        var failure = new IOException("Pre-promotion adapter failure.");
+        harness.CandidateSource.Observe = _ => throw failure;
+
+        IOException actual = await Assert.ThrowsAsync<IOException>(() =>
+            harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken).AsTask());
+
+        Assert.Same(failure, actual);
+        Assert.Equal(0, harness.Materializer.MaterializeCount);
+        Assert.Equal(0, harness.Materializer.Transaction.DisposeCount);
+        Assert.True(harness.Payload.LastCapture!.Disposed);
+        Assert.False(harness.State.LeaseActive);
     }
 
     private sealed class TraceProgress(List<string> trace) : IProgress<ManagedFirstInstallationProgress>
