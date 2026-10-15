@@ -29,6 +29,7 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
 
         Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
         Assert.False(materializer.Transaction.ContractViolated);
+        Assert.False(state.ContractViolated);
         Assert.Equal(
             ["state-load", "root-observe", "destination-admit", "payload-inspect", "candidate-inspect",
                 "writer-acquire:1", "state-load", "root-observe", "destination-admit", "payload-capture",

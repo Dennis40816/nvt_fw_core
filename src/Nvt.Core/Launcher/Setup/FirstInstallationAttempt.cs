@@ -13,11 +13,13 @@ namespace Nvt.Core.Launcher.Setup;
 internal sealed class FirstInstallationAttempt(
     FirstInstallationServices services,
     ManagedFirstInstallationPlan plan,
-    IProgress<ManagedFirstInstallationProgress>? progress)
+    IProgress<ManagedFirstInstallationProgress>? progress,
+    Action<Exception>? observerDiagnostics)
 {
     private readonly FirstInstallationServices _services = services;
     private readonly ManagedFirstInstallationPlan _plan = plan;
     private readonly IProgress<ManagedFirstInstallationProgress>? _progress = progress;
+    private readonly Action<Exception>? _observerDiagnostics = observerDiagnostics;
     // Guard: one RunAsync invocation owns these holders and serializes every access across awaits.
     private IManagedPromotedFirstInstallation? _promoted;
     // Guard: the same invocation owns this lease until transfer to the handoff.
@@ -32,9 +34,10 @@ internal sealed class FirstInstallationAttempt(
             return await RunCoreAsync(cancellationToken).ConfigureAwait(false);
         }
         // Once promoted, nonfatal adapter/contract failures leave the marker with recovery.
-        catch (Exception exception) when (_promoted is not null && exception is not
-            (OperationCanceledException or OutOfMemoryException or AccessViolationException))
+        catch (Exception exception) when (_promoted is not null && SetupExceptionPolicy.IsNonFatal(exception) &&
+            (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested))
         {
+            SetupExceptionPolicy.ReportDiagnostics(exception, _observerDiagnostics);
             return Result(_plan, ManagedFirstInstallationOutcome.RecoveryRequired);
         }
     }
@@ -93,9 +96,34 @@ internal sealed class FirstInstallationAttempt(
         }
         finally
         {
-            _admission?.Dispose();
-            _bootstrapLease?.Dispose();
-            _promoted?.Dispose();
+            try
+            {
+                DisposeOwnedResource(_admission);
+            }
+            finally
+            {
+                try
+                {
+                    DisposeOwnedResource(_bootstrapLease);
+                }
+                finally
+                {
+                    DisposeOwnedResource(_promoted);
+                }
+            }
+        }
+    }
+
+    private void DisposeOwnedResource(IDisposable? resource)
+    {
+        try
+        {
+            resource?.Dispose();
+        }
+        // After promotion, cleanup cannot replace the selected result or skip other custody.
+        catch (Exception exception) when (_promoted is not null && SetupExceptionPolicy.IsNonFatal(exception))
+        {
+            SetupExceptionPolicy.ReportDiagnostics(exception, _observerDiagnostics);
         }
     }
 

@@ -99,6 +99,28 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         Assert.Equal(1, handoff.CompletionWaitCount);
     }
 
+    /// <summary>Completion at the inclusive timer maximum remains termination-unconfirmed.</summary>
+    [Fact]
+    public async Task MaximumCompletionCutoffTimesOutAtExactBoundary()
+    {
+        string root = Root("maximum-completion-cutoff");
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        TimeSpan maximum = TimeSpan.FromMilliseconds(4_294_967_294);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        {
+            CompletionAction = () => time.Advance(maximum),
+        };
+        ManagedLauncherEntryCoordinator coordinator = Create(root, new EntryStateStore(BoundState(root)),
+            new RecordingRootProbe(ManagedInstallationRootStatus.Present), handoff,
+            completionDeadline: maximum, timeProvider: time);
+
+        ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
+        Assert.Equal(1, handoff.CompletionWaitCount);
+        Assert.Equal(1, handoff.StartCount);
+    }
+
     /// <summary>The cancellation decision and remaining budget share one clock sample.</summary>
     [Fact]
     public async Task PreAdmissionDecisionSamplesClockOnce()

@@ -777,7 +777,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
             IManagedExecutableLaunchLease ownedLease,
             CancellationToken cancellationToken)
         {
-            Assert.False(state.LeaseActive);
+            state.RecordContractViolation(state.LeaseActive);
             ownedLease.Dispose();
             Cancel(cancellation);
             return ValueTask.FromException<ImmutableBootstrapStartResult>(

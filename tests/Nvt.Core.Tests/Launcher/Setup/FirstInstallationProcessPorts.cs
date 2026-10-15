@@ -2,7 +2,6 @@
 
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Transport;
-using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
 
@@ -77,9 +76,9 @@ internal sealed class SetupBootstrapHandoff(SequencedStateStore state)
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Assert.False(state.LeaseActive);
-        Assert.Equal(Bootstrap, expectedIdentity);
-        Assert.True(ownedLease.TryValidateForStart());
+        state.RecordContractViolation(state.LeaseActive);
+        state.RecordContractViolation(Bootstrap != expectedIdentity);
+        state.RecordContractViolation(!ownedLease.TryValidateForStart());
         ReceivedLease = ownedLease;
         state.Events.Add("handoff-owned-lease");
         state.Observe?.Invoke("handoff-owned-lease");

@@ -26,6 +26,8 @@ internal sealed record InstallHarness : IDisposable
         Handoff.Dispose();
         Payload.Dispose();
         State.Dispose();
+        Assert.False(Materializer.Transaction.ContractViolated);
+        Assert.False(State.ContractViolated);
     }
 }
 
@@ -49,7 +51,7 @@ internal sealed class CancellingBootstrapHandoff(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Assert.False(state.LeaseActive);
+        state.RecordContractViolation(state.LeaseActive);
         _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
         return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
     }
@@ -120,7 +122,7 @@ internal sealed class TypedFailureCancellingHandoff(
         IManagedExecutableLaunchLease ownedLease,
         CancellationToken cancellationToken)
     {
-        Assert.False(state.LeaseActive);
+        state.RecordContractViolation(state.LeaseActive);
         _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
         return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
     }
@@ -164,7 +166,7 @@ internal sealed class CancellingStartBootstrapHandoff(
 
     public void Dispose() => _ownedLaunch?.Dispose();
 
-    internal TrackingBootstrapLaunch Launch { get; } = new();
+    internal TrackingBootstrapLaunch Launch { get; } = new(state);
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
         string managedRoot,
@@ -172,7 +174,7 @@ internal sealed class CancellingStartBootstrapHandoff(
         IManagedExecutableLaunchLease ownedLease,
         CancellationToken cancellationToken)
     {
-        Assert.False(state.LeaseActive);
+        state.RecordContractViolation(state.LeaseActive);
         Cancel(cancellation);
         _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
         return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
@@ -191,7 +193,7 @@ internal sealed class MalformedStartBootstrapHandoff(
 
     public void Dispose() => _ownedLaunch?.Dispose();
 
-    internal TrackingBootstrapLaunch Launch { get; } = new();
+    internal TrackingBootstrapLaunch Launch { get; } = new(state);
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
         string managedRoot,
@@ -200,7 +202,7 @@ internal sealed class MalformedStartBootstrapHandoff(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Assert.False(state.LeaseActive);
+        state.RecordContractViolation(state.LeaseActive);
         Cancel(cancellation);
         if (attachLaunch)
         {
@@ -213,7 +215,7 @@ internal sealed class MalformedStartBootstrapHandoff(
 }
 
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
-internal sealed class TrackingBootstrapLaunch : IImmutableBootstrapLaunch
+internal sealed class TrackingBootstrapLaunch(SequencedStateStore state) : IImmutableBootstrapLaunch
 {
     internal int AdmissionWaitCount { get; private set; }
 
@@ -224,7 +226,7 @@ internal sealed class TrackingBootstrapLaunch : IImmutableBootstrapLaunch
         CancellationToken cancellationToken)
     {
         AdmissionWaitCount++;
-        Assert.True(cancellationToken.IsCancellationRequested);
+        state.RecordContractViolation(!cancellationToken.IsCancellationRequested);
         return ValueTask.FromResult(new ImmutableBootstrapAdmissionResult(
             ImmutableBootstrapAdmissionOutcome.HealthUnavailable));
     }

@@ -71,6 +71,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
+        Assert.False(state.ContractViolated);
+        Assert.False(materializer.Transaction.ContractViolated);
         Assert.Equal(2, state.LeaseCount);
         Assert.Equal(0, state.SaveCount);
         Assert.Equal(1, payload.CaptureCount);
@@ -177,6 +179,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
+        Assert.False(state.ContractViolated);
+        Assert.False(materializer.Transaction.ContractViolated);
         Assert.Equal(
             [
                 ManagedFirstInstallationProgressStage.RevalidatingSource,
@@ -231,6 +235,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
         Assert.Equal(4, progress.ReportCount);
         Assert.Equal(1, materializer.MaterializeCount);
         Assert.False(materializer.Transaction.ContractViolated);
+        Assert.False(state.ContractViolated);
     }
 
     /// <summary>Authority drift stops before any root materialization or Bootstrap start.</summary>
@@ -265,6 +270,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.SourceChanged, result.Outcome);
+        Assert.False(state.ContractViolated);
         Assert.Equal(0, materializer.MaterializeCount);
         Assert.Equal(0, handoff.StartCount);
     }
@@ -300,6 +306,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedFirstInstallationOutcome.InstalledButLaunchFailed, result.Outcome);
+        Assert.False(state.ContractViolated);
+        Assert.False(materializer.Transaction.ContractViolated);
         Assert.Equal(1, materializer.Transaction.RecordLaunchCount);
         Assert.Equal(0, materializer.Transaction.CompleteCount);
     }
@@ -344,6 +352,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
         Assert.Equal(1, materializer.Transaction.RecordLaunchCount);
         Assert.Equal(0, handoff.StartCount);
         Assert.Equal(0, materializer.Transaction.CompleteCount);
+        Assert.False(state.ContractViolated);
+        Assert.False(materializer.Transaction.ContractViolated);
     }
 
     private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>

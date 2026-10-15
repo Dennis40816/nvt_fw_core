@@ -25,6 +25,7 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
     internal string? SecondLeasePathOverride { get; set; }
     internal Action<string>? Observe { get; set; }
     internal bool LeaseActive { get; private set; }
+    internal bool ContractViolated { get; private set; }
     internal VersionManagerWriteLeaseIssue LeaseIssue { get; set; }
     internal VersionManagerWriteLeaseIssue SecondLeaseIssue { get; set; }
     internal int LeaseCount { get; private set; }
@@ -34,6 +35,8 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
     internal int LoadCount { get; private set; }
     internal int SaveCount { get; private set; }
     internal List<string> Events { get; } = [];
+
+    internal void RecordContractViolation(bool violated) => ContractViolated |= violated;
 
     public async ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
         TimeSpan waitTimeout,
@@ -56,7 +59,7 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
             _ownedWriteLease = new VersionManagerWriteLeaseResult(issue, null);
             return _ownedWriteLease;
         }
-        Assert.False(LeaseActive);
+        ContractViolated |= LeaseActive;
         string path = (LeaseAttemptCount == 2 ? SecondLeasePathOverride : FirstLeasePathOverride) ??
             StatePathIdentity;
         VersionManagerWriteLeaseResult acquired = await FileSystemVersionManagerWriteLease.TryAcquireAsync(
@@ -381,6 +384,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
     internal ManagedExecutableLaunchIssue BootstrapLeaseIssue { get; set; }
     internal ManagedExecutableLaunchLeaseResult? BootstrapLeaseResultOverride { get; set; }
     internal int DisposeCount { get; private set; }
+    internal Action? DisposeAction { get; set; }
     internal RecordingExecutableLaunchLease? LastBootstrapLease { get; private set; }
     internal ManagedFirstInstallationTransactionIssue CompleteIssue { get; set; }
     internal int RecordLaunchCount { get; private set; }
@@ -390,6 +394,7 @@ internal sealed class RecordingPromotedInstallation(SequencedStateStore state)
     public void Dispose()
     {
         DisposeCount++;
+        DisposeAction?.Invoke();
     }
 
     internal void Initialize(string managedRoot, ManagedVersionAdmission admission)
@@ -460,6 +465,7 @@ internal sealed class RecordingExecutableLaunchLease(
     string workingDirectory) : IManagedExecutableLaunchLease
 {
     internal bool Disposed { get; private set; }
+    internal Action? DisposeAction { get; set; }
     public string ExecutablePath => executablePath;
     public string WorkingDirectory => workingDirectory;
     public bool TryValidateForStart()
@@ -470,6 +476,7 @@ internal sealed class RecordingExecutableLaunchLease(
     public void Dispose()
     {
         Disposed = true;
+        DisposeAction?.Invoke();
     }
 }
 

@@ -70,6 +70,57 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
         Assert.Equal(0, harness.Materializer.MaterializeCount);
     }
 
+    /// <summary>The inclusive timer ceiling still expires at the exact admission cutoff.</summary>
+    [Fact]
+    public async Task MaximumAdmissionCutoffTimesOutAtExactBoundary()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        TimeSpan maximum = TimeSpan.FromMilliseconds(4_294_967_294);
+        harness.Materializer.Transaction.BootstrapLeaseAcquiredAction = () => time.Advance(maximum);
+        ManagedFirstInstallationExperience experience = Create(harness.State, harness.Roots, harness.Payload,
+            harness.CandidateSource, harness.Materializer, harness.Handoff,
+            admissionOperationCutoff: maximum, timeProvider: time);
+
+        ManagedFirstInstallationResult result = await experience.InstallAndLaunchAsync(
+            harness.Plan, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedFirstInstallationOutcome.InstalledButLaunchFailed, result.Outcome);
+        Assert.True(result.HasValidShape);
+        Assert.True(result.IsRecoveryOwned);
+        Assert.Equal(new ManagedFirstInstallationLaunchFailure(
+            ManagedFirstInstallationLaunchStage.BootstrapStart, ManagedFirstInstallationLaunchIssue.TimedOut),
+            result.LaunchFailure);
+        Assert.True(harness.Materializer.Transaction.LastBootstrapLease!.Disposed);
+        Assert.Equal(0, harness.Handoff.StartCount);
+        Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);
+    }
+
+    /// <summary>READY at the inclusive timer ceiling is too late for first-install finalization.</summary>
+    [Fact]
+    public async Task MaximumCompletionCutoffTimesOutAtExactBoundary()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        TimeSpan maximum = TimeSpan.FromMilliseconds(4_294_967_294);
+        harness.Handoff.CompletionAction = () => time.Advance(maximum);
+        ManagedFirstInstallationExperience experience = Create(harness.State, harness.Roots, harness.Payload,
+            harness.CandidateSource, harness.Materializer, harness.Handoff,
+            completionOperationCutoff: maximum, timeProvider: time);
+
+        ManagedFirstInstallationResult result = await experience.InstallAndLaunchAsync(
+            harness.Plan, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedFirstInstallationOutcome.InstalledButLaunchFailed, result.Outcome);
+        Assert.True(result.HasValidShape);
+        Assert.True(result.IsRecoveryOwned);
+        Assert.Equal(new ManagedFirstInstallationLaunchFailure(
+            ManagedFirstInstallationLaunchStage.ApplicationReady, ManagedFirstInstallationLaunchIssue.TimedOut),
+            result.LaunchFailure);
+        Assert.True(harness.Handoff.LastLaunch!.Disposed);
+        Assert.Equal(0, harness.Materializer.Transaction.CompleteCount);
+    }
+
     /// <summary>Launch custody acquisition consumes the exact 30-second admission budget.</summary>
     [Theory]
     [InlineData(29_999, ManagedFirstInstallationOutcome.Completed)]

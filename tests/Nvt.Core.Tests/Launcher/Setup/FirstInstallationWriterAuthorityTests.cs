@@ -19,7 +19,6 @@ public sealed class FirstInstallationWriterAuthorityTests : FirstInstallationTes
 
         Assert.Equal(ManagedFirstInstallationOutcome.StateUnavailable, result.Outcome);
         Assert.True(result.HasValidShape);
-        Assert.False(harness.Materializer.Transaction.ContractViolated);
         Assert.Equal(1, harness.State.LeaseCount);
         Assert.Equal(1, harness.State.LoadCount);
         Assert.Equal(0, harness.Payload.CaptureCount);

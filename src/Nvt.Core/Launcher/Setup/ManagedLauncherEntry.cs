@@ -556,16 +556,10 @@ public sealed class ManagedLauncherEntryCoordinator
             await pending.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         }
         // The caller already has its timeout/cancellation result; fatal exceptions still propagate.
-        catch (Exception exception) when (exception is not (OutOfMemoryException or AccessViolationException))
+        // Any non-fatal failure of the abandoned observation, including its own cancellation, is reported to the diagnostics callback.
+        catch (Exception exception) when (SetupExceptionPolicy.IsNonFatal(exception))
         {
-            try
-            {
-                _observerDiagnostics?.Invoke(exception);
-            }
-            // Diagnostics cannot change the entry result; fatal exceptions still propagate.
-            catch (Exception diagnosticException) when (diagnosticException is not (OutOfMemoryException or AccessViolationException))
-            {
-            }
+            SetupExceptionPolicy.ReportDiagnostics(exception, _observerDiagnostics);
         }
     }
 

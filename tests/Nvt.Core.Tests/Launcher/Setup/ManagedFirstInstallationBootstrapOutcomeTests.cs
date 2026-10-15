@@ -214,6 +214,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
             result.LaunchFailure);
         Assert.Equal(1, handoff.StartCount);
         Assert.Equal(1, harness.Materializer.Transaction.RecordLaunchCount);
+        Assert.False(handoff.ContractViolated);
     }
 
     /// <summary>Exact Bootstrap admission exit semantics reach the presentation result intact.</summary>
@@ -424,7 +425,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
 
     /// <summary>Validated get-only records copy complete facts without permitting contradictory edits.</summary>
     [Fact]
-    public void LaunchTerminalRecordCopiesRemainRechecked()
+    public void LaunchTerminalRecordCopiesPreserveValidatedFactsAndRejectContradictions()
     {
         var valid = new ManagedFirstInstallationLaunchFailure(
             ManagedFirstInstallationLaunchStage.ApplicationReady,
@@ -709,6 +710,8 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
         private readonly TaskCompletionSource _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         internal Task Entered => _entered.Task;
         internal int StartCount { get; private set; }
+        // Guard: the scenario driver and awaited signals serialize all accesses.
+        internal bool ContractViolated { get; private set; }
 
         public async ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
@@ -716,7 +719,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
             IManagedExecutableLaunchLease ownedLease,
             CancellationToken cancellationToken)
         {
-            Assert.False(state.LeaseActive);
+            ContractViolated |= state.LeaseActive;
             StartCount++;
             _ = _entered.TrySetResult();
             try

@@ -137,7 +137,7 @@ public sealed class ManagedFirstInstallationExperience
             IProgress<ManagedFirstInstallationProgress>? safeProgress = progress is null
                 ? null
                 : new NonThrowingProgress(progress, _observerDiagnostics);
-            return await new FirstInstallationAttempt(_services, plan, safeProgress).RunAsync(cancellationToken)
+            return await new FirstInstallationAttempt(_services, plan, safeProgress, _observerDiagnostics).RunAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -161,16 +161,9 @@ public sealed class ManagedFirstInstallationExperience
                 _inner.Report(value);
             }
             // Presentation observers cannot change installation; fatal exceptions still propagate.
-            catch (Exception exception) when (exception is not (OutOfMemoryException or AccessViolationException))
+            catch (Exception exception) when (SetupExceptionPolicy.IsNonFatal(exception))
             {
-                try
-                {
-                    observerDiagnostics?.Invoke(exception);
-                }
-                // Diagnostics are non-authoritative observers too; fatal exceptions still propagate.
-                catch (Exception diagnosticException) when (diagnosticException is not (OutOfMemoryException or AccessViolationException))
-                {
-                }
+                SetupExceptionPolicy.ReportDiagnostics(exception, observerDiagnostics);
             }
         }
     }
