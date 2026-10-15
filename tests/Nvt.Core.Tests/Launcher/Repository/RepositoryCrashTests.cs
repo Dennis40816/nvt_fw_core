@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using Nvt.Core.Launcher.Activation;
-using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Repository;
 using Nvt.Core.Tests.Launcher.Contracts;
 using Nvt.Core.Tests.Launcher.Verification;
@@ -67,9 +66,9 @@ public sealed class RepositoryCrashTests
             await process.WaitForExitAsync(TestContext.Current.CancellationToken);
             await Task.WhenAll(stdout, stderr);
             await AssertInventoryAfterHardStopAsync(fixture, observed, afterPromotion);
-            RestartOutcome restarted = await RestartAfterHardStopAsync(fixture, afterPromotion);
-            Assert.True(restarted.Result.IsSuccess, restarted.Describe());
-            Assert.Equal(afterPromotion, restarted.Result.WasAlreadyInstalled);
+            var restarted = await fixture.InstallAsync();
+            Assert.True(restarted.IsSuccess, restarted.IsSuccess ? string.Empty : DescribeRestartFailure(fixture, process, restarted.Issue.ToString()));
+            Assert.Equal(afterPromotion, restarted.WasAlreadyInstalled);
         }
         finally
         {
@@ -82,38 +81,29 @@ public sealed class RepositoryCrashTests
     }
 
     /// <summary>
-    /// Restarts the install after the hard stop. A scanner or a handle that the killed process has not released yet can
-    /// hold a file that the restart takes into custody for a short time. Only the one issue that this case can show for
-    /// such a hold is retried, and only until the watchdog. Any other issue, and the same issue after the watchdog, is returned.
+    /// Names the evidence that a failed restart needs: the issue, whether the probe root has exited, and the names and
+    /// sizes of everything under the fixture root. Paths are relative, so the message holds no machine path.
     /// </summary>
-    private static async Task<RestartOutcome> RestartAfterHardStopAsync(RepositoryFixture fixture, bool afterPromotion)
+    private static string DescribeRestartFailure(RepositoryFixture fixture, Process probe, string issue)
     {
-        ManagedVersionInstallIssue transient = afterPromotion
-            ? ManagedVersionInstallIssue.IdentityConflict
-            : ManagedVersionInstallIssue.PromotionFailed;
-        long started = TimeProvider.System.GetTimestamp();
-        int attempts = 0;
-        while (true)
+        var text = new StringBuilder("Restart issue ").Append(issue)
+            .Append(". Probe root exited: ").Append(probe.HasExited).Append('.');
+        string root = Path.GetDirectoryName(fixture.ManagedRoot)!;
+        try
         {
-            attempts++;
-            ManagedVersionInstallResult result = await fixture.InstallAsync();
-            TimeSpan elapsed = TimeProvider.System.GetElapsedTime(started);
-            if (result.IsSuccess || result.Issue != transient || elapsed >= RestartWatchdog)
+            text.Append(" Entries under the fixture root (relative path, bytes):");
+            foreach (string path in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories)
+                .Select(entry => Path.GetRelativePath(root, entry)).Order(StringComparer.Ordinal).Take(80))
             {
-                return new RestartOutcome(result, attempts, elapsed);
+                string full = Path.Combine(root, path);
+                text.Append("\n  ").Append(path).Append(Directory.Exists(full) ? "/" : " " + new FileInfo(full).Length);
             }
-            await Task.Delay(RestartPollInterval, TimeProvider.System, TestContext.Current.CancellationToken);
         }
-    }
-
-    private static readonly TimeSpan RestartWatchdog = TimeSpan.FromSeconds(30);
-
-    private static readonly TimeSpan RestartPollInterval = TimeSpan.FromMilliseconds(250);
-
-    private sealed record RestartOutcome(ManagedVersionInstallResult Result, int Attempts, TimeSpan Elapsed)
-    {
-        internal string Describe() =>
-            $"Restart issue {Result.Issue} after {Attempts} attempt(s) in {Elapsed.TotalMilliseconds:F0} ms.";
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            text.Append(" The listing failed with ").Append(exception.GetType().Name).Append('.');
+        }
+        return text.ToString();
     }
 
     private static void ConfigureProbeStart(ProcessStartInfo start, RepositoryFixture fixture, string marker, bool afterPromotion)
