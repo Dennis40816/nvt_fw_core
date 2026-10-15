@@ -13,12 +13,13 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [Fact]
     public async Task PrepareRejectsCandidateSuccessWithoutCandidate()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var state = new SequencedStateStore(MissingState());
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var state = new SequencedStateStore(MissingState());
         var source = new RecordingCandidateSource(Candidate()) { InspectionOverride = new(null, FreshInstallationCandidateIssue.None) };
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent), harness.Payload, source,
-            new RecordingRootMaterializer(state), new SetupBootstrapHandoff(state));
+            new RecordingRootMaterializer(state), handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(Root("missing-candidate"), TestContext.Current.CancellationToken);
 
@@ -32,7 +33,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [InlineData(true)]
     public async Task InstallRejectsMissingOrMismatchedReverifiedCandidate(bool mismatched)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         FreshInstallationCandidate other = OtherCandidate(harness.Plan.Candidate);
         harness.CandidateSource.ReverificationOverride = new(mismatched ? other : null, FreshInstallationCandidateIssue.None);
 
@@ -48,7 +49,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [Fact]
     public async Task InstallRejectsMaterializationSuccessWithoutInstallation()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.MaterializationOverride = new(null, ManagedFirstInstallationMaterializationIssue.None);
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken);
@@ -64,7 +65,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [InlineData(true)]
     public async Task InstallRejectsMismatchedPromotedRootOrAdmission(bool mismatchedRoot)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         using var promoted = new RecordingPromotedInstallation(harness.State);
         ManagedVersionAdmission admission = Admission(harness.Plan.Candidate);
         promoted.Initialize(mismatchedRoot ? Root("other-root") : harness.Plan.ManagedRoot,
@@ -84,7 +85,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [Fact]
     public async Task InstallRejectsPlanForAnotherStatePathBeforeAnyPort()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var foreign = new ManagedFirstInstallationPlan(harness.Plan.ManagedRoot, Root("other-state.json"),
             harness.Plan.Payload, harness.Plan.Candidate);
 
@@ -99,7 +100,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [Fact]
     public async Task InstallAlreadyCancelledTouchesNoWriterOrMaterializer()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         using var cancellation = new CancellationTokenSource();
         Cancel(cancellation);
 
@@ -116,16 +117,17 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [InlineData(true)]
     public async Task PrepareRejectsMalformedPayloadInspection(bool attachIdentityToFailure)
     {
-        var state = new SequencedStateStore(MissingState());
+        using var state = new SequencedStateStore(MissingState());
         var source = new RecordingCandidateSource(Candidate());
-        var payload = new RecordingPayloadSource(PayloadIdentity())
+        using var payload = new RecordingPayloadSource(PayloadIdentity())
         {
             InspectionOverride = new(attachIdentityToFailure ? PayloadIdentity() : null,
                 attachIdentityToFailure ? ManagedDistributionPayloadIssue.Invalid : ManagedDistributionPayloadIssue.None),
         };
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent), payload, source,
-            new RecordingRootMaterializer(state), new SetupBootstrapHandoff(state));
+            new RecordingRootMaterializer(state), handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root("malformed-inspection"), TestContext.Current.CancellationToken);
@@ -139,7 +141,7 @@ public sealed class FirstInstallationReceiptTests : FirstInstallationTestSupport
     [Fact]
     public async Task InstallRejectsUndefinedBootstrapLeaseIssue()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.BootstrapLeaseResultOverride = new(null, (ManagedExecutableLaunchIssue)999);
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken);

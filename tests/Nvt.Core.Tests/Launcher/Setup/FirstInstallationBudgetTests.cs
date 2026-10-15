@@ -17,7 +17,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
     [InlineData(0)]
     public async Task ConstructorRejectsNonpositiveAdmissionAndCompletion(long ticks)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         TimeSpan invalid = TimeSpan.FromTicks(ticks);
         Assert.Equal("admissionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
             Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
@@ -31,7 +31,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
     [Fact]
     public async Task ConstructorAcceptsOneTickOverrides()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         Assert.NotNull(Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
             harness.Materializer, harness.Handoff, TimeSpan.FromTicks(1), TimeSpan.FromTicks(1)));
     }
@@ -43,7 +43,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
     [InlineData(30_001, ManagedFirstInstallationOutcome.InstalledButLaunchFailed)]
     public async Task AdmissionUsesExactDefaultBoundary(int milliseconds, ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.Materializer.Transaction.BootstrapLeaseAcquiredAction = () =>
             time.Advance(TimeSpan.FromMilliseconds(milliseconds));
@@ -66,7 +66,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
     [InlineData(44_501, ManagedFirstInstallationOutcome.InstalledButLaunchFailed)]
     public async Task CompletionUsesExactDefaultBoundary(int milliseconds, ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.Handoff.CompletionAction = () => time.Advance(TimeSpan.FromMilliseconds(milliseconds));
         ManagedFirstInstallationExperience experience = Create(harness.State, harness.Roots, harness.Payload,
@@ -90,7 +90,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
         ImmutableBootstrapCompletionOutcome outcome, int exitCode, ImmutableBootstrapExitIssue exitIssue,
         ManagedFirstInstallationLaunchIssue expectedIssue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var manual = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         // Guard: the awaited scenario invokes the completion port and timestamp delegate serially.
         int? completionReads = null;
@@ -134,7 +134,7 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
     [InlineData(5_001, ManagedFirstInstallationOutcome.RecoveryRequired)]
     public async Task FinalizationUsesExactWriterLeaseBoundary(int milliseconds, ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.State.SecondLeaseAction = () => time.Advance(TimeSpan.FromMilliseconds(milliseconds));
         ManagedFirstInstallationExperience experience = Create(harness.State, harness.Roots, harness.Payload,

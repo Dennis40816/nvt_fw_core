@@ -1,12 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using Nvt.Core.Launcher.Activation;
-using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
-using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
-using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
@@ -19,17 +14,18 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     public async Task PrepareWithResidueTouchesNoPayloadOrSource()
     {
         string root = Root("prepare-residue");
-        SequencedStateStore state = new(MissingState());
+        using SequencedStateStore state = new(MissingState());
         SequencedRootProbe roots = new(ManagedInstallationRootStatus.Residue);
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource source = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             roots,
             payload,
             source,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             root,
@@ -47,17 +43,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     {
         string root = Root("completed");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(
+        using SequencedStateStore state = new(
             MissingState(),
             MissingState(),
             BoundState(root, candidate));
         SequencedRootProbe roots = new(
             ManagedInstallationRootStatus.Absent,
             ManagedInstallationRootStatus.Absent);
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource source = new(candidate);
         RecordingRootMaterializer materializer = new(state);
-        SetupBootstrapHandoff handoff = new(state);
+        using SetupBootstrapHandoff handoff = new(state);
         payload.Observe = state.Events.Add;
         ManagedFirstInstallationExperience experience = Create(
             state,
@@ -147,7 +143,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     {
         string root = Root("completed-progress");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(
+        using SequencedStateStore state = new(
             MissingState(),
             MissingState(),
             BoundState(root, candidate));
@@ -159,15 +155,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
                 new(ManagedFirstInstallationProgressStage.InstallingPackage, 1, 2),
             ],
         };
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(
                 ManagedInstallationRootStatus.Absent,
                 ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             new RecordingCandidateSource(candidate),
             materializer,
-            new SetupBootstrapHandoff(state));
+            handoff);
         ManagedFirstInstallationPlanResult prepared = await experience.PrepareAsync(
             root,
             TestContext.Current.CancellationToken);
@@ -197,7 +195,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     {
         string root = Root("throwing-progress");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(
+        using SequencedStateStore state = new(
             MissingState(),
             MissingState(),
             BoundState(root, candidate));
@@ -208,15 +206,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
                 new(ManagedFirstInstallationProgressStage.ReadingPackage, 1, 2),
             ],
         };
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(
                 ManagedInstallationRootStatus.Absent,
                 ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             new RecordingCandidateSource(candidate),
             materializer,
-            new SetupBootstrapHandoff(state));
+            handoff);
         ManagedFirstInstallationPlanResult prepared = await experience.PrepareAsync(
             root,
             TestContext.Current.CancellationToken);
@@ -236,19 +236,20 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     {
         string root = Root("source-drift");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(MissingState(), MissingState());
+        using SequencedStateStore state = new(MissingState(), MissingState());
         RecordingCandidateSource source = new(candidate)
         {
             ReverifyIssue = FreshInstallationCandidateIssue.SourceChanged,
         };
         RecordingRootMaterializer materializer = new(state);
-        SetupBootstrapHandoff handoff = new(state);
+        using SetupBootstrapHandoff handoff = new(state);
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(
                 ManagedInstallationRootStatus.Absent,
                 ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             source,
             materializer,
             handoff);
@@ -271,18 +272,19 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
     {
         string root = Root("start-failed");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(MissingState(), MissingState());
+        using SequencedStateStore state = new(MissingState(), MissingState());
         RecordingRootMaterializer materializer = new(state);
-        SetupBootstrapHandoff handoff = new(state)
+        using SetupBootstrapHandoff handoff = new(state)
         {
             StartIssue = ImmutableBootstrapStartIssue.StartFailed,
         };
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(
                 ManagedInstallationRootStatus.Absent,
                 ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             new RecordingCandidateSource(candidate),
             materializer,
             handoff);
@@ -309,16 +311,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests : FirstInsta
         using var cancellation = new CancellationTokenSource();
         string root = Root("record-launch-cancelled");
         FreshInstallationCandidate candidate = Candidate();
-        SequencedStateStore state = new(MissingState(), MissingState());
+        using SequencedStateStore state = new(MissingState(), MissingState());
         RecordingRootMaterializer materializer = new(state);
         materializer.Transaction.RecordLaunchAction = cancellation.Cancel;
-        SetupBootstrapHandoff handoff = new(state);
+        using SetupBootstrapHandoff handoff = new(state);
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(
                 ManagedInstallationRootStatus.Absent,
                 ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             new RecordingCandidateSource(candidate),
             materializer,
             handoff);

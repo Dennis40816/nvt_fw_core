@@ -1,9 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
-using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.TestSupport;
@@ -20,7 +17,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallUsesIndependentDefaultAdmissionBudget()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         ImmutableBootstrapWaitBudget? observed = null;
         harness.Handoff.AdmissionOutcome = ImmutableBootstrapAdmissionOutcome.HealthUnavailable;
@@ -58,7 +55,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallBootstrapLeaseAcquisitionUsesAdmissionBudget()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.Materializer.Transaction.BootstrapLeaseAcquireAction = () =>
             time.Advance(TimeSpan.FromSeconds(31));
@@ -89,7 +86,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallAdmissionBudgetIncludesStartElapsed()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         ImmutableBootstrapWaitBudget? observed = null;
         harness.Handoff.StartAction = () => time.Advance(TimeSpan.FromMilliseconds(600));
@@ -122,7 +119,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     public async Task InstallRejectsReceiptReturnedAfterAdmissionCutoff(
         bool admissionIgnoresCancellation)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.Handoff.StartAction = () => time.Advance(TimeSpan.FromMilliseconds(100));
         harness.Handoff.IgnoreAdmissionCancellation = admissionIgnoresCancellation;
@@ -149,7 +146,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallRollbackDoesNotCompleteFirstInstallation()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.CompletionOutcome = ImmutableBootstrapCompletionOutcome.RolledBack;
         harness.Handoff.CompletionExitCode = 1;
 
@@ -165,7 +162,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallRejectsReadyReturnedAfterCompletionCutoff()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         harness.Handoff.CompletionAction = () => time.Advance(TimeSpan.FromSeconds(1));
         ManagedFirstInstallationExperience experience = Create(
@@ -191,7 +188,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallBootstrapStartHasInternalDeadline()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var handoff = new BlockingStartBootstrapHandoff(harness.State);
         ManagedFirstInstallationExperience experience = Create(
@@ -223,7 +220,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallPreservesBootstrapAdmissionExitReason()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.AdmissionOutcome = ImmutableBootstrapAdmissionOutcome.HealthUnavailable;
         harness.Handoff.AdmissionExitCode = 22;
         harness.Handoff.AdmissionExitIssue = ImmutableBootstrapExitIssue.InvalidInheritedContext;
@@ -245,7 +242,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallPreservesBootstrapCompletionExitReason()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.CompletionOutcome = ImmutableBootstrapCompletionOutcome.Failed;
         harness.Handoff.CompletionExitCode = 15;
         harness.Handoff.CompletionExitIssue = ImmutableBootstrapExitIssue.StartFailed;
@@ -297,7 +294,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
         int? exitCode,
         ImmutableBootstrapExitIssue exitIssue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.AdmissionOutcome = outcome;
         harness.Handoff.AdmissionExitCode = exitCode;
         harness.Handoff.AdmissionExitIssue = exitIssue;
@@ -351,7 +348,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
         int? exitCode,
         ImmutableBootstrapExitIssue exitIssue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.CompletionOutcome = outcome;
         harness.Handoff.CompletionExitCode = exitCode;
         harness.Handoff.CompletionExitIssue = exitIssue;
@@ -463,7 +460,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallAcceptsNoExitTerminationUnconfirmedReceipt()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.AdmissionOutcome = ImmutableBootstrapAdmissionOutcome.TerminationUnconfirmed;
         harness.Handoff.AdmissionExitIssue = ImmutableBootstrapExitIssue.TerminationUnconfirmed;
 
@@ -489,8 +486,8 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
         ImmutableBootstrapStartIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new SetupBootstrapHandoff(harness.State) { StartIssue = issue };
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new SetupBootstrapHandoff(harness.State) { StartIssue = issue };
         ManagedFirstInstallationExperience experience = Create(
             harness.State,
             harness.Roots,
@@ -518,8 +515,8 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallFailsClosedForUndefinedBootstrapStartIssue()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new SetupBootstrapHandoff(harness.State)
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new SetupBootstrapHandoff(harness.State)
         {
             StartIssue = (ImmutableBootstrapStartIssue)999,
         };
@@ -548,8 +545,8 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallFailsClosedForReceiptAttachedToStartIssue()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new MalformedStartBootstrapHandoff(
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new MalformedStartBootstrapHandoff(
             harness.State,
             attachLaunch: true,
             ImmutableBootstrapStartIssue.Busy);
@@ -574,8 +571,8 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallFailsClosedForSuccessfulStartWithoutReceipt()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new MalformedStartBootstrapHandoff(
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new MalformedStartBootstrapHandoff(
             harness.State,
             attachLaunch: false,
             ImmutableBootstrapStartIssue.None);
@@ -600,7 +597,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallDisposesPayloadCaptureAttachedToFailure()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Payload.CaptureIssue = ManagedDistributionPayloadIssue.Unavailable;
         harness.Payload.ReturnCaptureOnFailure = true;
 
@@ -617,7 +614,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallRejectsMissingPayloadCaptureAttachedToSuccess()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Payload.ReturnNullCaptureOnSuccess = true;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -632,7 +629,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallDisposesAndRejectsMismatchedPayloadCapture()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Payload.ReturnMismatchedCapture = true;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -648,7 +645,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallDisposesPromotedInstallationAttachedToFailure()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync(
+        using InstallHarness harness = await CreateInstallHarnessAsync(
             ManagedFirstInstallationMaterializationIssue.StateUnavailable);
         harness.Materializer.ReturnInstallationOnFailure = true;
 
@@ -665,7 +662,7 @@ public sealed partial class ManagedFirstInstallationBootstrapOutcomeTests : Firs
     [Fact]
     public async Task InstallMapsMissingPostReadyStateToRecoveryRequired()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync(finalState: MissingState());
+        using InstallHarness harness = await CreateInstallHarnessAsync(finalState: MissingState());
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
             harness.Plan,

@@ -1,10 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
-
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
@@ -135,8 +132,6 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             return ValueTask.FromResult(_result);
         }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned write-lease result and the coordinator disposes it.")]
         public ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
             TimeSpan waitTimeout,
             CancellationToken cancellationToken)
@@ -167,8 +162,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         }
     }
 
-    private sealed class RecordingBootstrapHandoff : IImmutableBootstrapHandoff
+    private sealed class RecordingBootstrapHandoff : IImmutableBootstrapHandoff, IDisposable
     {
+        public void Dispose() => _lastStart?.Dispose();
+
         private readonly ImmutableBootstrapCompletionOutcome? _completionOutcome;
         private readonly ImmutableBootstrapAdmissionOutcome _admissionOutcome =
             ImmutableBootstrapAdmissionOutcome.Admitted;
@@ -195,7 +192,14 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         // Guard: the scenario driver and awaited signals serialize all accesses.
         internal Action? StartAction { get; set; }
         // Guard: the scenario driver and awaited signals serialize all accesses.
-        private sealed record StartObservation(string Root, ManagedImmutableBootstrapIdentity Identity);
+        private sealed record StartObservation(
+            string Root,
+            ManagedImmutableBootstrapIdentity Identity) : IDisposable
+        {
+            internal ImmediateBootstrapLaunch? Launch { get; init; }
+
+            public void Dispose() => Launch?.Dispose();
+        }
         // Guard: the scenario driver observes this snapshot after start completes.
         private StartObservation? _lastStart;
         internal string? LastRoot => _lastStart?.Root;
@@ -207,8 +211,6 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         // Guard: the scenario driver and awaited signals serialize all accesses.
         internal Action? CompletionAction { get; set; }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned launch receipt and the coordinator disposes it.")]
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
             ManagedImmutableBootstrapIdentity expectedIdentity,
@@ -217,20 +219,26 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             cancellationToken.ThrowIfCancellationRequested();
             StartCount++;
             StartAction?.Invoke();
-            _lastStart = new(managedRoot, expectedIdentity);
-            return ValueTask.FromResult(_completionOutcome is { } completion
-                ? new ImmutableBootstrapStartResult(
-                    new ImmediateBootstrapLaunch(
-                        _admissionOutcome,
-                        completion,
-                        AdmissionAction,
-                        () =>
-                        {
-                            CompletionWaitCount++;
-                            CompletionAction?.Invoke();
-                        }),
-                    ImmutableBootstrapStartIssue.None)
-                : new ImmutableBootstrapStartResult(null, _startIssue));
+            if (_completionOutcome is not { } completion)
+            {
+                _lastStart = new(managedRoot, expectedIdentity);
+                return ValueTask.FromResult(new ImmutableBootstrapStartResult(null, _startIssue));
+            }
+            _lastStart = new(managedRoot, expectedIdentity)
+            {
+                Launch = new ImmediateBootstrapLaunch(
+                    _admissionOutcome,
+                    completion,
+                    AdmissionAction,
+                    () =>
+                    {
+                        CompletionWaitCount++;
+                        CompletionAction?.Invoke();
+                    }),
+            };
+            return ValueTask.FromResult(new ImmutableBootstrapStartResult(
+                _lastStart.Launch,
+                ImmutableBootstrapStartIssue.None));
         }
     }
 
@@ -383,8 +391,13 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         }
     }
 
-    private sealed class DeferredBootstrapHandoff : IImmutableBootstrapHandoff
+    private sealed class DeferredBootstrapHandoff : IImmutableBootstrapHandoff, IDisposable
     {
+        // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+        private DeferredBootstrapLaunch? _ownedLaunch;
+
+        public void Dispose() => _ownedLaunch?.Dispose();
+
         private readonly TaskCompletionSource<ImmutableBootstrapCompletionResult> _completion =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _completionWaitStarted =
@@ -402,19 +415,18 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
                 ImmutableBootstrapExitCodeCodec.Ready));
         }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned launch receipt and the coordinator disposes it.")]
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
             ManagedImmutableBootstrapIdentity expectedIdentity,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _ownedLaunch = new DeferredBootstrapLaunch(
+                _completion.Task,
+                () => _completionWaitStarted.TrySetResult(),
+                () => CompletionWaitCancelled = true);
             return ValueTask.FromResult(new ImmutableBootstrapStartResult(
-                new DeferredBootstrapLaunch(
-                    _completion.Task,
-                    () => _completionWaitStarted.TrySetResult(),
-                    () => CompletionWaitCancelled = true),
+                _ownedLaunch,
                 ImmutableBootstrapStartIssue.None));
         }
     }
@@ -455,8 +467,13 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         }
     }
 
-    private sealed class DeferredAdmissionBootstrapHandoff : IImmutableBootstrapHandoff
+    private sealed class DeferredAdmissionBootstrapHandoff : IImmutableBootstrapHandoff, IDisposable
     {
+        // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+        private DeferredAdmissionBootstrapLaunch? _ownedLaunch;
+
+        public void Dispose() => _ownedLaunch?.Dispose();
+
         private readonly TaskCompletionSource _admissionWaitStarted =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -466,16 +483,15 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         // Guard: the scenario driver and awaited signals serialize all accesses.
         internal int CompletionWaitCount { get; private set; }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned launch receipt and the coordinator disposes it.")]
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
             ManagedImmutableBootstrapIdentity expectedIdentity,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _ownedLaunch = new DeferredAdmissionBootstrapLaunch(this);
             return ValueTask.FromResult(new ImmutableBootstrapStartResult(
-                new DeferredAdmissionBootstrapLaunch(this),
+                _ownedLaunch,
                 ImmutableBootstrapStartIssue.None));
         }
 
@@ -518,21 +534,25 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     private sealed class TwoAttemptBootstrapHandoff(
         ManualTimeProvider timeProvider,
         TimeSpan attemptDuration)
-        : IImmutableBootstrapHandoff
+        : IImmutableBootstrapHandoff, IDisposable
     {
+        // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+        private TwoAttemptBootstrapLaunch? _ownedLaunch;
+
+        public void Dispose() => _ownedLaunch?.Dispose();
+
         // Guard: the scenario driver and awaited signals serialize all accesses.
         internal int CompletedAttemptCount { get; private set; }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned launch receipt and the coordinator disposes it.")]
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
             ManagedImmutableBootstrapIdentity expectedIdentity,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _ownedLaunch = new TwoAttemptBootstrapLaunch(this, timeProvider, attemptDuration);
             return ValueTask.FromResult(new ImmutableBootstrapStartResult(
-                new TwoAttemptBootstrapLaunch(this, timeProvider, attemptDuration),
+                _ownedLaunch,
                 ImmutableBootstrapStartIssue.None));
         }
 

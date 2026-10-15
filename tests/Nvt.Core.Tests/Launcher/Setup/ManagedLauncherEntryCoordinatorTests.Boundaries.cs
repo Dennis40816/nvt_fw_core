@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Nvt.Core.Launcher.Activation;
-using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.TestSupport;
@@ -20,7 +19,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         string root = Root("duration-guards");
         var state = new EntryStateStore(BoundState(root));
         var probe = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         TimeSpan invalid = TimeSpan.FromTicks(ticks);
         Assert.Equal("admissionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
             Create(root, state, probe, handoff, admissionDeadline: invalid)).ParamName);
@@ -35,9 +34,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     public void ConstructorAcceptsOneTickDurationOverrides()
     {
         string root = Root("one-tick");
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         Assert.NotNull(Create(root, new EntryStateStore(BoundState(root)),
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready),
+            handoff,
             TimeSpan.FromTicks(1), TimeSpan.FromTicks(1), TimeSpan.FromTicks(1)));
     }
 
@@ -50,7 +50,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     {
         string root = Root("health-boundary");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, new EntryStateStore(BoundState(root)),
             new AdvancingRootProbe(time, TimeSpan.FromMilliseconds(milliseconds)), handoff, timeProvider: time);
 
@@ -69,7 +69,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     {
         string root = Root("admission-boundary");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
         {
             AdmissionAction = () => time.Advance(TimeSpan.FromMilliseconds(milliseconds)),
         };
@@ -79,7 +79,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.Outcome);
-        Assert.Equal(TimeSpan.FromMilliseconds(milliseconds), result.TotalElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        Assert.Equal(TimeSpan.FromMilliseconds(milliseconds), totalDuration);
         Assert.Equal(1, handoff.CompletionWaitCount);
     }
 
@@ -93,7 +94,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     {
         string root = Root("cleanup-boundary");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Unavailable)
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Unavailable)
         {
             AdmissionAction = () => time.Advance(TimeSpan.FromMilliseconds(milliseconds)),
         };
@@ -115,7 +116,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     {
         string root = Root("completion-boundary");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
         {
             CompletionAction = () => time.Advance(TimeSpan.FromMilliseconds(milliseconds)),
         };
@@ -125,8 +126,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.Outcome);
-        Assert.Equal(TimeSpan.FromMilliseconds(milliseconds), result.TotalElapsed);
-        Assert.Equal(TimeSpan.Zero, result.AdmissionElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.Equal(TimeSpan.FromMilliseconds(milliseconds), totalDuration);
+        Assert.Equal(TimeSpan.Zero, admissionDuration);
     }
 
     /// <summary>Frozen entry normalization accepts relative defaults; plan admission has a separate absolute-root guard.</summary>
@@ -136,7 +139,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     public async Task RelativeDefaultRootIsNormalizedBeforeObservation(string root)
     {
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Absent);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, new EntryStateStore(state: null), roots, handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);

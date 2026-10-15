@@ -15,12 +15,13 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
         var trace = new List<string>();
         string root = Root("trace");
         FreshInstallationCandidate candidate = Candidate();
-        var state = new SequencedStateStore(MissingState(), MissingState(), BoundState(root, candidate)) { Observe = trace.Add };
+        using var state = new SequencedStateStore(MissingState(), MissingState(), BoundState(root, candidate)) { Observe = trace.Add };
         var roots = new SequencedRootProbe(ManagedInstallationRootStatus.Absent, ManagedInstallationRootStatus.Absent) { Observe = trace.Add };
-        var payload = new RecordingPayloadSource(PayloadIdentity()) { Observe = trace.Add };
+        using var payload = new RecordingPayloadSource(PayloadIdentity()) { Observe = trace.Add };
         var source = new RecordingCandidateSource(candidate) { Observe = trace.Add };
         var materializer = new RecordingRootMaterializer(state) { Observe = trace.Add };
-        ManagedFirstInstallationExperience experience = Create(state, roots, payload, source, materializer, new SetupBootstrapHandoff(state));
+        using var handoff = new SetupBootstrapHandoff(state);
+        ManagedFirstInstallationExperience experience = Create(state, roots, payload, source, materializer, handoff);
         ManagedFirstInstallationPlanResult prepared = await experience.PrepareAsync(root, TestContext.Current.CancellationToken);
 
         ManagedFirstInstallationResult result = await experience.InstallAndLaunchAsync(
@@ -43,7 +44,7 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
         string failingOperation,
         string operationTrace)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var trace = new List<string>();
         var failure = new IOException("Injected post-promotion failure.");
         harness.State.Observe = operation =>
@@ -57,8 +58,8 @@ public sealed class FirstInstallationTraceTests : FirstInstallationTestSupport
         };
         harness.Payload.Observe = trace.Add;
 
-        IOException actual = await Assert.ThrowsAsync<IOException>(async () =>
-            await harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken));
+        IOException actual = await Assert.ThrowsAsync<IOException>(() =>
+            harness.Experience.InstallAndLaunchAsync(harness.Plan, TestContext.Current.CancellationToken).AsTask());
 
         Assert.Same(failure, actual);
         Assert.Equal(

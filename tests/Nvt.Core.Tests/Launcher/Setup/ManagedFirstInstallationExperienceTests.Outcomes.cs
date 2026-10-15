@@ -2,11 +2,9 @@
 
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
-using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
@@ -17,16 +15,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [Fact]
     public async Task PrepareAlreadyCancelledTouchesNoPayloadOrCandidate()
     {
-        SequencedStateStore state = new(MissingState());
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using SequencedStateStore state = new(MissingState());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent),
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
         using var cancellation = new CancellationTokenSource();
         Cancel(cancellation);
 
@@ -50,17 +49,18 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         VersionManagerStateLoadIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        SequencedStateStore state = new(new VersionManagerStateLoadResult(null, issue));
+        using SequencedStateStore state = new(new VersionManagerStateLoadResult(null, issue));
         SequencedRootProbe roots = new(ManagedInstallationRootStatus.Absent);
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             roots,
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root($"prepare-state-{issue}"),
@@ -76,17 +76,18 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [Fact]
     public async Task PrepareInvalidDestinationTouchesNoAdapter()
     {
-        SequencedStateStore state = new(MissingState());
+        using SequencedStateStore state = new(MissingState());
         SequencedRootProbe roots = new(ManagedInstallationRootStatus.Absent);
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             roots,
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             "relative-root",
@@ -103,17 +104,18 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [Fact]
     public async Task PrepareOverlongDestinationTouchesNoAdapter()
     {
-        SequencedStateStore state = new(MissingState());
+        using SequencedStateStore state = new(MissingState());
         SequencedRootProbe roots = new(ManagedInstallationRootStatus.Absent);
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             roots,
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
         string destination = $"C:\\{new string('x', 40000)}";
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
@@ -138,16 +140,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedInstallationRootStatus status,
         ManagedFirstInstallationOutcome expected)
     {
-        SequencedStateStore state = new(MissingState());
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using SequencedStateStore state = new(MissingState());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(status),
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root($"prepare-root-{status}"),
@@ -168,17 +171,18 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedFirstInstallationMaterializationIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        SequencedStateStore state = new(MissingState());
-        RecordingPayloadSource payload = new(PayloadIdentity());
+        using SequencedStateStore state = new(MissingState());
+        using RecordingPayloadSource payload = new(PayloadIdentity());
         RecordingCandidateSource candidate = new(Candidate());
         var materializer = new RecordingRootMaterializer(state) { AdmissionIssue = issue };
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent),
             payload,
             candidate,
             materializer,
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root($"prepare-admission-{issue}"),
@@ -199,16 +203,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedDistributionPayloadIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        SequencedStateStore state = new(MissingState());
-        RecordingPayloadSource payload = new(PayloadIdentity()) { InspectIssue = issue };
+        using SequencedStateStore state = new(MissingState());
+        using RecordingPayloadSource payload = new(PayloadIdentity()) { InspectIssue = issue };
         RecordingCandidateSource candidate = new(Candidate());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent),
             payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root($"prepare-payload-{issue}"),
@@ -230,15 +235,17 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         FreshInstallationCandidateIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        SequencedStateStore state = new(MissingState());
+        using SequencedStateStore state = new(MissingState());
         RecordingCandidateSource candidate = new(Candidate()) { InspectIssue = issue };
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(
             state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent),
-            new RecordingPayloadSource(PayloadIdentity()),
+            payload,
             candidate,
             new RecordingRootMaterializer(state),
-            new SetupBootstrapHandoff(state));
+            handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root($"prepare-candidate-{issue}"),
@@ -261,7 +268,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedFirstInstallationMaterializationIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync(issue);
+        using InstallHarness harness = await CreateInstallHarnessAsync(issue);
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
             harness.Plan,
@@ -280,7 +287,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         VersionManagerWriteLeaseIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.State.LeaseIssue = issue;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -302,7 +309,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedFirstInstallationMaterializationIssue issue,
         ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.AdmissionIssue = issue;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -328,7 +335,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ImmutableBootstrapAdmissionOutcome admission,
         ManagedFirstInstallationOutcome expected)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync(admissionOutcome: admission);
+        using InstallHarness harness = await CreateInstallHarnessAsync(admissionOutcome: admission);
         int? exitCode;
         ImmutableBootstrapExitIssue exitIssue;
         switch (admission)
@@ -385,8 +392,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallBootstrapCancellationWithoutTypedCleanupIsLaunchFailure(bool duringAdmission)
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var cancellingHandoff = new CancellingBootstrapHandoff(
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var cancellingHandoff = new CancellingBootstrapHandoff(
             harness.State,
             cancellation,
             duringAdmission);
@@ -421,7 +428,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallBootstrapStartCancellationRetainsExactStage()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var handoff = new CancellingThrowingStartHandoff(harness.State, cancellation);
         ManagedFirstInstallationExperience experience = Create(
             harness.State,
@@ -448,8 +455,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallReportsPromotedRootWhenAdapterReturnsTypedFailureAfterCancellingCaller()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new TypedFailureCancellingHandoff(harness.State, cancellation);
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new TypedFailureCancellingHandoff(harness.State, cancellation);
         ManagedFirstInstallationExperience experience = Create(
             harness.State,
             harness.Roots,
@@ -472,8 +479,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallOwnsStartReceiptBeforeCallerCancellationWins()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new CancellingStartBootstrapHandoff(harness.State, cancellation);
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new CancellingStartBootstrapHandoff(harness.State, cancellation);
         ManagedFirstInstallationExperience experience = Create(
             harness.State,
             harness.Roots,
@@ -497,8 +504,8 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallCancellationCannotHideMalformedStartReceipt()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
-        var handoff = new MalformedStartBootstrapHandoff(
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        using var handoff = new MalformedStartBootstrapHandoff(
             harness.State,
             attachLaunch: true,
             ImmutableBootstrapStartIssue.StartFailed,
@@ -525,7 +532,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallCancellationCannotHideTerminationUnconfirmed()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.AdmissionOutcome = ImmutableBootstrapAdmissionOutcome.TerminationUnconfirmed;
         harness.Handoff.AdmissionExitIssue = ImmutableBootstrapExitIssue.TerminationUnconfirmed;
         harness.Handoff.AdmissionAction = cancellation.Cancel;
@@ -543,7 +550,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallReadyWinsConcurrentCallerCancellation()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.CompletionAction = cancellation.Cancel;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -559,7 +566,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [Fact]
     public async Task InstallFinalizeBusyIsRecoveryAndCannotStartAgain()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.State.SecondLeaseIssue = VersionManagerWriteLeaseIssue.Busy;
 
         ManagedFirstInstallationResult first = await harness.Experience.InstallAndLaunchAsync(
@@ -584,7 +591,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task PostPromotionRecordFailureRetainsExactRecoveryReason(
         ManagedFirstInstallationTransactionIssue issue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.RecordLaunchIssue = issue;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -623,7 +630,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
         ManagedFirstInstallationOutcome expectedOutcome,
         ManagedFirstInstallationLaunchIssue expectedLaunchIssue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.BootstrapLeaseIssue = leaseIssue;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -650,7 +657,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [InlineData(true)]
     public async Task InstallRejectsMalformedBootstrapLeaseReceipt(bool attachLease)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         RecordingExecutableLaunchLease? issuedLease = null;
         try
         {
@@ -693,7 +700,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallBootstrapLeaseAcquisitionCancellationRetainsRecoveryMarker()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.BootstrapLeaseAcquireAction = cancellation.Cancel;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -719,7 +726,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     public async Task InstallDisposesBootstrapLeaseWhenCallerCancelsAfterAcquisition()
     {
         using var cancellation = new CancellationTokenSource();
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.BootstrapLeaseAcquiredAction = cancellation.Cancel;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -745,7 +752,7 @@ public sealed partial class ManagedFirstInstallationExperienceTests
     [Fact]
     public async Task PostReadyCompletionFailureIsRecoveryOwned()
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Materializer.Transaction.CompleteIssue =
             ManagedFirstInstallationTransactionIssue.StateUnavailable;
 

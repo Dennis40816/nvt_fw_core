@@ -74,9 +74,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             AdmissionOverride = new(ManagedAppVersion.Parse("1.0.4"), null, ManagedDistributionPayloadIssue.None),
         };
         var state = new EntryStateStore(BoundState(root));
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, state,
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready), payloadSource: payload);
+            handoff, payloadSource: payload);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             coordinator.RunAsync(TestContext.Current.CancellationToken).AsTask());
@@ -95,9 +96,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             AdmissionOverride = new(ManagedAppVersion.Parse("1.0.4"), _bootstrap, ManagedDistributionPayloadIssue.Invalid),
         };
         var state = new EntryStateStore(BoundState(root));
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, state,
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready), payloadSource: payload);
+            handoff, payloadSource: payload);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
 

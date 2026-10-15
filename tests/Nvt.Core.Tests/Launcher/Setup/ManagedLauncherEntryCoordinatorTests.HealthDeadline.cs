@@ -1,10 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
-
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
@@ -24,7 +21,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         var payload = new PendingPayloadSource();
         var state = new EntryStateStore(BoundState(root));
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -64,7 +61,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         };
         var state = new PendingStateStore();
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -104,7 +101,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             AdmissionAction = () => time.Advance(TimeSpan.FromMilliseconds(200)),
         };
         var roots = new PendingRootProbe();
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -140,7 +137,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var state = new PendingStateStore();
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -179,7 +176,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         string root = Root("uncooperative-root");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var roots = new PendingRootProbe();
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -212,7 +209,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         string root = Root("in-flight-cancel");
         using var cancellation = new CancellationTokenSource();
         var state = new PendingStateStore();
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -235,7 +232,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
     {
         string root = Root("health-retired-before-bootstrap");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new ControlledAdmissionHandoff();
+        using var handoff = new ControlledAdmissionHandoff();
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -389,12 +386,17 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         }
     }
 
-    private sealed class ControlledAdmissionHandoff : IImmutableBootstrapHandoff
+    private sealed class ControlledAdmissionHandoff : IImmutableBootstrapHandoff, IDisposable
     {
         private readonly TaskCompletionSource<ImmutableBootstrapAdmissionResult> _admission =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource _admissionStarted =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+        private ControlledAdmissionLaunch? _ownedLaunch;
+
+        public void Dispose() => _ownedLaunch?.Dispose();
 
         internal Task AdmissionStarted => _admissionStarted.Task;
         // Guard: the scenario driver and awaited signals serialize all accesses.
@@ -405,16 +407,15 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             _ = _admission.TrySetResult(new(ImmutableBootstrapAdmissionOutcome.Admitted));
         }
 
-        [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-            "Ownership transfers into the returned launch receipt and the coordinator disposes it.")]
         public ValueTask<ImmutableBootstrapStartResult> StartAsync(
             string managedRoot,
             ManagedImmutableBootstrapIdentity expectedIdentity,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _ownedLaunch = new ControlledAdmissionLaunch(this);
             return ValueTask.FromResult(new ImmutableBootstrapStartResult(
-                new ControlledAdmissionLaunch(this),
+                _ownedLaunch,
                 ImmutableBootstrapStartIssue.None));
         }
 

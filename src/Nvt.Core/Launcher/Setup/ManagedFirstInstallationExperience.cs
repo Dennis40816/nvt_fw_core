@@ -3,8 +3,6 @@
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Transport;
 
-using System.Diagnostics.CodeAnalysis;
-
 using static Nvt.Core.Launcher.Setup.FirstInstallationOutcomes;
 
 namespace Nvt.Core.Launcher.Setup;
@@ -150,18 +148,15 @@ public sealed class ManagedFirstInstallationExperience
         private readonly IProgress<ManagedFirstInstallationProgress> _inner = inner ??
             throw new ArgumentNullException(nameof(inner));
 
-        [SuppressMessage(
-            "Design",
-            "CA1031:Do not catch general exception types",
-            Justification = "Presentation progress is explicitly non-authoritative and cannot change installation.")]
         public void Report(ManagedFirstInstallationProgress value)
         {
             try
             {
                 _inner.Report(value);
             }
-            catch (Exception)
+            catch (Exception exception) when (SetupObserverExceptions.IsObservedAndIgnored(exception))
             {
+                // Presentation progress is non-authoritative and must never change installation.
             }
         }
     }

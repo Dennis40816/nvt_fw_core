@@ -3,7 +3,6 @@
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
-using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
 using Nvt.Core.TestSupport;
@@ -33,7 +32,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         var payload = new EntryPayloadSource { AdmissionIssue = issue };
         var state = new EntryStateStore(BoundState(root));
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -62,7 +61,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         };
         var state = new EntryStateStore(BoundState(root));
         var roots = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             state,
@@ -86,7 +85,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         string root = Root("healthy");
         EntryStateStore state = new(BoundState(root));
         RecordingRootProbe roots = new(ManagedInstallationRootStatus.Present);
-        RecordingBootstrapHandoff handoff = new(ImmutableBootstrapCompletionOutcome.Ready);
+        using RecordingBootstrapHandoff handoff = new(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, state, roots, handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
@@ -109,7 +108,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         string root = Root("absent");
         EntryStateStore state = new(state: null);
         RecordingRootProbe roots = new(ManagedInstallationRootStatus.Absent);
-        RecordingBootstrapHandoff handoff = new(ImmutableBootstrapCompletionOutcome.Ready);
+        using RecordingBootstrapHandoff handoff = new(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(root, state, roots, handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
@@ -130,11 +129,12 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedInstallationRootStatus rootStatus)
     {
         string root = Root(rootStatus.ToString());
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(state: null),
             new RecordingRootProbe(rootStatus),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready));
+            handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
             TestContext.Current.CancellationToken);
@@ -152,11 +152,12 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryOutcome expected)
     {
         string root = Root(issue.ToString());
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(issue),
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready));
+            handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
             TestContext.Current.CancellationToken);
@@ -177,7 +178,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryOutcome expected)
     {
         string root = Root($"bound-{rootStatus}");
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -202,11 +203,12 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryOutcome expected)
     {
         string root = Root(handoffOutcome.ToString());
+        using var handoff = new RecordingBootstrapHandoff(handoffOutcome);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(handoffOutcome));
+            handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
             TestContext.Current.CancellationToken);
@@ -227,7 +229,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryOutcome expected)
     {
         string root = Root($"admission-{admissionOutcome}");
-        var handoff = new RecordingBootstrapHandoff(admissionOutcome);
+        using var handoff = new RecordingBootstrapHandoff(admissionOutcome);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -238,7 +240,9 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
             TestContext.Current.CancellationToken);
 
         Assert.Equal(expected, result.Outcome);
-        Assert.Equal(result.TotalElapsed, result.AdmissionElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.Equal(totalDuration, admissionDuration);
         Assert.Equal(0, handoff.CompletionWaitCount);
     }
 
@@ -253,11 +257,12 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryOutcome expected)
     {
         string root = Root(startIssue.ToString());
+        using var handoff = new RecordingBootstrapHandoff(startIssue);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff(startIssue));
+            handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
             TestContext.Current.CancellationToken);
@@ -271,11 +276,12 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     public async Task UndefinedBootstrapStartIssueFailsClosed()
     {
         string root = Root("undefined-start-issue");
+        using var handoff = new RecordingBootstrapHandoff((ImmutableBootstrapStartIssue)999);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
-            new RecordingBootstrapHandoff((ImmutableBootstrapStartIssue)999));
+            handoff);
 
         ManagedLauncherEntryResult result = await coordinator.RunAsync(
             TestContext.Current.CancellationToken);
@@ -331,7 +337,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("slow-ready");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new DeferredBootstrapHandoff();
+        using var handoff = new DeferredBootstrapHandoff();
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -351,8 +357,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         handoff.Complete(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryResult result = await running;
         Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
-        Assert.Equal(TimeSpan.FromMilliseconds(75), result.TotalElapsed);
-        Assert.True(result.AdmissionElapsed < result.TotalElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.Equal(TimeSpan.FromMilliseconds(75), totalDuration);
+        Assert.True(admissionDuration < totalDuration);
         Assert.False(handoff.CompletionWaitCancelled);
     }
 
@@ -366,7 +374,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         string root = Root("late-admission");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var payload = new PendingPayloadSource();
-        var handoff = new DeferredAdmissionBootstrapHandoff();
+        using var handoff = new DeferredAdmissionBootstrapHandoff();
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(BoundState(root)),
@@ -392,8 +400,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
         Assert.True(handoff.AdmissionWaitStarted.IsCompletedSuccessfully);
         Assert.Equal(root, result.ManagedRoot);
-        Assert.True(result.AdmissionElapsed > TimeSpan.Zero);
-        Assert.Equal(result.TotalElapsed, result.AdmissionElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.True(admissionDuration > TimeSpan.Zero);
+        Assert.Equal(totalDuration, admissionDuration);
         Assert.True(handoff.AdmissionWaitCancelled);
         Assert.Equal(0, handoff.CompletionWaitCount);
     }
@@ -403,7 +413,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     public async Task ReadyCompletionDeadlineIsIndependentAndFailsClosed()
     {
         string root = Root("completion-timeout");
-        var handoff = new DeferredBootstrapHandoff();
+        using var handoff = new DeferredBootstrapHandoff();
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
@@ -419,7 +429,9 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         ManagedLauncherEntryResult result = await running.WaitAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
-        Assert.True(result.AdmissionElapsed < result.TotalElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.True(admissionDuration < totalDuration);
         Assert.True(handoff.CompletionWaitCancelled);
     }
 
@@ -429,7 +441,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("candidate-timeout-rollback-ready");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new TwoAttemptBootstrapHandoff(
+        using var handoff = new TwoAttemptBootstrapHandoff(
             time,
             TimeSpan.FromMilliseconds(30));
         ManagedLauncherEntryCoordinator coordinator = Create(
@@ -446,8 +458,10 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
 
         Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
         Assert.Equal(2, handoff.CompletedAttemptCount);
-        Assert.Equal(TimeSpan.FromMilliseconds(60), result.TotalElapsed);
-        Assert.True(result.AdmissionElapsed < result.TotalElapsed);
+        TimeSpan totalDuration = result.TotalElapsed;
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.Equal(TimeSpan.FromMilliseconds(60), totalDuration);
+        Assert.True(admissionDuration < totalDuration);
     }
 
     /// <summary>The local hard deadline fails closed and starts no Setup flow.</summary>
@@ -457,7 +471,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         string root = Root("timeout");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
         var roots = new PendingRootProbe();
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(state: null),
@@ -484,14 +498,15 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         string root = Root("cancel");
         using CancellationTokenSource cancellation = new();
         Cancel(cancellation);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
         ManagedLauncherEntryCoordinator coordinator = Create(
             root,
             new EntryStateStore(state: null),
             new RecordingRootProbe(ManagedInstallationRootStatus.Absent),
-            new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready));
+            handoff);
 
-        OperationCanceledException _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await coordinator.RunAsync(cancellation.Token));
+        OperationCanceledException _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            coordinator.RunAsync(cancellation.Token).AsTask());
     }
 
     /// <summary>Caller cancellation after start owns and disposes any attached receipt first.</summary>
@@ -507,8 +522,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
             handoff);
 
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await coordinator.RunAsync(cancellation.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            coordinator.RunAsync(cancellation.Token).AsTask());
 
         Assert.True(handoff.Launch.Disposed);
         Assert.Equal(1, handoff.Launch.AdmissionWaitCount);
@@ -565,7 +580,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("cancel-after-admission");
         using var cancellation = new CancellationTokenSource();
-        var handoff = new RecordingBootstrapHandoff(
+        using var handoff = new RecordingBootstrapHandoff(
             ImmutableBootstrapCompletionOutcome.Unavailable)
         {
             AdmissionAction = cancellation.Cancel,
@@ -576,8 +591,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
             new RecordingRootProbe(ManagedInstallationRootStatus.Present),
             handoff);
 
-        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-            await coordinator.RunAsync(cancellation.Token));
+        _ = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            coordinator.RunAsync(cancellation.Token).AsTask());
 
         Assert.Equal(1, handoff.CompletionWaitCount);
     }
@@ -588,7 +603,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("late-admission-cleanup");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(
+        using var handoff = new RecordingBootstrapHandoff(
             ImmutableBootstrapCompletionOutcome.Unavailable)
         {
             AdmissionAction = () => time.Advance(TimeSpan.FromSeconds(1)),
@@ -614,7 +629,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("cold-bootstrap-verification");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
         {
             StartAction = () => time.Advance(TimeSpan.FromSeconds(2)),
         };
@@ -629,7 +644,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
             TestContext.Current.CancellationToken);
 
         Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
-        Assert.Equal(TimeSpan.FromSeconds(2), result.AdmissionElapsed);
+        TimeSpan admissionDuration = result.AdmissionElapsed;
+        Assert.Equal(TimeSpan.FromSeconds(2), admissionDuration);
         Assert.Equal(1, handoff.StartCount);
     }
 
@@ -639,7 +655,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root("late-ready");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
-        var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
         {
             CompletionAction = () => time.Advance(TimeSpan.FromSeconds(1)),
         };
@@ -668,7 +684,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     {
         string root = Root($"accepted-{completion}");
         using var cancellation = new CancellationTokenSource();
-        var handoff = new RecordingBootstrapHandoff(completion)
+        using var handoff = new RecordingBootstrapHandoff(completion)
         {
             CompletionAction = cancellation.Cancel,
         };

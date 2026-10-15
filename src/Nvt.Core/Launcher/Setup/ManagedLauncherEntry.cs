@@ -529,9 +529,8 @@ public sealed class ManagedLauncherEntryCoordinator
         Func<CancellationToken, ValueTask<T>> observe,
         CancellationToken cancellationToken)
     {
-        Task<T> pending = Task.Run(
-            async () => await observe(cancellationToken).ConfigureAwait(false),
-            CancellationToken.None);
+        Func<Task<T>> run = () => observe(cancellationToken).AsTask();
+        Task<T> pending = Task.Run(run, CancellationToken.None);
         try
         {
             return await pending.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -543,15 +542,13 @@ public sealed class ManagedLauncherEntryCoordinator
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031:Do not catch general exception types",
-        Justification = "An abandoned read-only observation cannot change the already returned timeout or cancellation.")]
     private static async Task ObserveAbandonedReadOnlyTaskAsync(Task pending)
     {
         try
         {
             await pending.WaitAsync(CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception exception) when (SetupObserverExceptions.IsObservedAndIgnored(exception))
         {
             // The caller has already returned a typed timeout/cancellation result.
         }

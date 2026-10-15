@@ -1,14 +1,8 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
-
-using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
-using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
-using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
@@ -16,22 +10,36 @@ namespace Nvt.Core.Tests.Launcher.Setup;
 using static Nvt.Core.Tests.Launcher.Setup.FirstInstallationTestSupport;
 using static Nvt.Core.Tests.Launcher.Setup.SetupTestWorkspace;
 
-internal sealed record InstallHarness(
-    ManagedFirstInstallationExperience Experience,
-    ManagedFirstInstallationPlan Plan,
-    SequencedStateStore State,
-    SequencedRootProbe Roots,
-    RecordingPayloadSource Payload,
-    RecordingCandidateSource CandidateSource,
-    RecordingRootMaterializer Materializer,
-    SetupBootstrapHandoff Handoff);
+internal sealed record InstallHarness : IDisposable
+{
+    internal required ManagedFirstInstallationExperience Experience { get; init; }
+    internal required ManagedFirstInstallationPlan Plan { get; init; }
+    internal required SequencedStateStore State { get; init; }
+    internal required SequencedRootProbe Roots { get; init; }
+    internal required RecordingPayloadSource Payload { get; init; }
+    internal required RecordingCandidateSource CandidateSource { get; init; }
+    internal required RecordingRootMaterializer Materializer { get; init; }
+    internal required SetupBootstrapHandoff Handoff { get; init; }
+
+    public void Dispose()
+    {
+        Handoff.Dispose();
+        Payload.Dispose();
+        State.Dispose();
+    }
+}
 
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
 internal sealed class CancellingBootstrapHandoff(
     SequencedStateStore state,
     CancellationTokenSource cancellation,
-    bool duringAdmission) : IImmutableBootstrapLeaseHandoff
+    bool duringAdmission) : IImmutableBootstrapLeaseHandoff, IDisposable
 {
+    // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+    private LeaseOwningBootstrapLaunch? _ownedLaunch;
+
+    public void Dispose() => _ownedLaunch?.Dispose();
+
     internal CancellingBootstrapLaunch Launch { get; } = new(cancellation, duringAdmission);
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
@@ -42,7 +50,8 @@ internal sealed class CancellingBootstrapHandoff(
     {
         cancellationToken.ThrowIfCancellationRequested();
         Assert.False(state.LeaseActive);
-        return ValueTask.FromResult(StartResultOwningLease(Launch, ownedLease));
+        _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
+        return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
     }
 }
 
@@ -96,8 +105,13 @@ internal sealed class CancellingBootstrapLaunch(
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
 internal sealed class TypedFailureCancellingHandoff(
     SequencedStateStore state,
-    CancellationTokenSource cancellation) : IImmutableBootstrapLeaseHandoff
+    CancellationTokenSource cancellation) : IImmutableBootstrapLeaseHandoff, IDisposable
 {
+    // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+    private LeaseOwningBootstrapLaunch? _ownedLaunch;
+
+    public void Dispose() => _ownedLaunch?.Dispose();
+
     internal TypedFailureCancellingLaunch Launch { get; } = new(cancellation);
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
@@ -107,7 +121,8 @@ internal sealed class TypedFailureCancellingHandoff(
         CancellationToken cancellationToken)
     {
         Assert.False(state.LeaseActive);
-        return ValueTask.FromResult(StartResultOwningLease(Launch, ownedLease));
+        _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
+        return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
     }
 }
 
@@ -142,8 +157,13 @@ internal sealed class TypedFailureCancellingLaunch(CancellationTokenSource cance
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
 internal sealed class CancellingStartBootstrapHandoff(
     SequencedStateStore state,
-    CancellationTokenSource cancellation) : IImmutableBootstrapLeaseHandoff
+    CancellationTokenSource cancellation) : IImmutableBootstrapLeaseHandoff, IDisposable
 {
+    // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+    private LeaseOwningBootstrapLaunch? _ownedLaunch;
+
+    public void Dispose() => _ownedLaunch?.Dispose();
+
     internal TrackingBootstrapLaunch Launch { get; } = new();
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
@@ -154,7 +174,8 @@ internal sealed class CancellingStartBootstrapHandoff(
     {
         Assert.False(state.LeaseActive);
         Cancel(cancellation);
-        return ValueTask.FromResult(StartResultOwningLease(Launch, ownedLease));
+        _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
+        return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch));
     }
 }
 
@@ -163,8 +184,13 @@ internal sealed class MalformedStartBootstrapHandoff(
     SequencedStateStore state,
     bool attachLaunch,
     ImmutableBootstrapStartIssue issue,
-    CancellationTokenSource? cancellation = null) : IImmutableBootstrapLeaseHandoff
+    CancellationTokenSource? cancellation = null) : IImmutableBootstrapLeaseHandoff, IDisposable
 {
+    // Guard: the scenario driver and awaited signals serialize creation and cleanup.
+    private LeaseOwningBootstrapLaunch? _ownedLaunch;
+
+    public void Dispose() => _ownedLaunch?.Dispose();
+
     internal TrackingBootstrapLaunch Launch { get; } = new();
 
     public ValueTask<ImmutableBootstrapStartResult> StartAsync(
@@ -178,7 +204,8 @@ internal sealed class MalformedStartBootstrapHandoff(
         Cancel(cancellation);
         if (attachLaunch)
         {
-            return ValueTask.FromResult(StartResultOwningLease(Launch, ownedLease, issue));
+            _ownedLaunch = new LeaseOwningBootstrapLaunch(Launch, ownedLease);
+            return ValueTask.FromResult(StartResultOwningLease(_ownedLaunch, issue));
         }
         ownedLease.Dispose();
         return ValueTask.FromResult(new ImmutableBootstrapStartResult(null, issue));

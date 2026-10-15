@@ -33,7 +33,7 @@ public sealed class FirstInstallationAdmissionInvariantTests : FirstInstallation
     [InlineData(ImmutableBootstrapAdmissionOutcome.TerminationUnconfirmed)]
     public async Task InstallRejectsIssueFreeAdmissionFailure(ImmutableBootstrapAdmissionOutcome outcome)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         harness.Handoff.AdmissionOutcome = outcome;
 
         ManagedFirstInstallationResult result = await harness.Experience.InstallAndLaunchAsync(
@@ -69,7 +69,7 @@ public sealed class FirstInstallationAdmissionInvariantTests : FirstInstallation
     [InlineData(int.MaxValue)]
     public async Task InstallAcceptsEveryTransportAdmissionFailure(int exitCode)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         ImmutableBootstrapExitIssue issue = ImmutableBootstrapExitCodeCodec.DecodeFailure(exitCode);
         var receipt = new ImmutableBootstrapAdmissionResult(
             ImmutableBootstrapExitCodeCodec.ClassifyAdmission(issue), exitCode, issue);
@@ -101,7 +101,7 @@ public sealed class FirstInstallationAdmissionInvariantTests : FirstInstallation
         ImmutableBootstrapAdmissionOutcome outcome, ImmutableBootstrapExitIssue exitIssue,
         ManagedFirstInstallationLaunchIssue expectedIssue)
     {
-        InstallHarness harness = await CreateInstallHarnessAsync();
+        using InstallHarness harness = await CreateInstallHarnessAsync();
         var receipt = new ImmutableBootstrapAdmissionResult(outcome, ExitIssue: exitIssue);
         harness.Handoff.AdmissionOutcome = receipt.Outcome;
         harness.Handoff.AdmissionExitIssue = receipt.ExitIssue;

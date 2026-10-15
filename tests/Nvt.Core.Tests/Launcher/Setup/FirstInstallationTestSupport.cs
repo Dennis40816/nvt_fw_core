@@ -1,10 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
-
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
-using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Transport;
@@ -127,14 +124,11 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
         return Path.Combine(Root("state"), "version-manager.v1.json");
     }
 
-    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-        "Ownership transfers through the returned Bootstrap start receipt and its launch wrapper.")]
     internal static ImmutableBootstrapStartResult StartResultOwningLease(
-        IImmutableBootstrapLaunch launch,
-        IManagedExecutableLaunchLease ownedLease,
+        LeaseOwningBootstrapLaunch ownedLaunch,
         ImmutableBootstrapStartIssue issue = ImmutableBootstrapStartIssue.None)
     {
-        return new(new LeaseOwningBootstrapLaunch(launch, ownedLease), issue);
+        return new(ownedLaunch, issue);
     }
 
     internal async Task<InstallHarness> CreateInstallHarnessAsync(
@@ -167,15 +161,17 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
         ManagedFirstInstallationPlanResult prepared = await experience.PrepareAsync(
             root,
             TestContext.Current.CancellationToken);
-        return new(
-            experience,
-            Assert.IsType<ManagedFirstInstallationPlan>(prepared.Plan),
-            state,
-            roots,
-            payload,
-            source,
-            materializer,
-            handoff);
+        return new()
+        {
+            Experience = experience,
+            Plan = Assert.IsType<ManagedFirstInstallationPlan>(prepared.Plan),
+            State = state,
+            Roots = roots,
+            Payload = payload,
+            CandidateSource = source,
+            Materializer = materializer,
+            Handoff = handoff,
+        };
     }
 
 }

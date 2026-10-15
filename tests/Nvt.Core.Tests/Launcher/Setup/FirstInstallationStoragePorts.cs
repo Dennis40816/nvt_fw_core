@@ -1,26 +1,25 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using System.Diagnostics.CodeAnalysis;
-
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
 using Nvt.Core.Launcher.Setup;
-using Nvt.Core.Launcher.Transport;
-using Nvt.Core.TestSupport;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Setup;
 
 using static Nvt.Core.Tests.Launcher.Setup.FirstInstallationTestSupport;
-using static Nvt.Core.Tests.Launcher.Setup.SetupTestWorkspace;
 
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
 internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[] loads)
-    : IVersionManagerStateStore
+    : IVersionManagerStateStore, IDisposable
 {
     private int _loadIndex;
+    // Guard: the scenario driver serializes acquisitions; the coordinator releases each before the next.
+    private VersionManagerWriteLeaseResult? _ownedWriteLease;
+
+    public void Dispose() => _ownedWriteLease?.Dispose();
     internal Action<string>? Observe { get; set; }
     internal bool LeaseActive { get; private set; }
     internal VersionManagerWriteLeaseIssue LeaseIssue { get; set; }
@@ -33,8 +32,6 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
     internal int SaveCount { get; private set; }
     internal List<string> Events { get; } = [];
 
-    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-        "Ownership transfers into the returned write-lease result and the coordinator disposes it.")]
     public ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
         TimeSpan waitTimeout,
         CancellationToken cancellationToken)
@@ -53,7 +50,8 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
                 : LeaseIssue;
         if (issue != VersionManagerWriteLeaseIssue.None)
         {
-            return ValueTask.FromResult(new VersionManagerWriteLeaseResult(issue, null));
+            _ownedWriteLease = new VersionManagerWriteLeaseResult(issue, null);
+            return ValueTask.FromResult(_ownedWriteLease);
         }
         Assert.False(LeaseActive);
         LeaseActive = true;
@@ -61,14 +59,24 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
         int leaseNumber = LeaseCount;
         Events.Add($"writer-acquire:{leaseNumber}");
         Observe?.Invoke($"writer-acquire:{leaseNumber}");
-        return ValueTask.FromResult(new VersionManagerWriteLeaseResult(
-            VersionManagerWriteLeaseIssue.None,
-            new ActionLease(() =>
-            {
-                LeaseActive = false;
-                Events.Add($"writer-release:{leaseNumber}");
-                Observe?.Invoke($"writer-release:{leaseNumber}");
-            })));
+        ActionLease? lease = new(() =>
+        {
+            LeaseActive = false;
+            Events.Add($"writer-release:{leaseNumber}");
+            Observe?.Invoke($"writer-release:{leaseNumber}");
+        });
+        try
+        {
+            _ownedWriteLease = new VersionManagerWriteLeaseResult(
+                VersionManagerWriteLeaseIssue.None,
+                lease);
+            lease = null; // The result owns the release callback after construction.
+            return ValueTask.FromResult(_ownedWriteLease);
+        }
+        finally
+        {
+            lease?.Dispose();
+        }
     }
 
     public ValueTask<VersionManagerStateLoadResult> LoadAsync(CancellationToken cancellationToken)
@@ -119,7 +127,7 @@ internal sealed class SequencedRootProbe(params ManagedInstallationRootStatus[] 
 
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
 internal sealed class RecordingPayloadSource(ManagedDistributionPayloadIdentity identity)
-    : IManagedDistributionPayloadSource
+    : IManagedDistributionPayloadSource, IDisposable
 {
     internal Action<string>? Observe { get; set; }
     internal ManagedDistributionPayloadIssue CaptureIssue { get; set; }
@@ -128,6 +136,14 @@ internal sealed class RecordingPayloadSource(ManagedDistributionPayloadIdentity 
     internal ManagedDistributionPayloadInspectionResult? InspectionOverride { get; set; }
     internal int InspectCount { get; private set; }
     internal PayloadCapture? LastCapture { get; private set; }
+
+    public void Dispose()
+    {
+        if (LastCapture is { Disposed: false } capture)
+        {
+            capture.Dispose();
+        }
+    }
     internal bool ReturnCaptureOnFailure { get; set; }
     internal bool ReturnMismatchedCapture { get; set; }
     internal bool ReturnNullCaptureOnSuccess { get; set; }
@@ -161,8 +177,6 @@ internal sealed class RecordingPayloadSource(ManagedDistributionPayloadIdentity 
             : new ManagedDistributionPayloadInspectionResult(null, InspectIssue));
     }
 
-    [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope", Justification =
-        "Ownership transfers into the returned payload capture and the coordinator disposes it.")]
     public ValueTask<ManagedDistributionPayloadCaptureResult> CaptureExactAsync(
         ManagedDistributionPayloadIdentity expected,
         CancellationToken cancellationToken)

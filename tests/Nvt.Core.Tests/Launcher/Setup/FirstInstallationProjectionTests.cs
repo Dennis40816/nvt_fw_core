@@ -15,12 +15,13 @@ public sealed class FirstInstallationProjectionTests : FirstInstallationTestSupp
     [InlineData(65_537)]
     public async Task PrepareRejectsInvalidAndOversizedPayloadProjection(long descriptorSize)
     {
-        var state = new SequencedStateStore(MissingState());
+        using var state = new SequencedStateStore(MissingState());
         var candidate = new RecordingCandidateSource(Candidate());
         var payload = new ProjectedPayloadSource(descriptorSize);
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(state,
             new SequencedRootProbe(ManagedInstallationRootStatus.Absent), payload, candidate,
-            new RecordingRootMaterializer(state), new SetupBootstrapHandoff(state));
+            new RecordingRootMaterializer(state), handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root("invalid-projection"), TestContext.Current.CancellationToken);
@@ -36,11 +37,13 @@ public sealed class FirstInstallationProjectionTests : FirstInstallationTestSupp
     [InlineData(129)]
     public async Task PrepareRejectsInvalidAndOversizedCandidateProjection(int registryCharacters)
     {
-        var state = new SequencedStateStore(MissingState());
+        using var state = new SequencedStateStore(MissingState());
         var materializer = new RecordingRootMaterializer(state);
+        using var payload = new RecordingPayloadSource(PayloadIdentity());
+        using var handoff = new SetupBootstrapHandoff(state);
         ManagedFirstInstallationExperience experience = Create(state,
-            new SequencedRootProbe(ManagedInstallationRootStatus.Absent), new RecordingPayloadSource(PayloadIdentity()),
-            new ProjectedCandidateSource(Candidate(), registryCharacters), materializer, new SetupBootstrapHandoff(state));
+            new SequencedRootProbe(ManagedInstallationRootStatus.Absent), payload,
+            new ProjectedCandidateSource(Candidate(), registryCharacters), materializer, handoff);
 
         ManagedFirstInstallationPlanResult result = await experience.PrepareAsync(
             Root("invalid-candidate"), TestContext.Current.CancellationToken);
