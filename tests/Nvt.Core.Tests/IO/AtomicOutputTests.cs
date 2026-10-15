@@ -1,4 +1,5 @@
-// Copyright (c) 2026 Dennis Liu. All rights reserved.
+// Copyright (c) 2026 Dennis Liu
+// SPDX-License-Identifier: MIT
 
 #pragma warning disable CS1591 // Test fixtures are not part of the library API.
 #pragma warning disable CA1707 // Keep descriptive names consistent with the ported NFU test.

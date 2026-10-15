@@ -11,6 +11,14 @@ Licenses in this repository:
    - src/Nvt.Core.Avalonia/Theme/LICENSE
    - src/Nvt.Core.Avalonia/Icons/LICENSE
    - src/Nvt.Core.Fonts/LICENSE
+   - src/Nvt.Core/IO/LICENSE
+   - src/Nvt.Core/Processes/LICENSE
+   - src/Nvt.Core/Progress/LICENSE
+   - tests/Nvt.Core.Tests/IO/LICENSE
+   - tests/Nvt.Core.Tests/Processes/LICENSE
+   - tests/Nvt.Core.Tests/Progress/LICENSE
+   - tests/Nvt.Core.TestSupport/LICENSE
+   - tests/Nvt.Core.TestSupport.Tests/LICENSE
 2. All other files, except those named in item 3, are licensed only as stated in Part 1 of LICENSE-COMPONENTS.txt.
    Part 2 of that file repeats the MIT License text. NuGet packages and tool releases carry that file as LICENSE.
 3. Font files are in src/Nvt.Core.Fonts/Assets/. Their license texts are in src/Nvt.Core.Fonts/licenses/.
