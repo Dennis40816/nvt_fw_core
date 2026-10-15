@@ -6,6 +6,8 @@ namespace Nvt.Core.Launcher.Setup;
 
 internal static class SetupWaitBudget
 {
+    internal static readonly TimeSpan MaximumTimerDuration = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+
     internal static TimeSpan Remaining(TimeSpan total, TimeSpan elapsed) =>
         elapsed >= total ? TimeSpan.Zero : total - elapsed;
 

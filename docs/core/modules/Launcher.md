@@ -490,6 +490,8 @@ NFC retains entry composition, exact installation-root admission, strict manifes
 
 Both Setup constructors accept optional `observerDiagnostics`; nonfatal progress and abandoned-read exceptions are reported to it, and nonfatal diagnostics exceptions are isolated (null remains silent).
 
+All Setup constructor deadline and cutoff overrides must be positive and at most **4,294,967,294 milliseconds** (`uint.MaxValue - 1`), inclusive; larger values throw `ArgumentOutOfRangeException` naming the public parameter before any install work. If early cancellation leaves an admission cleanup interval above that ceiling, its timer is capped at the same maximum.
+
 Once root promotion starts, `IManagedFirstInstallationRootMaterializer.MaterializeAsync` must return a typed result even for cancellation, retain the recovery marker on failure and release custody it does not return. The port exposes no promotion signal on a thrown exception (progress is not such a signal), so a violating adapter that throws caller cancellation without a receipt still yields `Cancelled`; Core cannot adopt or dispose that unreturned custody.
 
 Entry admits payload metadata, reads state and probes only the exact root. Only missing state plus a genuinely absent root permits Setup. Existing, residual and unsafe roots remain recovery-owned. Healthy entry acquires no writer, saves no state, reads no package content and inventories no versions. The existing Bootstrap handoff is the process-admission port; process creation remains owned by the contained-start gate.

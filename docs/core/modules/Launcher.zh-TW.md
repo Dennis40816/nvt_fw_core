@@ -490,6 +490,8 @@ NFC 保留 entry composition、精確 installation-root admission、嚴格 manif
 
 兩個 Setup 建構函式均接受可選的 `observerDiagnostics`，用以回報非致命的進度與已停止等待之讀取例外；非致命的診斷回呼例外也會隔離，null 則保持靜默。
 
+Setup 建構函式的所有 deadline 與 cutoff override 必須為正值，且不得超過 **4,294,967,294 毫秒**（`uint.MaxValue - 1`，含上限）；超過時會在安裝作業開始前擲出帶有公開參數名稱的 `ArgumentOutOfRangeException`。若提早取消使 admission cleanup 區間超過此上限，其 timer 也會限制在相同上限。
+
 根目錄 promotion 開始後，`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 必須回傳具型別結果（包括取消），失敗時保留 recovery marker，並釋放未透過結果轉交的 custody。介面無法在擲出例外時傳達 promotion 狀態，進度也不代表 promotion；因此違反契約的 adapter 若未回傳 receipt 就擲出 caller cancellation，結果仍為 `Cancelled`，Core 無法接管或釋放未回傳的 custody。
 
 Entry 依序准入 payload metadata、讀取 state、觀察精確 root。只有 state 與 root 都確實不存在時才允許 Setup。現有、殘留或不安全的 root 屬於 recovery。健康入口不取得 writer、不儲存 state、不讀套件內容，也不列舉版本。既有 Bootstrap handoff 是 process-admission port；程序建立仍只由 contained-start gate 擁有。

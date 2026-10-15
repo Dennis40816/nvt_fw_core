@@ -52,6 +52,8 @@ public sealed class ManagedFirstInstallationExperience
             ManagedLauncherEntryCoordinator.DefaultCompletionOperationCutoff;
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(admissionOperationCutoffValue, TimeSpan.Zero, nameof(admissionOperationCutoff));
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(completionOperationCutoffValue, TimeSpan.Zero, nameof(completionOperationCutoff));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(admissionOperationCutoffValue, SetupWaitBudget.MaximumTimerDuration, nameof(admissionOperationCutoff));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(completionOperationCutoffValue, SetupWaitBudget.MaximumTimerDuration, nameof(completionOperationCutoff));
         TimeProvider timeProviderValue = timeProvider ?? TimeProvider.System;
         _observerDiagnostics = observerDiagnostics;
         _services = new(statePathIdentityValue, stateStoreValue, rootProbeValue,

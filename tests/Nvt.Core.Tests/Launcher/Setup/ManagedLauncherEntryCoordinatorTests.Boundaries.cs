@@ -41,6 +41,63 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
             TimeSpan.FromTicks(1), TimeSpan.FromTicks(1), TimeSpan.FromTicks(1)));
     }
 
+    /// <summary>Every configurable timer accepts the exact BCL maximum.</summary>
+    [Fact]
+    public async Task ConstructorAcceptsEveryMaximumTimerDuration()
+    {
+        string root = Root("maximum-duration");
+        TimeSpan maximum = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+        var state = new EntryStateStore(BoundState(root));
+        var probe = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        Assert.NotNull(Create(root, state, probe, handoff, admissionDeadline: maximum));
+        Assert.NotNull(Create(root, state, probe, handoff, completionDeadline: maximum));
+        Assert.NotNull(Create(root, state, probe, handoff, healthObservationDeadline: maximum));
+        ManagedLauncherEntryCoordinator coordinator = Create(root, state, probe, handoff,
+            maximum, maximum, maximum);
+
+        ManagedLauncherEntryResult result = await coordinator.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
+    }
+
+    /// <summary>Every oversized timer fails during construction, naming its public parameter.</summary>
+    [Fact]
+    public void ConstructorRejectsEveryDurationOneMillisecondAboveTimerMaximum()
+    {
+        string root = Root("oversized-duration");
+        TimeSpan invalid = TimeSpan.FromMilliseconds(uint.MaxValue);
+        var state = new EntryStateStore(BoundState(root));
+        var probe = new RecordingRootProbe(ManagedInstallationRootStatus.Present);
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready);
+        Assert.Equal("admissionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Create(root, state, probe, handoff, admissionDeadline: invalid)).ParamName);
+        Assert.Equal("completionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Create(root, state, probe, handoff, completionDeadline: invalid)).ParamName);
+        Assert.Equal("healthObservationDeadline", Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Create(root, state, probe, handoff, healthObservationDeadline: invalid)).ParamName);
+    }
+
+    /// <summary>Cancellation at the largest admitted operation cannot overflow the cleanup timer.</summary>
+    [Fact]
+    public async Task MaximumAdmissionCutoffStillAllowsCancellationCleanup()
+    {
+        string root = Root("maximum-admission-cleanup");
+        using var cancellation = new CancellationTokenSource();
+        using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.TerminationUnconfirmed)
+        {
+            AdmissionAction = () => Cancel(cancellation),
+        };
+        ManagedLauncherEntryCoordinator coordinator = Create(root, new EntryStateStore(BoundState(root)),
+            new RecordingRootProbe(ManagedInstallationRootStatus.Present), handoff,
+            admissionDeadline: TimeSpan.FromMilliseconds(uint.MaxValue - 1));
+
+        ManagedLauncherEntryResult result = await coordinator.RunAsync(cancellation.Token);
+
+        Assert.Equal(ManagedLauncherEntryOutcome.TerminationUnconfirmed, result.Outcome);
+        Assert.Equal(1, handoff.CompletionWaitCount);
+    }
+
     /// <summary>Exact health expiry stops before handoff, including an uncooperative returned observation.</summary>
     [Theory]
     [InlineData(249, ManagedLauncherEntryOutcome.LaunchInstalled)]

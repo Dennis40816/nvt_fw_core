@@ -36,6 +36,40 @@ public sealed class FirstInstallationBudgetTests : FirstInstallationTestSupport
             harness.Materializer, harness.Handoff, TimeSpan.FromTicks(1), TimeSpan.FromTicks(1)));
     }
 
+    /// <summary>The inclusive BCL timer ceiling is admitted for both operation parameters.</summary>
+    [Fact]
+    public async Task ConstructorAcceptsMaximumTimerDuration()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        TimeSpan maximum = TimeSpan.FromMilliseconds(uint.MaxValue - 1);
+        Assert.NotNull(Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
+            harness.Materializer, harness.Handoff, admissionOperationCutoff: maximum));
+        Assert.NotNull(Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
+            harness.Materializer, harness.Handoff, completionOperationCutoff: maximum));
+        ManagedFirstInstallationExperience experience = Create(harness.State, harness.Roots, harness.Payload,
+            harness.CandidateSource, harness.Materializer, harness.Handoff, maximum, maximum);
+
+        ManagedFirstInstallationResult result = await experience.InstallAndLaunchAsync(
+            harness.Plan, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedFirstInstallationOutcome.Completed, result.Outcome);
+    }
+
+    /// <summary>Oversized timers are rejected before any irreversible install work.</summary>
+    [Fact]
+    public async Task ConstructorRejectsOneMillisecondAboveMaximumTimerDuration()
+    {
+        using InstallHarness harness = await CreateInstallHarnessAsync();
+        TimeSpan invalid = TimeSpan.FromMilliseconds(uint.MaxValue);
+        Assert.Equal("admissionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
+                harness.Materializer, harness.Handoff, admissionOperationCutoff: invalid)).ParamName);
+        Assert.Equal("completionOperationCutoff", Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Create(harness.State, harness.Roots, harness.Payload, harness.CandidateSource,
+                harness.Materializer, harness.Handoff, completionOperationCutoff: invalid)).ParamName);
+        Assert.Equal(0, harness.Materializer.MaterializeCount);
+    }
+
     /// <summary>Launch custody acquisition consumes the exact 30-second admission budget.</summary>
     [Theory]
     [InlineData(29_999, ManagedFirstInstallationOutcome.Completed)]

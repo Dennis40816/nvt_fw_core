@@ -113,6 +113,9 @@ public sealed class ManagedLauncherEntryCoordinator
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(admission, TimeSpan.Zero, nameof(admissionOperationCutoff));
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(completion, TimeSpan.Zero, nameof(completionOperationCutoff));
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(health, TimeSpan.Zero, nameof(healthObservationDeadline));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(admission, SetupWaitBudget.MaximumTimerDuration, nameof(admissionOperationCutoff));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(completion, SetupWaitBudget.MaximumTimerDuration, nameof(completionOperationCutoff));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(health, SetupWaitBudget.MaximumTimerDuration, nameof(healthObservationDeadline));
         _budgets = new(admission, completion, health);
         _timeProvider = timeProvider ?? TimeProvider.System;
         _observerDiagnostics = observerDiagnostics;
@@ -307,8 +310,12 @@ public sealed class ManagedLauncherEntryCoordinator
                 context.ManagedRoot,
                 context.Started);
         }
+        // Early caller cancellation can leave the operation plus cleanup reserve above the timer ceiling.
+        TimeSpan cleanupTimer = cleanupRemaining > SetupWaitBudget.MaximumTimerDuration
+            ? SetupWaitBudget.MaximumTimerDuration
+            : cleanupRemaining;
         using var cleanupDeadline = new CancellationTokenSource(
-            cleanupRemaining,
+            cleanupTimer,
             _timeProvider);
         ImmutableBootstrapCompletionResult cleanup;
         try
