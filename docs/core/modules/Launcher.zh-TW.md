@@ -490,6 +490,8 @@ NFC 保留 entry composition、精確 installation-root admission、嚴格 manif
 
 兩個 Setup 建構函式均接受可選的 `observerDiagnostics`，用以回報非致命的進度與已停止等待之讀取例外；非致命的診斷回呼例外也會隔離，null 則保持靜默。
 
+根目錄 promotion 開始後，`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 必須回傳具型別結果（包括取消），失敗時保留 recovery marker，並釋放未透過結果轉交的 custody。介面無法在擲出例外時傳達 promotion 狀態，進度也不代表 promotion；因此違反契約的 adapter 若未回傳 receipt 就擲出 caller cancellation，結果仍為 `Cancelled`，Core 無法接管或釋放未回傳的 custody。
+
 Entry 依序准入 payload metadata、讀取 state、觀察精確 root。只有 state 與 root 都確實不存在時才允許 Setup。現有、殘留或不安全的 root 屬於 recovery。健康入口不取得 writer、不儲存 state、不讀套件內容，也不列舉版本。既有 Bootstrap handoff 是 process-admission port；程序建立仍只由 contained-start gate 擁有。
 
 Preparation 在 payload inspection 或 source selection 前檢查 state、root 與 destination。不可變 plan 綁定使用者檢視過的 root、state path、payload 與 candidate publication；確認由 caller 的明確操作提供。執行取得 writer、重查上述事實、capture 精確 payload、reverify 精確 candidate，並使用既有 canonical seed。Materializer 擁有 staging 與 promotion。同一 writer 下記錄 Bootstrap launch，再取得 promoted Bootstrap 的獨立 executable lease。Payload capture 持續保留至這兩個操作結束，並在 writer 釋放前 Dispose；任一操作拋出例外時也維持此順序。先釋放 writer，才將該 lease 交給既有 handoff。有效 application READY 後，重新取得有界 writer 並載入精確 canonical bound first-run state，才完成相符 transaction。

@@ -151,6 +151,11 @@ public interface IManagedFirstInstallationRootMaterializer
         CancellationToken cancellationToken);
 
     /// <summary>Stages, verifies, and atomically promotes one exact fresh root.</summary>
+    /// <remarks>
+    /// Once promotion starts, return a typed result even for cancellation; never throw cancellation.
+    /// Retain the recovery marker on failure and release custody not transferred in the result.
+    /// A thrown exception carries no promotion signal, so the caller cannot adopt unreturned custody.
+    /// </remarks>
     ValueTask<ManagedFirstInstallationMaterializationResult> MaterializeAsync(
         string managedRoot,
         string statePathIdentity,
@@ -163,6 +168,11 @@ public interface IManagedFirstInstallationRootMaterializer
     /// Stages, verifies, and atomically promotes one exact fresh root while projecting only
     /// authoritative progress from that same operation.
     /// </summary>
+    /// <remarks>
+    /// Once promotion starts, return a typed result even for cancellation; never throw cancellation.
+    /// Retain the recovery marker on failure and release custody not transferred in the result.
+    /// Progress is not a promotion signal; a thrown exception cannot transfer custody to the caller.
+    /// </remarks>
     ValueTask<ManagedFirstInstallationMaterializationResult> MaterializeAsync(
         string managedRoot,
         string statePathIdentity,
