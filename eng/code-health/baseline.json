@@ -462,16 +462,6 @@
   ],
   "findings": [
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "f85ddda58f5fc713babf108e95974cd3b8017b27418ee672df25452f4938c449",
-      "member": "Nvt.Core.Avalonia.RuntimeQuery.RuntimeQueryUiThread.Wrap(Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>,Func<RuntimeQueryFailure, string?, RuntimeQueryError>)",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:Func<RuntimeQueryRequest?, string, CancellationToken, Task<RuntimeQueryResponseEnvelope>>",
-      "path": "src/Nvt.Core.Avalonia/RuntimeQuery/RuntimeQueryUiThread.cs"
-    },
-    {
       "rule": "suppressions",
       "syntaxHash": "016603887bb58a3f7ff583dde89259593efd53b681475e51d750cbdcb4b743e7",
       "member": "Nvt.Core.Files.Windows.WindowsStablePathCustody.OpenReadOnlyFile(string)",
@@ -1063,56 +1053,6 @@
     },
     {
       "rule": "asyncVoid",
-      "syntaxHash": "0595490d8d9e7542236d2c04caea13bf0982d8a2b312c425b9360ffe3f952734",
-      "member": "Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests.RefreshCommandPublishesProgressUntilHostReloadCompletes()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d760046c4aa7cbed71b066aa65d4082a0832c61149807664b5aad3fdfca7f140",
-      "member": "Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests.RefreshObserverIsolationPreservesSuccessFailureAndCancellation(int)",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "65ea8b38d5e622098f090e7886b4953c71d8571a8d1a98213a345a4fb4b44b33",
-      "member": "Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests.RefreshCommandCancellationForwardsOwnerToken()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "735652e74aca878f0283006f179f69e387ad04b3d154b457de6818498e15b4d4",
-      "member": "Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests.SuppliedRefreshJoinsExistingInnerCoordinator()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b5c678a088e90e9b1f16eb3bac30905aed273d271cb2a8473e5b91ecafa9e5db",
-      "member": "Nvt.Core.Avalonia.Tests.MessageCenter.PresentationTests.DiagnosticsExportCompletionRejectsReopenedContext(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/MessageCenter/PresentationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
       "syntaxHash": "cc5b560ecc608ee3650783c4908c3bf78e419604d75ea2c0cfa578afed55e9c4",
       "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ScreenshotCaptureObservesCancellationAfterStarting()",
       "count": 1,
@@ -1162,46 +1102,6 @@
       "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Shutdown.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "d7bb1ebcbafb09a3692f3e79c220f45533dadd428ed7726ad1666fbe741b5077",
-      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryGenericCommandsTests.ExitResponseSurvivesToolCloseStoppingHost()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryGenericCommandsTests.Shutdown.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d8982c11010491f53c55f47e9d841953c2d30a3e86ea4e1abdc71ef8e909ce97",
-      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryHostTests.StartWhenCalledConcurrentlyCreatesOneServer()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryHostTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "24e9f4dfca4bcf73ea5927889fa7ee9acb80180bd80ee249dbe87a48cc2f2759",
-      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryUiCancellationTests.StartedUiHandlerIgnoringTokenFinishesNormally()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryUiCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "e22e7a2b9797522b624db2569cc4491910f68b0fb594c9f7285bda38691f144d",
-      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryUiCancellationTests.IpcCancellationDuringQueuedUiWorkNeverStartsCommand()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryUiCancellationTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "f87c128a264c75551c9ca21ff0287b8a4830ba6ded6364511dfe3eb630a749b3",
       "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryUiCancellationTests.CancelledQueuedUiWorkNeverStartsHandler()",
@@ -1242,36 +1142,6 @@
       "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryUiCancellationTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "93ab449f92b6051ba938a022e3099a945e89dc8e53f338c71624f6f1de7ba264",
-      "member": "Nvt.Core.Avalonia.Tests.RuntimeQuery.RuntimeQueryUiThreadTests.WrapRunsOnUiThreadAndPassesInputsUnchanged(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/RuntimeQuery/RuntimeQueryUiThreadTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "8660cfbefe13b024f2ac277f028428d1e6f0fde8f5aeaf3bf01e5228638a8875",
-      "member": "Nvt.Core.Avalonia.Tests.Testing.AvaloniaTestHostTests.DispatcherReturnsToTheTestUiThread()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Testing/AvaloniaTestHostTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "44f2ebf0cd1d37a247bda3a3c100045e2542ce7f90eeb5af1e038a24ab7672d7",
-      "member": "Nvt.Core.Avalonia.Tests.Threading.UiThreadTests.RunningDispatcherSchedulesWorkFromBackgroundThread()",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Threading/UiThreadTests.cs"
-    },
-    {
       "rule": "suppressions",
       "syntaxHash": "04d1e41dd832fe1cb328e8cfaac98cabf7dd2a50a6ab5fa6dbdf508756aff163",
       "member": "Nvt.Core.TestProbe.WindowsProcess.StartupInfo",
@@ -1309,96 +1179,6 @@
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
       "symbol": "Nvt.Core.Tests.IO.AtomicOutputTests",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "91e3868268810df1bcec20d957541d6792b31a2f38e6c1ef4a97cba4346bab8a",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Interrupted_atomic_write_preserves_prior_output_and_removes_temporary_file()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "a54094df6d26b470327df5716e0c35c1569cc9268bd5042f11f3016c0fbb0c6a",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Binary_output_is_identical_and_missing_parent_directories_are_created(int)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "0c7400974dd2a4a4a9c202fe4ccf2ed54d062a23b4eed85f7eb9e7223077047d",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Text_output_preserves_UTF8_bytes_without_adding_a_BOM(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "926a71b4fb16d8e24fc211786875e39362e45b6873f52ef81dc151a44a249ec5",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Replacement_is_visible_only_after_the_writer_completes_and_the_stream_is_closed()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "243aeaa6879e15b618c897ba4a5ea6d27fa5f408445abb3dfd80d02cde7d514c",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Writer_failure_preserves_the_destination_and_removes_temporary_files(bool,bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "5f4720f325718cfbaff88a38b92bcafdae1666e744ad05e90a54a233c6b72bf7",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Already_cancelled_token_still_reaches_the_writer_but_never_publishes(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "ccf3bbe937682156f3fd115e59f625b1438138f8b8609402eb784950ed42eabf",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Publication_failure_preserves_the_destination_directory_and_removes_temporary_files()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "171d8d5603ce8459ad1bbc1ab7319b34a08c30907354be9a3f563660f8718d49",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Closing_the_writer_stream_causes_flush_failure_without_replacing_prior_output()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "36371611a97eb47ef3d5690b7d0ff00be14e4b980cc123f0b92ae67f18dc0ce3",
-      "member": "Nvt.Core.Tests.IO.AtomicOutputTests.Output_path_is_normalized_before_creating_parent_directories()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
       "path": "tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs"
     },
     {
@@ -1532,16 +1312,6 @@
       "path": "tests/Nvt.Core.Tests/IO/AtomicOutputWriteBytesTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "17480f7c32089886b12dddd2db4850cf28bb4e91a8e6b57165074905c7c8874e",
-      "member": "Nvt.Core.Tests.Launcher.Activation.InventoryAndPortTests.DefaultApplicationLaunchLeaseDeniesCustodyAndHonorsCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Activation/InventoryAndPortTests.cs"
-    },
-    {
       "rule": "suppressions",
       "syntaxHash": "9059781aa36ec7242c9e378006e2f3273e124a43539463f0cba80acc15c6db57",
       "member": "file:Nvt.Core.Tests.Launcher.Contracts.LauncherBootstrapContractTests",
@@ -1680,146 +1450,6 @@
       "owner": "NVT CORE",
       "symbol": "pragma:CA2000",
       "path": "tests/Nvt.Core.Tests/Launcher/Coordination/ManagedActivationCoordinatorTests.Concurrency.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "6820809868736768e892e65d05f35dc19c45c96a531c0133023c10b06a740a14",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.FileSystemVersionManagerWriteLeaseTests.NegativeWaitIsRejected(long)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/FileSystemVersionManagerWriteLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "567b096810a3be8e3b1bcd022867d040ac51d1d9d51cda8cef5cfd5f1c9672d5",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.FileSystemVersionManagerWriteLeaseTests.BlankPathIsRejectedBeforeWait(string?)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/FileSystemVersionManagerWriteLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "fdde15d84266039369e482fedd9ad10369c62043508abfcc876548f60bae2398",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.FileSystemVersionManagerWriteLeaseTests.CancellationDuringRetryPropagates()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/FileSystemVersionManagerWriteLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b06cc69c46d4cadcec9379b734c7e60584890d03aa47e5dbdb81d3e88cb57e0a",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.FileSystemVersionManagerWriteLeaseTests.CancelledAcquisitionCreatesParentButNeverOpensLock()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/FileSystemVersionManagerWriteLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "47c663f944fd086e4ec6f55645295dd7cb5eea6931bf925e2c5bcdc2e9cb0e90",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateFileTests.CancelledSavePreservesPriorStateAndCleansTemporaryFile(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateFileTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "68bdd5b989192fb9c3df6639ebdf8b696b64ccba9a2f26daa8807deca3000d7e",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateFileTests.CancelledSavePreservesPriorStateAndCleansTemporaryFile(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateFileTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "582f2ec3ac32458e3207fa86ed03c35ce6e6043854be17ce2089df781b83a778",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateFileTests.ExplicitStateCeilingsAreInclusive(bool,int)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateFileTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "45931a801c50b784a1bb4862d0d8804958a76dcae412f3dd00aa8cf964c55e3d",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateFileTests.MissingAndEmptyStatePreserveCheckOrder()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateFileTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1d7d1c89e8be2e2d3acf5d521d97ab2c6a56ffc1412a588b12ba38ec1884f982",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateFileTests.HeldStateCannotBeRead()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateFileTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "c9068894a213cb587e3f69bdaf7c9e2b613b042dcf5c21a56b0d5fc0e38ed8fa",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StatePublicationTests.PhysicalReplacementFailureRetainsPriorState()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StatePublicationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "fed0951311b5b9d9238f7d1fcdd28094e3a5aba23ff8847484a142c724222e73",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StatePublicationTests.FailureAfterReplacementRetainsNewCompleteDocument()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StatePublicationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "21bde717d0633b45520b515d5e80b12072b648ea7c6debc87513c70fa6abc44b",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateStorePortTests.TrySavePreservesExceptionMapping(int)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateStorePortTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "8b4ec47e7ae14b6e7214c81590301a577f69b2c76cfbcadca492ab1bfe63452a",
-      "member": "Nvt.Core.Tests.Launcher.Persistence.StateStorePortTests.TrySavePropagatesCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Persistence/StateStorePortTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "fe624bcfc4f3673d9e9684693454fb08be2a7fd1c8336095b9210424a27e7970",
-      "member": "Nvt.Core.Tests.Launcher.Repository.InstalledApplicationTests.ShortcutMetadataRejectsUnsafePresentationPaths(string,string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Repository/InstalledApplicationTests.cs"
     },
     {
       "rule": "blockingWait",
@@ -1832,106 +1462,6 @@
       "path": "tests/Nvt.Core.Tests/Launcher/Repository/RepositoryCrashTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "ecaeec1d314e6bd907ab598ec0545501fa75dfc62518495ac304d035be585110",
-      "member": "Nvt.Core.Tests.Launcher.Repository.RepositoryInventoryReadTests.CancelledInventoryPublishesNoPartialFacts()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Repository/RepositoryInventoryReadTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "bb6403ead297275a85debbff366f30b5dcaaa732dea96addb54e34b02e53979c",
-      "member": "Nvt.Core.Tests.Launcher.Repository.RepositoryWriteCustodyTests.CancellationAfterVerifiedStagingCleansExactTree()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Repository/RepositoryWriteCustodyTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "bb6403ead297275a85debbff366f30b5dcaaa732dea96addb54e34b02e53979c",
-      "member": "Nvt.Core.Tests.Launcher.Repository.RepositoryWriteCustodyTests.PromotedTreeCancellationPreservesForeignStagingReplacement()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Repository/RepositoryWriteCustodyTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "7d74882158afd1e24c5c7fe3ad3a21572a60b3bbf0a761f95383bea4f30d87b6",
-      "member": "Nvt.Core.Tests.Launcher.Transport.AnonymousPipeManagedApplicationProcessTests.CallerCancellationPropagatesAfterCreation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedApplicationProcessTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "79088edf8a941e3e9db33252e4b0a47bc4a65b7b6f791e748aa4d19fa2a0da7a",
-      "member": "Nvt.Core.Tests.Launcher.Transport.AnonymousPipeManagedApplicationProcessTests.CallerCancellationBeforeLifetimeAcquisitionStartsNoChild()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedApplicationProcessTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "2f2b82a04f0ceba1451adeb2941750c5df515e2a8f0ed10ef6acec44d00dc709",
-      "member": "Nvt.Core.Tests.Launcher.Transport.AnonymousPipeManagedApplicationProcessTests.NonpositiveReadyDeadlineIsRejected(long)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/AnonymousPipeManagedApplicationProcessTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "cb5a0a5ad92d5abfadc46b4ef4b1b70db659c7c7ac39bdb1de3d962406b9d540",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BootstrapStartupProtocolTests.BootstrapStartGateCancellationDuringWaitClosesCapturedHandle()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BootstrapStartupProtocolTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "03a83473e3f47a88769c99f8af0b2550ec46f5b3a9e87c93710c7188d46a9632",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BootstrapStartupProtocolTests.BootstrapStartGateCancellationClosesCapturedHandle()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BootstrapStartupProtocolTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b78fd47e63177f3b8c6b2b4746aaa0242a9c9d65ff607ce40ff9e98ead266e2f",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BootstrapStartupProtocolTests.BootstrapStartAuthorizationRaceHasExactlyOneWinner()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BootstrapStartupProtocolTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "56c37c0f6e3abc2af2732cbc1955a0ad4236fb05c97c0ae94789effb6dfbe42b",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BootstrapStartupProtocolTests.BootstrapStartAuthorizationRaceHasExactlyOneWinner()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BootstrapStartupProtocolTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "269bfe38f8ff86933d5720e1d0935c2f76129eb086eee631aa5d32096eb67b01",
       "member": "Nvt.Core.Tests.Launcher.Transport.BootstrapStartupProtocolTests.BootstrapStartAuthorizationRaceHasExactlyOneWinner()",
@@ -1940,36 +1470,6 @@
       "owner": "NVT CORE",
       "symbol": "Wait",
       "path": "tests/Nvt.Core.Tests/Launcher/Transport/BootstrapStartupProtocolTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "42ea9090b6d5623cf2d8035bef8934526902d1e27f15c1a172914285f374a37e",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BoundedUtf8LineReaderTests.InvalidUtf8IsRejected(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BoundedUtf8LineReaderTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "e587e5bfe230d5a446d641d76875e007f5b0ad312dee033133ea9fa40fbf7057",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BoundedUtf8LineReaderTests.InvalidBufferSizeIsRejected(int)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BoundedUtf8LineReaderTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "f23b3fbe7e214612aa59fc01fed63d48316c8894901559a74c42473afa98812e",
-      "member": "Nvt.Core.Tests.Launcher.Transport.BoundedUtf8LineReaderTests.CancellationLeavesInputOpen()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/BoundedUtf8LineReaderTests.cs"
     },
     {
       "rule": "suppressions",
@@ -2012,106 +1512,6 @@
       "path": "tests/Nvt.Core.Tests/Launcher/Transport/LinkedBootstrapTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "d87efeb7481ee4f058c64cd6308e4cff7594760597f67fc3dc0d642bc7c24d4a",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineBoundaryTests.CallerCancellationBeforeCreationDoesNotWaitForUnfinishedWorker()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineBoundaryTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "53a3715f210a8b545353990601fbef743edae77b1f208a2eac5c0a437eba74e2",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineBoundaryTests.CallerCancellationBeforeCreationDoesNotWaitForUnfinishedWorker()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineBoundaryTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "9ea97c971cbbcab9c52166b37d40bd8c5beb8e52780e09cf8aeb45d821172bf7",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineBoundaryTests.CancelledDeadlineCannotBeginCreation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineBoundaryTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d7a3a357e95ed02a76d0069e36ec57855c0a432b3b30c6401d8805c64e92dd8e",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineTests.PreCreationTimeoutReleasesLeaseBeforeImmediateRollback()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "50641c79a6285e49a22909278bb868cfdd16dfe66d47db29af55a94d59459844",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineTests.CallerCancellationDoesNotDiscardAlreadyAcceptedReady()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1d91e35994589520a78c33acfd581b7ba783a5eaee1e3060b2e29457ae215fb4",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineTests.CallerCancellationPreservesWorkerCancellationAfterCreation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "7b16ae5ec36a9a8b08956b044499d649a675b8e2d3d60d5d495fb3fb1a7e6e76",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineTests.CallerCancellationPreservesWorkerCancellationAfterCreation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "7c081a384769f0ee4a4621021b9b56f38daabd0113882848a9d2d960aa60dca2",
-      "member": "Nvt.Core.Tests.Launcher.Transport.ManagedStartDeadlineTests.CallerCancellationCannotWaitForeverForUnfinishedCreation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/ManagedStartDeadlineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "7ea87d7efd84ac76ecf82ac7a45776ef435e9cd8a77a447af36ee12e85b131fc",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.RefusedOwnedFinalValidationPreservesInvalidDataException()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "e7c4d4872f6960ce45aa29708abaf1130af081f84c0fbaead9c9af39aef1a5d7",
-      "member": "Nvt.Core.Tests.Launcher.Transport.StableLauncherHandoffTests.StableLauncherHandoffCancellationDuringVerificationDoesNotLaunch()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Transport/StableLauncherHandoffTests.cs"
-    },
-    {
       "rule": "workspaceDuplicates",
       "syntaxHash": "56231f252ae6fa0244f97a0ce9fe39bc86c11d393333a003153c961264cd6d33",
       "member": "Nvt.Core.Tests.Launcher.Verification.ExtractionWorkspace",
@@ -2120,166 +1520,6 @@
       "owner": "NVT CORE",
       "symbol": "Nvt.Core.Tests.Launcher.Verification.ExtractionWorkspace",
       "path": "tests/Nvt.Core.Tests/Launcher/Verification/ManagedPackageVerifierTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "0f20af3742b334cbb6902041c3c37c06da327da0190886312b445e317b0c1132",
-      "member": "Nvt.Core.Tests.Launcher.Verification.ManagedPackageVerifierTests.PolicyExceptionsCannotPublishVerification(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/ManagedPackageVerifierTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "00dd2f52ba9667b787c46448f70ead50da4f1dbe0506edd46bba5145e33eb9ac",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.NullArgumentsPrecedeCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "4b73ecc0c03fdc4df74b665459e8ac24cf3c9c66ed39502a606720deda3d4188",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.NullArgumentsPrecedeCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b0ef6dd1d8d4b57a03c94aa199ac3d7fee0cf06c5ef7b454734c287ac414a5bf",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.CancellationDuringCompressedReadPreservesCustody()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "4473ec187e1c233a70f54f2568debc7196905c9840bda9c95e505136727855b8",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.CancellationAfterManifestAdmissionPropagates()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "4473ec187e1c233a70f54f2568debc7196905c9840bda9c95e505136727855b8",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.PreCancelledVerificationDoesNoRead()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "8dc52f5248cddc68ecd30260d53273907ff2c986fabbc9150be1301ccdab0181",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.PlanSnapshotsFactsAndLeavesThePackageOpen()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "2f6e3d8f42675cf102924bcc6417c6fa7cf5c1da60443a03e59dc4ffc759985d",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.ContentChangedAfterAdmissionFailsInternalExtraction()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "73b5d46440da8aa15468e9e8b32c3e574b2f1ece9c2ece28c3fb33b47a0e85da",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PackageStreamAndPlanTests.ExtractionWriteFaultDisposesDestinationAndKeepsPackageOpen()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PackageStreamAndPlanTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "c7c7477762c5c5f7024d3af2e5c1d470356c5b6c40f330f46562075292827ef6",
-      "member": "Nvt.Core.Tests.Launcher.Verification.PlanReadFailureTests.PlanCreationPropagatesReadFailuresOnlyWhenRequested(int,bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Verification/PlanReadFailureTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "a5276aa05236cb796dc31339b28d25b3ef2f075dd8a00dda3e221d59dd5b8870",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.ExecutableLimitsMustBePositive(long)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1446eef7654f654c56701bc1144dbb18fc782324872892f9cf6f38aab5449533",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.ExecutableLimitsMustBePositive(long)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "8a4291dc246089179b5d96f74d72b9b2a7c045a02ad01e70692e47a07362c94a",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.ExecutableLimitsMustBePositive(long)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "093429d8cb71a51b58dcdecfa493b9d526bfafd701ef02dfdf23d9deae6a48c7",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.HeldCopyPreservesContentAndRejectsExistingDestination()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "aca96a0cac14a90a30ed1db90fc897dead456ce242c2aeea8db9875391d7fff4",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.CancelledLeaseCreationConsumesAndReleasesOwnedCustody()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "5da6214f0b628207cd4ad07b4542847558d5ea12ab2a0d3999688eca078dc282",
-      "member": "Nvt.Core.Tests.Launcher.Windows.StableManagedExecutableLaunchLeaseTests.TransferredCustodyRejectsNonpositiveExecutableLimit(long,bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Launcher/Windows/StableManagedExecutableLaunchLeaseTests.cs"
     },
     {
       "rule": "workspaceDuplicates",
@@ -2382,16 +1622,6 @@
       "path": "tests/Nvt.Core.Tests/LogConsole/NotificationClockTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "9ec9ba69fe503ad4c140fbf8ea96c2bf96e39e60035fd0b64c7940a510165f0b",
-      "member": "Nvt.Core.Tests.LogConsole.SingleThreadPump.Run(Func<Task>)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/LogConsole/SingleThreadPump.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "06499dd5d427498f194b74b0eed20bddc9dce1374e562fd3d25b9f8934d8c669",
       "member": "Nvt.Core.Tests.LogConsole.SingleWriterTests.ClearDuringConcurrentAddsRejectsOldGenerationAfterReset().local:Writes(CountingContent)",
@@ -2460,46 +1690,6 @@
       "owner": "NVT CORE",
       "symbol": "Wait",
       "path": "tests/Nvt.Core.Tests/LogConsole/SingleWriterTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "f6b6e32dd011f34944d49c62278801febddffefe5deb161474c2591a10b1e690",
-      "member": "Nvt.Core.Tests.LogConsole.SnapshotPublicationTests.LatestExportWaitsForAdmittedAddWithoutFlush()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/LogConsole/SnapshotPublicationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "8b20e4c1c1cf035796a58ae8a01e3e64cd891914317fa126e67cfef78c77eded",
-      "member": "Nvt.Core.Tests.LogConsole.SnapshotPublicationTests.DisposeReleasesWaitingLatestReader()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/LogConsole/SnapshotPublicationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "f82b5db979fbc1e5c76d3a2eb64cca7f85afb6cacc3f7ae8a9bf8d1dedacc503",
-      "member": "Nvt.Core.Tests.LogConsole.SnapshotReaderTests.SnapshotOnSingleThreadSchedulerReturnsBeforeWriterRuns()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/LogConsole/SnapshotReaderTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d431dd5e1047f7f51bb3d28fc75b6d120a639b679f5120de4329232513e9c231",
-      "member": "Nvt.Core.Tests.LogConsole.SnapshotReaderTests.LatestCaptureOnDispatcherYieldsToWriterAndCompletes()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/LogConsole/SnapshotReaderTests.cs"
     },
     {
       "rule": "blockingWait",
@@ -2582,86 +1772,6 @@
       "path": "tests/Nvt.Core.Tests/MessageCenter/ExportWorkflowTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "d4b6705b3c6f2f7c3f16120095398084bd6cc7e5cbc7c3a06781d91ddd080ab6",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.CoordinatorKeepsLatestQueuedSnapshot()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "9d2762d4fca04f8e5ec1ddb9dbcf37205e9784013372b3bc58769c4ccd3828d7",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.CoordinatorCompletesLatestSaveBeforeShutdown()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "cfc965964a00ba26ba25c606ba5afc0d6ffa6095e6fa6ac0931939cc8a1132ee",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.CoordinatorReopenSerializesNewSnapshotAfterDelayedOldSave()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "dad3b143bab8cca3915d94dd03e22eb1d033a1d8c3be1f1c8db60d37e7849a33",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.CoordinatorReportsTerminalSavesButNotSupersededOnes()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b6d629aa69ea6fb9e79d903756c024bd8d3b784ae8471da1a6148c9100adc721",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.GenerationStaysCurrentOnlyUntilANewerSnapshotIsQueued()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "68522ed8cc61405e34fa983dc0728162e12215534a54354e0a306599c4745b13",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.ShutdownRejectsSnapshotStillBeingCaptured()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "6cd54a242ae8907b6fd2f6ce8ad046cc99f7230c13c47403b38e28a7f65b0f29",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.QueueCapturesMutableInputBeforeBackgroundSave()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "57a501f7b4ce9a63572bf81dbf6f18c96f1f3a09731ceb38e1416800b77a28c7",
-      "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.SupersededSaveCancellationIsSilent()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "160495039c48569031f5ea4fbd6298f0497eb3efab502b9d6d88570ec895b225",
       "member": "Nvt.Core.Tests.Persistence.LatestSnapshotPersistenceCoordinatorTests.ShutdownRejectsSnapshotStillBeingCaptured()",
@@ -2680,46 +1790,6 @@
       "owner": "NVT CORE",
       "symbol": "Wait",
       "path": "tests/Nvt.Core.Tests/Persistence/LatestSnapshotPersistenceCoordinatorTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b3a5e82b043d5d11ba145ca3a24b543f3277c42dec032f020cc659e75ef9e878",
-      "member": "Nvt.Core.Tests.Persistence.LocalJsonDocumentTests.RejectsInvalidJson(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LocalJsonDocumentTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d7aa11a56c7b844f9f754622ce001559ab5f8424990e879887fd13e3bd1a1017",
-      "member": "Nvt.Core.Tests.Persistence.LocalJsonDocumentTests.ObservesCancellation(string)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LocalJsonDocumentTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b2ac4788a8d1ab198d249b294f5773b7a89470fe629145401b2f3f1eb1d8448a",
-      "member": "Nvt.Core.Tests.Persistence.LocalJsonDocumentTests.ResetsNonzeroPosition()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LocalJsonDocumentTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "b3a5e82b043d5d11ba145ca3a24b543f3277c42dec032f020cc659e75ef9e878",
-      "member": "Nvt.Core.Tests.Persistence.LocalJsonDocumentTests.RequiresSeekableStream()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Persistence/LocalJsonDocumentTests.cs"
     },
     {
       "rule": "blockingWait",
@@ -2862,36 +1932,6 @@
       "path": "tests/Nvt.Core.Tests/Processes/SystemExternalProcessRunnerLifetimeTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "e5d98861031597c31094756e97f4595d14037c559485939d7a7c86a434675416",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceCancellationTests.RepeatedCancelKeepsStatusTokenAndDisposalConsistent()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "525e2ce7acb3b183bb01bd21c1bfe6a44926927a69e564fb9f85640aacdb0db1",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceCancellationTests.CompletionWhileCancellingDefersDisposalUntilCancelReturns(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "a2d9ad5c82b7d699e2c97e78bff8c6dde84a5aee1e918de0669751170decb6cf",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceCancellationTests.CompletionWhileCancellingDefersDisposalUntilCancelReturns(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceCancellationTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "8711ad272d57772d83789313f284ed3e76083f1fc4cfd3a515cb8847229b6c47",
       "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceCancellationTests.RepeatedCancelKeepsStatusTokenAndDisposalConsistent()",
@@ -2920,126 +1960,6 @@
       "owner": "NVT CORE",
       "symbol": "GetResult",
       "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1bd2374dbe921bc9f9752aa3cae2343c3c7cca4d8a3fcf079a3a9164696fa045",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.RunsOnABackgroundThreadReportsProgressAndAllowsOnlyOneActiveJob()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "28ca31c3f0a820c4ed6430c56e2f72e1f447c5f7cbeac674de40e4cddef686ea",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.CancelIsIdempotentAndWaitsForACooperativeJobToFinish()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "c74cb00215dfcf234fb2ef24ae61936f327ba633cf8f3f3b8cd46886b53a57ab",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.CancellationCallbacksCanReadServiceStateWithoutRunningUnderTheServiceLock()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "3cb756d79d66762414b439d3677a0455d7a3ef3688b34c09874e964f437228ed",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.AResultReturnedAfterCancellationIsSuppressed()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "ece6f61d2d73429f11d286940bd5fec643c670e35de61eca3a23160504138c95",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.LateProgressFromAnOldJobCannotReplaceTheNewJobSnapshot()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "3e6c0815d375c59d19f0508590a08080da2626010c750a0aad267c616822af07",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.ProgressReportedDuringCancellingIsPublishedInOrder()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "a297ad89eaf189b2040a3b1e81cd644346cd09fe4ec3fe17e84ba455cc9840fe",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.UnrelatedOperationCancellationUsesTheJobCancellationState(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "f8136c7d8822649f03313daa6b97e1d943caca443b9da6260f35ec39f8a0d15d",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.ThrowingCancelCallbackAndCompletionPreserveCancellationAndRecovery(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "6e6a0ddffa13edd90ead9d7a3f7a890a5b36a2f1c6eb9a15175336103824e3f6",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.ThrowingCancelCallbackAndCompletionPreserveCancellationAndRecovery(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "dcf5b6404faed59cdf54b5c3fc49d68545339a08738abd57e24cb38d76c724aa",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.ObserverCanReadCancelAndStartTheNextJobReentrantly()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "e64bf3e2e7a51ccf885806ca944351d1e59cb9daf7c914a84f85d1fdb89675b1",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.CompletionDuringTheCancellingObserverSuppressesResultsBeforeTokenCancellation()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d95143ed2478e63a030a7499e7f18d11a4cf29cae6f1c552ccf8e62ae17403f6",
-      "member": "Nvt.Core.Tests.Progress.BackgroundJobServiceTests.FailureAfterCancellationIsSuppressed()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
     },
     {
       "rule": "blockingWait",
@@ -3162,16 +2082,6 @@
       "path": "tests/Nvt.Core.Tests/Progress/BackgroundJobServiceTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "e894fd072108679ead01fc4e12d2d4f9ff1e1119b3e4c0da812fe37030230428",
-      "member": "Nvt.Core.Tests.Progress.LoadingScopeCoordinatorTests.RunAsyncShowsBeforeActionAndHidesAfterAction()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/Progress/LoadingScopeCoordinatorTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "fcfc8f99450e7de785581b11730eff6693204821e9b4f421778c31ac8232bf80",
       "member": "Nvt.Core.Tests.Progress.LoadingScopeCoordinatorTests.UnserializedCallsCanLeaveTheSurfaceVisibleWithoutAScope()",
@@ -3209,16 +2119,6 @@
       "project": "Nvt.Core.Tests",
       "owner": "NVT CORE",
       "symbol": "Nvt.Core.Tests.Progress.ThrottledProgressTests.ManualTimeProvider",
-      "path": "tests/Nvt.Core.Tests/Progress/ThrottledProgressTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "74951c41b5df33edff9673c77e0ee11db5420f09648a97cacbc0cb6928423b7c",
-      "member": "Nvt.Core.Tests.Progress.ThrottledProgressTests.ConcurrentReportsShareTheIntervalGate().local:ReportBatchAsync()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
       "path": "tests/Nvt.Core.Tests/Progress/ThrottledProgressTests.cs"
     },
     {
@@ -3262,126 +2162,6 @@
       "path": "tests/Nvt.Core.Tests/ReportList/ReportIndexedReadOnlyListsTests.cs"
     },
     {
-      "rule": "asyncVoid",
-      "syntaxHash": "e4b5404d9c18683ca88030ee1087ab1bcc49cb8ec3ac4f1e9bb0788be5de6b5b",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryCancellationTests.StartedHandlerObservesCooperativeCancellation(bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1aba753583f711aa6ed4c9153c0d32bd069eb1930841954a168c57cd536fe677",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryCommandLineTests.AssertReplyAsync(string[],string,int,string,string?)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryCommandLineTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "409a5f74208322ac835ebcede3144dda74c865d68f69a0c04a673a8dcbe0661f",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryForegroundTests.PermissionRunsOnlyForFocusBeforeRequest(string,bool,bool,bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryForegroundTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "127a9ceffc4f1bd80d55cdcda43e394b60db0b7008793d10944ecd8456aff097",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcCancellationTests.CancelledRequestBeforeRoutingNeverStartsCommand()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "d61d6cbc9c52b29285546302650e69ac4c57e2df22e2e6a6fd7ffd5155171825",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcCancellationTests.CancellationAfterWorkStartedPreservesCleanupAndFailure()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "9b1f9c625e56e58ce2c888132c1273cf5210b136a80f6626f2fa9721307b23a7",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcCancellationTests.CancellationAfterWorkStartedPreservesCleanupAndFailure()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "0c7868e90694f054fdab2a72a8fbd6a49d53797133e45ceef6c9b743a1eb7071",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcCancellationTests.HandlerThrowingShutdownCancellationIsNotReportedAsFailure()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcCancellationTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "e0e8591c4a0d2b94362cf36c97b63f83e0445f2f9639d3e74f8482f268e2fa7d",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.SendRequestWhenServerAcceptsButDoesNotRespondReturnsTimeout()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcClientTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "3d1a08e9f4645c5aecefa6df444a94511268da3515a1a3196384111eb3a96856",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.SendRequestUsesOneTotalTimeoutBudget()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcClientTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "fce38bee0e6a67f0cedc54d8f022e76be06e22423109d366828edeb662f0a79b",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.ResponseWithoutFinalNewlineTimesOutWhileConnectionRemainsOpen()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcClientTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "1db62f20c35fde2717569c269b193fdb24454996113fc491b04c5e2ec0488eff",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.DisconnectedPeerReturnsCallerIoErrorAndExceptionMessage()",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcClientTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "84d0e0f04086d1537fdd23b9c7d6afa4c1bf45f1917ae87f267b91c33798088b",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcClientTests.SendWithPeerAsync(string,RuntimeQueryRequest?)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcClientTests.cs"
-    },
-    {
       "rule": "blockingWait",
       "syntaxHash": "ab314a91b20cd4b2d0a7f576793bfe143ab1c251dec833e07487a59d7fa1501b",
       "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryIpcTests.DisposeAsyncWhenHandlerBlocksSynchronouslyReportsBoundAndClosesPipe()",
@@ -3390,26 +2170,6 @@
       "owner": "NVT CORE",
       "symbol": "Wait",
       "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryIpcTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "2d9569c58c2bf3f23a5b57fe244269c7e46b499c3ef310268ca8f62783486824",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryPerWindowTests.ProcessIdSelectsPipeAndStaysOutOfRequest(bool,bool,bool,bool)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryPerWindowTests.cs"
-    },
-    {
-      "rule": "asyncVoid",
-      "syntaxHash": "bbe1bbd7b8e996d1b3c43a7d963e2aede424c9c6384b8802438ce8e6984f37d3",
-      "member": "Nvt.Core.Tests.RuntimeQuery.RuntimeQueryStartupTests.PhaseRunsFilterOrderAndStopAtFailure(RuntimeQueryStartupPhase,bool,string[]).local:Command(string,RuntimeQueryStartupPhase)",
-      "count": 1,
-      "project": "Nvt.Core.Tests",
-      "owner": "NVT CORE",
-      "symbol": "async-lambda:unresolved-void-delegate",
-      "path": "tests/Nvt.Core.Tests/RuntimeQuery/RuntimeQueryStartupTests.cs"
     },
     {
       "rule": "suppressions",
@@ -39930,6 +38690,16 @@
       "owner": "NVT CORE",
       "symbol": "VSTHRD200",
       "path": "src/Nvt.Core/Processes/SystemExternalProcessRunner.Invocation.cs"
+    },
+    {
+      "rule": "asyncVoid",
+      "project": "Nvt.Core.Tests",
+      "path": "tests/Nvt.Core.Tests/LogConsole/SingleThreadPump.cs",
+      "member": "Nvt.Core.Tests.LogConsole.SingleThreadPump.Run(Func<Task>)",
+      "symbol": "async-lambda:System.Threading.SendOrPostCallback",
+      "syntaxHash": "9ec9ba69fe503ad4c140fbf8ea96c2bf96e39e60035fd0b64c7940a510165f0b",
+      "count": 1,
+      "owner": "NVT CORE"
     }
   ]
 }
