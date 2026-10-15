@@ -366,7 +366,7 @@ The checker looks for a `PackageReference` to `Microsoft.VisualStudio.Threading.
 - Found: VSTHRD101 reports a real async void lambda in the build. An unresolved async lambda that is a direct
   argument (`Assert.ThrowsAsync(async () => ...)`) is then not a finding. An unresolved lambda in any
   other position stays a candidate: a subscription (`x.Opened += async ...`), an assignment, an initializer, a
-  return value, or a parenthesized or cast operand.
+  return value, a tuple element, or a parenthesized or cast operand.
 - Not found: nothing else would report it, so every unresolved async lambda stays a candidate.
 
 An application that has no such reference has to add it before it gets the relaxation. That is part

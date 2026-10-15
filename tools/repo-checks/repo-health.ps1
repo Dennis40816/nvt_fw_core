@@ -1326,9 +1326,9 @@ public static class HealthSyntaxHost
                 // when the tree does not reference Microsoft.VisualStudio.Threading.Analyzers: nothing else would report a
                 // real async void lambda. With the analyzer, VSTHRD101 reports it in the build, so a lambda that is a direct
                 // argument (call, constructor or indexer) is not a finding (nearly all are Func<Task> parameters). Every other
-                // position stays a candidate: a subscription (+=), an assignment, an initializer, a return value, or a
-                // parenthesized or cast operand.
-                else if (invoke == null && (!threadingAnalyzer || lambda.Parent is not ArgumentSyntax))
+                // position stays a candidate: a subscription (+=), an assignment, an initializer, a return value, a tuple
+                // element, or a parenthesized or cast operand.
+                else if (invoke == null && (!threadingAnalyzer || !(lambda.Parent is ArgumentSyntax argument && argument.Parent is BaseArgumentListSyntax)))
                     Find("asyncVoid",lambda,"async-lambda:" + (converted?.ToDisplayString() ?? "unresolved-void-delegate"),null,true,"Unresolved conversions are retained as candidates; H03 resolves project references.");
             }
             foreach (var access in nodes.OfType<MemberAccessExpressionSyntax>().Where(m => Name(m.Name)=="Result")) Find("blockingWait",access,"Result",null,true,"Syntax candidate; domain Result access may need classification.");

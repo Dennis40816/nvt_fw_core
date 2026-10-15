@@ -152,10 +152,13 @@ class One {
     void Assign(Holder h) { h.Handler = async () => {}; }
     void Initialize() { Mystery m = async () => {}; }
     void Parenthesized(Window w) { w.Closed += (async () => {}); }
+    void Tuple() { Mystery t = (async () => {}, 1); }
+    void Cast() { var c = (Mystery)(async () => {}); }
+    Mystery Return() { return async () => {}; }
 }
 """)
         f = [x for x in self.measure()["findings"] if x["rule"] == "asyncVoid"]
-        self.assertEqual(["Assign", "Initialize", "Parenthesized", "Subscribe"], sorted(x["member"].split(".")[-1].split("(")[0] for x in f))
+        self.assertEqual(["Assign", "Cast", "Initialize", "Parenthesized", "Return", "Subscribe", "Tuple"], sorted(x["member"].split(".")[-1].split("(")[0] for x in f))
         self.assertTrue(all(x["candidate"] for x in f))
 
     def test_async_lambda_resolves_through_sdk_implicit_usings(self) -> None:
