@@ -128,7 +128,7 @@ def main():
     for rel in STATIC:
         source = os.path.join(HERE, 'templates', rel.replace('/', os.sep))
         if rel.endswith('.csproj'):
-            source = os.path.join(HERE, 'templates', f'{PACKAGE}.csproj')
+            source = os.path.join(HERE, 'templates', f'{PACKAGE}.csproj.template')
         data = open(source, 'rb').read().replace(b'\r\n', b'\n')
         target = os.path.join(staging, rel)
         os.makedirs(os.path.dirname(target), exist_ok=True)
