@@ -20,6 +20,9 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
     private VersionManagerWriteLeaseResult? _ownedWriteLease;
 
     public void Dispose() => _ownedWriteLease?.Dispose();
+    internal string StatePathIdentity { get; set; } = string.Empty;
+    internal string? FirstLeasePathOverride { get; set; }
+    internal string? SecondLeasePathOverride { get; set; }
     internal Action<string>? Observe { get; set; }
     internal bool LeaseActive { get; private set; }
     internal VersionManagerWriteLeaseIssue LeaseIssue { get; set; }
@@ -32,7 +35,7 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
     internal int SaveCount { get; private set; }
     internal List<string> Events { get; } = [];
 
-    public ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
+    public async ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
         TimeSpan waitTimeout,
         CancellationToken cancellationToken)
     {
@@ -51,15 +54,23 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
         if (issue != VersionManagerWriteLeaseIssue.None)
         {
             _ownedWriteLease = new VersionManagerWriteLeaseResult(issue, null);
-            return ValueTask.FromResult(_ownedWriteLease);
+            return _ownedWriteLease;
         }
         Assert.False(LeaseActive);
+        string path = (LeaseAttemptCount == 2 ? SecondLeasePathOverride : FirstLeasePathOverride) ??
+            StatePathIdentity;
+        VersionManagerWriteLeaseResult acquired = await FileSystemVersionManagerWriteLease.TryAcquireAsync(
+            path, waitTimeout, cancellationToken);
+        if (!acquired.HoldsStatePath(path))
+        {
+            _ownedWriteLease = acquired;
+            return acquired;
+        }
         LeaseActive = true;
         LeaseCount++;
         int leaseNumber = LeaseCount;
         Events.Add($"writer-acquire:{leaseNumber}");
-        Observe?.Invoke($"writer-acquire:{leaseNumber}");
-        ActionLease? lease = new(() =>
+        ObservedWriterCustody? custody = new(acquired, () =>
         {
             LeaseActive = false;
             Events.Add($"writer-release:{leaseNumber}");
@@ -67,15 +78,14 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
         });
         try
         {
-            _ownedWriteLease = new VersionManagerWriteLeaseResult(
-                VersionManagerWriteLeaseIssue.None,
-                lease);
-            lease = null; // The result owns the release callback after construction.
-            return ValueTask.FromResult(_ownedWriteLease);
+            _ownedWriteLease = new VersionManagerWriteLeaseResult(VersionManagerWriteLeaseIssue.None, custody);
+            custody = null; // The result owns both exact custody and the observation callback.
+            Observe?.Invoke($"writer-acquire:{leaseNumber}");
+            return _ownedWriteLease;
         }
         finally
         {
-            lease?.Dispose();
+            custody?.Dispose();
         }
     }
 
@@ -96,10 +106,14 @@ internal sealed class SequencedStateStore(params VersionManagerStateLoadResult[]
 }
 
 // Guard: the scenario driver and awaited completion signals serialize mutable test observations.
-internal sealed class ActionLease(Action release) : IDisposable
+internal sealed class ObservedWriterCustody(VersionManagerWriteLeaseResult inner, Action release)
+    : IVersionManagerWriteLeaseCustody
 {
+    public bool HoldsStatePath(string statePath) => inner.HoldsStatePath(statePath);
+
     public void Dispose()
     {
+        inner.Dispose();
         release();
     }
 }

@@ -50,9 +50,7 @@ internal sealed class FirstInstallationAttempt(
             using (VersionManagerWriteLeaseResult lease = await _services.StateStore.TryAcquireWriteLeaseAsync(
                 ManagedFirstInstallationExperience.WriterLeaseTimeout, cancellationToken).ConfigureAwait(false))
             {
-                // Frozen ManagedInstallationSetup.cs:176 checks acquisition only;
-                // the injected state adapter owns exact-path writer custody.
-                if (!lease.IsAcquired)
+                if (!lease.HoldsStatePath(_services.StatePathIdentity))
                 {
                     return Result(_plan, lease.Issue == VersionManagerWriteLeaseIssue.Busy
                         ? ManagedFirstInstallationOutcome.Busy : ManagedFirstInstallationOutcome.StateUnavailable);
@@ -443,9 +441,7 @@ internal sealed class FirstInstallationAttempt(
                 .TryAcquireWriteLeaseAsync(
                     ManagedFirstInstallationExperience.WriterLeaseTimeout,
                     finalizationDeadline.Token).ConfigureAwait(false);
-            // Preserve the acquisition-only finalization check in frozen
-            // ManagedInstallationSetup.cs:522-528; exact custody belongs to the adapter.
-            if (!finalizeLease.IsAcquired)
+            if (!finalizeLease.HoldsStatePath(_services.StatePathIdentity))
             {
                 return Result(_plan, ManagedFirstInstallationOutcome.RecoveryRequired);
             }

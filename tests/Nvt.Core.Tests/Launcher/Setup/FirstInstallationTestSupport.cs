@@ -35,8 +35,13 @@ public abstract class FirstInstallationTestSupport : SetupTestWorkspace
         TimeProvider? timeProvider = null,
         Action<Exception>? observerDiagnostics = null)
     {
+        string statePath = StatePath();
+        if (state is SequencedStateStore sequenced)
+        {
+            sequenced.StatePathIdentity = statePath;
+        }
         return new(
-            StatePath(),
+            statePath,
             state,
             roots,
             payload,
