@@ -14,7 +14,7 @@ public sealed class ManagedFirstInstallationExperience
     public static readonly TimeSpan WriterLeaseTimeout = TimeSpan.FromSeconds(5);
 
     /// <summary>
-    /// Bounded first-install admission wait, including initial state seeding and package inventory.
+    /// Bounded first-install admission wait from the recorded Bootstrap launch through Launcher admission.
     /// </summary>
     public static readonly TimeSpan DefaultAdmissionOperationCutoff = TimeSpan.FromSeconds(30);
 

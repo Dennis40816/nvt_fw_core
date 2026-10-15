@@ -507,13 +507,13 @@ Candidate projections recheck positive revision/schema/length, exact catalog par
 | Healthy-routing P95 target | 100 ms, recorded target |
 | Health observation and progress delay | 250 ms |
 | Existing-entry admission operation | 5 seconds |
-| First-install admission operation | 30 seconds |
+| First-install admission operation, after the Bootstrap launch record through Launcher admission | 30 seconds |
 | Independent completion operation | 44,500 ms |
 | Cleanup observation reserve | 500 ms |
 | Application and launcher READY | 20 seconds each, owned by existing supervision/transport |
 | Setup writer acquisition and READY finalization | 5 seconds |
 
-Health and READY cutoffs remain separate. Uncooperative read-only health observations are abandoned at their cutoff and their eventual exceptions are observed. Admission waits deduct elapsed physical time; completion at or beyond its operation cutoff cannot be accepted. Time never confirms a plan.
+The first-install admission cutoff starts after the Bootstrap launch is recorded; initial state seeding and package inventory precede that cutoff. Health and READY cutoffs remain separate. Uncooperative read-only health observations are abandoned at their cutoff and their eventual exceptions are observed. Admission waits deduct elapsed physical time; completion at or beyond its operation cutoff cannot be accepted. Time never confirms a plan.
 
 Coassigned budgets, installation configuration and admission-session resources use immutable records. Each invocation owns its distinct nullable promotion, executable-lease and admission holders. Entry receipt presence is computed from its held observation. Derived default deadlines are get-only properties. State/root/destination checking has one shared implementation called at the original positions. These changes preserve the frozen behavior while reusing existing identity, state, writer, seed, verification, custody, handoff and process mechanisms.
 

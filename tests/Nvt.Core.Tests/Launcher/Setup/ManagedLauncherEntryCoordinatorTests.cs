@@ -365,11 +365,8 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
     }
 
     /// <summary>An internal admission deadline after process creation is termination-uncertain.</summary>
-    [Theory]
-    [InlineData(0)]
-    [InlineData(100)]
-    public async Task BootstrapAdmissionAfterLocalDeadlineFailsClosedBeforeReadyWait(
-        int payloadDelayMilliseconds)
+    [Fact]
+    public async Task BootstrapAdmissionAfterLocalDeadlineFailsClosedBeforeReadyWait()
     {
         string root = Root("late-admission");
         var time = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
@@ -387,9 +384,7 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests : SetupTestWork
         Task<ManagedLauncherEntryResult> running = coordinator.RunAsync(
             TestContext.Current.CancellationToken).AsTask();
         await payload.Entered.WaitAsync(TestContext.Current.CancellationToken);
-        // Model a slow runner before process creation without consuming the manual deadline.
-        Assert.InRange(payloadDelayMilliseconds, 0, 100);
-        await Task.Yield();
+        // Release payload admission before advancing the manual clock at the admission-wait signal.
         payload.Complete();
         _ = await Task.WhenAny(running, handoff.AdmissionWaitStarted)
             .WaitAsync(TestContext.Current.CancellationToken);

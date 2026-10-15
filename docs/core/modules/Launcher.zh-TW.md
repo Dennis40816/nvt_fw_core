@@ -507,13 +507,13 @@ Candidate projection 重查 revision／schema／length 正值、精確 catalog p
 | 健康路由 P95 目標 | 100 ms，記錄的目標 |
 | Health observation 與 progress delay | 250 ms |
 | 現有入口 admission operation | 5 秒 |
-| 首次安裝 admission operation | 30 秒 |
+| 首次安裝 admission operation，自 Bootstrap launch record 後至 Launcher admission | 30 秒 |
 | 獨立 completion operation | 44,500 ms |
 | Cleanup observation reserve | 500 ms |
 | Application 與 Launcher READY | 各 20 秒，由既有 supervision／transport 擁有 |
 | Setup writer acquisition 與 READY finalization | 5 秒 |
 
-Health 與 READY cutoff 各自獨立。忽略 cancellation 的唯讀 health observation 在 cutoff 時停止等待，仍觀察其最終例外。Admission wait 扣除已耗用的實際時間；到達或超過 operation cutoff 的 completion 不會被接受。時間經過不等於確認 plan。
+首次安裝 admission cutoff 從 Bootstrap launch 記錄完成後開始；初始 state seeding 與 package inventory 在該 cutoff 之前完成。Health 與 READY cutoff 各自獨立。忽略 cancellation 的唯讀 health observation 在 cutoff 時停止等待，仍觀察其最終例外。Admission wait 扣除已耗用的實際時間；到達或超過 operation cutoff 的 completion 不會被接受。時間經過不等於確認 plan。
 
 共同設定的 budget、installation configuration 與 admission-session resource 使用不可變 record。每次 invocation 各自擁有不同生命週期的 nullable promotion、executable-lease 與 admission holder。Entry receipt 是否存在由所持 observation 推導；衍生 default deadline 使用唯讀 property。State／root／destination 檢查只有一份實作，在原本位置呼叫。這些調整保留 frozen 行為，並使用既有 identity、state、writer、seed、verification、custody、handoff 與 process 機制。
 
