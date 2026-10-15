@@ -28,6 +28,23 @@ under the MIT License below. They are:
 - the files in src/Nvt.Core.Avalonia/Theme, except UiResourceResolver.cs
 - the files in src/Nvt.Core.Avalonia/Icons, except ConsoleGlyphs.cs
 - src/Nvt.Core.Fonts/FontRoles.axaml
+- src/Nvt.Core/IO/AtomicOutput.cs
+- tests/Nvt.Core.Tests/IO/AtomicOutputTests.cs
+- in src/Nvt.Core/Processes: IExternalProcessRunner.cs, ExternalProcessStartInfo.cs,
+  ExternalProcessResult.cs, ExternalProcessCleanup.cs,
+  ExternalProcessCleanupCapacityException.cs and
+  ExternalProcessStartFailedException.cs
+- in src/Nvt.Core/Progress: BackgroundJobService.cs, BackgroundJobHandle.cs,
+  BackgroundJobSnapshot.cs, BackgroundJobStatus.cs, ThrottledProgress.cs and
+  ProgressUpdate.cs
+- tests/Nvt.Core.Tests/Processes/ExternalProcessContractTests.cs
+- in tests/Nvt.Core.Tests/Progress: BackgroundJobServiceCancellationTests.cs,
+  BackgroundJobServiceTests.cs, ProgressUpdateTests.cs, ThrottledProgressTests.cs
+  and ManualTimeProvider.cs
+- the files in tests/Nvt.Core.TestSupport that have the header (all .cs files
+  except ChildProcessFixture.cs)
+- the files in tests/Nvt.Core.TestSupport.Tests that have the header (all .cs
+  files except ChildProcessFixtureTests.cs)
 
 MIT License
 

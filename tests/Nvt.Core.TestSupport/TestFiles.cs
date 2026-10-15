@@ -1,4 +1,5 @@
-// Copyright (c) 2026 Dennis Liu. All rights reserved.
+// Copyright (c) 2026 Dennis Liu
+// SPDX-License-Identifier: MIT
 
 using System.Text;
 
