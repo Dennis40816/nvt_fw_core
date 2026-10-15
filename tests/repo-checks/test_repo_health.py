@@ -118,10 +118,11 @@ class One {
         self.assertTrue(any("local:Local" in x["member"] for x in f))
         self.assertTrue(any("N.Sink" in x["symbol"] for x in f))
 
-    ANALYZER_PROPS = '<Project><ItemGroup><PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" /></ItemGroup></Project>'
+    ANALYZER_PROPS = '<Project><ItemGroup><PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" /></ItemGroup></Project>'
+    VERSION_ONLY_PROPS = '<Project><ItemGroup><PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" /></ItemGroup></Project>'
 
     def test_async_lambda_argument_of_unresolved_call_is_not_a_finding_with_the_analyzer(self) -> None:
-        self.write("Directory.Packages.props", self.ANALYZER_PROPS)
+        self.write("Directory.Build.props", self.ANALYZER_PROPS)
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         self.assertEqual([], self.measure()["findings"])
 
@@ -132,13 +133,20 @@ class One {
         self.assertEqual("asyncVoid", f[0]["rule"])
         self.assertTrue(f[0]["candidate"])
 
+    def test_a_package_version_alone_is_not_an_analyzer_reference(self) -> None:
+        self.write("Directory.Packages.props", self.VERSION_ONLY_PROPS)
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        f = self.measure()["findings"]
+        self.assertEqual(1, len(f))
+        self.assertTrue(f[0]["candidate"])
+
     def test_analyzer_reference_in_a_project_file_counts(self) -> None:
         self.write("src/Fixture/Fixture.csproj", '<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" /></ItemGroup></Project>')
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         self.assertEqual([], self.measure()["findings"])
 
     def test_unresolved_async_lambda_outside_an_argument_is_candidate_with_the_analyzer(self) -> None:
-        self.write("Directory.Packages.props", self.ANALYZER_PROPS)
+        self.write("Directory.Build.props", self.ANALYZER_PROPS)
         self.write("src/Fixture/One.cs", """class One {
     void Subscribe(Window w) { w.Opened += async (_, _) => {}; }
     void Assign(Holder h) { h.Handler = async () => {}; }
