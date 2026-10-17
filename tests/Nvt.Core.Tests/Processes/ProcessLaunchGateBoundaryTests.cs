@@ -20,6 +20,12 @@ public sealed class ProcessLaunchGateBoundaryTests
         "Contained process starts require an absolute executable, shell disabled, and no redirected streams.";
     private static readonly string[] QuotedArguments = ["two words", "quote\"inside", "trail\\"];
 
+    /// <summary>
+    /// A value that no handle table of a test process reaches. Windows ignores the low two bits of a handle value and a
+    /// long test run can hold a live handle at a small value such as 0x12344, so a small value is not "invalid".
+    /// </summary>
+    internal const long NeverAHandle = 0x7FFFFFF4;
+
     /// <summary>All public entry points preserve their null checks and parameter order.</summary>
     [Fact]
     public void PublicNullChecksPreserveOrder()
@@ -234,7 +240,7 @@ public sealed class ProcessLaunchGateBoundaryTests
         }
         bool called = false;
         _ = Assert.Throws<Win32Exception>(() => ProcessLaunchGate.StartContained(
-            ProcessProbe.Create("exit"), [new("INVALID", new IntPtr(0x12345))], () => called = true));
+            ProcessProbe.Create("exit"), [new("INVALID", new IntPtr(NeverAHandle))], () => called = true));
         Assert.False(called);
     }
 
@@ -365,7 +371,7 @@ public sealed class ProcessLaunchGateBoundaryTests
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(-2)]
-    [InlineData(0x12345)]
+    [InlineData(NeverAHandle)]
     public void TryClearInheritanceRejectsUnusableWindowsHandles(long value)
     {
         if (!OperatingSystem.IsWindows())

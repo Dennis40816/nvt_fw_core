@@ -6,13 +6,25 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
-## 1.0.0
+## 1.0.0 (draft, not released)
 
-Core 1.0.0 declares the public API of 0.9.4 stable. It has the same content as 0.9.4 and adds no change of its own.
+Core 1.0.0 declares the public API stable. It contains 0.9.4 and the changes listed below.
 From this version, 1.x makes no breaking changes. A change that would break a host waits for 2.0.0.
 `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
 
+### Added
+
+- Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
+
+### Changed
+
+- Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
+- Licensing: 34 more files carry an `SPDX-License-Identifier: MIT` header in place of "All rights reserved". They are `AtomicOutput` and its tests, six `Nvt.Core.TestSupport` helpers and their tests (not `ChildProcessFixture`), the six external-process contract types and the six background-job and progress types, with their tests. Each of the eight folders has a `LICENSE` file for the scope. No C# API, namespace or behavior changes.
+- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+
 ## 0.9.4 - 2026-10-14
+
+Tag `core-v0.9.4` on commit `f6f44e02a8ff79417709a3fd8c23aa22f594f2cf` (#237).
 
 A style addition for the NFU Settings tab list, and for any host that needs a selected control without a rounded border.
 It changes no C# API and no existing role, so `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.3 entries.

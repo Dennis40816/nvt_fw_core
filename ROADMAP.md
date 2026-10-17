@@ -33,8 +33,8 @@ Core follows the version rules that the owner set for every project on 2026-10-0
 | 0.9.1 | 2026-10-13 | Console interaction, accessibility and lifecycle for the first host adoption (NFH K2e). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.1) |
 | 0.9.2 | 2026-10-13 | Console font zoom for the first host adoption (NFH). No breaking change. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.2) |
 | 0.9.3 | 2026-10-14 | Console toolbar rework for the first host adoption (NFH): one level label that opens on hover, one visibility rule and four regions. Breaks three resource names and one breakpoint default. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.3) |
-| 0.9.4 | 2026-10-14 | The borderless `actionGhost.flat` role for selected controls, such as the NFU Settings tab list. A style addition only; no C# API changes. | Planned |
-| 1.0.0 | Not set. After NFC pins 0.9.4 and the owner confirms its screens | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. | Planned |
+| 0.9.4 | 2026-10-14 | The borderless `actionGhost.flat` role for selected controls, such as the NFU Settings tab list. A style addition only; no C# API changes. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-v0.9.4) |
+| 1.0.0 | Not set. After NFH, NFU and NFC adopt 0.9.4, the owner confirms their screens, and Launcher steps L10 to L12 are merged | All three tools adopted and their screens confirmed by the owner. For NFC, the 1.3.x trunk counts. Launcher steps L10 to L12 are part of 1.0.0 (owner decision 2026-10-15). | Planned |
 | Fonts 0.1.1 | 2026-10-10 | Independent font package. `core-fonts-v0.1.0` came first and `0.1.1` adds the Inter license. | [Released](https://github.com/Dennis40816/nvt_fw_core/releases/tag/core-fonts-v0.1.1) |
 
 NFC meets the 1.0.0 condition when its 1.3.x trunk uses Core and the owner confirms its screens in a development build (owner decision 2026-10-07). Core 1.0.0 does not wait for an NFC customer release.
@@ -75,6 +75,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Item | Target | Status | Link |
 | --- | --- | --- | --- |
 | README, contribution rules, license | 1.0.0 | Merged | [README](README.md), [CONTRIBUTING](CONTRIBUTING.md) |
+| Component licenses: the root `LICENSE` states the copyright only. MIT headers and folder `LICENSE` files cover Theme, Icons, the font roles, `AtomicOutput`, the TestSupport helpers and the process and progress contracts | 1.0.0 | Merged | [#240](https://github.com/Dennis40816/nvt_fw_core/pull/240), [#244](https://github.com/Dennis40816/nvt_fw_core/pull/244), [LICENSE-COMPONENTS.txt](LICENSE-COMPONENTS.txt) |
 | Pull request template | 1.0.0 | Merged | [template](.github/pull_request_template.md) |
 
 **3. CI/CD workflows and tests**
@@ -103,6 +104,9 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Application CI wiring guide | 1.0.0 | Merged | [#217](https://github.com/Dennis40816/nvt_fw_core/pull/217), [guide](tools/repo-checks/csharp/README.md#application-ci-wiring) |
 | Ledgers: remove the placeholder `removeBy` dates | 1.0.0 | Merged. NFH removed its dates ([NFH #106](https://github.com/Dennis40816/nvt-freeform-helper/pull/106)). NFC removed 4,815 dates ([NFC #638](https://github.com/Dennis40816/nvt_fw_combiner/pull/638)). The NFU ledger on `1.0.x` has none | [#218](https://github.com/Dennis40816/nvt_fw_core/pull/218), [guide](tools/repo-checks/ledger-operation.md#remove-the-removeby-dates-of-a-ledger) |
 | Performance gate of the Console scroll test under a parallel solution run | 1.0.0 | Done ([#220](https://github.com/Dennis40816/nvt_fw_core/pull/220)) | [#206](https://github.com/Dennis40816/nvt_fw_core/issues/206) |
+| Health: a local Verify runner that stops stale build servers | 1.0.0 | Merged | [#236](https://github.com/Dennis40816/nvt_fw_core/pull/236) |
+| Health: 15 over-long test and probe methods split | 1.0.0 | Merged | [#238](https://github.com/Dennis40816/nvt_fw_core/pull/238) |
+| Health: async lambdas resolve with the SDK implicit usings, and an unresolved one is relaxed only where VSTHRD101 reports it | 1.0.0 | Merged | [#242](https://github.com/Dennis40816/nvt_fw_core/pull/242) |
 
 **5. Shared UI classes**
 
@@ -119,16 +123,17 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | Basic controls, set 2: toggle button, including the `toggleSoft` role | 1.0.0 | Merged | [#120](https://github.com/Dennis40816/nvt_fw_core/pull/120), [#124](https://github.com/Dennis40816/nvt_fw_core/pull/124) |
 | Basic controls, set 3: text styles, check box, radio button, list box, expander, grid splitter, progress bar, menus | 1.0.0, best effort | Merged | [#129](https://github.com/Dennis40816/nvt_fw_core/pull/129), [#134](https://github.com/Dennis40816/nvt_fw_core/pull/134), [#138](https://github.com/Dennis40816/nvt_fw_core/pull/138), [#146](https://github.com/Dennis40816/nvt_fw_core/pull/146) |
 | Icons from the Material Symbols font | 1.0.0 | Merged | [#111](https://github.com/Dennis40816/nvt_fw_core/pull/111) |
-| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list, row interaction, accessibility peers and lifecycle merged. Released in 0.9.1 (2026-10-13). NFH adopts the Console in K2e. Font zoom (80 to 300 percent, Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+wheel) was added after the freeze at the owner's request and released in 0.9.2 (2026-10-13). The toolbar rework (level label that opens on hover) was released in 0.9.3 (2026-10-14). | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205), [#221](https://github.com/Dennis40816/nvt_fw_core/pull/221) |
+| Console: redesigned shared control, adopted by NFH | 1.0.0 | Model, controller, toolbar, list, row interaction, accessibility peers and lifecycle merged. Released in 0.9.1 (2026-10-13). NFH adopts the Console in K2e. Font zoom (80 to 300 percent, Ctrl+Plus, Ctrl+Minus, Ctrl+0, Ctrl+wheel) was added after the freeze at the owner's request and released in 0.9.2 (2026-10-13). The toolbar rework (level label that opens on hover) was released in 0.9.3 (2026-10-14). | [#82](https://github.com/Dennis40816/nvt_fw_core/pull/82), [#140](https://github.com/Dennis40816/nvt_fw_core/pull/140), [#169](https://github.com/Dennis40816/nvt_fw_core/pull/169), [#170](https://github.com/Dennis40816/nvt_fw_core/pull/170), [#188](https://github.com/Dennis40816/nvt_fw_core/pull/188), [#205](https://github.com/Dennis40816/nvt_fw_core/pull/205), [#221](https://github.com/Dennis40816/nvt_fw_core/pull/221), [#231](https://github.com/Dennis40816/nvt_fw_core/pull/231) |
 | Number scrubber holds one drag session | 1.0.0 | Merged | [#122](https://github.com/Dennis40816/nvt_fw_core/pull/122) |
-| `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
+| `Nvt.Core.Fonts` with its own version and tag | 1.0.0 | Merged; `core-fonts-v0.1.1` released. Version 0.1.2 (the component `LICENSE` in the package) is merged in [#241](https://github.com/Dennis40816/nvt_fw_core/pull/241). The tag `core-fonts-v0.1.2` is not set | [Fonts](docs/core/modules/Fonts.md), [releasing](docs/core/releasing.md) |
 
 **6. Launcher**
 
 | Item | Target | Status | Link |
 | --- | --- | --- | --- |
 | State contracts, package verification, state files, coordination, custody, installation | 1.0.0 | Merged | [#60](https://github.com/Dennis40816/nvt_fw_core/pull/60), [#67](https://github.com/Dennis40816/nvt_fw_core/pull/67), [#75](https://github.com/Dennis40816/nvt_fw_core/pull/75), [#78](https://github.com/Dennis40816/nvt_fw_core/pull/78), [#84](https://github.com/Dennis40816/nvt_fw_core/pull/84), [#89](https://github.com/Dennis40816/nvt_fw_core/pull/89) |
-| Remaining Launcher steps, including a second-app test for WorkStation | 1.0.0 | In progress (NFC) | [Launcher](docs/core/modules/Launcher.md) |
+| Entry and first-install use cases (`ManagedLauncherEntryCoordinator`, `ManagedFirstInstallationExperience` and their ports), moved from NFC | 1.0.0 | Merged. Not in a tagged version yet | [#243](https://github.com/Dennis40816/nvt_fw_core/pull/243), [Launcher](docs/core/modules/Launcher.md) |
+| Remaining Launcher steps, including a second-app test for WorkStation | 1.0.0 | Not started | [Launcher](docs/core/modules/Launcher.md) |
 
 **7. Utility functions**
 

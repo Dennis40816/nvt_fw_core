@@ -76,10 +76,7 @@ internal static class LauncherModes
 
         if (mode is "bootstrap-ready" or "bootstrap-identity-chain-root")
         {
-            if (!await WaitForExactStartAsync(context).ConfigureAwait(false))
-            {
-                return ProbeExitCodes.InvalidStartGate;
-            }
+            if (!await WaitForExactStartAsync(context).ConfigureAwait(false)) { return ProbeExitCodes.InvalidStartGate; }
         }
         if (mode == "bootstrap-identity-chain-root")
         {
@@ -129,37 +126,42 @@ internal static class LauncherModes
                         Environment.GetEnvironmentVariable(names.LifetimeJob) ?? "<null>",
                         Environment.GetEnvironmentVariable(names.LifetimeStatePath) ?? "<null>",
                         Environment.GetEnvironmentVariable(names.LifetimeKind) ?? "<null>"], context.CancellationToken).ConfigureAwait(false);
-                if (!await WaitForFileAsync(marker + ".release", context.CancellationToken).ConfigureAwait(false))
-                {
-                    return ProbeExitCodes.HandshakeTimedOut;
-                }
+                if (!await WaitForFileAsync(marker + ".release", context.CancellationToken).ConfigureAwait(false)) { return ProbeExitCodes.HandshakeTimedOut; }
                 capture.Dispose();
                 await File.WriteAllTextAsync(marker + ".disposed", GetHandleInformation(handle, out _).ToString(), context.CancellationToken).ConfigureAwait(false);
-                if (!await WaitForFileAsync(marker + ".exit", context.CancellationToken).ConfigureAwait(false))
-                {
-                    return ProbeExitCodes.HandshakeTimedOut;
-                }
+                if (!await WaitForFileAsync(marker + ".exit", context.CancellationToken).ConfigureAwait(false)) { return ProbeExitCodes.HandshakeTimedOut; }
             }
         }
-        if (capture.Outcome != InheritedManagedProcessLifetimeOutcome.Captured)
+        if (capture.Outcome != InheritedManagedProcessLifetimeOutcome.Captured) { return ProbeExitCodes.LifetimeCaptureFailed; }
+        if (mode is "bootstrap-exit-22" or "bootstrap-eof-before-exit-18")
         {
-            return ProbeExitCodes.LifetimeCaptureFailed;
+            string marker = context.Inputs.Required("marker");
+            await File.WriteAllTextAsync(marker, Environment.ProcessId.ToString(CultureInfo.InvariantCulture), context.CancellationToken).ConfigureAwait(false);
+            return await CompleteExitModeAsync(context, mode, marker).ConfigureAwait(false);
         }
+        return await CompleteModeAsync(context, mode, capture, expectedReady).ConfigureAwait(false);
+    }
+
+    /// <summary>Finishes the bootstrap exit modes after the parent-visible marker is written.</summary>
+    private static async Task<int> CompleteExitModeAsync(ProbeContext context, string mode, string marker)
+    {
+        if (mode == "bootstrap-exit-22")
+        {
+            return ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.InvalidInheritedContext);
+        }
+        return await WaitForFileAsync(marker + ".release", context.CancellationToken).ConfigureAwait(false)
+            ? ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.StateUnavailable)
+            : ProbeExitCodes.HandshakeTimedOut;
+    }
+
+    private static async Task<int> CompleteModeAsync(
+        ProbeContext context, string mode, IInheritedManagedProcessLifetimeCapture capture, string? expectedReady)
+    {
+        LauncherProtocolNames names = context.ProtocolNames;
         switch (mode)
         {
             case "bootstrap-ready":
                 return ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.StateUnavailable);
-            case "bootstrap-exit-22":
-            case "bootstrap-eof-before-exit-18":
-                string marker = context.Inputs.Required("marker");
-                await File.WriteAllTextAsync(marker, Environment.ProcessId.ToString(CultureInfo.InvariantCulture), context.CancellationToken).ConfigureAwait(false);
-                if (mode == "bootstrap-exit-22")
-                {
-                    return ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.InvalidInheritedContext);
-                }
-                return await WaitForFileAsync(marker + ".release", context.CancellationToken).ConfigureAwait(false)
-                    ? ImmutableBootstrapExitCodeCodec.EncodeFailure(ImmutableBootstrapExitIssue.StateUnavailable)
-                    : ProbeExitCodes.HandshakeTimedOut;
             case "launcher-identity-observation":
                 await WriteIdentityAsync(context, capture).ConfigureAwait(false);
                 string expected = expectedReady ?? throw new InvalidOperationException("Missing expected READY identity.");

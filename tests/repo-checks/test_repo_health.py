@@ -118,12 +118,64 @@ class One {
         self.assertTrue(any("local:Local" in x["member"] for x in f))
         self.assertTrue(any("N.Sink" in x["symbol"] for x in f))
 
-    def test_unresolved_async_lambda_is_retained_as_candidate(self) -> None:
+    ANALYZER_PROPS = '<Project><ItemGroup><PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" /></ItemGroup></Project>'
+    VERSION_ONLY_PROPS = '<Project><ItemGroup><PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" /></ItemGroup></Project>'
+
+    def test_async_lambda_argument_of_unresolved_call_is_not_a_finding_with_the_analyzer(self) -> None:
+        self.write("Directory.Build.props", self.ANALYZER_PROPS)
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        self.assertEqual([], self.measure()["findings"])
+
+    def test_async_lambda_argument_of_unresolved_call_is_candidate_without_the_analyzer(self) -> None:
         self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
         f = self.measure()["findings"]
         self.assertEqual(1, len(f))
         self.assertEqual("asyncVoid", f[0]["rule"])
         self.assertTrue(f[0]["candidate"])
+
+    def test_a_package_version_alone_is_not_an_analyzer_reference(self) -> None:
+        self.write("Directory.Packages.props", self.VERSION_ONLY_PROPS)
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        f = self.measure()["findings"]
+        self.assertEqual(1, len(f))
+        self.assertTrue(f[0]["candidate"])
+
+    def test_analyzer_reference_in_a_project_file_counts(self) -> None:
+        self.write("src/Fixture/Fixture.csproj", '<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" /></ItemGroup></Project>')
+        self.write("src/Fixture/One.cs", "class One { void Run() { External(async () => {}); } }")
+        self.assertEqual([], self.measure()["findings"])
+
+    def test_unresolved_async_lambda_outside_an_argument_is_candidate_with_the_analyzer(self) -> None:
+        self.write("Directory.Build.props", self.ANALYZER_PROPS)
+        self.write("src/Fixture/One.cs", """class One {
+    void Subscribe(Window w) { w.Opened += async (_, _) => {}; }
+    void Assign(Holder h) { h.Handler = async () => {}; }
+    void Initialize() { Mystery m = async () => {}; }
+    void Parenthesized(Window w) { w.Closed += (async () => {}); }
+    void Tuple() { Mystery t = (async () => {}, 1); }
+    void Cast() { var c = (Mystery)(async () => {}); }
+    Mystery Return() { return async () => {}; }
+}
+""")
+        f = [x for x in self.measure()["findings"] if x["rule"] == "asyncVoid"]
+        self.assertEqual(["Assign", "Cast", "Initialize", "Parenthesized", "Return", "Subscribe", "Tuple"], sorted(x["member"].split(".")[-1].split("(")[0] for x in f))
+        self.assertTrue(all(x["candidate"] for x in f))
+
+    def test_async_lambda_resolves_through_sdk_implicit_usings(self) -> None:
+        # No using directive: Task, Func and SendOrPostCallback resolve only through the implicit usings.
+        self.write("src/Fixture/One.cs", '''namespace N;
+class One {
+    void Run(SynchronizationContext context) {
+        Task.Run(async () => { await Task.Yield(); });
+        Func<Task> work = async () => { await Task.Yield(); };
+        context.Post(async _ => { await Task.Yield(); }, null);
+    }
+}
+''')
+        f = [f for f in self.measure()["findings"] if f["rule"] == "asyncVoid"]
+        self.assertEqual(1, len(f))
+        self.assertIn("SendOrPostCallback", f[0]["symbol"])
+        self.assertFalse(f[0]["candidate"])
 
     def test_blocking_candidates_ignore_comments_and_literals(self) -> None:
         self.write("src/Fixture/One.cs", '''class One {

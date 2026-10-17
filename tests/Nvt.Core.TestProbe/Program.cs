@@ -54,14 +54,9 @@ namespace Nvt.Core.TestProbe
                         string handle = inputs.Required("ambient-handle");
                         await File.WriteAllTextAsync(marker, "started");
                         await TryWritePipeAsync(handle, "leaked");
+                        return 0;
                     }
-                    else
-                    {
-                        string payload = inputs.Required("payload");
-                        await TryWritePipeAsync(inputs.Optional("allowed-handle"), payload);
-                        await TryWritePipeAsync(inputs.Optional("cross-handle"), "cross:" + payload);
-                    }
-                    return 0;
+                    return await RunContainedIsolationAsync(inputs);
                 }
 
                 using var job = LifetimeJob.Join();
@@ -188,6 +183,14 @@ namespace Nvt.Core.TestProbe
             {
                 // The parent observes whether an inherited pipe can receive bytes.
             }
+        }
+
+        private static async Task<int> RunContainedIsolationAsync(ProbeInputs inputs)
+        {
+            string payload = inputs.Required("payload");
+            await TryWritePipeAsync(inputs.Optional("allowed-handle"), payload);
+            await TryWritePipeAsync(inputs.Optional("cross-handle"), "cross:" + payload);
+            return 0;
         }
 
         private static async Task<int> RunTreeAsync(string mode, ProbeInputs inputs)

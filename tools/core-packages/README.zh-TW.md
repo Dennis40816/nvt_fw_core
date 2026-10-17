@@ -117,7 +117,7 @@ SHA-256 不符時不重試。
 此授權涵蓋 Core 套件程式碼，包括 Fonts。
 使用 Fonts 的工具也須隨附套件中的 `licenses/`，並保留 Inter 相依套件的授權與聲明。
 詳見 [Fonts 授權義務](../../docs/core/modules/Fonts.zh-TW.md#授權義務與更新)。
-Core 只能依其專有 `LICENSE` 散布。
+Core 只能依該 `LICENSE` 散布。它就是 Core 儲存庫的 `LICENSE-COMPONENTS.txt`：第 1 部分適用沒有自備授權的檔案，第 2 部分適用帶有 `SPDX-License-Identifier: MIT` 檔頭的檔案。
 工具本身的授權不會重新授權 Core。
 
 ## 沒有網路的沙箱

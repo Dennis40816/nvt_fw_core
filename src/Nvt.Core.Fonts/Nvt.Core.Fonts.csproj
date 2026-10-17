@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <PackageId>Nvt.Core.Fonts</PackageId>
     <Authors>Dennis Liu</Authors>
     <Description>Shared font roles, Chinese fallback, and Material Symbols for Avalonia tools.</Description>
@@ -12,7 +12,6 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
     <!-- Preserve the license glob's relative paths inside the package. -->
     <None Update="licenses\**\*" Pack="true" PackagePath="" />
@@ -24,4 +23,5 @@
   <ItemGroup>
     <AvaloniaResource Include="Assets\**\*.ttf;Assets\**\*.otf" />
   </ItemGroup>
+  <Import Project="..\..\eng\package-license.targets" />
 </Project>

@@ -36,47 +36,7 @@ public sealed class ToolTipStylesRenderer
             foreach (int preview in new[] { 0, 1, 2, 3 })
             {
                 bool dark = preview == 1, square = preview == 2, comparison = preview == 3;
-                var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,32,*") };
-                for (int column = 0; column < 2; column++)
-                {
-                    bool core = !comparison || column == 1;
-                    var panel = new StackPanel { Spacing = 22 };
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = comparison ? (core ? "CORE / THEMED AND WRAPPING" : "FLUENT / DEFAULT") :
-                            (column == 0 ? "STRING TIPS" : "CUSTOM CONTENT AND KEYBOARD HELP"),
-                        FontWeight = global::Avalonia.Media.FontWeight.SemiBold,
-                    });
-                    if (comparison || column == 0)
-                    {
-                        panel.Children.Add(Sample("Short string", "Open details", core));
-                        panel.Children.Add(Sample(core ? "Long string / maximum width 320 DIP" : "Long string / Fluent defaults",
-                            comparison ? "Tooltip text can wrap to keep the explanation easy to read." : LongText, core));
-                    }
-                    else
-                    {
-                        panel.Children.Add(Sample("Custom control / content remains unchanged", new StackPanel
-                        {
-                            Spacing = 4,
-                            Children =
-                            {
-                                new TextBlock { Text = "Structured help", FontWeight = global::Avalonia.Media.FontWeight.SemiBold },
-                                new TextBlock { Text = "The host keeps control of custom content." },
-                            },
-                        }, core));
-                        panel.Children.Add(Sample("Keyboard help / shared tooltip surface",
-                            "Tab opens the tooltip. Escape closes it and keeps focus on the target.", core));
-                    }
-                    var root = new Border { Child = panel, Padding = new Thickness(24) };
-                    root.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceSubtleBrush"));
-                    if (core)
-                    {
-                        var uri = new Uri("avares://Nvt.Core.Avalonia/Focus/ToolTipStyles.axaml");
-                        root.Styles.Add(new StyleInclude(uri) { Source = uri });
-                    }
-                    Grid.SetColumn(root, column * 2);
-                    columns.Children.Add(root);
-                }
+                var columns = CreatePreviewColumns(comparison);
                 var sheet = new StackPanel
                 {
                     Margin = new Thickness(32), Spacing = 24,
@@ -96,15 +56,7 @@ public sealed class ToolTipStylesRenderer
                     ThemeShapes.SetShape(window.Resources, square ? ThemeShape.Square : ThemeShape.Pill);
                     window.Show();
                     Flush(window);
-                    foreach (ToolTip tip in sheet.GetVisualDescendants().OfType<ToolTip>())
-                    {
-                        Rect bounds = tip.Bounds;
-                        Assert.True(bounds.Width > 0 && bounds.Height > 0);
-                        Point? origin = tip.TranslatePoint(default, window);
-                        Assert.NotNull(origin);
-                        Assert.InRange(origin.Value.X + bounds.Width, 0, 1200);
-                        Assert.InRange(origin.Value.Y + bounds.Height, 0, 600);
-                    }
+                    AssertTooltipsFitWindow(window, sheet);
                     if (string.IsNullOrWhiteSpace(destination)) continue;
                     using var frame = window.CaptureRenderedFrame();
                     Assert.NotNull(frame);
@@ -123,6 +75,65 @@ public sealed class ToolTipStylesRenderer
             }
         }
         finally { ToolTipTextWrapping.Unregister(); }
+    }
+
+    private static Grid CreatePreviewColumns(bool comparison)
+    {
+        var columns = new Grid { ColumnDefinitions = new ColumnDefinitions("*,32,*") };
+        for (int column = 0; column < 2; column++)
+        {
+            bool core = !comparison || column == 1;
+            var panel = new StackPanel { Spacing = 22 };
+            panel.Children.Add(new TextBlock
+            {
+                Text = comparison ? (core ? "CORE / THEMED AND WRAPPING" : "FLUENT / DEFAULT") :
+                    (column == 0 ? "STRING TIPS" : "CUSTOM CONTENT AND KEYBOARD HELP"),
+                FontWeight = global::Avalonia.Media.FontWeight.SemiBold,
+            });
+            if (comparison || column == 0)
+            {
+                panel.Children.Add(Sample("Short string", "Open details", core));
+                panel.Children.Add(Sample(core ? "Long string / maximum width 320 DIP" : "Long string / Fluent defaults",
+                    comparison ? "Tooltip text can wrap to keep the explanation easy to read." : LongText, core));
+            }
+            else
+            {
+                panel.Children.Add(Sample("Custom control / content remains unchanged", new StackPanel
+                {
+                    Spacing = 4,
+                    Children =
+                    {
+                        new TextBlock { Text = "Structured help", FontWeight = global::Avalonia.Media.FontWeight.SemiBold },
+                        new TextBlock { Text = "The host keeps control of custom content." },
+                    },
+                }, core));
+                panel.Children.Add(Sample("Keyboard help / shared tooltip surface",
+                    "Tab opens the tooltip. Escape closes it and keeps focus on the target.", core));
+            }
+            var root = new Border { Child = panel, Padding = new Thickness(24) };
+            root.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceSubtleBrush"));
+            if (core)
+            {
+                var uri = new Uri("avares://Nvt.Core.Avalonia/Focus/ToolTipStyles.axaml");
+                root.Styles.Add(new StyleInclude(uri) { Source = uri });
+            }
+            Grid.SetColumn(root, column * 2);
+            columns.Children.Add(root);
+        }
+        return columns;
+    }
+
+    private static void AssertTooltipsFitWindow(Window window, StackPanel sheet)
+    {
+        foreach (ToolTip tip in sheet.GetVisualDescendants().OfType<ToolTip>())
+        {
+            Rect bounds = tip.Bounds;
+            Assert.True(bounds.Width > 0 && bounds.Height > 0);
+            Point? origin = tip.TranslatePoint(default, window);
+            Assert.NotNull(origin);
+            Assert.InRange(origin.Value.X + bounds.Width, 0, 1200);
+            Assert.InRange(origin.Value.Y + bounds.Height, 0, 600);
+        }
     }
 
     private static StackPanel Sample(string label, object content, bool core)
