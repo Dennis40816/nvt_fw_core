@@ -60,7 +60,8 @@ internal sealed class InstalledPayloadProof(FileSystemManagedVersionRepository r
     }
 
     internal async ValueTask<ManagedVersionDamageReason?> VerifyAsync(string versionRoot,
-        ManagedVersionAdmission admission, CancellationToken cancellationToken)
+        ManagedVersionAdmission admission, CancellationToken cancellationToken,
+        Action<long, long>? progress = null)
     {
         try
         {
@@ -104,6 +105,7 @@ internal sealed class InstalledPayloadProof(FileSystemManagedVersionRepository r
             {
                 verificationTotal = checked(verificationTotal + file.Size);
             }
+            Action<int>? verified = VerifiedByteProgress.Start(progress, verificationTotal);
             foreach (PackageFile file in manifest.Files)
             {
                 string path = RepositoryPathSafety.ResolvePayloadPath(versionRoot, file.Path);
@@ -116,7 +118,7 @@ internal sealed class InstalledPayloadProof(FileSystemManagedVersionRepository r
                     return ManagedVersionDamageReason.ContentMismatch;
                 }
                 BoundedArchiveReadResult result = await BoundedArchiveReader.ReadFileAndHashAsync(path, file.Size,
-                    budget, cancellationToken).ConfigureAwait(false);
+                    budget, cancellationToken, verified).ConfigureAwait(false);
                 if (!result.IsSuccess || !string.Equals(result.Sha256, file.Sha256, StringComparison.Ordinal))
                 {
                     return ManagedVersionDamageReason.ContentMismatch;
