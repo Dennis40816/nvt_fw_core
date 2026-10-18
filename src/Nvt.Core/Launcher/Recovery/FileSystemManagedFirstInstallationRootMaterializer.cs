@@ -179,14 +179,24 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
             return Failure(MapObservedRoot(initial.Status));
         }
 
+        var request = new MaterializationRequest(
+            root, statePathIdentity, payload.Identity, content, candidate, seed, expectedAdmission, progress);
+        return await MaterializeAbsentRootAsync(request, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Owns the destination custody and the marker stream until a promoted installation takes them.
+    // Failures after the promotion are mapped in CompletePromotedRootAsync, so this catch sees only earlier ones.
+    private async ValueTask<ManagedFirstInstallationMaterializationResult> MaterializeAbsentRootAsync(
+        MaterializationRequest request,
+        CancellationToken cancellationToken)
+    {
         ManagedSetupDestinationCustody? custody = null;
         FileStream? markerStream = null;
-        bool promotionCommitted = false;
         try
         {
             ManagedFirstInstallationMaterializationIssue custodyIssue =
                 ManagedSetupDestinationCustody.TryAcquire(
-                    root,
+                    request.Root,
                     out custody,
                     _repositoryStagingDeleteOpenStatusOverride,
                     _repositoryOwnedDeletionObservationStatusOverride);
@@ -196,7 +206,7 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
             }
             if (_destinationCustodyAcquired is not null)
             {
-                await _destinationCustodyAcquired(root, cancellationToken).ConfigureAwait(false);
+                await _destinationCustodyAcquired(request.Root, cancellationToken).ConfigureAwait(false);
             }
             ManagedFirstInstallationMaterializationIssue finalAdmission = custody!.AdmitFreshDestination();
             if (finalAdmission != ManagedFirstInstallationMaterializationIssue.None)
@@ -204,174 +214,39 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
                 return Failure(finalAdmission);
             }
 
-            string markerPath = FileSystemManagedInstallationRootProbe.GetTransactionMarkerPath(root);
-            string stagingContainer = FileSystemManagedInstallationRootProbe.GetStagingContainerPath(root);
-            string transactionId = Guid.NewGuid().ToString("N");
-            string stagingRoot = Path.Combine(stagingContainer, transactionId);
-            var marker = ManagedSetupMarker.Create(
-                transactionId,
-                root,
-                Path.GetFullPath(statePathIdentity),
-                stagingRoot,
-                payload.Identity,
-                candidate,
-                ManagedSetupMarkerIO.StagingPhase);
-
+            SetupTransaction transaction = CreateSetupTransaction(request);
             MarkerCreateResult createdMarker = await CreateNewMarkerAsync(
                 custody,
-                Path.GetFileName(markerPath),
-                _markerIO.Serialize(marker),
+                transaction.MarkerName,
+                _markerIO.Serialize(transaction.Marker),
                 _boundaryReached, cancellationToken).ConfigureAwait(false);
             if (!createdMarker.IsSuccess)
             {
                 return Failure(createdMarker.Issue);
             }
             markerStream = createdMarker.Stream!;
-            ManagedFirstInstallationMaterializationIssue staging = custody!.CreateStaging(
-                stagingContainer,
-                stagingRoot);
-            if (staging != ManagedFirstInstallationMaterializationIssue.None)
+            ManagedFirstInstallationMaterializationIssue promoted = await StageAndPromoteAsync(
+                request, transaction, custody, markerStream, cancellationToken).ConfigureAwait(false);
+            if (promoted != ManagedFirstInstallationMaterializationIssue.None)
             {
-                return Failure(staging);
-            }
-            if (_stagingCustodyAcquired is not null)
-            {
-                await _stagingCustodyAcquired(stagingRoot, cancellationToken).ConfigureAwait(false);
+                return Failure(promoted);
             }
 
-            string launcherPath = Path.Combine(stagingRoot, _layout.DistributionLauncherFileName);
-            string bootstrapPath = Path.Combine(stagingRoot, _layout.BootstrapFileName);
-            await content.CopyDistributionLauncherAsync(launcherPath, cancellationToken)
-                .ConfigureAwait(false);
-            await content.CopyBootstrapAsync(bootstrapPath, cancellationToken).ConfigureAwait(false);
-            if (!await MatchesAsync(
-                    launcherPath,
-                    payload.Identity.LauncherSize,
-                    payload.Identity.LauncherSha256,
-                    cancellationToken).ConfigureAwait(false) ||
-                !await MatchesAsync(
-                    bootstrapPath,
-                    payload.Identity.Bootstrap.Length,
-                    payload.Identity.Bootstrap.Sha256,
-                    cancellationToken).ConfigureAwait(false))
-            {
-                return Failure(ManagedFirstInstallationMaterializationIssue.SourceChanged);
-            }
-
-            ManagedVersionInstallResult payloadResult;
-            using (WindowsStableRelativeWriteRoot writeRoot = custody.OpenPackageWriteRoot())
-            {
-                payloadResult = await _installer(writeRoot, candidate.Identity.SourceRoot,
-                    candidate.Package, progress, cancellationToken).ConfigureAwait(false);
-            }
-            if (!payloadResult.IsSuccess || payloadResult.Admission != expectedAdmission)
-            {
-                return Failure(MapInstallIssue(payloadResult.Issue));
-            }
-
-            progress?.Report(ManagedFirstInstallationProgress.Indeterminate(
-                ManagedFirstInstallationProgressStage.FinalizingInstallation));
-
-            IVersionManagerStateStore seedStore = _seedStoreFactory(Path.Combine(stagingRoot, _layout.SeedFileName));
-            _boundaryReached?.Invoke(ManagedSetupBoundary.BeforeSeedWrite);
-            await seedStore.SaveAsync(seed, cancellationToken).ConfigureAwait(false);
-            _boundaryReached?.Invoke(ManagedSetupBoundary.AfterSeedWrite);
-
-            string repositoryStaging = Path.Combine(
-                stagingRoot,
-                FileSystemManagedVersionRepository.StagingDirectoryName);
-            _beforeRepositoryStagingCleanup?.Invoke(repositoryStaging);
-            if (!await RemoveEmptyRepositoryStagingAsync(
-                    custody,
-                    repositoryStaging,
-                    _beforeRepositoryStagingDelete,
-                    _repositoryStagingCleanupAttemptObserved,
-                    _repositoryStagingCleanupDelay,
-                    cancellationToken).ConfigureAwait(false))
-            {
-                return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
-            }
-            if (!await VerifyStagedRootAsync(
-                    stagingRoot,
-                    payload.Identity,
-                    expectedAdmission,
-                    cancellationToken).ConfigureAwait(false))
-            {
-                return Failure(ManagedFirstInstallationMaterializationIssue.StateUnavailable);
-            }
-
-            if (Directory.Exists(root) || File.Exists(root))
-            {
-                return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
-            }
-            _boundaryReached?.Invoke(ManagedSetupBoundary.BeforePromotion);
-            ManagedFirstInstallationMaterializationIssue promotion = custody.Promote(
-                Path.GetFileName(root));
-            if (promotion != ManagedFirstInstallationMaterializationIssue.None)
-            {
-                return Failure(promotion);
-            }
-            promotionCommitted = true;
-            _boundaryReached?.Invoke(ManagedSetupBoundary.AfterPromotion);
-            _afterRootPromotion?.Invoke(root);
-            WindowsStableTreeLimits setupTreeLimits = CreateSetupTreeLimits(root, payload.Identity);
-            ManagedFirstInstallationMaterializationIssue captured = custody.CaptureClosedTree(
-                root,
-                setupTreeLimits,
-                cancellationToken);
-            if (captured != ManagedFirstInstallationMaterializationIssue.None ||
-                !await VerifyClosedRootAsync(
-                    root,
-                    payload.Identity,
-                    expectedAdmission,
-                    cancellationToken).ConfigureAwait(false))
-            {
-                return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
-            }
-            if (_closedRootVerified is not null)
-            {
-                await _closedRootVerified(root, cancellationToken).ConfigureAwait(false);
-                if (!await VerifyClosedRootAsync(
-                        root,
-                        payload.Identity,
-                        expectedAdmission,
-                        cancellationToken).ConfigureAwait(false))
-                {
-                    return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
-                }
-            }
-
-            ManagedSetupMarker promotedMarker = marker with
-            {
-                Phase = ManagedSetupMarkerIO.RootPromotedPhase,
-            };
-            await ReplaceExactMarkerAsync(
-                    _markerIO,
-                    markerStream,
-                    marker,
-                    promotedMarker,
-                    custody.RevalidateClosedTree,
-                    _afterMarkerTopologyProof,
-                    _boundaryReached, cancellationToken)
-                .ConfigureAwait(false);
-            ManagedDistributionPayloadIdentity payloadIdentity = payload.Identity;
-            ManagedSetupDestinationCustody promotedCustody = custody;
-            FileStream promotedMarkerStream = markerStream;
             var success = new ManagedFirstInstallationMaterializationResult(null,
                 ManagedFirstInstallationMaterializationIssue.None)
             {
                 Installation = new PromotedInstallation(
-                    root,
-                    expectedAdmission,
-                    payloadIdentity.Bootstrap,
-                    promotedMarker,
-                    promotedMarkerStream,
-                    promotedCustody,
+                    request.Root,
+                    request.ExpectedAdmission,
+                    request.PayloadIdentity.Bootstrap,
+                    transaction.PromotedMarker,
+                    markerStream,
+                    custody,
                     _markerIO, _maximumExecutableBytes, _observerDiagnostics, _boundaryReached,
                     cancellation => VerifyClosedRootAsync(
-                        root,
-                        payloadIdentity,
-                        expectedAdmission,
+                        request.Root,
+                        request.PayloadIdentity,
+                        request.ExpectedAdmission,
                         cancellation),
                     _afterMarkerTopologyProof),
             };
@@ -379,47 +254,252 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
             markerStream = null;
             return success;
         }
-        catch (OperationCanceledException)
+        catch (Exception exception) when (
+            exception is not OperationCanceledException && IsExpectedFailure(exception))
         {
-            if (!promotionCommitted)
-            {
-                throw;
-            }
-            return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Failure(promotionCommitted
-                ? ManagedFirstInstallationMaterializationIssue.RecoveryRequired
-                : ManagedFirstInstallationMaterializationIssue.PermissionDenied);
-        }
-        catch (Exception exception) when (exception is IOException or JsonException or InvalidDataException)
-        {
-            return Failure(promotionCommitted
-                ? ManagedFirstInstallationMaterializationIssue.RecoveryRequired
-                : ManagedFirstInstallationMaterializationIssue.PromotionFailed);
-        }
-        catch (InvalidOperationException)
-        {
-            return Failure(promotionCommitted
-                ? ManagedFirstInstallationMaterializationIssue.RecoveryRequired
-                : ManagedFirstInstallationMaterializationIssue.StateUnavailable);
-        }
-        catch (Exception exception) when (promotionCommitted && SetupExceptionPolicy.IsNonFatal(exception))
-        {
-            SetupExceptionPolicy.ReportDiagnostics(exception, _observerDiagnostics);
-            return Failure(ManagedFirstInstallationMaterializationIssue.RecoveryRequired);
+            return Failure(MapUnpromotedFailure(exception));
         }
         finally
         {
-            try
-            {
-                if (markerStream is not null) await markerStream.DisposeAsync().ConfigureAwait(false);
-            }
-            finally
-            {
-                custody?.Dispose();
-            }
+            try { if (markerStream is not null) await markerStream.DisposeAsync().ConfigureAwait(false); }
+            finally { custody?.Dispose(); }
         }
     }
+
+    private static SetupTransaction CreateSetupTransaction(MaterializationRequest request)
+    {
+        string markerPath = FileSystemManagedInstallationRootProbe.GetTransactionMarkerPath(request.Root);
+        string stagingContainer = FileSystemManagedInstallationRootProbe.GetStagingContainerPath(request.Root);
+        string transactionId = Guid.NewGuid().ToString("N");
+        string stagingRoot = Path.Combine(stagingContainer, transactionId);
+        var marker = ManagedSetupMarker.Create(
+            transactionId,
+            request.Root,
+            Path.GetFullPath(request.StatePathIdentity),
+            stagingRoot,
+            request.PayloadIdentity,
+            request.Candidate,
+            ManagedSetupMarkerIO.StagingPhase);
+        ManagedSetupMarker promotedMarker = marker with
+        {
+            Phase = ManagedSetupMarkerIO.RootPromotedPhase,
+        };
+        return new(Path.GetFileName(markerPath), stagingContainer, stagingRoot, marker, promotedMarker);
+    }
+
+    private async ValueTask<ManagedFirstInstallationMaterializationIssue> StageAndPromoteAsync(
+        MaterializationRequest request,
+        SetupTransaction transaction,
+        ManagedSetupDestinationCustody custody,
+        FileStream markerStream,
+        CancellationToken cancellationToken)
+    {
+        ManagedFirstInstallationMaterializationIssue staged = await CopyBootstrapFilesAsync(
+            request, transaction, custody, cancellationToken).ConfigureAwait(false);
+        if (staged != ManagedFirstInstallationMaterializationIssue.None)
+        {
+            return staged;
+        }
+        staged = await InstallStagedPayloadAsync(
+            request, transaction, custody, cancellationToken).ConfigureAwait(false);
+        if (staged != ManagedFirstInstallationMaterializationIssue.None)
+        {
+            return staged;
+        }
+
+        if (Directory.Exists(request.Root) || File.Exists(request.Root))
+        {
+            return ManagedFirstInstallationMaterializationIssue.RecoveryRequired;
+        }
+        _boundaryReached?.Invoke(ManagedSetupBoundary.BeforePromotion);
+        ManagedFirstInstallationMaterializationIssue promotion = custody.Promote(
+            Path.GetFileName(request.Root));
+        if (promotion != ManagedFirstInstallationMaterializationIssue.None)
+        {
+            return promotion;
+        }
+        return await CompletePromotedRootAsync(
+            request, transaction, custody, markerStream, cancellationToken).ConfigureAwait(false)
+            ? ManagedFirstInstallationMaterializationIssue.None
+            : ManagedFirstInstallationMaterializationIssue.RecoveryRequired;
+    }
+
+    private async ValueTask<ManagedFirstInstallationMaterializationIssue> CopyBootstrapFilesAsync(
+        MaterializationRequest request,
+        SetupTransaction transaction,
+        ManagedSetupDestinationCustody custody,
+        CancellationToken cancellationToken)
+    {
+        ManagedFirstInstallationMaterializationIssue staging = custody.CreateStaging(
+            transaction.StagingContainer,
+            transaction.StagingRoot);
+        if (staging != ManagedFirstInstallationMaterializationIssue.None)
+        {
+            return staging;
+        }
+        if (_stagingCustodyAcquired is not null)
+        {
+            await _stagingCustodyAcquired(transaction.StagingRoot, cancellationToken).ConfigureAwait(false);
+        }
+
+        string launcherPath = Path.Combine(transaction.StagingRoot, _layout.DistributionLauncherFileName);
+        string bootstrapPath = Path.Combine(transaction.StagingRoot, _layout.BootstrapFileName);
+        await request.Content.CopyDistributionLauncherAsync(launcherPath, cancellationToken)
+            .ConfigureAwait(false);
+        await request.Content.CopyBootstrapAsync(bootstrapPath, cancellationToken).ConfigureAwait(false);
+        if (!await MatchesAsync(
+                launcherPath,
+                request.PayloadIdentity.LauncherSize,
+                request.PayloadIdentity.LauncherSha256,
+                cancellationToken).ConfigureAwait(false) ||
+            !await MatchesAsync(
+                bootstrapPath,
+                request.PayloadIdentity.Bootstrap.Length,
+                request.PayloadIdentity.Bootstrap.Sha256,
+                cancellationToken).ConfigureAwait(false))
+        {
+            return ManagedFirstInstallationMaterializationIssue.SourceChanged;
+        }
+        return ManagedFirstInstallationMaterializationIssue.None;
+    }
+
+    private async ValueTask<ManagedFirstInstallationMaterializationIssue> InstallStagedPayloadAsync(
+        MaterializationRequest request,
+        SetupTransaction transaction,
+        ManagedSetupDestinationCustody custody,
+        CancellationToken cancellationToken)
+    {
+        ManagedVersionInstallResult payloadResult;
+        using (WindowsStableRelativeWriteRoot writeRoot = custody.OpenPackageWriteRoot())
+        {
+            payloadResult = await _installer(writeRoot, request.Candidate.Identity.SourceRoot,
+                request.Candidate.Package, request.Progress, cancellationToken).ConfigureAwait(false);
+        }
+        if (!payloadResult.IsSuccess || payloadResult.Admission != request.ExpectedAdmission)
+        {
+            return MapInstallIssue(payloadResult.Issue);
+        }
+
+        request.Progress?.Report(ManagedFirstInstallationProgress.Indeterminate(
+            ManagedFirstInstallationProgressStage.FinalizingInstallation));
+
+        IVersionManagerStateStore seedStore = _seedStoreFactory(
+            Path.Combine(transaction.StagingRoot, _layout.SeedFileName));
+        _boundaryReached?.Invoke(ManagedSetupBoundary.BeforeSeedWrite);
+        await seedStore.SaveAsync(request.Seed, cancellationToken).ConfigureAwait(false);
+        _boundaryReached?.Invoke(ManagedSetupBoundary.AfterSeedWrite);
+
+        string repositoryStaging = Path.Combine(
+            transaction.StagingRoot,
+            FileSystemManagedVersionRepository.StagingDirectoryName);
+        _beforeRepositoryStagingCleanup?.Invoke(repositoryStaging);
+        if (!await RemoveEmptyRepositoryStagingAsync(
+                custody,
+                repositoryStaging,
+                _beforeRepositoryStagingDelete,
+                _repositoryStagingCleanupAttemptObserved,
+                _repositoryStagingCleanupDelay,
+                cancellationToken).ConfigureAwait(false))
+        {
+            return ManagedFirstInstallationMaterializationIssue.RecoveryRequired;
+        }
+        if (!await VerifyStagedRootAsync(
+                transaction.StagingRoot,
+                request.PayloadIdentity,
+                request.ExpectedAdmission,
+                cancellationToken).ConfigureAwait(false))
+        {
+            return ManagedFirstInstallationMaterializationIssue.StateUnavailable;
+        }
+        return ManagedFirstInstallationMaterializationIssue.None;
+    }
+
+    // Runs after the root move commits. Any non-fatal failure here leaves a root that needs recovery.
+    private async ValueTask<bool> CompletePromotedRootAsync(
+        MaterializationRequest request,
+        SetupTransaction transaction,
+        ManagedSetupDestinationCustody custody,
+        FileStream markerStream,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _boundaryReached?.Invoke(ManagedSetupBoundary.AfterPromotion);
+            _afterRootPromotion?.Invoke(request.Root);
+            WindowsStableTreeLimits setupTreeLimits = CreateSetupTreeLimits(request.Root, request.PayloadIdentity);
+            ManagedFirstInstallationMaterializationIssue captured = custody.CaptureClosedTree(
+                request.Root,
+                setupTreeLimits,
+                cancellationToken);
+            if (captured != ManagedFirstInstallationMaterializationIssue.None ||
+                !await VerifyClosedRootAsync(
+                    request.Root,
+                    request.PayloadIdentity,
+                    request.ExpectedAdmission,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                return false;
+            }
+            if (_closedRootVerified is not null)
+            {
+                await _closedRootVerified(request.Root, cancellationToken).ConfigureAwait(false);
+                if (!await VerifyClosedRootAsync(
+                        request.Root,
+                        request.PayloadIdentity,
+                        request.ExpectedAdmission,
+                        cancellationToken).ConfigureAwait(false))
+                {
+                    return false;
+                }
+            }
+
+            await ReplaceExactMarkerAsync(
+                    _markerIO,
+                    markerStream,
+                    transaction.Marker,
+                    transaction.PromotedMarker,
+                    custody.RevalidateClosedTree,
+                    _afterMarkerTopologyProof,
+                    _boundaryReached, cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception exception) when (SetupExceptionPolicy.IsNonFatal(exception))
+        {
+            if (!IsExpectedFailure(exception))
+            {
+                SetupExceptionPolicy.ReportDiagnostics(exception, _observerDiagnostics);
+            }
+            return false;
+        }
+    }
+
+    private static bool IsExpectedFailure(Exception exception) =>
+        exception is OperationCanceledException or UnauthorizedAccessException or IOException or
+            JsonException or InvalidDataException or InvalidOperationException;
+
+    private static ManagedFirstInstallationMaterializationIssue MapUnpromotedFailure(Exception exception) =>
+        exception switch
+        {
+            UnauthorizedAccessException => ManagedFirstInstallationMaterializationIssue.PermissionDenied,
+            InvalidOperationException => ManagedFirstInstallationMaterializationIssue.StateUnavailable,
+            _ => ManagedFirstInstallationMaterializationIssue.PromotionFailed,
+        };
+
+    private sealed record MaterializationRequest(
+        string Root,
+        string StatePathIdentity,
+        ManagedDistributionPayloadIdentity PayloadIdentity,
+        IManagedDistributionPayloadContent Content,
+        FreshInstallationCandidate Candidate,
+        VersionManagerState Seed,
+        ManagedVersionAdmission ExpectedAdmission,
+        IProgress<ManagedFirstInstallationProgress>? Progress);
+
+    private sealed record SetupTransaction(
+        string MarkerName,
+        string StagingContainer,
+        string StagingRoot,
+        ManagedSetupMarker Marker,
+        ManagedSetupMarker PromotedMarker);
 }
