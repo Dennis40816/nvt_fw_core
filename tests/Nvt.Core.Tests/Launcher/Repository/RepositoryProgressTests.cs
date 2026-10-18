@@ -43,38 +43,38 @@ public sealed class RepositoryProgressTests
         fixture.AssertEmptyStaging();
     }
 
-    /// <summary>One reporting repository restarts its stage counters on every call and leaves its source silent.</summary>
+    /// <summary>One reporting repository restarts every stage counter on each call and leaves its source silent.</summary>
     [Fact]
     public async Task ReportingRepositoryResetsStageCountersOnEveryCall()
     {
         RepositoryFixture.RequireWindows();
-        using var fixture = new RepositoryFixture(CreatePackage());
+        PackageFixture package = CreatePackage();
+        using var first = new RepositoryFixture(package);
+        using var second = new RepositoryFixture(package);
         var progress = new InstallationProgress();
-        FileSystemManagedVersionRepository reporting = fixture.Repository.WithInstallationProgress(progress);
-        Assert.NotSame(fixture.Repository, reporting);
+        FileSystemManagedVersionRepository reporting = first.Repository.WithInstallationProgress(progress);
+        Assert.NotSame(first.Repository, reporting);
         Assert.Same(reporting, reporting.WithInstallationProgress(null));
 
-        Assert.True((await MaterializeWithAsync(fixture, reporting)).IsSuccess);
-        int firstRun = progress.Events.Count;
-        Assert.True((await MaterializeWithAsync(fixture, reporting)).IsSuccess);
+        Assert.True((await MaterializeWithAsync(first, reporting)).IsSuccess);
+        ManagedFirstInstallationProgress[] firstRun = [.. progress.Events];
+        progress.Events.Clear();
+        Assert.True((await MaterializeWithAsync(second, reporting)).IsSuccess);
+        ManagedFirstInstallationProgress[] secondRun = [.. progress.Events];
 
-        // The second call finds the installed payload. It still reads and verifies the package, then verifies the install.
-        ManagedFirstInstallationProgress[] second = [.. progress.Events.Skip(firstRun)];
-        Assert.Equal(new[]
-        {
-            ManagedFirstInstallationProgressStage.ReadingPackage,
-            ManagedFirstInstallationProgressStage.VerifyingPackage,
-            ManagedFirstInstallationProgressStage.VerifyingInstallation,
-        }, second.Select(item => item.Stage).Distinct());
-        foreach (ManagedFirstInstallationProgressStage stage in second.Select(item => item.Stage).Distinct())
-        {
-            ManagedFirstInstallationProgress[] events = [.. second.Where(item => item.Stage == stage)];
-            Assert.Equal(0, events[0].CompletedWork);
-            Assert.Equal(events[0].TotalWork, events[^1].CompletedWork);
-        }
+        // Both calls extract, so a counter that survived the first call would change the second trace.
+        Assert.Equal(firstRun, secondRun);
+        Assert.Equal(4, secondRun.Select(item => item.Stage).Distinct().Count());
+        AssertEveryStageRestarts(progress.Events);
+
+        // The installed payload is verified again: the package stages and the installation stage restart as well.
+        progress.Events.Clear();
+        Assert.True((await MaterializeWithAsync(first, reporting)).IsSuccess);
+        Assert.Equal(3, progress.Events.Select(item => item.Stage).Distinct().Count());
+        AssertEveryStageRestarts(progress.Events);
 
         progress.Events.Clear();
-        Assert.True((await MaterializeWithAsync(fixture, fixture.Repository)).IsSuccess);
+        Assert.True((await MaterializeWithAsync(first, first.Repository)).IsSuccess);
         Assert.Empty(progress.Events);
     }
 
@@ -198,6 +198,16 @@ public sealed class RepositoryProgressTests
             return await repository
                 .MaterializeVerifiedPayloadWithinHeldRootAsync(writeRoot, fixture.SourceRoot,
                     fixture.Package.Candidate, requireNew: false, TestContext.Current.CancellationToken);
+        }
+    }
+
+    private static void AssertEveryStageRestarts(IReadOnlyList<ManagedFirstInstallationProgress> events)
+    {
+        foreach (ManagedFirstInstallationProgressStage stage in events.Select(item => item.Stage).Distinct())
+        {
+            ManagedFirstInstallationProgress[] stageEvents = [.. events.Where(item => item.Stage == stage)];
+            Assert.Equal(0, stageEvents[0].CompletedWork);
+            Assert.Equal(stageEvents[0].TotalWork, stageEvents[^1].CompletedWork);
         }
     }
 

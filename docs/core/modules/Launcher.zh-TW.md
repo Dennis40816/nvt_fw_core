@@ -661,6 +661,8 @@ Application 與 Launcher state 均缺少時，只能選擇移除未完成安裝�
 
 Promotion 之後的取消由 recovery 接管。
 Promotion 後非致命且非預期的 adapter 失敗，透過 `SetupExceptionPolicy` 及可選的診斷 callback 處理。
+失敗路徑上最後釋放 marker stream 時，也適用同一個政策。
+該處最後一次 flush 失敗時，只回報診斷，不會取代已選定的 typed result。致命例外仍然會傳出。
 致命例外繼續向外傳遞。
 Custody 釋放受 finally 保護，包含 marker 寫入取消與 admission hook 失敗。
 

@@ -151,6 +151,32 @@ public sealed class ManagedSetupCleanupTests
         Assert.True(File.Exists(fixture.MarkerPath));
     }
 
+    /// <summary>A marker stream whose final flush fails is reported as a diagnostic and never replaces the typed result.</summary>
+    [Fact]
+    public async Task FailedMarkerDisposalIsReportedAndDoesNotEscape()
+    {
+        var failure = new IOException("final flush");
+        var reported = new List<Exception>();
+        using var stream = new FailingDisposeStream(failure);
+
+        await FileSystemManagedFirstInstallationRootMaterializer.DisposeMarkerStreamAsync(stream, reported.Add);
+
+        Assert.Same(failure, Assert.Single(reported));
+        using var second = new FailingDisposeStream(failure);
+        await FileSystemManagedFirstInstallationRootMaterializer.DisposeMarkerStreamAsync(
+            second, _ => throw new InvalidOperationException("diagnostics observer"));
+    }
+
+    /// <summary>A fatal failure while disposing the marker stream still propagates.</summary>
+    [Fact]
+    public async Task FatalMarkerDisposalFailurePropagates()
+    {
+        using var stream = new FailingDisposeStream(new OutOfMemoryException());
+
+        await Assert.ThrowsAsync<OutOfMemoryException>(async () =>
+            await FileSystemManagedFirstInstallationRootMaterializer.DisposeMarkerStreamAsync(stream, null));
+    }
+
     /// <summary>The Bootstrap launch opportunity needs the recorded phase, survives cancellation and is used once.</summary>
     [Fact]
     public async Task BootstrapLaunchLeaseIsPhaseGatedAndOneShot()
@@ -193,6 +219,11 @@ public sealed class ManagedSetupCleanupTests
             SetupFixture.Ceiling, SetupFixture.Ceiling, ManagedImmutableBootstrapIdentity.MaximumExecutableBytes, hooks);
         return await materializer.MaterializeAsync(fixture.Root, fixture.StatePath, payload,
             fixture.Candidate, fixture.Seed, TestContext.Current.CancellationToken);
+    }
+
+    private sealed class FailingDisposeStream(Exception failure) : MemoryStream
+    {
+        public override ValueTask DisposeAsync() => throw failure;
     }
 
     private sealed class CleanupTrace

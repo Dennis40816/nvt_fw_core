@@ -262,7 +262,7 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
         }
         finally
         {
-            try { if (markerStream is not null) await markerStream.DisposeAsync().ConfigureAwait(false); }
+            try { if (markerStream is not null) await DisposeMarkerStreamAsync(markerStream, _observerDiagnostics).ConfigureAwait(false); }
             finally { custody?.Dispose(); }
         }
     }

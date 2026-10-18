@@ -661,6 +661,8 @@ A fully ready pair selects ConvergeReady.
 
 Cancellation after promotion is recovery-owned.
 Nonfatal unexpected post-promotion adapter failures use `SetupExceptionPolicy` and the optional diagnostics callback.
+The same policy covers the final disposal of the marker stream on a failure path.
+A failed final flush there is reported as a diagnostic and does not replace the typed result. Fatal exceptions still propagate.
 Fatal exceptions propagate.
 Custody release is protected by finally blocks, including marker-write cancellation and admission-hook failure.
 

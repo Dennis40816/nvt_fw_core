@@ -189,6 +189,20 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
         return false;
     }
 
+    // A failed write can leave buffered bytes that fail again here. The root may already be promoted, so the
+    // typed result already chosen must survive. Fatal exceptions still propagate.
+    internal static async ValueTask DisposeMarkerStreamAsync(Stream stream, Action<Exception>? observerDiagnostics)
+    {
+        try
+        {
+            await stream.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception) when (SetupExceptionPolicy.IsNonFatal(exception))
+        {
+            SetupExceptionPolicy.ReportDiagnostics(exception, observerDiagnostics);
+        }
+    }
+
     private static async ValueTask<MarkerCreateResult> CreateNewMarkerAsync(
         ManagedSetupDestinationCustody custody,
         string markerName,

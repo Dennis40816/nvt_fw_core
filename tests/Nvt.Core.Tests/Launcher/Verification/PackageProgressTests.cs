@@ -61,11 +61,14 @@ public sealed class PackageProgressTests
     {
         PackageFixture fixture = CreatePackage();
         ManagedPackageVerifier source = fixture.Verifier();
-        var events = new List<(long Done, long Total)>();
-        ManagedPackageVerifier reporting = source.WithProgress((done, total) => events.Add((done, total)), null);
+        var events = new List<(string Stage, long Done, long Total)>();
+        ManagedPackageVerifier reporting = source.WithProgress(
+            (done, total) => events.Add(("read", done, total)),
+            (done, total) => events.Add(("verify", done, total)));
         Assert.NotSame(source, reporting);
         Assert.Same(reporting, reporting.WithProgress(null, null));
         long packageBytes = fixture.PackageBytes.LongLength;
+        long payloadBytes = fixture.Files.Sum(pair => pair.Value.LongLength);
 
         for (int run = 0; run < 2; run++)
         {
@@ -74,8 +77,8 @@ public sealed class PackageProgressTests
             ManagedPackagePlanResult result = await reporting.CreatePlanAsync(package, fixture.Candidate,
                 TestContext.Current.CancellationToken);
             using ManagedPackagePlan plan = Assert.IsType<ManagedPackagePlan>(result.Plan);
-            Assert.Equal((0L, packageBytes), events[0]);
-            Assert.Equal((packageBytes, packageBytes), events[^1]);
+            AssertStageCounters(events, "read", packageBytes);
+            AssertStageCounters(events, "verify", payloadBytes);
         }
 
         events.Clear();
@@ -84,6 +87,14 @@ public sealed class PackageProgressTests
             TestContext.Current.CancellationToken);
         using ManagedPackagePlan plainPlan = Assert.IsType<ManagedPackagePlan>(plain.Plan);
         Assert.Empty(events);
+    }
+
+    private static void AssertStageCounters(List<(string Stage, long Done, long Total)> events, string stage, long total)
+    {
+        (string Stage, long Done, long Total)[] stageEvents = [.. events.Where(item => item.Stage == stage)];
+        Assert.Equal((stage, 0L, total), stageEvents[0]);
+        Assert.Equal((stage, total, total), stageEvents[^1]);
+        Assert.All(stageEvents, item => Assert.Equal(total, item.Total));
     }
 
     /// <summary>Null and active callbacks preserve the existing stream reads, exact plan facts, and borrowed ownership.</summary>
