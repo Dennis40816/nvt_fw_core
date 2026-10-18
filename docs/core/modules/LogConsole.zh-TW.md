@@ -365,8 +365,8 @@ View 直接以項目和投影比較來源成員，不另存來源目錄。不存
 
 `ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
 取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
-會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。標題高
-40 DIP，包含標題、Display 選單（時間模式與去重）與 More 選單（複製、儲存、匯出選項與清除）。
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。標題是一列
+`NfcControlHeight`（32 DIP），上下不留內距，包含標題、Display 選單（時間模式與去重）與 More 選單（複製、儲存、匯出選項與清除）。
 工具列是單一 40 DIP 的列，由左到右為等級摘要、搜尋欄與動作：Sources、Copy selected、
 Copy visible rows、Clear、縮小、縮放值、放大與 Jump to latest。只有搜尋欄會伸縮。
 等級摘要是文字按鈕，例如 `All levels` 或 `Debug and above`。游標停留 300 ms 後，六個等級
@@ -730,7 +730,7 @@ Detach 釋放列選單 commands 的 delegates 與 subscribers；Dispose 也釋�
 
 列表可縮放列內容。`Zoom` 的範圍是 0.8 到 3.0，預設 1.0，每階 `ZoomStep` 為 0.1。
 縮放會改變列高、五個欄寬與四個列字型大小，不改變工具列、標頭、跳到最新按鈕、保留提示與列內距。
-工具列的縮放群組以 `ZoomStep` 調整倍率、以百分比顯示，按下顯示值會重設為 1.0。
+工具列的縮放群組以 `ZoomStep` 調整倍率、以百分比顯示，按下顯示值會重設為 1.0。群組本身沒有外框。
 暫停中的列表保留第一個可見列，以及視窗在該列內的位移。
 列表有焦點時，Ctrl+加號（也接受 Ctrl+= 與數字鍵盤加號）放大，Ctrl+減號縮小，Ctrl+0 還原。
 滑鼠在列表上時，Ctrl 加滾輪也會縮放，不需要焦點。滾輪一格為一階，觸控板的小數位移會累加。

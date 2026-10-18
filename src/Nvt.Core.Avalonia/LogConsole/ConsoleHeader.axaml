@@ -1,12 +1,11 @@
 <!-- // Copyright (c) 2026 Dennis Liu. All rights reserved. -->
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:lc="using:Nvt.Core.Avalonia.LogConsole" xmlns:log="using:Nvt.Core.LogConsole"
-             xmlns:icons="using:Nvt.Core.Avalonia.Icons" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleHeader" x:Name="Root" Title="{lc:ConsoleResource Title}" MinWidth="{lc:ConsoleResource MinimumWidth}">
+             xmlns:icons="using:Nvt.Core.Avalonia.Icons" x:Class="Nvt.Core.Avalonia.LogConsole.ConsoleHeader" x:Name="Root" Title="{lc:ConsoleResource Title}" MinWidth="{lc:ConsoleResource MinimumWidth}" Height="{DynamicResource NfcControlHeight}">
   <UserControl.Resources><lc:ConsoleValueConverter x:Key="ConsoleValue"/><lc:ConsoleLayoutConverter x:Key="ConsoleLayout"/><lc:ConsoleTextConverter x:Key="ConsoleText"/></UserControl.Resources>
   <UserControl.Styles><StyleInclude Source="avares://Nvt.Core.Avalonia/LogConsole/ConsoleControlStyles.axaml"/></UserControl.Styles>
-  <UserControl.Height><MultiBinding Converter="{StaticResource ConsoleLayout}" ConverterParameter="RowHeight"><DynamicResource ResourceKey="NfcControlHeight"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></UserControl.Height>
   <Border Background="{DynamicResource NfcSurfaceBrush}" DataContext="{Binding Controller, ElementName=Root}">
-    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><DynamicResource ResourceKey="NfcSpace16"/><DynamicResource ResourceKey="NfcSpace4"/></MultiBinding></Border.Padding>
+    <Border.Padding><MultiBinding Converter="{StaticResource ConsoleLayout}"><DynamicResource ResourceKey="NfcSpace16"/></MultiBinding></Border.Padding>
     <Grid ColumnDefinitions="Auto,*,Auto" Height="{DynamicResource NfcControlHeight}">
       <StackPanel Orientation="Horizontal" Spacing="{DynamicResource NfcSpace8}" VerticalAlignment="Center">
         <TextBlock Classes="nvtIcon" Text="{x:Static icons:NvtIcons.DataObject}" Foreground="{DynamicResource NfcTextSecondaryBrush}"/>

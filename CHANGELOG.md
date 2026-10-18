@@ -14,6 +14,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 - Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
 - Licensing: 34 more files carry an `SPDX-License-Identifier: MIT` header in place of "All rights reserved". They are `AtomicOutput` and its tests, six `Nvt.Core.TestSupport` helpers and their tests (not `ChildProcessFixture`), the six external-process contract types and the six background-job and progress types, with their tests. Each of the eight folders has a `LICENSE` file for the scope. No C# API, namespace or behavior changes.
+- LogConsole look: the header is one `NfcControlHeight` row (32 DIP, was 40 DIP) with no vertical padding, and the toolbar's zoom group (zoom out, zoom value, zoom in) has no border. The toolbar stays 40 DIP. The owner asked for both on 2026-10-18. No C# API, resource key or token changes.
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
 
 ## 0.9.4 - 2026-10-14
