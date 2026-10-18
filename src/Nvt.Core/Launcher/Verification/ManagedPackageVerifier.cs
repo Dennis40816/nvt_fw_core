@@ -122,7 +122,7 @@ internal sealed class ManagedPackageVerifier
         {
             if (archive is not null)
             {
-                await archive.DisposeAsync().ConfigureAwait(false);
+                await archive.DisposeAsync();
             }
         }
     }
