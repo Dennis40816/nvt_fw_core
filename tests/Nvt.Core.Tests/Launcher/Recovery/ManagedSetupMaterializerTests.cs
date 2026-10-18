@@ -1,7 +1,5 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
-using Nvt.Core.Files.Windows;
-using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Recovery;
 using Nvt.Core.Launcher.Setup;
 using Xunit;
@@ -56,8 +54,10 @@ public sealed class ManagedSetupMaterializerTests
         SetupFixture.RequireNative();
         using var fixture = new SetupFixture();
         using var cancellation = new CancellationTokenSource();
-        var hooks = new ManagedSetupTestHooks { DestinationCustodyAcquired = async (_, _) =>
-            { await cancellation.CancelAsync(); } };
+        var hooks = new ManagedSetupTestHooks
+        {
+            DestinationCustodyAcquired = (_, _) => new ValueTask(cancellation.CancelAsync()),
+        };
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
             await fixture.MaterializeAsync(hooks, token: cancellation.Token));
         string displaced = fixture.MarkerPath + ".displaced";
@@ -88,10 +88,13 @@ public sealed class ManagedSetupMaterializerTests
     {
         SetupFixture.RequireNative();
         using var fixture = new SetupFixture();
-        var repository = new SyntheticRepository(fixture.Admission) { InventoryObserved = (count, root) =>
+        var repository = new SyntheticRepository(fixture.Admission)
         {
-            if (count == 1) SetupFixture.Write(Path.Combine(root, SetupFixture.Layout.DistributionLauncherFileName), "tampered");
-        } };
+            InventoryObserved = (count, root) =>
+            {
+                if (count == 1) SetupFixture.Write(Path.Combine(root, SetupFixture.Layout.DistributionLauncherFileName), "tampered");
+            },
+        };
         var materializer = new FileSystemManagedFirstInstallationRootMaterializer(repository, repository.InstallHeldAsync,
             new(10_001, 10_000, 1_000_000_000), SetupFixture.Layout, fixture.SeedStore, fixture.Codec,
             SetupFixture.Ceiling, SetupFixture.Ceiling, 200_000_000, new());
@@ -117,24 +120,24 @@ public sealed class ManagedSetupMaterializerTests
 
     private static async Task VerifyPhaseAsync(string phase)
     {
-            using var fixture = new SetupFixture();
-            if (phase == "staging")
-            {
-                using var payload = new TestPayloadCapture(SetupFixture.PayloadIdentity(), "changed-launcher");
-                await fixture.MaterializeAsync(payload: payload);
-            }
-            else
-            {
-                var result = await fixture.MaterializeAsync();
-                Assert.True(result.IsSuccess, result.Issue.ToString());
-                using var installation = result.Installation!;
-                if (phase == "bootstrap-launch-recorded") Assert.Equal(ManagedFirstInstallationTransactionIssue.None,
-                    await installation.RecordBootstrapLaunchAsync(TestContext.Current.CancellationToken));
-            }
-            var marker = Assert.IsType<ManagedSetupMarker>(fixture.Codec.Decode(await SetupFixture.ReadAsync(fixture.MarkerPath)));
-            Assert.Equal(phase, marker.Phase);
-            var observed = await fixture.Probe().ObserveAsync(fixture.Root, fixture.StatePath, TestContext.Current.CancellationToken);
-            Assert.Equal(ManagedSetupRecoveryFactKind.Exact, observed.Kind);
+        using var fixture = new SetupFixture();
+        if (phase == "staging")
+        {
+            using var payload = new TestPayloadCapture(SetupFixture.PayloadIdentity(), "changed-launcher");
+            await fixture.MaterializeAsync(payload: payload);
+        }
+        else
+        {
+            var result = await fixture.MaterializeAsync();
+            Assert.True(result.IsSuccess, result.Issue.ToString());
+            using var installation = result.Installation!;
+            if (phase == "bootstrap-launch-recorded") Assert.Equal(ManagedFirstInstallationTransactionIssue.None,
+                await installation.RecordBootstrapLaunchAsync(TestContext.Current.CancellationToken));
+        }
+        var marker = Assert.IsType<ManagedSetupMarker>(fixture.Codec.Decode(await SetupFixture.ReadAsync(fixture.MarkerPath)));
+        Assert.Equal(phase, marker.Phase);
+        var observed = await fixture.Probe().ObserveAsync(fixture.Root, fixture.StatePath, TestContext.Current.CancellationToken);
+        Assert.Equal(ManagedSetupRecoveryFactKind.Exact, observed.Kind);
     }
 
     /// <summary>Closed-root topology drift blocks phase advancement without discarding the marker.</summary>
@@ -144,13 +147,16 @@ public sealed class ManagedSetupMaterializerTests
         SetupFixture.RequireNative();
         using var fixture = new SetupFixture();
         bool contentBlocked = false;
-        var result = await fixture.MaterializeAsync(new() { ClosedRootVerified = (root, _) =>
+        var result = await fixture.MaterializeAsync(new()
         {
-            try { SetupFixture.Write(Path.Combine(root, SetupFixture.Layout.DistributionLauncherFileName), "changed"); }
-            catch (IOException) { contentBlocked = true; }
-            SetupFixture.Write(Path.Combine(root, "unexpected.txt"), "foreign");
-            return ValueTask.CompletedTask;
-        } });
+            ClosedRootVerified = (root, _) =>
+            {
+                try { SetupFixture.Write(Path.Combine(root, SetupFixture.Layout.DistributionLauncherFileName), "changed"); }
+                catch (IOException) { contentBlocked = true; }
+                SetupFixture.Write(Path.Combine(root, "unexpected.txt"), "foreign");
+                return ValueTask.CompletedTask;
+            },
+        });
         Assert.True(contentBlocked);
         Assert.Equal(ManagedFirstInstallationMaterializationIssue.RecoveryRequired, result.Issue);
         Assert.True(File.Exists(fixture.MarkerPath));

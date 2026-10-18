@@ -26,10 +26,13 @@ public sealed class ManagedSetupInterruptionTests
         SetupFixture.RequireNative();
         using var fixture = new SetupFixture();
         var boundary = Enum.Parse<ManagedSetupBoundary>(boundaryName);
-        var hooks = new ManagedSetupTestHooks { BoundaryReached = observed =>
+        var hooks = new ManagedSetupTestHooks
         {
-            if (observed == boundary) throw new IOException("Synthetic interruption at durable boundary.");
-        } };
+            BoundaryReached = observed =>
+            {
+                if (observed == boundary) throw new IOException("Synthetic interruption at durable boundary.");
+            },
+        };
         var result = await fixture.MaterializeAsync(hooks);
         if (boundary is ManagedSetupBoundary.BeforeBootstrapLaunchMarkerWrite or ManagedSetupBoundary.AfterBootstrapLaunchMarkerWrite)
         {

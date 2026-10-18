@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using System.Text;
-using Nvt.Core.Files;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Recovery;
 using Nvt.Core.Launcher.Setup;

@@ -2,7 +2,6 @@
 
 using Nvt.Core.Files.Windows;
 using Nvt.Core.Launcher.Recovery;
-using Nvt.Core.Launcher.Setup;
 using Nvt.Core.TestSupport;
 using Xunit;
 

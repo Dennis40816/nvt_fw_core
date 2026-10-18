@@ -2,8 +2,6 @@
 
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Recovery;
-using Nvt.Core.Launcher.Setup;
-using Nvt.Core.Launcher.Transport;
 using Nvt.Core.Tests.Launcher.Contracts;
 using Xunit;
 
