@@ -549,3 +549,180 @@ NFC retains source selection and authority, strict schemas, embedded descriptor/
 Entry preserves relative default-root normalization from frozen `ManagedLauncherEntry.cs:498–499`; first-install plan admission requires a fully qualified root. A mismatched successful payload capture remains `PayloadInvalid`, as in `ManagedInstallationSetup.cs:207–212,788–800`. Transport requires typed exit issues for Busy, RecoveryRequired, LaunchFailed and TerminationUnconfirmed admissions; their issue-free mapper branches are rejected explicitly. `FirstInstallationAdmissionInvariantTests` covers these invariants and every encoded admission failure, including receipts without an exit code; entry boundary tests cover relative default roots.
 
 Completion uses one elapsed-time observation for the frozen cutoff predicate and the resulting issue/exit-code pair; `FirstInstallationBudgetTests.CompletionSamplesElapsedOnceWhenClockCrossesCutoff` drives the manual clock across the cutoff between the former reads for both rollback and failed completion. Constructor duration exceptions name the public parameters.
+
+## L10 setup materialization and read-only recovery diagnosis
+
+Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.Helpers.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.Transaction.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupClosedRootVerifier.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryProbe.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedProcessLifetimeProbe.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedDistributionLauncherRuntime.cs` — bounded embedded capture and the complete filesystem root probe.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs` — normalized identity composition and comparison only.
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryDiagnosis.cs`
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — lines 1–119 and the policy at line 449 through the end.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.Installation.cs` — measured progress forwarding.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.cs` — package-read progress projection.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPackageVerifier.cs` — archive and installed-payload verification progress.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.cs` — assigned generic materializer assertions.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.Custody.cs` — assigned failure and custody assertions.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.Support.cs` — synthetic payload and repository behavior only.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryProbeTests.cs` — exact binding and read-only custody assertions.
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — diagnosis-only synthetic ports and state pairs.
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.ObservationOrdering.cs`
+
+<!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+The frozen `WindowsManagedSetupPathCustody.cs` and `.Native.cs` are behavior references for the new Files composition.
+They are not copied as another native owner.
+
+Root admission, materialization and marker observation now use the Core implementations described here.
+
+### API and adapter receipt
+
+`Nvt.Core.Launcher.Recovery` implements the existing Setup ports.
+`FileSystemManagedFirstInstallationRootMaterializer` requires the existing repository, a `ManagedSetupLayout`, a strict seed-store factory, a marker codec and explicit positive byte ceilings.
+The layout supplies the root distribution Launcher and seed filenames.
+The existing `ProductDescriptor` supplies the Bootstrap filename.
+The seed factory implements the existing `IVersionManagerStateStore` for each supplied exact seed path.
+Core does not add a state schema.
+
+`EmbeddedManagedDistributionPayloadSource` requires independently reopenable descriptor and Bootstrap streams.
+`IManagedSetupPayloadDescriptorReader` validates exact descriptor bytes and its Bootstrap declaration.
+It returns `ManagedSetupPayloadDescriptor` and `ManagedSetupEmbeddedBootstrap` facts.
+`IManagedSetupMarkerCodec` encodes and validates the product's exact marker bytes.
+It returns `ManagedSetupMarker` facts.
+Both adapters are mandatory.
+There is no default adapter or permissive fallback.
+Core repeats mechanical identity, exact path, phase and byte-limit checks.
+Product schema fields, resource names and wire spelling remain in NFC.
+
+NFC supplies 65,536 bytes for both descriptor and marker ceilings.
+NFC keeps JSON depths 12 and 16 respectively.
+Zero and negative ceilings fail construction.
+The explicit executable ceiling stays within the existing 200,000,000-byte bound.
+Descriptor capture reserves one additional byte to detect overflow.
+Its maximum configurable storage ceiling is `Array.MaxLength - 1`.
+Repository tree limits supply the installed-payload bounds.
+The closed setup tree adds three files, two directories and the measured Launcher, Bootstrap and seed lengths.
+
+`FileSystemManagedInstallationRootProbe` implements bounded local root observation.
+`FileSystemManagedSetupRecoveryProbe` implements exact read-only marker observation.
+`FileSystemManagedProcessLifetimeProbe` uses the existing lifetime mechanism with explicit protocol names and a Job namespace.
+`ManagedInstallationRecoveryExperience.DiagnoseAsync` returns a `ManagedSetupRecoveryDiagnosis`.
+Only an actionable result carries an immutable `ManagedSetupRecoveryPlan`.
+The public receipt also includes recovery fact, phase, payload, candidate, transaction, outcome, action and evidence values and their read-only ports.
+`IManagedSetupRecoveryStateStore` combines the existing reader and writer contracts for the next slice.
+Execution tokens, exact-evidence construction, native custody and test hooks remain internal.
+Recovery execution outcomes, requests, ports and coordinators are outside L10.
+
+### Preserved behavior
+
+Setup alone writes marker phases `staging`, `root-promoted` and `bootstrap-launch-recorded`.
+A complete exact-root proof precedes each promoted marker change.
+Only qualified setup completion deletes the exact held marker.
+Failure retains blocking evidence.
+An existing root is never overwritten, rebound, repaired or migrated.
+
+Files owns the parent and staging handles in `Files/Windows/Setup/`.
+The new owner composes existing stable-custody primitives.
+It creates the marker, probes write access, creates staging and promotes under the final name.
+Cleanup deletes only an observed empty direct staging child with the same native identity.
+An owned pending deletion is observed without issuing another delete against a replacement.
+The frozen retry bound remains 20 attempts with 250 milliseconds between attempts.
+There is no arbitrary empty-subtree cleanup.
+No existing Files custody file or native primitive changed.
+
+The verifier checks the canonical seed, exact top-level inventory and executable content before repository inventory.
+Embedded capture preserves descriptor and Bootstrap continuity across inspection and capture.
+Complete exact-length reads and hashing use Files.
+Archive accounting remains with Verification.
+
+Diagnosis observes Bootstrap, Application and Launcher lifetimes first.
+Any active role returns Busy before durable reads.
+Incomplete lifetime observations return HealthUnavailable.
+It then observes state, root and marker in that order.
+Only exact interrupted facts request evidence.
+Diagnosis starts no process and requests no Registry or Catalog source.
+Failed and abandoned observations stay read-only.
+Missing state and missing Launcher state authorize only removal of the incomplete installation.
+Canonical bound first-run state permits only the frozen Launcher state-pair actions.
+A fully ready pair selects ConvergeReady.
+
+Cancellation after promotion is recovery-owned.
+Nonfatal unexpected post-promotion adapter failures use `SetupExceptionPolicy` and the optional diagnostics callback.
+Fatal exceptions propagate.
+Custody release is protected by finally blocks, including marker-write cancellation and admission-hook failure.
+
+The existing H progress forwarding remains intact.
+Stages stay `ReadingPackage`, `VerifyingPackage`, `InstallingPackage` and `VerifyingInstallation`.
+Each stage reports increasing integer percentages from its measured work.
+Null progress preserves existing behavior.
+The extraction wrapper forwards its plan callback.
+Files still owns complete package-read verification.
+
+### Source-to-Core test map
+
+All recovery cases are under `tests/Nvt.Core.Tests/Launcher/Recovery/`.
+The ten required frozen cases retain their names and generic assertions.
+
+| Frozen class and case | Core class |
+| --- | --- |
+| `ManagedDistributionLauncherRuntimeTests.MaterializerPromotesClosedRootAndMarkerLifecycle` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.MaterializerNeverOverwritesExistingRoot` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.MarkerWriteCancellationReleasesNativeHandle` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.Custody.cs: PrePromotionFailureRetainsMarkerAndOwnedStaging` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.Custody.cs: MaterializerRetainsMarkerWhenPostPromotionVerificationDetectsTamper` | `ManagedSetupMaterializerTests` |
+| `ManagedSetupRecoveryProbeTests.ProbeReturnsExactTypedTransactionOnlyForEveryBoundIdentity` | `ManagedSetupRecoveryProbeTests` |
+| `ManagedSetupRecoveryProbeTests.RecoveryReadsEveryMaterializerProducedMarkerPhase` | `ManagedSetupMaterializerTests` |
+| `ManagedSetupRecoveryProbeTests.ProbeCustodyBlocksSameNameWriteRenameAndDelete` | `ManagedSetupRecoveryProbeTests` |
+| `ManagedSetupRecoveryDiagnosisTests.ActiveLifetimeBlocksAllDurableObservations` | `ManagedSetupRecoveryDiagnosisTests` |
+| `ManagedSetupRecoveryDiagnosisTests.CanonicalApplicationRowsProduceOnlyTheirAuthorizedAction` | `ManagedSetupRecoveryDiagnosisTests` |
+
+Additional cases cover the complete diagnosis phase/state/root matrix and lifetime precedence.
+They cover cancellation at every observation boundary and the first durable application-state write.
+Byte tests cover empty, one-below, exact and one-over descriptors and markers.
+Each positive limit rejects zero and negative values.
+Fixed executable and descriptor-storage bounds include adjacent values.
+Tests also cover foreign and malformed markers, capture drift, blocked observation without mutation, root admission and closed-root content and topology drift.
+Injected failures cover both sides of every marker-phase write, promotion and seed persistence.
+Native tests preserve their assertions and use capability skips when ancestor-chain custody access is denied.
+Real hard-stop cases are explicitly skipped because the shared children have no setup-materializer mode.
+The host must supply that shared mode before hard-stop evidence can run through `ChildProcessFixture`.
+
+H retains `RepositoryProgressTests` and `PackageProgressTests`.
+They cover stage order and counters, null progress, existing payloads, digest mismatch, stream ownership and changed-stream failures.
+
+### Deviations and verification
+
+| Item | Core boundary and reason |
+| --- | --- |
+| Product schemas and codecs | Mandatory normalized-fact adapters retain strict wire ownership in NFC. No marker schema is added. |
+| Seed IO and root filenames | Existing state-store ports and explicit layout replace product defaults. |
+| Path safety | `RepositoryPathSafety` gains reparse-ancestor observation and forwards exact spelling and comparison to the existing lifetime path implementation. No parallel path-safety owner is added. |
+| Setup custody | New Files composition replaces the product native owner. Existing primitives are unchanged. The transient write probe uses a generic name. |
+| Complete reads | Files adds trailing-byte, final-length and final-position checks to the frozen exact-length reads. |
+| Failure ownership | Finally-protected custody and L09 nonfatal post-promotion diagnostics extend the frozen failure boundary. |
+| Runtime target | The repository already targets `net10.0`. L10 uses APIs available on `net8.0` and changes no project or package. |
+| Execution scope | Plan, policy and evidence contracts are included. Destructive recovery execution remains deferred. |
+
+Verification source is Core `704e044ae0866555917f851261337f61707db114` plus the uncommitted L10 worktree changes.
+`dotnet build Nvt.Core.sln --no-restore` passed with zero errors.
+No warnings remain in the new Recovery or Files setup files.
+Existing repository warnings remain.
+`dotnet test Nvt.Core.sln --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Launcher.Recovery"` passed 265 cases, failed zero and skipped 41.
+Thirty-one skips require native custody access denied by this environment.
+Ten skips require shared setup-child hard-stop support.
+`dotnet test Nvt.Core.sln --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Launcher"` passed 2,065 cases, failed 33 and skipped 109.
+All 33 failures are in the unchanged `StableManagedExecutableLaunchLeaseTests` class.
+They report unavailable custody or missing acquired objects in this environment.
+The same class accounted for all 33 failures at the incoming H checkpoint.
+H's progress cases remain at nine passed, zero failed and five skipped.
+`git diff --check` passed.
+Full solution tests, repo-health, independent review, merge and publication are not claimed.
+
+NFC adoption: pending.

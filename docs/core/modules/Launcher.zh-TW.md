@@ -549,3 +549,181 @@ NFC 保留 source selection／authority、嚴格 schema、embedded descriptor／
 Entry 保留凍結 `ManagedLauncherEntry.cs:498–499` 將相對預設 root 正規化的行為；首次安裝 plan 准入仍要求完整絕對路徑。成功 capture 的 payload 身分不符時，保留 `ManagedInstallationSetup.cs:207–212,788–800` 的 `PayloadInvalid`。Transport 要求 Busy、RecoveryRequired、LaunchFailed 與 TerminationUnconfirmed admission 提供具型別 exit issue；mapper 明確拒絕其沒有 issue 的分支。`FirstInstallationAdmissionInvariantTests` 涵蓋這些 invariant、所有編碼的 admission failure 與沒有 exit code 的 receipt；入口邊界測試涵蓋相對預設 root。
 
 Completion 以同一次 elapsed-time observation 判斷凍結的 cutoff 條件及其 issue／exit-code 組合；`FirstInstallationBudgetTests.CompletionSamplesElapsedOnceWhenClockCrossesCutoff` 以 manual clock 在原有讀取之間跨越 cutoff，分別驗證 rollback 與 failed completion。建構函式的 duration 例外使用公開參數名稱。
+
+## L10 安裝具現化與唯讀復原診斷
+
+Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
+
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.Helpers.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedFirstInstallationRootMaterializer.Transaction.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupClosedRootVerifier.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryProbe.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedProcessLifetimeProbe.cs`
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedDistributionLauncherRuntime.cs` — 有界 embedded capture 與完整檔案系統 root probe。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedSetupTransactionDocuments.cs` — 僅包含正規化身分的組成與比較。
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryDiagnosis.cs`
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — 第 1–119 行，以及第 449 行至檔尾的 policy。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.Installation.cs` — 依實際計數轉送進度。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedVersionRepository.cs` — 套件讀取進度投影。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/ManagedPackageVerifier.cs` — 封存檔與已安裝內容的驗證進度。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.cs` — 指定的通用 materializer assertion。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.Custody.cs` — 指定的失敗與 custody assertion。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedDistributionLauncherRuntimeTests.Support.cs` — 僅包含合成 payload 與 repository 行為。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryProbeTests.cs` — 精確繫結與唯讀 custody assertion。
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — 僅包含診斷用的合成 port 與 state pair。
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.ObservationOrdering.cs`
+
+<!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+凍結的 `WindowsManagedSetupPathCustody.cs` 與 `.Native.cs` 是新 Files 組合的行為參考。
+未將它們複製成另一個原生 owner。
+
+Root 准入、具現化與 marker 觀察，現改由本節所述的 Core 實作負責。
+
+### API 與 adapter 契約
+
+`Nvt.Core.Launcher.Recovery` 實作既有 Setup port。
+`FileSystemManagedFirstInstallationRootMaterializer` 必須取得既有 repository、`ManagedSetupLayout`、嚴格 seed store factory、marker codec 與明確的正值 byte 上限。
+Layout 提供根目錄中 distribution Launcher 與 seed 的檔名。
+既有 `ProductDescriptor` 提供 Bootstrap 檔名。
+Seed factory 針對每個指定的精確 seed 路徑，提供既有 `IVersionManagerStateStore`。
+Core 不新增 state schema。
+
+`EmbeddedManagedDistributionPayloadSource` 必須取得可各自重新開啟的 descriptor 與 Bootstrap stream。
+`IManagedSetupPayloadDescriptorReader` 驗證 descriptor 的精確 bytes 及其 Bootstrap 宣告。
+它回傳 `ManagedSetupPayloadDescriptor` 與 `ManagedSetupEmbeddedBootstrap` facts。
+`IManagedSetupMarkerCodec` 依產品的嚴格格式編碼並驗證 marker 的精確 bytes。
+它回傳 `ManagedSetupMarker` facts。
+兩個 adapter 都是必要相依。
+沒有預設 adapter，也沒有一律接受的 fallback。
+Core 重複檢查機械身分、精確路徑、phase 與 byte 上限。
+產品 schema 欄位、resource 名稱與 wire 拼法仍由 NFC 保留。
+
+NFC 的 descriptor 與 marker 上限各為 65,536 bytes。
+NFC 分別保留 JSON depth 12 與 16。
+上限為零或負數時，建構即失敗。
+明確傳入的執行檔上限不得超過既有的 200,000,000 bytes。
+Descriptor capture 額外保留一個 byte 偵測超限。
+因此可設定的儲存上限最大為 `Array.MaxLength - 1`。
+已安裝內容的限制沿用 repository tree limits。
+完整 Setup tree 額外計入三個檔案、兩個目錄，以及實測的 Launcher、Bootstrap 與 seed 長度。
+
+`FileSystemManagedInstallationRootProbe` 提供有界的本機 root 觀察。
+`FileSystemManagedSetupRecoveryProbe` 提供精確且唯讀的 marker 觀察。
+`FileSystemManagedProcessLifetimeProbe` 使用既有 lifetime 機制，明確接收 protocol 名稱與 Job namespace。
+`ManagedInstallationRecoveryExperience.DiagnoseAsync` 回傳 `ManagedSetupRecoveryDiagnosis`。
+只有可執行動作的結果會攜帶不可變的 `ManagedSetupRecoveryPlan`。
+公開契約也包含復原 fact、phase、payload、candidate、transaction、outcome、action、evidence 值及其唯讀 port。
+`IManagedSetupRecoveryStateStore` 組合既有 reader 與 writer 契約，供下一個切片使用。
+Execution token、精確 evidence 的建構、原生 custody 與 test hook 都維持 internal。
+復原執行的 outcome、request、port 與 coordinator 不屬於 L10。
+
+### 保留的行為
+
+只有 Setup 可以寫入 `staging`、`root-promoted` 與 `bootstrap-launch-recorded` marker phase。
+每次變更已提升 root 的 marker 前，必須完成精確 root 證明。
+只有通過資格檢查的 Setup completion 能刪除所持有的精確 marker。
+失敗時保留阻擋後續安裝的證據。
+既有 root 不會被覆寫、重新繫結、修復或遷移。
+
+Files 在 `Files/Windows/Setup/` 擁有 parent 與 staging handle。
+新 owner 組合既有 stable-custody primitive。
+它負責建立 marker、探測寫入權限、建立 staging，並提升為最終名稱。
+清理只會刪除已觀察為空、原生身分相同的直接 staging child。
+對已由本交易標記刪除但尚未消失的目錄，只繼續觀察，避免對替代物再次下達刪除。
+重試仍最多 20 次，每次間隔 250 毫秒。
+沒有任意的空子樹清理。
+既有 Files custody 檔案與原生 primitive 都未變更。
+
+Verifier 先檢查標準 seed、精確的頂層 inventory 與執行檔內容，再呼叫 repository inventory。
+Embedded capture 在 inspection 與 capture 間保留 descriptor 及 Bootstrap 的連續身分。
+完整且精確長度的讀取與雜湊交由 Files。
+解壓縮內容的計量仍由 Verification 負責。
+
+診斷先依序觀察 Bootstrap、Application 與 Launcher lifetime。
+只要有一個角色仍 active，就在 durable read 前回傳 Busy。
+不完整的 lifetime 觀察回傳 HealthUnavailable。
+接著依序觀察 state、root 與 marker。
+只有精確的中斷交易會要求 evidence。
+診斷不啟動程序，也不要求 Registry 或 Catalog source。
+失敗或被放棄的觀察都維持唯讀。
+Application 與 Launcher state 均缺少時，只能選擇移除未完成安裝。
+標準且已繫結的首次執行 state，只允許凍結的 Launcher state-pair 動作。
+完整 READY pair 選擇 ConvergeReady。
+
+Promotion 之後的取消由 recovery 接管。
+Promotion 後非致命且非預期的 adapter 失敗，透過 `SetupExceptionPolicy` 及可選的診斷 callback 處理。
+致命例外繼續向外傳遞。
+Custody 釋放受 finally 保護，包含 marker 寫入取消與 admission hook 失敗。
+
+既有 H 組進度轉送保持完整。
+階段依序為 `ReadingPackage`、`VerifyingPackage`、`InstallingPackage` 與 `VerifyingInstallation`。
+每個階段依實際工作量，只回報遞增的整數百分比。
+Null progress 保留既有行為。
+Extraction wrapper 轉送 plan callback。
+Files 繼續負責完整套件讀取驗證。
+
+### Source 與 Core 測試對照
+
+所有復原案例位於 `tests/Nvt.Core.Tests/Launcher/Recovery/`。
+指定的十個凍結案例保留原名與通用 assertion。
+
+| 凍結 class 與 case | Core class |
+| --- | --- |
+| `ManagedDistributionLauncherRuntimeTests.MaterializerPromotesClosedRootAndMarkerLifecycle` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.MaterializerNeverOverwritesExistingRoot` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.MarkerWriteCancellationReleasesNativeHandle` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.Custody.cs: PrePromotionFailureRetainsMarkerAndOwnedStaging` | `ManagedSetupMaterializerTests` |
+| `ManagedDistributionLauncherRuntimeTests.Custody.cs: MaterializerRetainsMarkerWhenPostPromotionVerificationDetectsTamper` | `ManagedSetupMaterializerTests` |
+| `ManagedSetupRecoveryProbeTests.ProbeReturnsExactTypedTransactionOnlyForEveryBoundIdentity` | `ManagedSetupRecoveryProbeTests` |
+| `ManagedSetupRecoveryProbeTests.RecoveryReadsEveryMaterializerProducedMarkerPhase` | `ManagedSetupMaterializerTests` |
+| `ManagedSetupRecoveryProbeTests.ProbeCustodyBlocksSameNameWriteRenameAndDelete` | `ManagedSetupRecoveryProbeTests` |
+| `ManagedSetupRecoveryDiagnosisTests.ActiveLifetimeBlocksAllDurableObservations` | `ManagedSetupRecoveryDiagnosisTests` |
+| `ManagedSetupRecoveryDiagnosisTests.CanonicalApplicationRowsProduceOnlyTheirAuthorizedAction` | `ManagedSetupRecoveryDiagnosisTests` |
+
+
+新增案例涵蓋完整 diagnosis phase／state／root 矩陣，以及 lifetime 優先順序。
+也涵蓋每個 observation 邊界的取消與首次 durable application-state write。
+Byte 測試涵蓋 descriptor 與 marker 為空、上限減一、精確上限及上限加一。
+每個正值上限都測試零與負數。
+固定的執行檔及 descriptor 儲存界限也包含相鄰值。
+其他案例涵蓋外來及畸形 marker、capture 漂移、不產生 mutation 的阻塞觀察、root 准入，以及完整 root 的內容與拓撲漂移。
+注入的失敗涵蓋每次 marker phase 寫入、promotion 與 seed 持久化的前後兩側。
+原生測試保留 assertion；環境拒絕祖先路徑 custody 存取時，以 capability gate 略過。
+共用 child 尚無 setup-materializer mode，因此實際 hard-stop 案例明確標記為略過。
+Host 必須先提供該共用 mode，才能透過 `ChildProcessFixture` 執行 hard-stop 證據。
+
+H 組保留 `RepositoryProgressTests` 與 `PackageProgressTests`。
+它們涵蓋階段順序與計數、null progress、既有 payload、digest 不符、stream 擁有權與讀取漂移失敗。
+
+### 差異與驗證
+
+| 項目 | Core 邊界與原因 |
+| --- | --- |
+| 產品 schema 與 codec | 必要的正規化 fact adapter，讓嚴格 wire 格式仍由 NFC 擁有。未新增 marker schema。 |
+| Seed IO 與根目錄檔名 | 以既有 state-store port 及明確 layout 取代產品預設值。 |
+| Path safety | `RepositoryPathSafety` 新增 reparse ancestor 觀察，並將精確拼法與比較委派給既有 lifetime path 實作。沒有平行的 path-safety owner。 |
+| Setup custody | 新 Files 組合取代產品的原生 owner。既有 primitive 不變。暫時性的寫入探測檔改用通用名稱。 |
+| 完整讀取 | Files 在凍結的精確長度讀取上，增加尾端 byte、最終長度與最終位置檢查。 |
+| 失敗責任 | Finally 保護的 custody 釋放，以及 L09 promotion 後的非致命失敗診斷，擴充凍結的失敗邊界。 |
+| Runtime target | Repository 已使用 `net10.0`。L10 使用 `net8.0` 可用 API，不變更 project 或 package。 |
+| 執行範圍 | 包含 plan、policy 與 evidence 契約。具破壞性的復原執行仍延後。 |
+
+驗證來源為 Core `704e044ae0866555917f851261337f61707db114`，加上本次尚未 commit 的 L10 worktree 變更。
+`dotnet build Nvt.Core.sln --no-restore` 成功，錯誤為零。
+新的 Recovery 與 Files setup 檔案已無 warning。
+Repository 既有 warning 仍存在。
+`dotnet test Nvt.Core.sln --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Launcher.Recovery"` 通過 265 例、失敗零例、略過 41 例。
+其中 31 例因本環境拒絕必要的原生 custody 存取而略過。
+另外十例需要共用 setup child 的 hard-stop 支援。
+`dotnet test Nvt.Core.sln --no-build --filter "FullyQualifiedName~Nvt.Core.Tests.Launcher"` 通過 2,065 例、失敗 33 例、略過 109 例。
+33 個失敗案例全在本次未變更的 `StableManagedExecutableLaunchLeaseTests`。
+它們在本環境回報 custody 無法使用，或未取得物件。
+原有 H 組檢查點的 33 個失敗也全屬於同一個 class。
+H 組進度案例維持通過九例、失敗零例、略過五例。
+`git diff --check` 通過。
+未宣稱完整 solution 測試、repo-health、獨立審查、合併或發布已完成。
+
+NFC adoption: pending.
