@@ -168,13 +168,18 @@ public sealed class ManagedSetupCleanupTests
     }
 
     /// <summary>A fatal failure while disposing the marker stream still propagates.</summary>
-    [Fact]
-    public async Task FatalMarkerDisposalFailurePropagates()
+    [Theory]
+    [InlineData(typeof(OutOfMemoryException))]
+    [InlineData(typeof(AccessViolationException))]
+    public async Task FatalMarkerDisposalFailurePropagates(Type exceptionType)
     {
-        using var stream = new FailingDisposeStream(new OutOfMemoryException());
+        var failure = (Exception)Activator.CreateInstance(exceptionType)!;
+        using var stream = new FailingDisposeStream(failure);
 
-        await Assert.ThrowsAsync<OutOfMemoryException>(async () =>
-            await FileSystemManagedFirstInstallationRootMaterializer.DisposeMarkerStreamAsync(stream, null));
+        Exception? actual = await Record.ExceptionAsync(() =>
+            FileSystemManagedFirstInstallationRootMaterializer.DisposeMarkerStreamAsync(stream, null).AsTask());
+
+        Assert.Same(failure, actual);
     }
 
     /// <summary>The Bootstrap launch opportunity needs the recorded phase, survives cancellation and is used once.</summary>
@@ -223,7 +228,11 @@ public sealed class ManagedSetupCleanupTests
 
     private sealed class FailingDisposeStream(Exception failure) : MemoryStream
     {
-        public override ValueTask DisposeAsync() => throw failure;
+        public override async ValueTask DisposeAsync()
+        {
+            await base.DisposeAsync();
+            throw failure;
+        }
     }
 
     private sealed class CleanupTrace
