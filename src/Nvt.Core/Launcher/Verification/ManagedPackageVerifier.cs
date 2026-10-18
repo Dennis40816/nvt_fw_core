@@ -120,10 +120,7 @@ internal sealed class ManagedPackageVerifier
         }
         finally
         {
-            if (archive is not null)
-            {
-                await archive.DisposeAsync();
-            }
+            archive?.Dispose();
         }
     }
 
