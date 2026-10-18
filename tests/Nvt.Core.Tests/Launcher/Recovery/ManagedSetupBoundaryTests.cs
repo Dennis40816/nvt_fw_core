@@ -231,7 +231,9 @@ public sealed class ManagedSetupBoundaryTests
 
     private sealed class DriftingStream(byte[] bytes, bool lengthDrift) : MemoryStream(bytes, writable: false)
     {
-        private bool AtEnd => base.Position == bytes.Length;
+        private readonly int _end = bytes.Length;
+
+        private bool AtEnd => base.Position == _end;
         public override long Length => lengthDrift && AtEnd ? base.Length + 1 : base.Length;
         public override long Position
         {
