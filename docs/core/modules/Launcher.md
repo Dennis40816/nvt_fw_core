@@ -600,6 +600,8 @@ Both adapters are mandatory.
 There is no default adapter or permissive fallback.
 Core repeats mechanical identity, exact path, phase and byte-limit checks.
 Product schema fields, resource names and wire spelling remain in NFC.
+The executable ceiling given to the source also bounds the embedded Bootstrap size.
+A Bootstrap above that ceiling is invalid, and its stream is not opened.
 
 NFC supplies 65,536 bytes for both descriptor and marker ceilings.
 NFC keeps JSON depths 12 and 16 respectively.

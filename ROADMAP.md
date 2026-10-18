@@ -134,6 +134,7 @@ The whole list is in 1.0.0. Only "basic controls, set 3" is best effort.
 | State contracts, package verification, state files, coordination, custody, installation | 1.0.0 | Merged | [#60](https://github.com/Dennis40816/nvt_fw_core/pull/60), [#67](https://github.com/Dennis40816/nvt_fw_core/pull/67), [#75](https://github.com/Dennis40816/nvt_fw_core/pull/75), [#78](https://github.com/Dennis40816/nvt_fw_core/pull/78), [#84](https://github.com/Dennis40816/nvt_fw_core/pull/84), [#89](https://github.com/Dennis40816/nvt_fw_core/pull/89) |
 | Entry and first-install use cases (`ManagedLauncherEntryCoordinator`, `ManagedFirstInstallationExperience` and their ports), moved from NFC | 1.0.0 | Merged. Not in a tagged version yet | [#243](https://github.com/Dennis40816/nvt_fw_core/pull/243), [Launcher](docs/core/modules/Launcher.md) |
 | Remaining Launcher steps, including a second-app test for WorkStation | 1.0.0 | Not started | [Launcher](docs/core/modules/Launcher.md) |
+| Design question for L11: how an adapter outside Core returns a successful recovery evidence observation. The success constructor and the execution token are internal in Core. NFC gets them through an assembly grant. Found in the L10 review | 1.0.0 | Open. Decide before L11 starts | [#250](https://github.com/Dennis40816/nvt_fw_core/pull/250), [Launcher](docs/core/modules/Launcher.md) |
 
 **7. Utility functions**
 

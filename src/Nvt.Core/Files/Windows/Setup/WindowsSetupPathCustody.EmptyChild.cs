@@ -91,10 +91,10 @@ internal sealed partial class WindowsSetupPathCustody
                 Native.OpenReparsePoint,
             Native.FileOpen,
             out SafeFileHandle handle);
-        status = stagingDeleteOpenStatusOverride?.Invoke(status) ?? status;
         bool deleteMarked = false;
         using (handle)
         {
+            status = stagingDeleteOpenStatusOverride?.Invoke(status) ?? status;
             if (status == Native.StatusSharingViolation)
             {
                 return new(WindowsSetupStagingCleanupState.RetryableContention);
@@ -159,9 +159,9 @@ internal sealed partial class WindowsSetupPathCustody
                 Native.OpenReparsePoint,
             Native.FileOpen,
             out SafeFileHandle handle);
-        status = ownedDeletionObservationStatusOverride?.Invoke(status) ?? status;
         using (handle)
         {
+            status = ownedDeletionObservationStatusOverride?.Invoke(status) ?? status;
             if (status is Native.StatusObjectNameNotFound or
                 Native.StatusObjectPathNotFound)
             {

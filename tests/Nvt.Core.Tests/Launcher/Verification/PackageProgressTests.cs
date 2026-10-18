@@ -55,6 +55,37 @@ public sealed class PackageProgressTests
         Assert.True(package.CanRead);
     }
 
+    /// <summary>One reporting verifier starts its counters at zero on every call and leaves its source silent.</summary>
+    [Fact]
+    public async Task ReportingVerifierResetsCountersOnEveryCallAndKeepsSourceSilent()
+    {
+        PackageFixture fixture = CreatePackage();
+        ManagedPackageVerifier source = fixture.Verifier();
+        var events = new List<(long Done, long Total)>();
+        ManagedPackageVerifier reporting = source.WithProgress((done, total) => events.Add((done, total)), null);
+        Assert.NotSame(source, reporting);
+        Assert.Same(reporting, reporting.WithProgress(null, null));
+        long packageBytes = fixture.PackageBytes.LongLength;
+
+        for (int run = 0; run < 2; run++)
+        {
+            events.Clear();
+            using var package = new ObservedPackageStream(fixture.PackageBytes);
+            ManagedPackagePlanResult result = await reporting.CreatePlanAsync(package, fixture.Candidate,
+                TestContext.Current.CancellationToken);
+            using ManagedPackagePlan plan = Assert.IsType<ManagedPackagePlan>(result.Plan);
+            Assert.Equal((0L, packageBytes), events[0]);
+            Assert.Equal((packageBytes, packageBytes), events[^1]);
+        }
+
+        events.Clear();
+        using var silent = new ObservedPackageStream(fixture.PackageBytes);
+        ManagedPackagePlanResult plain = await source.CreatePlanAsync(silent, fixture.Candidate,
+            TestContext.Current.CancellationToken);
+        using ManagedPackagePlan plainPlan = Assert.IsType<ManagedPackagePlan>(plain.Plan);
+        Assert.Empty(events);
+    }
+
     /// <summary>Null and active callbacks preserve the existing stream reads, exact plan facts, and borrowed ownership.</summary>
     [Theory]
     [InlineData(false)]

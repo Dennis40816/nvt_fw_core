@@ -296,6 +296,22 @@ write tree 只儲存一個封閉的生命週期 phase：`Writing`、`Prepared`�
 
 所有操作均先檢查 phase，才存取 handle 或呼叫 callback。尚未 Dispose 但 phase 不符時，擲出 `InvalidOperationException`，訊息指出目前 phase 與嘗試的操作。Dispose 後除 `Dispose` 外的所有成員均擲出 `ObjectDisposedException`，包含 `StagingPath` 與兩個 cleanup 方法。
 
+### Setup custody
+
+`WindowsSetupPathCustody` 為 internal，供 Launcher 首次安裝的 setup 使用（見 [Launcher](Launcher.zh-TW.md)）。
+它持有一個可寫入的 parent、一個 staging container 與一個可 promote 的 child。
+所有原生操作都使用上述的 stable custody primitive。
+它不解讀 Launcher 的 marker。
+
+- `ObserveEntry` 回報 parent 的某個直接子項目的狀態，不跟隨連結。
+- `CreateMarker` 與 `CreateStaging` 建立 marker 檔與 staging child。`Promote` 將 staging child 移到最終名稱，且不會取代既有項目。
+- `ProbeWriteAccess` 檢查 parent 是否接受新項目，並回報殘留。
+- `ObserveEmptyStagingChild` 與 `DeleteObservedEmptyStagingChild` 只處理 staging child 之下一個直接、空的子項目。刪除呼叫需要觀察時取得的 identity。identity 改變時回傳 `ChangedOrUnsafe`，且不刪除任何東西。
+- `ObserveOwnedStagingDeletion` 只觀察已在等待中的刪除，不會再發出另一次刪除。
+- 每個清理方法在回傳前都會關閉自己開啟的 handle。該次開啟的 internal 狀態 hook 擲出例外時也一樣。
+
+`ManagedSetupCleanupTests` 涵蓋 handle 釋放（`ThrowingStatusHookReleasesTheOpenedDirectoryHandle`）、二十次嘗試的上限（`StagingCleanupStopsAfterTwentyContendedAttempts`）、不再次刪除的觀察（`PendingOwnedDeletionIsObservedAndNotDeletedAgain`）與 identity 改變（`ReplacedStagingChildIsRejectedAsChanged`）。
+
 ### Custody 測試對照
 
 來源檔案均位於 `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`；Core Files 測試位於 `tests/Nvt.Core.Tests/Files/Windows/`。

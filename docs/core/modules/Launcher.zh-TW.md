@@ -600,6 +600,8 @@ Core 不新增 state schema。
 沒有預設 adapter，也沒有一律接受的 fallback。
 Core 重複檢查機械身分、精確路徑、phase 與 byte 上限。
 產品 schema 欄位、resource 名稱與 wire 拼法仍由 NFC 保留。
+交給 source 的 executable 上限，同樣限制內嵌 Bootstrap 的大小。
+超過該上限的 Bootstrap 視為 invalid，且不會開啟它的 stream。
 
 NFC 的 descriptor 與 marker 上限各為 65,536 bytes。
 NFC 分別保留 JSON depth 12 與 16。

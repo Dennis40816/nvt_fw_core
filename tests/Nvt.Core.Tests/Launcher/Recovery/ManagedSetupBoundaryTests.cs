@@ -76,6 +76,34 @@ public sealed class ManagedSetupBoundaryTests
         if (admitted) Assert.Equal(length, reader.ExactBytes);
     }
 
+    /// <summary>The configured executable ceiling bounds the embedded Bootstrap before its resource opens.</summary>
+    [Theory]
+    [InlineData(4, true)]
+    [InlineData(3, true)]
+    [InlineData(2, false)]
+    public async Task BootstrapSizeObeysConfiguredExecutableCeiling(long limit, bool admitted)
+    {
+        int opens = 0;
+        var source = Source("descriptor"u8.ToArray(), new DescriptorReader(), maximumExecutableBytes: limit,
+            bootstrapOpened: () => opens++);
+        var admission = await source.AdmitEntryAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(admitted, admission.IsSuccess);
+        Assert.Equal(admitted ? 1 : 0, opens);
+        if (admitted) return;
+
+        Assert.Equal(ManagedDistributionPayloadIssue.Invalid, admission.Issue);
+        var inspection = await source.InspectAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(ManagedDistributionPayloadIssue.Invalid, inspection.Issue);
+        var expected = new ManagedDistributionPayloadIdentity(SetupFixture.Ceiling, ManagedAppVersion.Parse("1.0.4"),
+            new string('c', 40), 123, SetupFixture.HashA, "descriptor"u8.Length, SetupFixture.Hash("descriptor"u8),
+            ManagedImmutableBootstrapIdentity.Create(ContractFixture.Descriptor, SetupFixture.Layout.BootstrapFileName,
+                3, SetupFixture.Hash(new byte[] { 1, 2, 3 })));
+        var capture = await source.CaptureExactAsync(expected, TestContext.Current.CancellationToken);
+        Assert.Equal(ManagedDistributionPayloadIssue.Changed, capture.Issue);
+        Assert.Null(capture.Capture);
+        Assert.Equal(0, opens);
+    }
+
     /// <summary>Marker reads preserve positive exact-size and one-over bounds independently of the strict codec.</summary>
     [Theory]
     [InlineData(0, false)]
@@ -174,9 +202,14 @@ public sealed class ManagedSetupBoundaryTests
 
     private static EmbeddedManagedDistributionPayloadSource Source(byte[] bytes, IManagedSetupPayloadDescriptorReader reader,
         int maximumDescriptorBytes = SetupFixture.Ceiling, long maximumExecutableBytes = 200_000_000,
-        byte[]? bootstrapBytes = null) => new(Path.Combine(AppContext.BaseDirectory, "missing-synthetic-launcher.exe"),
+        byte[]? bootstrapBytes = null, Action? bootstrapOpened = null) => new(
+            Path.Combine(AppContext.BaseDirectory, "missing-synthetic-launcher.exe"),
             () => new MemoryStream(bytes, writable: false),
-            () => new MemoryStream(bootstrapBytes ?? [1, 2, 3], writable: false),
+            () =>
+            {
+                bootstrapOpened?.Invoke();
+                return new MemoryStream(bootstrapBytes ?? [1, 2, 3], writable: false);
+            },
             ContractFixture.Descriptor, reader, maximumDescriptorBytes, maximumExecutableBytes);
 
     private sealed class DescriptorReader : IManagedSetupPayloadDescriptorReader

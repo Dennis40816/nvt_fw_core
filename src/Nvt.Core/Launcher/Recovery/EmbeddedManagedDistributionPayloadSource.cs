@@ -195,6 +195,11 @@ public sealed class EmbeddedManagedDistributionPayloadSource : IManagedDistribut
         {
             return EntryProjectionResult.Failure(ManagedDistributionPayloadIssue.Invalid);
         }
+        // The configured ceiling bounds Bootstrap like the Launcher, and applies before the resource opens.
+        if (identity.Length > _maximumExecutableBytes)
+        {
+            return EntryProjectionResult.Failure(ManagedDistributionPayloadIssue.Invalid);
+        }
 
         ResourceLengthResult resource = ObserveBootstrapLength();
         return resource.Issue == ManagedDistributionPayloadIssue.None &&

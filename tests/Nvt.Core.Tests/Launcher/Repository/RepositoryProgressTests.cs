@@ -43,6 +43,32 @@ public sealed class RepositoryProgressTests
         fixture.AssertEmptyStaging();
     }
 
+    /// <summary>One reporting repository restarts its stage counters on every call and leaves its source silent.</summary>
+    [Fact]
+    public async Task ReportingRepositoryResetsStageCountersOnEveryCall()
+    {
+        RepositoryFixture.RequireWindows();
+        using var fixture = new RepositoryFixture(CreatePackage());
+        var progress = new InstallationProgress();
+        FileSystemManagedVersionRepository reporting = fixture.Repository.WithInstallationProgress(progress);
+        Assert.NotSame(fixture.Repository, reporting);
+        Assert.Same(reporting, reporting.WithInstallationProgress(null));
+
+        Assert.True((await MaterializeWithAsync(fixture, reporting)).IsSuccess);
+        int firstRun = progress.Events.Count;
+        Assert.True((await MaterializeWithAsync(fixture, reporting)).IsSuccess);
+
+        ManagedFirstInstallationProgress[] second = [.. progress.Events.Skip(firstRun)];
+        Assert.NotEmpty(second);
+        Assert.All(second, item => Assert.Equal(ManagedFirstInstallationProgressStage.VerifyingInstallation, item.Stage));
+        Assert.Equal(0, second[0].CompletedWork);
+        Assert.Equal(fixture.Package.Files.Sum(pair => pair.Value.LongLength), second[^1].CompletedWork);
+
+        progress.Events.Clear();
+        Assert.True((await MaterializeWithAsync(fixture, fixture.Repository)).IsSuccess);
+        Assert.Empty(progress.Events);
+    }
+
     /// <summary>Explicit null and active progress preserve the public caller's result and every installed byte.</summary>
     [Theory]
     [InlineData(false)]
@@ -147,8 +173,12 @@ public sealed class RepositoryProgressTests
         Assert.True(progress.Events.Count < fixture.Package.Files.Count);
     }
 
-    private static async ValueTask<ManagedVersionInstallResult> MaterializeAsync(RepositoryFixture fixture,
-        IProgress<ManagedFirstInstallationProgress>? progress)
+    private static ValueTask<ManagedVersionInstallResult> MaterializeAsync(RepositoryFixture fixture,
+        IProgress<ManagedFirstInstallationProgress>? progress) =>
+        MaterializeWithAsync(fixture, fixture.Repository.WithInstallationProgress(progress));
+
+    private static async ValueTask<ManagedVersionInstallResult> MaterializeWithAsync(RepositoryFixture fixture,
+        FileSystemManagedVersionRepository repository)
     {
         WindowsStableCustodyIssue issue = WindowsStableRelativeWriteRoot.TryAcquire(fixture.ManagedRoot,
             out WindowsStableRelativeWriteRoot? writeRoot);
@@ -156,7 +186,7 @@ public sealed class RepositoryProgressTests
         {
             Assert.Equal(WindowsStableCustodyIssue.None, issue);
             Assert.NotNull(writeRoot);
-            return await fixture.Repository.WithInstallationProgress(progress)
+            return await repository
                 .MaterializeVerifiedPayloadWithinHeldRootAsync(writeRoot, fixture.SourceRoot,
                     fixture.Package.Candidate, requireNew: false, TestContext.Current.CancellationToken);
         }
