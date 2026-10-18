@@ -41,10 +41,7 @@ public sealed partial class FileSystemManagedVersionRepository
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            string source = Path.GetFullPath(sourceRoot);
-            if (!RepositoryPathSafety.IsSafeExistingDirectory(source) ||
-                package.PackagePath.Value is not { } relativePath ||
-                !RepositoryPathSafety.TryResolveRelativeFile(source, relativePath, out string packagePath))
+            if (!TryResolvePackagePath(sourceRoot, package, out string packagePath))
             {
                 return Failure(ManagedVersionInstallIssue.PackageUnavailable);
             }
@@ -57,12 +54,7 @@ public sealed partial class FileSystemManagedVersionRepository
                 return Failure(result.Issue);
             }
             var admission = new ManagedVersionAdmission(package.Version, package.Identity, package.ReleaseManifestSha256);
-            ReadOnlyMemory<byte> admissionBytes = admissionCodec.Encode(admission);
-            if (!plan!.AdmitsAdmissionLength(admissionBytes.Length))
-            {
-                throw new InvalidDataException("Managed admission metadata exceeded its declared bound.");
-            }
-            admissionBytes = admissionBytes.ToArray();
+            ReadOnlyMemory<byte> admissionBytes = EncodeAdmission(plan!, admission);
             string target = RepositoryPathSafety.GetExactVersionDirectory(
                 Path.Combine(writeRoot.RootPath, VersionsDirectoryName), package.Version);
             if (Directory.Exists(target))
@@ -85,54 +77,18 @@ public sealed partial class FileSystemManagedVersionRepository
                         ? ManagedVersionInstallIssue.UnsafeArchive : ManagedVersionInstallIssue.PromotionFailed;
                     return ownedTree is null ? Failure(issue) : FailureAfterCleanup(ownedTree, issue);
                 }
-                operations.BeforeExtraction?.Invoke();
-                await RepositoryExtraction.ExtractAsync(plan, ownedTree, operations.WrapExtractionDestination,
-                    cancellationToken).ConfigureAwait(false);
-                await using (FileStream destination = ownedTree.CreateFile(AdmissionFileName))
-                {
-                    await destination.WriteAsync(admissionBytes, cancellationToken).ConfigureAwait(false);
-                    await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
-                }
-                WindowsStableCustodyIssue prepared = ownedTree.PrepareForPromotion(operations.BeforePackagePromotion);
-                if (prepared != WindowsStableCustodyIssue.None)
-                {
-                    return FailureAfterCleanup(ownedTree, ManagedVersionInstallIssue.InvalidPayload);
-                }
-                WindowsStableCustodyIssue promoted = ownedTree.Promote();
-                if (promoted != WindowsStableCustodyIssue.None)
-                {
-                    return FailureAfterCleanup(ownedTree, promoted == WindowsStableCustodyIssue.Changed
-                        ? ManagedVersionInstallIssue.IdentityConflict : ManagedVersionInstallIssue.PromotionFailed);
-                }
-                operations.AfterPromotion?.Invoke(target);
-                WindowsStableCustodyResult captured = ownedTree.CapturePromotedImmutableTree(target, cancellationToken);
-                if (!captured.IsAcquired)
-                {
-                    return FailureAfterRollback(ownedTree, ManagedVersionInstallIssue.IdentityConflict);
-                }
-                ManagedVersionInstallResult verified;
-                using (WindowsStablePathCustody custody = captured.Custody!)
-                {
-                    verified = await VerifyExistingPayloadAsync(target, admission, wasAlreadyInstalled: false,
-                        custody, cancellationToken).ConfigureAwait(false);
-                }
+                ManagedVersionInstallResult verified = await PopulateAndPromoteAsync(plan, ownedTree, admission,
+                    admissionBytes, target, cancellationToken).ConfigureAwait(false);
                 if (!verified.IsSuccess)
                 {
-                    return FailureAfterRollback(ownedTree, verified.Issue);
+                    return verified;
                 }
                 ownedTree.Dispose();
                 ownedTree = null;
                 return verified;
             }
-            catch (OperationCanceledException)
-            {
-                if (ownedTree is not null && ownedTree.RollbackPromotionAndCleanup() != WindowsStableCustodyIssue.None)
-                {
-                    return Failure(ManagedVersionInstallIssue.CleanupIncomplete);
-                }
-                throw;
-            }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+            catch (Exception exception) when (exception is OperationCanceledException or IOException
+                or UnauthorizedAccessException or InvalidDataException)
             {
                 if (ownedTree is not null && ownedTree.RollbackPromotionAndCleanup() != WindowsStableCustodyIssue.None)
                 {
@@ -149,19 +105,79 @@ public sealed partial class FileSystemManagedVersionRepository
         {
             throw;
         }
-        catch (FileNotFoundException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            return Failure(ManagedVersionInstallIssue.PackageUnavailable);
-        }
-        catch (InvalidDataException)
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return Failure(ManagedVersionInstallIssue.PromotionFailed);
+            return Failure(MapInstallException(exception));
         }
     }
+
+    private static bool TryResolvePackagePath(string sourceRoot, UpdateCatalogVersionSnapshot package,
+        out string packagePath)
+    {
+        packagePath = string.Empty;
+        string source = Path.GetFullPath(sourceRoot);
+        return RepositoryPathSafety.IsSafeExistingDirectory(source) &&
+            package.PackagePath.Value is { } relativePath &&
+            RepositoryPathSafety.TryResolveRelativeFile(source, relativePath, out packagePath);
+    }
+
+    private ReadOnlyMemory<byte> EncodeAdmission(ManagedPackagePlan plan, ManagedVersionAdmission admission)
+    {
+        ReadOnlyMemory<byte> admissionBytes = admissionCodec.Encode(admission);
+        if (!plan.AdmitsAdmissionLength(admissionBytes.Length))
+        {
+            throw new InvalidDataException("Managed admission metadata exceeded its declared bound.");
+        }
+        return admissionBytes.ToArray();
+    }
+
+    // Fills the owned tree, promotes it and verifies the promoted payload.
+    // A failure cleans up or rolls back the tree. The caller keeps ownership and disposes it.
+    private async ValueTask<ManagedVersionInstallResult> PopulateAndPromoteAsync(ManagedPackagePlan plan,
+        WindowsStableRelativeWriteTree ownedTree, ManagedVersionAdmission admission,
+        ReadOnlyMemory<byte> admissionBytes, string target, CancellationToken cancellationToken)
+    {
+        operations.BeforeExtraction?.Invoke();
+        await RepositoryExtraction.ExtractAsync(plan, ownedTree, operations.WrapExtractionDestination,
+            cancellationToken).ConfigureAwait(false);
+        await using (FileStream destination = ownedTree.CreateFile(AdmissionFileName))
+        {
+            await destination.WriteAsync(admissionBytes, cancellationToken).ConfigureAwait(false);
+            await destination.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
+        WindowsStableCustodyIssue prepared = ownedTree.PrepareForPromotion(operations.BeforePackagePromotion);
+        if (prepared != WindowsStableCustodyIssue.None)
+        {
+            return FailureAfterCleanup(ownedTree, ManagedVersionInstallIssue.InvalidPayload);
+        }
+        WindowsStableCustodyIssue promoted = ownedTree.Promote();
+        if (promoted != WindowsStableCustodyIssue.None)
+        {
+            return FailureAfterCleanup(ownedTree, promoted == WindowsStableCustodyIssue.Changed
+                ? ManagedVersionInstallIssue.IdentityConflict : ManagedVersionInstallIssue.PromotionFailed);
+        }
+        operations.AfterPromotion?.Invoke(target);
+        WindowsStableCustodyResult captured = ownedTree.CapturePromotedImmutableTree(target, cancellationToken);
+        if (!captured.IsAcquired)
+        {
+            return FailureAfterRollback(ownedTree, ManagedVersionInstallIssue.IdentityConflict);
+        }
+        ManagedVersionInstallResult verified;
+        using (WindowsStablePathCustody custody = captured.Custody!)
+        {
+            verified = await VerifyExistingPayloadAsync(target, admission, wasAlreadyInstalled: false,
+                custody, cancellationToken).ConfigureAwait(false);
+        }
+        return verified.IsSuccess ? verified : FailureAfterRollback(ownedTree, verified.Issue);
+    }
+
+    // FileNotFoundException is an IOException, so it is matched first.
+    private static ManagedVersionInstallIssue MapInstallException(Exception exception) => exception switch
+    {
+        FileNotFoundException => ManagedVersionInstallIssue.PackageUnavailable,
+        InvalidDataException => ManagedVersionInstallIssue.InvalidPayload,
+        _ => ManagedVersionInstallIssue.PromotionFailed,
+    };
 
     private async ValueTask<ManagedVersionInstallResult> VerifyExistingPayloadAsync(string target,
         ManagedVersionAdmission admission, bool wasAlreadyInstalled, WindowsStablePathCustody? heldCustody,
