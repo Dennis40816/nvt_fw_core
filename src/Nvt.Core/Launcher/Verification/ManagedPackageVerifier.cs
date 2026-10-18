@@ -74,7 +74,9 @@ internal sealed class ManagedPackageVerifier
         Stream package,
         UpdateCatalogVersionSnapshot candidate,
         CancellationToken cancellationToken,
-        bool propagateReadFailures = false)
+        bool propagateReadFailures = false,
+        Action<long, long>? packageReadProgress = null,
+        Action<long, long>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(candidate);
@@ -93,8 +95,12 @@ internal sealed class ManagedPackageVerifier
             }
 
             package.Position = 0;
+            using PackageReadProgressStream? progressStream = packageReadProgress is null
+                ? null : new(package, observedLength, packageReadProgress);
+            packageReadProgress?.Invoke(0, observedLength);
             BoundedReadResult read = await BoundedFileReader.ReadAndHashAsync(
-                package, observedLength, FileCaptureMode.IdentityOnly, cancellationToken).ConfigureAwait(false);
+                progressStream ?? package, observedLength, FileCaptureMode.IdentityOnly,
+                cancellationToken).ConfigureAwait(false);
             if (read.Sha256 is null || !string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(),
                     candidate.PackageSha256, StringComparison.Ordinal))
             {
@@ -102,7 +108,8 @@ internal sealed class ManagedPackageVerifier
             }
             package.Position = 0;
             archive = new ZipArchive(package, ZipArchiveMode.Read, leaveOpen: true);
-            ManagedPackagePlanResult result = await CreateArchivePlanAsync(archive, candidate, cancellationToken).ConfigureAwait(false);
+            ManagedPackagePlanResult result = await CreateArchivePlanAsync(archive, candidate,
+                progress, cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess)
             {
                 archive = null;
@@ -127,6 +134,7 @@ internal sealed class ManagedPackageVerifier
     private async ValueTask<ManagedPackagePlanResult> CreateArchivePlanAsync(
         ZipArchive archive,
         UpdateCatalogVersionSnapshot candidate,
+        Action<long, long>? progress,
         CancellationToken cancellationToken)
     {
         if (archive.Entries.Count == 0 || archive.Entries.Count > limits.MaximumArchiveEntries)
@@ -236,6 +244,16 @@ internal sealed class ManagedPackageVerifier
         {
             return Failure(ManagedVersionInstallIssue.InvalidPayload);
         }
+        long verificationTotal = 0;
+        foreach (PackageFile file in manifest.Files)
+        {
+            verificationTotal = checked(verificationTotal + file.Size);
+        }
+        long verifiedBytes = 0;
+        if (verificationTotal > 0)
+        {
+            progress?.Invoke(0, verificationTotal);
+        }
         foreach (PackageFile file in manifest.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -245,7 +263,11 @@ internal sealed class ManagedPackageVerifier
             }
             await using Stream input = entry.Open();
             BoundedArchiveReadResult content = await BoundedArchiveReader.ReadAndHashAsync(
-                input, file.Size, budget, cancellationToken).ConfigureAwait(false);
+                input, file.Size, budget, cancellationToken, bytes =>
+                {
+                    verifiedBytes = checked(verifiedBytes + bytes);
+                    progress?.Invoke(verifiedBytes, verificationTotal);
+                }).ConfigureAwait(false);
             if (!content.IsSuccess)
             {
                 return ReadFailure(content);

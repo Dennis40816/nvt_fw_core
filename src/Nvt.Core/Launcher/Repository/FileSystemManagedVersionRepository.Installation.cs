@@ -2,6 +2,7 @@
 
 using Nvt.Core.Files.Windows;
 using Nvt.Core.Launcher.Contracts;
+using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Verification;
 
 namespace Nvt.Core.Launcher.Repository;
@@ -33,7 +34,8 @@ public sealed partial class FileSystemManagedVersionRepository
 
     internal async ValueTask<ManagedVersionInstallResult> MaterializeVerifiedPayloadWithinHeldRootAsync(
         WindowsStableRelativeWriteRoot writeRoot, string sourceRoot, UpdateCatalogVersionSnapshot package,
-        bool requireNew, CancellationToken cancellationToken)
+        bool requireNew, CancellationToken cancellationToken,
+        IProgress<ManagedFirstInstallationProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(writeRoot);
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceRoot);
@@ -50,7 +52,11 @@ public sealed partial class FileSystemManagedVersionRepository
             }
             await using FileStream packageStream = OpenStablePackage(packagePath, package.PackageSize);
             ManagedPackagePlanResult result = await verifier.CreatePlanAsync(packageStream, package,
-                cancellationToken, propagateReadFailures: true).ConfigureAwait(false);
+                cancellationToken, propagateReadFailures: true,
+                packageReadProgress: MeasuredFirstInstallationStageProgress.Create(progress,
+                    ManagedFirstInstallationProgressStage.ReadingPackage),
+                progress: MeasuredFirstInstallationStageProgress.Create(progress,
+                    ManagedFirstInstallationProgressStage.VerifyingPackage)).ConfigureAwait(false);
             using ManagedPackagePlan? plan = result.Plan;
             if (!result.IsSuccess)
             {
@@ -69,7 +75,7 @@ public sealed partial class FileSystemManagedVersionRepository
             {
                 return requireNew ? Failure(ManagedVersionInstallIssue.IdentityConflict)
                     : await VerifyExistingPayloadAsync(target, admission, wasAlreadyInstalled: true,
-                        heldCustody: null, cancellationToken).ConfigureAwait(false);
+                        heldCustody: null, cancellationToken, progress).ConfigureAwait(false);
             }
             var reservation = new WindowsStableTreeReservation(checked(plan!.FileCount + 1), plan.ImplicitDirectoryCount,
                 checked(plan.ExpandedBytes + admissionBytes.Length), TreeLimits);
@@ -87,7 +93,8 @@ public sealed partial class FileSystemManagedVersionRepository
                 }
                 operations.BeforeExtraction?.Invoke();
                 await RepositoryExtraction.ExtractAsync(plan, ownedTree, operations.WrapExtractionDestination,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken, MeasuredFirstInstallationStageProgress.Create(progress,
+                        ManagedFirstInstallationProgressStage.InstallingPackage)).ConfigureAwait(false);
                 await using (FileStream destination = ownedTree.CreateFile(AdmissionFileName))
                 {
                     await destination.WriteAsync(admissionBytes, cancellationToken).ConfigureAwait(false);
@@ -114,7 +121,7 @@ public sealed partial class FileSystemManagedVersionRepository
                 using (WindowsStablePathCustody custody = captured.Custody!)
                 {
                     verified = await VerifyExistingPayloadAsync(target, admission, wasAlreadyInstalled: false,
-                        custody, cancellationToken).ConfigureAwait(false);
+                        custody, cancellationToken, progress).ConfigureAwait(false);
                 }
                 if (!verified.IsSuccess)
                 {
@@ -165,7 +172,7 @@ public sealed partial class FileSystemManagedVersionRepository
 
     private async ValueTask<ManagedVersionInstallResult> VerifyExistingPayloadAsync(string target,
         ManagedVersionAdmission admission, bool wasAlreadyInstalled, WindowsStablePathCustody? heldCustody,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IProgress<ManagedFirstInstallationProgress>? progress = null)
     {
         WindowsStablePathCustody? acquiredCustody = null;
         if (heldCustody is null)
@@ -185,7 +192,9 @@ public sealed partial class FileSystemManagedVersionRepository
             {
                 return Failure(ManagedVersionInstallIssue.IdentityConflict);
             }
-            var damage = await proof.VerifyAsync(target, admission, cancellationToken).ConfigureAwait(false);
+            var damage = await proof.VerifyAsync(target, admission, cancellationToken,
+                MeasuredFirstInstallationStageProgress.Create(progress,
+                    ManagedFirstInstallationProgressStage.VerifyingInstallation)).ConfigureAwait(false);
             return damage is null && heldCustody.RevalidateClosedTree()
                 ? new(admission, ManagedVersionInstallIssue.None, wasAlreadyInstalled)
                 : Failure(ManagedVersionInstallIssue.IdentityConflict);
@@ -210,7 +219,8 @@ public sealed partial class FileSystemManagedVersionRepository
 internal static class RepositoryExtraction
 {
     internal static ValueTask ExtractAsync(ManagedPackagePlan plan, WindowsStableRelativeWriteTree tree,
-        Func<string, Stream, Stream>? wrapDestination, CancellationToken cancellationToken) =>
+        Func<string, Stream, Stream>? wrapDestination, CancellationToken cancellationToken,
+        Action<long, long>? progress = null) =>
         plan.ExtractAsync(path =>
         {
             FileStream stream = tree.CreateFile(path);
@@ -223,5 +233,5 @@ internal static class RepositoryExtraction
                 stream.Dispose();
                 throw;
             }
-        }, cancellationToken);
+        }, cancellationToken, progress);
 }
