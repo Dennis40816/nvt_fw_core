@@ -120,7 +120,10 @@ internal sealed class ManagedPackageVerifier
         }
         finally
         {
-            archive?.Dispose();
+            if (archive is not null)
+            {
+                await archive.DisposeAsync().ConfigureAwait(false);
+            }
         }
     }
 
@@ -129,9 +132,58 @@ internal sealed class ManagedPackageVerifier
         UpdateCatalogVersionSnapshot candidate,
         CancellationToken cancellationToken)
     {
-        if (archive.Entries.Count == 0 || archive.Entries.Count > limits.MaximumArchiveEntries)
+        if (ScanArchive(archive, candidate, cancellationToken) is not { } inventory)
         {
             return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+        }
+        (Dictionary<string, ZipArchiveEntry> entries, HashSet<string> directories, long expandedBytes) = inventory;
+        var budget = new ExpandedByteBudget(limits.MaximumExpandedBytes);
+        (ManagedPackagePlanResult? failure, byte[] manifestBytes, string? manifestSha256) =
+            await ReadMetadataAsync(entries, ManifestFileName, budget, cancellationToken).ConfigureAwait(false);
+        if (failure is not null)
+        {
+            return failure;
+        }
+        if (!string.Equals(manifestSha256, candidate.ReleaseManifestSha256, StringComparison.Ordinal))
+        {
+            return Failure(ManagedVersionInstallIssue.InvalidPayload);
+        }
+        // Preserve the source's document-before-policy order and pass exact bytes.
+        if (!productPolicy.TryReadManifest(manifestBytes, candidate.Version,
+                Array.AsReadOnly(entries.Keys.ToArray()), out PackageManifest? projected) ||
+            !TryNormalizeManifest(projected, candidate, entries, out PackageManifest? manifest,
+                out ManagedLauncherIdentity? launcher))
+        {
+            return Failure(ManagedVersionInstallIssue.InvalidPayload);
+        }
+        (failure, byte[] checksumBytes, _) =
+            await ReadMetadataAsync(entries, ChecksumFileName, budget, cancellationToken).ConfigureAwait(false);
+        if (failure is not null)
+        {
+            return failure;
+        }
+        if (!VerifyChecksumDocument(checksumBytes, manifestBytes, manifest!.Files))
+        {
+            return Failure(ManagedVersionInstallIssue.InvalidPayload);
+        }
+        failure = await VerifyPayloadFilesAsync(entries, manifest.Files, budget, cancellationToken).ConfigureAwait(false);
+        if (failure is not null)
+        {
+            return failure;
+        }
+        return new(new ManagedPackagePlan(archive, manifest, entries, manifestBytes, checksumBytes,
+            directories.Count, expandedBytes, limits,
+            new(candidate.Version, candidate.Identity, candidate.ReleaseNotes), launcher), ManagedVersionInstallIssue.None);
+    }
+
+    // Returns null when the archive is unsafe: wrong entry count, links, paths outside the root, or too
+    // many directories or expanded bytes.
+    private ArchiveInventory? ScanArchive(ZipArchive archive, UpdateCatalogVersionSnapshot candidate,
+        CancellationToken cancellationToken)
+    {
+        if (archive.Entries.Count == 0 || archive.Entries.Count > limits.MaximumArchiveEntries)
+        {
+            return null;
         }
 
         string prefix = descriptor.GetArchiveRootName(candidate.Version) + "/";
@@ -144,20 +196,20 @@ internal sealed class ManagedPackageVerifier
             if (IsLink(entry) || !entry.FullName.StartsWith(prefix, StringComparison.Ordinal) ||
                 entry.FullName.Contains('\\', StringComparison.Ordinal))
             {
-                return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+                return null;
             }
             string relativePath = entry.FullName[prefix.Length..];
             if (entry.FullName.EndsWith('/'))
             {
                 if (entry.Length != 0 || (relativePath.Length > 0 && !IsSafePath(relativePath.TrimEnd('/'))))
                 {
-                    return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+                    return null;
                 }
                 continue;
             }
             if (!IsSafePath(relativePath) || !entries.TryAdd(relativePath, entry))
             {
-                return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+                return null;
             }
             string[] components = relativePath.Split('/');
             for (int count = 1; count < components.Length; count++)
@@ -165,78 +217,50 @@ internal sealed class ManagedPackageVerifier
                 _ = directories.Add(string.Join('/', components.AsSpan(0, count).ToArray()));
                 if (directories.Count > limits.MaximumInstalledDirectories)
                 {
-                    return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+                    return null;
                 }
             }
             // Subtract before adding so malicious ZIP64 declarations cannot overflow.
             if (entry.Length < 0 || entry.Length > limits.MaximumExpandedBytes - expandedBytes)
             {
-                return Failure(ManagedVersionInstallIssue.UnsafeArchive);
+                return null;
             }
             expandedBytes += entry.Length;
         }
+        return new(entries, directories, expandedBytes);
+    }
 
-        if (!entries.TryGetValue(ManifestFileName, out ZipArchiveEntry? manifestEntry) ||
-            manifestEntry.Length < 1 || manifestEntry.Length > limits.MaximumManifestBytes)
+    // Reads one bounded metadata document. Returns the failure, or null with the exact bytes and their hash.
+    private async ValueTask<(ManagedPackagePlanResult? Failure, byte[] Bytes, string? Sha256)> ReadMetadataAsync(
+        Dictionary<string, ZipArchiveEntry> entries, string name, ExpandedByteBudget budget,
+        CancellationToken cancellationToken)
+    {
+        if (!entries.TryGetValue(name, out ZipArchiveEntry? entry) ||
+            entry.Length < 1 || entry.Length > limits.MaximumManifestBytes)
         {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
+            return (Failure(ManagedVersionInstallIssue.InvalidPayload), [], null);
         }
-        var budget = new ExpandedByteBudget(limits.MaximumExpandedBytes);
-        using var manifestBuffer = new MemoryStream(checked((int)Math.Min(manifestEntry.Length, limits.MaximumManifestBytes)));
-        BoundedArchiveReadResult manifestRead;
-        await using (Stream input = manifestEntry.Open())
+        using var buffer = new MemoryStream(checked((int)entry.Length));
+        BoundedArchiveReadResult read;
+        await using (Stream input = entry.Open())
         {
-            manifestRead = await BoundedArchiveReader.ReadAtMostAndHashAsync(input,
-                limits.MaximumManifestBytes, budget, manifestBuffer, cancellationToken).ConfigureAwait(false);
+            read = await BoundedArchiveReader.ReadAtMostAndHashAsync(input,
+                limits.MaximumManifestBytes, budget, buffer, cancellationToken).ConfigureAwait(false);
         }
-        if (!manifestRead.IsSuccess)
+        if (!read.IsSuccess)
         {
-            return ReadFailure(manifestRead);
+            return (ReadFailure(read), [], null);
         }
-        if (manifestRead.Length < 1)
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        byte[] manifestBytes = manifestBuffer.ToArray();
-        if (!string.Equals(manifestRead.Sha256, candidate.ReleaseManifestSha256, StringComparison.Ordinal))
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        // Preserve the source's document-before-policy order and pass exact bytes.
-        if (!productPolicy.TryReadManifest(manifestBytes, candidate.Version,
-                Array.AsReadOnly(entries.Keys.ToArray()), out PackageManifest? projected) ||
-            !TryNormalizeManifest(projected, candidate, entries, out PackageManifest? manifest,
-                out ManagedLauncherIdentity? launcher))
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
+        return read.Length < 1 ? (Failure(ManagedVersionInstallIssue.InvalidPayload), [], null)
+            : (null, buffer.ToArray(), read.Sha256);
+    }
 
-        if (!entries.TryGetValue(ChecksumFileName, out ZipArchiveEntry? checksumEntry) ||
-            checksumEntry.Length < 1 || checksumEntry.Length > limits.MaximumManifestBytes)
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        using var checksumBuffer = new MemoryStream(checked((int)checksumEntry.Length));
-        BoundedArchiveReadResult checksumRead;
-        await using (Stream input = checksumEntry.Open())
-        {
-            checksumRead = await BoundedArchiveReader.ReadAtMostAndHashAsync(input,
-                limits.MaximumManifestBytes, budget, checksumBuffer, cancellationToken).ConfigureAwait(false);
-        }
-        if (!checksumRead.IsSuccess)
-        {
-            return ReadFailure(checksumRead);
-        }
-        if (checksumRead.Length < 1)
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        byte[] checksumBytes = checksumBuffer.ToArray();
-        if (!VerifyChecksumDocument(checksumBytes, manifestBytes, manifest!.Files))
-        {
-            return Failure(ManagedVersionInstallIssue.InvalidPayload);
-        }
-        foreach (PackageFile file in manifest.Files)
+    // Hashes every declared payload file against the manifest. Returns the failure, or null when all match.
+    private static async ValueTask<ManagedPackagePlanResult?> VerifyPayloadFilesAsync(
+        Dictionary<string, ZipArchiveEntry> entries, IReadOnlyList<PackageFile> files, ExpandedByteBudget budget,
+        CancellationToken cancellationToken)
+    {
+        foreach (PackageFile file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!entries.TryGetValue(file.Path, out ZipArchiveEntry? entry) || entry.Length != file.Size)
@@ -255,10 +279,11 @@ internal sealed class ManagedPackageVerifier
                 return Failure(ManagedVersionInstallIssue.InvalidPayload);
             }
         }
-        return new(new ManagedPackagePlan(archive, manifest, entries, manifestBytes, checksumBytes,
-            directories.Count, expandedBytes, limits,
-            new(candidate.Version, candidate.Identity, candidate.ReleaseNotes), launcher), ManagedVersionInstallIssue.None);
+        return null;
     }
+
+    private sealed record ArchiveInventory(
+        Dictionary<string, ZipArchiveEntry> Entries, HashSet<string> Directories, long ExpandedBytes);
 
     private bool TryNormalizeManifest(
         PackageManifest? projected,
