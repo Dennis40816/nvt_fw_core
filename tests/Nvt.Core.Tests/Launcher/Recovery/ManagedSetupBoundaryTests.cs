@@ -104,6 +104,23 @@ public sealed class ManagedSetupBoundaryTests
         Assert.Equal(0, opens);
     }
 
+    /// <summary>A Bootstrap stream that drifts after its last byte is invalid. The frozen NFC reader accepted it.</summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task BootstrapStreamThatDriftsAfterItsLastByteIsInvalid(bool lengthDrift)
+    {
+        var source = new EmbeddedManagedDistributionPayloadSource(
+            Path.Combine(AppContext.BaseDirectory, "missing-synthetic-launcher.exe"),
+            () => new MemoryStream("descriptor"u8.ToArray(), writable: false),
+            () => new DriftingStream([1, 2, 3], lengthDrift),
+            ContractFixture.Descriptor, new DescriptorReader(), SetupFixture.Ceiling, 200_000_000);
+
+        Assert.True((await source.AdmitEntryAsync(TestContext.Current.CancellationToken)).IsSuccess);
+        var inspection = await source.InspectAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(ManagedDistributionPayloadIssue.Invalid, inspection.Issue);
+    }
+
     /// <summary>Marker reads preserve positive exact-size and one-over bounds independently of the strict codec.</summary>
     [Theory]
     [InlineData(0, false)]
@@ -211,6 +228,17 @@ public sealed class ManagedSetupBoundaryTests
                 return new MemoryStream(bootstrapBytes ?? [1, 2, 3], writable: false);
             },
             ContractFixture.Descriptor, reader, maximumDescriptorBytes, maximumExecutableBytes);
+
+    private sealed class DriftingStream(byte[] bytes, bool lengthDrift) : MemoryStream(bytes, writable: false)
+    {
+        private bool AtEnd => base.Position == bytes.Length;
+        public override long Length => lengthDrift && AtEnd ? base.Length + 1 : base.Length;
+        public override long Position
+        {
+            get => !lengthDrift && AtEnd ? base.Position + 1 : base.Position;
+            set => base.Position = value;
+        }
+    }
 
     private sealed class DescriptorReader : IManagedSetupPayloadDescriptorReader
     {

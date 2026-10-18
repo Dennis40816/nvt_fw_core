@@ -602,6 +602,10 @@ Core 重複檢查機械身分、精確路徑、phase 與 byte 上限。
 產品 schema 欄位、resource 名稱與 wire 拼法仍由 NFC 保留。
 交給 source 的 executable 上限，同樣限制內嵌 Bootstrap 的大小。
 超過該上限的 Bootstrap 視為 invalid，且不會開啟它的 stream。
+Bootstrap 的 bytes 透過共用的 `Files.BoundedFileReader` 讀取。
+NFC 使用自己的讀取迴圈。共用讀取器在最後一個 byte 之後，還會檢查 stream 的長度與位置。
+stream 回傳了正確的 bytes、之後卻回報不同的長度或位置時，結果是 invalid，capture 時則是 changed。
+NFC 在 digest 吻合時會接受這種 stream。這項檢查比 NFC 更嚴格。
 
 NFC 的 descriptor 與 marker 上限各為 65,536 bytes。
 NFC 分別保留 JSON depth 12 與 16。

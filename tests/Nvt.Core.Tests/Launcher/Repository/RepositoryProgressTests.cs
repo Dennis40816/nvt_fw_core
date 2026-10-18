@@ -58,11 +58,20 @@ public sealed class RepositoryProgressTests
         int firstRun = progress.Events.Count;
         Assert.True((await MaterializeWithAsync(fixture, reporting)).IsSuccess);
 
+        // The second call finds the installed payload. It still reads and verifies the package, then verifies the install.
         ManagedFirstInstallationProgress[] second = [.. progress.Events.Skip(firstRun)];
-        Assert.NotEmpty(second);
-        Assert.All(second, item => Assert.Equal(ManagedFirstInstallationProgressStage.VerifyingInstallation, item.Stage));
-        Assert.Equal(0, second[0].CompletedWork);
-        Assert.Equal(fixture.Package.Files.Sum(pair => pair.Value.LongLength), second[^1].CompletedWork);
+        Assert.Equal(new[]
+        {
+            ManagedFirstInstallationProgressStage.ReadingPackage,
+            ManagedFirstInstallationProgressStage.VerifyingPackage,
+            ManagedFirstInstallationProgressStage.VerifyingInstallation,
+        }, second.Select(item => item.Stage).Distinct());
+        foreach (ManagedFirstInstallationProgressStage stage in second.Select(item => item.Stage).Distinct())
+        {
+            ManagedFirstInstallationProgress[] events = [.. second.Where(item => item.Stage == stage)];
+            Assert.Equal(0, events[0].CompletedWork);
+            Assert.Equal(events[0].TotalWork, events[^1].CompletedWork);
+        }
 
         progress.Events.Clear();
         Assert.True((await MaterializeWithAsync(fixture, fixture.Repository)).IsSuccess);

@@ -602,6 +602,10 @@ Core repeats mechanical identity, exact path, phase and byte-limit checks.
 Product schema fields, resource names and wire spelling remain in NFC.
 The executable ceiling given to the source also bounds the embedded Bootstrap size.
 A Bootstrap above that ceiling is invalid, and its stream is not opened.
+Bootstrap bytes are read through the shared `Files.BoundedFileReader`.
+NFC used its own read loop. The shared reader also checks the stream length and position after the last byte.
+A stream that returns the exact bytes and then reports another length or position is invalid, or changed during capture.
+NFC accepted such a stream when the digest matched. This check is stricter than NFC's.
 
 NFC supplies 65,536 bytes for both descriptor and marker ceilings.
 NFC keeps JSON depths 12 and 16 respectively.
