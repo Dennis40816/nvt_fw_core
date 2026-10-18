@@ -19,6 +19,8 @@ internal sealed class ManagedPackageVerifier
     private readonly ProductDescriptor descriptor;
     private readonly IProductPackagePolicy productPolicy;
     private readonly PackageVerificationLimits limits;
+    private readonly Action<long, long>? _packageReadProgress;
+    private readonly Action<long, long>? _verificationProgress;
 
     /// <summary>Creates a verifier using explicit product names, strict policy and positive ceilings.</summary>
     /// <param name="descriptor">The product's runtime descriptor.</param>
@@ -47,6 +49,22 @@ internal sealed class ManagedPackageVerifier
         this.limits = limits;
     }
 
+    private ManagedPackageVerifier(ManagedPackageVerifier source, Action<long, long>? packageReadProgress,
+        Action<long, long>? verificationProgress)
+    {
+        descriptor = source.descriptor;
+        productPolicy = source.productPolicy;
+        limits = source.limits;
+        _packageReadProgress = packageReadProgress;
+        _verificationProgress = verificationProgress;
+    }
+
+    // Plans of the returned verifier report the package hash read, then payload verification, in bytes.
+    // Progress is instance state so that the signatures of the plan methods stay unchanged.
+    internal ManagedPackageVerifier WithProgress(Action<long, long>? packageReadProgress,
+        Action<long, long>? verificationProgress) => packageReadProgress is null && verificationProgress is null
+            ? this : new(this, packageReadProgress, verificationProgress);
+
     /// <summary>Checks the complete package identity, exact manifest bytes, inventory, checksums and actual expanded content.</summary>
     /// <param name="package">A borrowed readable, seekable stream held stable by the caller; it remains open.</param>
     /// <param name="candidate">The catalog-admitted package and manifest identity.</param>
@@ -74,9 +92,7 @@ internal sealed class ManagedPackageVerifier
         Stream package,
         UpdateCatalogVersionSnapshot candidate,
         CancellationToken cancellationToken,
-        bool propagateReadFailures = false,
-        Action<long, long>? packageReadProgress = null,
-        Action<long, long>? progress = null)
+        bool propagateReadFailures = false)
     {
         ArgumentNullException.ThrowIfNull(package);
         ArgumentNullException.ThrowIfNull(candidate);
@@ -95,9 +111,9 @@ internal sealed class ManagedPackageVerifier
             }
 
             package.Position = 0;
-            using PackageReadProgressStream? progressStream = packageReadProgress is null
-                ? null : new(package, observedLength, packageReadProgress);
-            packageReadProgress?.Invoke(0, observedLength);
+            using PackageReadProgressStream? progressStream = _packageReadProgress is null
+                ? null : new(package, observedLength, _packageReadProgress);
+            _packageReadProgress?.Invoke(0, observedLength);
             BoundedReadResult read = await BoundedFileReader.ReadAndHashAsync(
                 progressStream ?? package, observedLength, FileCaptureMode.IdentityOnly,
                 cancellationToken).ConfigureAwait(false);
@@ -108,8 +124,7 @@ internal sealed class ManagedPackageVerifier
             }
             package.Position = 0;
             archive = new ZipArchive(package, ZipArchiveMode.Read, leaveOpen: true);
-            ManagedPackagePlanResult result = await CreateArchivePlanAsync(archive, candidate,
-                progress, cancellationToken).ConfigureAwait(false);
+            ManagedPackagePlanResult result = await CreateArchivePlanAsync(archive, candidate, cancellationToken).ConfigureAwait(false);
             if (result.IsSuccess)
             {
                 archive = null;
@@ -134,7 +149,6 @@ internal sealed class ManagedPackageVerifier
     private async ValueTask<ManagedPackagePlanResult> CreateArchivePlanAsync(
         ZipArchive archive,
         UpdateCatalogVersionSnapshot candidate,
-        Action<long, long>? progress,
         CancellationToken cancellationToken)
     {
         if (archive.Entries.Count == 0 || archive.Entries.Count > limits.MaximumArchiveEntries)
@@ -218,7 +232,6 @@ internal sealed class ManagedPackageVerifier
         {
             return Failure(ManagedVersionInstallIssue.InvalidPayload);
         }
-
         if (!entries.TryGetValue(ChecksumFileName, out ZipArchiveEntry? checksumEntry) ||
             checksumEntry.Length < 1 || checksumEntry.Length > limits.MaximumManifestBytes)
         {
@@ -244,16 +257,7 @@ internal sealed class ManagedPackageVerifier
         {
             return Failure(ManagedVersionInstallIssue.InvalidPayload);
         }
-        long verificationTotal = 0;
-        foreach (PackageFile file in manifest.Files)
-        {
-            verificationTotal = checked(verificationTotal + file.Size);
-        }
-        long verifiedBytes = 0;
-        if (verificationTotal > 0)
-        {
-            progress?.Invoke(0, verificationTotal);
-        }
+        Action<int>? verified = VerifiedByteProgress.Start(_verificationProgress, manifest.Files);
         foreach (PackageFile file in manifest.Files)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -263,11 +267,7 @@ internal sealed class ManagedPackageVerifier
             }
             await using Stream input = entry.Open();
             BoundedArchiveReadResult content = await BoundedArchiveReader.ReadAndHashAsync(
-                input, file.Size, budget, cancellationToken, bytes =>
-                {
-                    verifiedBytes = checked(verifiedBytes + bytes);
-                    progress?.Invoke(verifiedBytes, verificationTotal);
-                }).ConfigureAwait(false);
+                input, file.Size, budget, cancellationToken, verified).ConfigureAwait(false);
             if (!content.IsSuccess)
             {
                 return ReadFailure(content);

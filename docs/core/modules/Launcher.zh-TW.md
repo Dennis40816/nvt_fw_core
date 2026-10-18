@@ -662,6 +662,8 @@ Custody 釋放受 finally 保護，包含 marker 寫入取消與 admission hook 
 階段依序為 `ReadingPackage`、`VerifyingPackage`、`InstallingPackage` 與 `VerifyingInstallation`。
 每個階段依實際工作量，只回報遞增的整數百分比。
 Null progress 保留既有行為。
+Repository 與 verifier 以執行個體狀態保存進度。
+`WithInstallationProgress` 與 `WithProgress` 回傳會回報進度的副本，因此既有的安裝與 plan 方法維持原簽章。
 Extraction wrapper 轉送 plan callback。
 Files 繼續負責完整套件讀取驗證。
 

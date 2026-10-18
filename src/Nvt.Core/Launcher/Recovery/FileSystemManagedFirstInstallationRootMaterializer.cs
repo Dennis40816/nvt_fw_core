@@ -52,8 +52,9 @@ public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
         Action<Exception>? observerDiagnostics = null)
         : this(repository ?? throw new ArgumentNullException(nameof(repository)),
             (writeRoot, sourceRoot, package, progress, cancellationToken) => repository
+                .WithInstallationProgress(progress)
                 .MaterializeVerifiedPayloadWithinHeldRootAsync(writeRoot, sourceRoot, package,
-                    requireNew: true, cancellationToken, progress),
+                    requireNew: true, cancellationToken),
             repository.TreeLimits, layout, seedStoreFactory, markerCodec,
             maximumMarkerBytes, maximumDescriptorBytes, maximumExecutableBytes, new(), observerDiagnostics)
     {

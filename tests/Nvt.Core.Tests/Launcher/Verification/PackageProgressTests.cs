@@ -19,10 +19,10 @@ public sealed class PackageProgressTests
         using var package = new ObservedPackageStream(fixture.PackageBytes);
         var events = new List<(string Stage, long Done, long Total)>();
 
-        ManagedPackagePlanResult result = await fixture.Verifier().CreatePlanAsync(package, fixture.Candidate,
-            TestContext.Current.CancellationToken,
-            packageReadProgress: (done, total) => events.Add(("read", done, total)),
-            progress: (done, total) => events.Add(("verify", done, total)));
+        ManagedPackagePlanResult result = await fixture.Verifier().WithProgress(
+                (done, total) => events.Add(("read", done, total)),
+                (done, total) => events.Add(("verify", done, total)))
+            .CreatePlanAsync(package, fixture.Candidate, TestContext.Current.CancellationToken);
         using ManagedPackagePlan plan = Assert.IsType<ManagedPackagePlan>(result.Plan);
 
         Assert.True(result.IsSuccess, result.Issue.ToString());
@@ -70,8 +70,8 @@ public sealed class PackageProgressTests
             TestContext.Current.CancellationToken);
         using ManagedPackagePlan expectedPlan = Assert.IsType<ManagedPackagePlan>(expected.Plan);
 
-        ManagedPackagePlanResult actual = await fixture.Verifier().CreatePlanAsync(observed, fixture.Candidate,
-            TestContext.Current.CancellationToken, packageReadProgress: progress, progress: progress);
+        ManagedPackagePlanResult actual = await fixture.Verifier().WithProgress(progress, progress)
+            .CreatePlanAsync(observed, fixture.Candidate, TestContext.Current.CancellationToken);
         using ManagedPackagePlan actualPlan = Assert.IsType<ManagedPackagePlan>(actual.Plan);
 
         Assert.Equal(expected.Issue, actual.Issue);
@@ -103,10 +103,10 @@ public sealed class PackageProgressTests
         var reads = new List<(long Done, long Total)>();
         var verification = new List<(long Done, long Total)>();
 
-        ManagedPackagePlanResult result = await fixture.Verifier().CreatePlanAsync(package, fixture.Candidate,
-            TestContext.Current.CancellationToken,
-            packageReadProgress: (done, total) => reads.Add((done, total)),
-            progress: (done, total) => verification.Add((done, total)));
+        ManagedPackagePlanResult result = await fixture.Verifier().WithProgress(
+                (done, total) => reads.Add((done, total)),
+                (done, total) => verification.Add((done, total)))
+            .CreatePlanAsync(package, fixture.Candidate, TestContext.Current.CancellationToken);
 
         Assert.Null(result.Plan);
         Assert.Equal(ManagedVersionInstallIssue.PackageMismatch, result.Issue);
@@ -141,10 +141,11 @@ public sealed class PackageProgressTests
         bool verificationStarted = false;
 
         FileChangedDuringReadException failure = await Assert.ThrowsAsync<FileChangedDuringReadException>(async () =>
-            await fixture.Verifier().CreatePlanAsync(package, fixture.Candidate,
-                TestContext.Current.CancellationToken, propagateReadFailures: true,
-                packageReadProgress: (done, total) => reads.Add((done, total)),
-                progress: (_, _) => verificationStarted = true));
+            await fixture.Verifier().WithProgress(
+                    (done, total) => reads.Add((done, total)),
+                    (_, _) => verificationStarted = true)
+                .CreatePlanAsync(package, fixture.Candidate, TestContext.Current.CancellationToken,
+                    propagateReadFailures: true));
 
         Assert.Equal(change, failure.ChangeKind);
         Assert.False(verificationStarted);

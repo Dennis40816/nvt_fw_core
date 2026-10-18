@@ -662,6 +662,8 @@ The existing H progress forwarding remains intact.
 Stages stay `ReadingPackage`, `VerifyingPackage`, `InstallingPackage` and `VerifyingInstallation`.
 Each stage reports increasing integer percentages from its measured work.
 Null progress preserves existing behavior.
+The repository and the verifier hold progress as instance state.
+`WithInstallationProgress` and `WithProgress` return reporting copies, so the existing installation and plan methods keep their signatures.
 The extraction wrapper forwards its plan callback.
 Files still owns complete package-read verification.
 

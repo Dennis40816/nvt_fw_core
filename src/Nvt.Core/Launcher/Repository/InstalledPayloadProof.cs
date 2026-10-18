@@ -105,11 +105,7 @@ internal sealed class InstalledPayloadProof(FileSystemManagedVersionRepository r
             {
                 verificationTotal = checked(verificationTotal + file.Size);
             }
-            long verifiedBytes = 0;
-            if (verificationTotal > 0)
-            {
-                progress?.Invoke(0, verificationTotal);
-            }
+            Action<int>? verified = VerifiedByteProgress.Start(progress, verificationTotal);
             foreach (PackageFile file in manifest.Files)
             {
                 string path = RepositoryPathSafety.ResolvePayloadPath(versionRoot, file.Path);
@@ -122,11 +118,7 @@ internal sealed class InstalledPayloadProof(FileSystemManagedVersionRepository r
                     return ManagedVersionDamageReason.ContentMismatch;
                 }
                 BoundedArchiveReadResult result = await BoundedArchiveReader.ReadFileAndHashAsync(path, file.Size,
-                    budget, cancellationToken, bytes =>
-                    {
-                        verifiedBytes = checked(verifiedBytes + bytes);
-                        progress?.Invoke(verifiedBytes, verificationTotal);
-                    }).ConfigureAwait(false);
+                    budget, cancellationToken, verified).ConfigureAwait(false);
                 if (!result.IsSuccess || !string.Equals(result.Sha256, file.Sha256, StringComparison.Ordinal))
                 {
                     return ManagedVersionDamageReason.ContentMismatch;

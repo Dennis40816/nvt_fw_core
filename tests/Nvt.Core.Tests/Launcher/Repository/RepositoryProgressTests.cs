@@ -156,9 +156,9 @@ public sealed class RepositoryProgressTests
         {
             Assert.Equal(WindowsStableCustodyIssue.None, issue);
             Assert.NotNull(writeRoot);
-            return await fixture.Repository.MaterializeVerifiedPayloadWithinHeldRootAsync(writeRoot,
-                fixture.SourceRoot, fixture.Package.Candidate, requireNew: false,
-                TestContext.Current.CancellationToken, progress);
+            return await fixture.Repository.WithInstallationProgress(progress)
+                .MaterializeVerifiedPayloadWithinHeldRootAsync(writeRoot, fixture.SourceRoot,
+                    fixture.Package.Candidate, requireNew: false, TestContext.Current.CancellationToken);
         }
     }
 
