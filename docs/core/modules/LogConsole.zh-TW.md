@@ -365,7 +365,7 @@ View 直接以項目和投影比較來源成員，不另存來源目錄。不存
 
 `ConsoleHeader`、`ConsoleToolbar`、`ConsoleEmptyState` 透過 `Controller` styled property
 取得控制器。比照其他 Core 樣式入口載入 `LogConsole/LogConsoleStyles.axaml`；控制項本身
-會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。標題是一列
+會區域載入 `LogConsole/ConsoleControlStyles.axaml`。宿主提供 Core theme tokens 與 Fonts roles，寬度至少維持 640 DIP。標頭是一列
 `NfcControlHeight`（32 DIP），上下不留內距，包含標題、Display 選單（時間模式與去重）與 More 選單（複製、儲存、匯出選項與清除）。
 工具列是單一 40 DIP 的列，由左到右為等級摘要、搜尋欄與動作：Sources、Copy selected、
 Copy visible rows、Clear、縮小、縮放值、放大與 Jump to latest。只有搜尋欄會伸縮。

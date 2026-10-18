@@ -94,6 +94,7 @@ public sealed class ConsoleResourceTests
             Assert.Equal(48, toolbar.Bounds.Height);
             window.Width = 640;
             ConsoleTestView.Pump(window);
+            Assert.Equal(40, header.Bounds.Height);
             Assert.Equal(48, toolbar.Bounds.Height);
         }
         finally { window.Close(); }
