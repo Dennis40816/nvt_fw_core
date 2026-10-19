@@ -6,6 +6,12 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 1.0.0 (draft, not released)
+
+Core 1.0.0 declares the public API stable. It contains 0.9.4 and the changes listed below.
+From this version, 1.x makes no breaking changes. A change that would break a host waits for 2.0.0.
+`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
+
 ### Added
 
 - Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
