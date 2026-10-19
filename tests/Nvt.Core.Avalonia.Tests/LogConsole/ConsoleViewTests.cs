@@ -42,8 +42,9 @@ public sealed class ConsoleViewTests
             var header = Assert.IsType<ConsoleHeader>(surface.Children[0]);
             var toolbar = Assert.IsType<ConsoleToolbar>(surface.Children[1]);
             Assert.True(((ConsoleEmptyState)surface.Children[2]).IsVisible);
-            Assert.Equal(40, header.Bounds.Height);
+            Assert.Equal(32, header.Bounds.Height);
             Assert.Equal(40, toolbar.Bounds.Height);
+            Assert.Equal(new Thickness(0), toolbar.FindControl<Border>("ZoomGroup")!.BorderThickness);
             var compact = width < 700;
             Assert.True(toolbar.FindControl<Border>("SearchHost")!.IsVisible);
             Assert.False(toolbar.FindControl<StackPanel>("LevelItems")!.IsVisible);

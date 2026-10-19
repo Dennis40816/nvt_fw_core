@@ -6,7 +6,7 @@ using Avalonia.Controls;
 
 namespace Nvt.Core.Avalonia.LogConsole;
 
-/// <summary>The 40 DIP title and app-action row.</summary>
+/// <summary>The title and app-action row, one <c>NfcControlHeight</c> tall.</summary>
 public sealed partial class ConsoleHeader : UserControl
 {
     /// <summary>Defines the controller supplying this view's state and intents.</summary>
