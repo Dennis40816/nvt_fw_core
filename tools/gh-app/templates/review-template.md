@@ -11,4 +11,6 @@ Check, citing `file:line`:
 6. **Tests:** they pass in `{TESTLOG}`, cover the behavior, and are deterministic.
 7. **Conventions:** code in `src/<Library>/<Module>/`, namespace `<Library>.<Module>`, tests mirrored; shared files (`Directory.Packages.props`, `Directory.Build.props`, `global.json`, `Nvt.Core.sln`, lock files) unchanged unless the task says so.
 
+Write the review record and all PR comments in English.
+
 Output findings, most important first, with a minimal fix for each, or "no findings". End with exactly one line: `Review record: {HEAD} accept` if there are no findings in 1, 3, 4, 5 or 6, otherwise `Review record: {HEAD} reject`.
