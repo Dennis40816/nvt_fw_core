@@ -915,10 +915,14 @@ Repository 使用 `net10.0`；沒有 project、package 或 reference 變更。
 - 大小寫不同的樹要重啟，條件是：剩餘項目依磁碟拼法排出的順序，仍與依已刪除項目宣告拼法建出的順序一致。若已刪除項目在其未知的磁碟拼法下排序不同（例如宣告目錄為 `versions`、磁碟為 `Versions` 時的 `policy.json`），合法後綴會以 `SourceChanged` 拒絕，樹維持不變，沒有資料遺失，需要人工處理。回歸測試涵蓋第一個 ordinary file 刪除後立即重啟；在 fixture 中該檔案是其深度唯一的項目。
 - 若其他程序亂序移除某個大小寫不同的項目，且沒有其他項目顯示大小寫差異，剩餘的樹看起來會像宣告順序的合法後綴，recovery 會繼續。每個剩餘檔案在刪除前仍依 manifest 雜湊驗證，recovery 只刪除 manifest 與固定名稱宣告的項目。這一個情況只是「刪除依原順序進行」的證明較弱。
 
+#### 觀察階段的殘餘限制（Residual observation limit）
+
+`ObserveAsync` 在 `ObserveStateSnapshotsAsync` 讀取標記與兩個狀態檔時，外面沒有 `try`。這些第一次讀取若發生 `IOException` 或 `UnauthorizedAccessException`（例如其他程序對標記檔持有位元組範圍鎖），例外會從 `ObserveAsync` 與 `ManagedSetupRecoveryExecutionCoordinator.ExecuteAsync` 傳出，不會變成 `StateUnavailable` 或 `PermissionDenied`。此時尚未刪除任何東西，writer lease、標記 custody 與 stream 都由各自的 scope 釋放。凍結 NFC 有相同的缺口。呼叫 coordinator 的一方必須把這種例外當成失敗的嘗試。
+
 傳入 Core source head：`d999cd213c122cc7325e3d58f1d3b1011b5607a8`。
 在 Windows 11 上，Release `Nvt.Core.Tests` 建置沒有錯誤，L11 檔案也沒有 warning。針對 `Nvt.Core.Tests.Launcher.Recovery` 的測試通過 562 個案例、略過 164 個（154 個真實 executor hard-stop 案例與 10 個既有 L10 hard-stop 案例），沒有失敗。完整 `Nvt.Core.Tests` 通過 4,925 個案例、略過 180 個，沒有失敗。
 實際 executor hard-stop 證據如上待補。
-三輪獨立唯讀審查已處理 executor。上方的殘餘競態空窗與大小寫拼法限制，是依設計保留的未解項目。
+三輪唯讀 Codex 審查與一輪 Claude Opus 審查檢視了 executor。上方的殘餘競態空窗、大小寫拼法限制與觀察階段限制，是依設計保留的未解項目。
 NFC adoption、產品／pixel parity、merge、publication 均待完成。
 NFC 只有在保留的 adapter 經 Core 重現凍結 values、traces、bytes 與必要實體 restart 證據後，才刪除移轉的 executor。
 此次抽取不授權 Bootstrap package wiring。

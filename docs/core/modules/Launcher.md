@@ -914,10 +914,14 @@ The filesystem keeps no record of the spelling a deleted entry had. After a dele
 - A restart of a case-variant tree is accepted only where the order of the survivors, by their on-disk spelling, still matches the order built from the declared spelling of the deleted entries. If a deleted entry sorts differently under its unknown on-disk spelling (for example `policy.json` under a `Versions` directory while the declared directory is `versions`), the legal prefix is rejected as `SourceChanged` and the tree is left unchanged. No data is lost and the tree needs manual intervention. The regression tests cover a restart right after the first ordinary file is deleted; in the fixture that file is the only entry at its depth.
 - If another process removes a case-variant entry out of order and no other entry shows a case difference, the remaining tree looks like a legal suffix of the declared order, and recovery continues. Every remaining file is still verified against the manifest hashes before it is deleted, and recovery deletes only entries that the manifest and fixed names declare. Only the proof that the deletions followed the original order is weaker for this one case.
 
+#### Residual observation limit
+
+`ObserveAsync` reads the marker and the two state files in `ObserveStateSnapshotsAsync` without a surrounding `try`. An `IOException` or `UnauthorizedAccessException` during one of these first reads (for example, another process holds a byte-range lock on the marker file) leaves `ObserveAsync` and `ManagedSetupRecoveryExecutionCoordinator.ExecuteAsync` as an exception. It does not become `StateUnavailable` or `PermissionDenied`. Nothing has been deleted at that point, and the writer lease, the marker custody and the stream are released by their scopes. Frozen NFC has the same gap. A caller of the coordinator must treat such an exception as a failed attempt.
+
 Incoming Core source head: `d999cd213c122cc7325e3d58f1d3b1011b5607a8`.
 On Windows 11, the Release `Nvt.Core.Tests` build had no errors and no warning in the L11 files. The targeted `Nvt.Core.Tests.Launcher.Recovery` run passed 562 cases and skipped 164 (the 154 real executor hard-stop cases and the 10 existing L10 hard-stop cases), with no failure. The full `Nvt.Core.Tests` run passed 4,925 cases and skipped 180, with no failure.
 Real executor hard-stop evidence is pending as described above.
-Three independent read-only reviews addressed the executor. The residual race windows and case-spelling limits above are the findings that stay open by design.
+Three read-only Codex reviews and one Claude Opus review examined the executor. The residual race windows, case-spelling limits and observation limit above stay open by design.
 NFC adoption, product/pixel parity, merge and publication remain pending.
 NFC removes its relocated executor only after its retained adapters reproduce the frozen values, traces, bytes and required physical restart evidence through Core.
 This extraction authorizes no Bootstrap package wiring.
