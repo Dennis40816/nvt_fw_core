@@ -9,6 +9,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 ### Added
 
 - Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
+- Launcher recovery execution (L11), moved from NFC. `ManagedSetupRecoveryExecutionCoordinator` and the filesystem executor `FileSystemManagedSetupRecoveryExecution` live in `Nvt.Core.Launcher.Recovery`. Only Core's own probe creates the success evidence, so an adapter outside Core can report failure but never success. This adds 7 public types and 36 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
 
 ### Changed
 

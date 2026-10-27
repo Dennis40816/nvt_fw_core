@@ -2,22 +2,6 @@
 
 # Launcher
 
-## 0.9.0 前的不相容變更
-
-`InstalledApplicationCoordinator`、`InstalledApplicationPresentation`、`InstalledApplicationInfo`、`IInstalledApplicationPresentation` 與 `ManagedPackageVerifier` 改為 internal。請用 `IManagedVersionRepository.VerifyPackageAsync` 取代 `ManagedPackageVerifier`，用 `FileSystemManagedVersionRepository.ReadInstalledApplicationAsync` 取代 `InstalledApplicationCoordinator`。Caller 現在要自行提供精確的 installed admission 與顯示值，並自行解析 active version（`IVersionManagerStateReader.LoadAsync`）。
-
-`UpdateCatalogPackagePath.Value` 現為 `string?`。
-位置建構函式參數與 `Deconstruct` 輸出也採用相同註記。
-未初始化的預設值包含 null。
-`UpdateCatalogVersionSnapshot.Create` 仍是准入邊界，並拒絕該預設值。
-通過驗證的 snapshot identity 組成與位元組維持不變。
-
-字串操作前，請先防護原始路徑。
-儲存庫使用前，請透過 `Create` 准入目錄資料。
-儲存庫呼叫端會在解析前檢查路徑。
-雜湊呼叫端也會在驗證或執行檔測量前檢查 nullable `BoundedReadResult.Sha256`。
-測試保留 identity 相同性，並驗證准入時拒絕預設路徑。
-
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedAppVersion.cs`
@@ -75,7 +59,32 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedFirstInstallationExperienceTestSupport.cs` — 合成安裝介面與測試資料。
 - `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedFirstInstallationBootstrapOutcomeTests.cs` — 通用的具型別 receipt 與 budget 斷言；以 Core TestSupport 取代私有 clock。
 
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — L11 第 120–448 行的執行合約與 coordinator；其餘宣告由 L10 提供。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryExecution.cs` — 機械證據與依序執行；產品 codec 仍由 adapter 提供。
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.MutationGuards.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.Boundaries.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — 僅執行 harness 與 ports。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.Support.cs` — 泛用 fixture 拓樸與斷言。
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+## 0.9.0 前的不相容變更
+
+`InstalledApplicationCoordinator`、`InstalledApplicationPresentation`、`InstalledApplicationInfo`、`IInstalledApplicationPresentation` 與 `ManagedPackageVerifier` 改為 internal。請用 `IManagedVersionRepository.VerifyPackageAsync` 取代 `ManagedPackageVerifier`，用 `FileSystemManagedVersionRepository.ReadInstalledApplicationAsync` 取代 `InstalledApplicationCoordinator`。Caller 現在要自行提供精確的 installed admission 與顯示值，並自行解析 active version（`IVersionManagerStateReader.LoadAsync`）。
+
+`UpdateCatalogPackagePath.Value` 現為 `string?`。
+位置建構函式參數與 `Deconstruct` 輸出也採用相同註記。
+未初始化的預設值包含 null。
+`UpdateCatalogVersionSnapshot.Create` 仍是准入邊界，並拒絕該預設值。
+通過驗證的 snapshot identity 組成與位元組維持不變。
+
+字串操作前，請先防護原始路徑。
+儲存庫使用前，請透過 `Create` 准入目錄資料。
+儲存庫呼叫端會在解析前檢查路徑。
+雜湊呼叫端也會在驗證或執行檔測量前檢查 nullable `BoundedReadResult.Sha256`。
+測試保留 identity 相同性，並驗證准入時拒絕預設路徑。
 
 `Nvt.Core.Launcher.Contracts` 與 `Nvt.Core.Launcher.Activation` 提供受管理應用程式及 Launcher 啟用所需的值與介面，目標為 `net10.0`，只依賴 BCL。`Nvt.Core.Launcher.Persistence` 提供有界 raw state access 與精確 app-state writer。verification 與 internal Windows lease adapter 如下所述。純路徑正規化遵循目前平台的規則。`Nvt.Core.Launcher.Coordination` 透過注入的 process 介面執行 READY supervision；process creation 與原生 custody 由對應機制負責。
 
@@ -737,3 +746,179 @@ H 組進度案例維持通過九例、失敗零例、略過五例。
 未宣稱完整 solution 測試、repo-health、獨立審查、合併或發布已完成。
 
 NFC adoption: pending.
+
+## L11 實體復原執行
+
+Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
+
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — 第 120–448 行的執行合約與 coordinator；既有 plan、evidence 與 policy 宣告仍由 L10 提供。
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryExecution.cs` — 完整機械證據與依序執行器；嚴格 manifest、seed 與 state 解碼仍由必要產品 adapter 負責。
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.MutationGuards.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.Boundaries.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — 僅執行用的合成介面與 harness；重用 L10 診斷 helper。
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.Support.cs` — 僅泛用 fixture 拓樸與斷言；產品套件產生留在 NFC。
+
+<!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+### API 與責任邊界
+
+所有執行原始碼位於 `Launcher/Recovery/Execution/`，namespace 為 `Nvt.Core.Launcher.Recovery`。
+沒有重新宣告或修改 L10 成員。
+下表列出所有新增 public API 群組及成員；36 行宣告均已加入 `PublicAPI.Unshipped.txt`。
+
+| Public 型別與成員 | 使用端與理由 |
+| --- | --- |
+| `ManagedSetupRecoveryExecutionCoordinator`、建構函式、`ExecuteAsync(plan, confirmedAction, writerLeaseTimeout, cancellationToken)` | 產品復原 UI 在既有 state-store writer 範圍內執行已選定的不可變 plan。 |
+| `ManagedSetupRecoveryExecutionOutcome` 與全部十一個值 | 回報 `Completed`、`ConfirmationRequired`、`Busy`、`LifetimeActive`、`HealthUnavailable`、`StateUnavailable`、`PermissionDenied`、`SourceChanged`、`RecoveryRequired`、`ManualInterventionRequired`、`Cancelled`。 |
+| `ManagedSetupRecoveryExecutionResult`、位置建構函式、`Outcome` get/init | 承載具型別的終態結果。 |
+| `ManagedSetupRecoveryExecutionRequest` 與 `Action` getter | 將已選動作交給執行介面；建構函式及 token 屬性皆為 internal。 |
+| `IManagedSetupRecoveryExecutionPort.ExecuteAsync(request, writerLease, cancellationToken)` | 在同一執行範圍傳遞同一個存活 lease 實例，不轉移 Dispose 責任。 |
+| `ManagedSetupRecoveryExecutionPortOutcome` 與全部八個值 | 回報 `Completed`、`HealthUnavailable`、`StateUnavailable`、`PermissionDenied`、`SourceChanged`、`RecoveryRequired`、`ManualInterventionRequired`、`Cancelled`，不選擇產品政策。 |
+| `FileSystemManagedSetupRecoveryExecution`、建構函式、`ObserveAsync`、`ExecuteAsync` | Core 自行產生成功證據，再透過既有診斷／證據介面與執行介面使用。 |
+
+具體建構函式要求既有精確 application-state reader、固定 launcher-state suffix、launcher-state store、setup layout、seed-store factory、product package policy、package limits 與 admission codec。
+它透過 `LauncherBootstrapStateFile.DerivePath` 推導 launcher-state 路徑，並組合既有具體 repositories 與 verifier。
+沒有新增產品准入介面、預設接受的 adapter 或 fallback。
+Core 外部仍只能透過 public failure-observation 建構函式建立失敗觀察。
+成功 observation、plan、所有 execution token 與故障 hook 的建立權限均為 internal。
+沒有授予 NFC assembly friend access。
+
+NFC 保留嚴格 marker/state/seed/manifest/admission schemas、產品上限、trust、確認文字及 release authority。
+Core 檢查精確路徑與物件身分、完整位元組摘要、執行檔上限、manifest 機械事實、拓樸與有序重啟證明。
+既有 repository 與 package verifier 使用必要的嚴格 manifest/admission adapter；seed factory 使用既有 state-store 介面。
+復原不連線 update source、不啟動程序、不寫入替代 marker 或 durable state。
+`AtomicOutput` 不授予復原刪除權限。
+
+### 保留的判斷與實體順序
+
+Coordinator 先檢查 plan 與正值 writer timeout，再檢查確認動作，然後取得唯一 writer receipt。
+在其 lexical `using` 範圍內，依凍結順序觀察 Bootstrap、Application、Launcher lifetime，再讀 application state、root、marker、evidence。
+交付同一 receipt 給執行介面前，重新選擇動作，並比對 durable snapshot、每個 transaction 欄位與 value-equal 的精確 evidence token。
+證據漂移回傳 `RecoveryRequired`，不呼叫執行介面。
+
+執行介面先檢查取消、存活 `HoldsStatePath`、token 型別／路徑、marker 與 state 身分，再準備 held tree custody。
+偽造、已 Dispose、其他路徑的 writer capability 都在破壞性操作前失敗。
+State 證據同時包含 raw byte hash 與 held volume/file identity，因此位元組相同的替換仍是不同證據。
+Tree proof 雜湊完整 held bytes 與身分；已准入的 size/hash hint 不代替實際證明。
+只有原序列的完整連續後綴可以重啟；缺洞、外來殘留與保留 authority manifest 遭竄改皆拒絕。唯一例外是已刪除項目的磁碟拼法與宣告拼法大小寫不同，而該拼法已無法觀察（見「大小寫拼法的殘餘限制」）。
+
+實體刪除順序不變：
+
+1. 精確 Launcher state，再刪精確 Application state；步驟間重觀察 marker 與預期 state 身分。
+2. 一般檔案依深度由深到淺、同深度按 ordinal；接著以相同排序刪非終端目錄。
+3. 每個其他 tree file 都消失後，才刪 authority `RELEASE-MANIFEST.json`。
+4. 固定 version directory、`versions`、root 骨架。
+5. 僅刪已驗證為空的精確 staging，最後刪 marker。
+6. Marker 刪除後再次檢查各動作的後置條件與精確 marker 不存在。
+
+`ConvergeReady` 保留兩份 durable state 與完整 root，只移除精確 staging／marker 殘留。
+變更前取消回傳 `Cancelled`；不可逆刪除後的取消仍由復原持有責任。
+最後 marker 邊界刻意以不可取消觀察完成終態檢查。
+無法證明的 staging 與 torn marker 仍不可執行，且零變更。
+Marker 移除後若外部重建殘留，不寫入替代 marker。
+
+### 上限與 Files 重用
+
+NFC 明確提供既有正值 `PackageVerificationLimits`：4,096 archive entries、134,217,728 package bytes、536,870,912 expanded bytes、1,048,576 manifest/checksum bytes、4,096 admission bytes、200,000,000 executable bytes、4,096 installed directories。
+Installed-tree reservation 維持 4,097 files 與 536,875,008 bytes。
+既有 relative-path 機制保留 512 字元上限。
+建構時重檢每個複製的正值上限。
+完整 setup bound 加三個檔案、兩個目錄，以及實測 Launcher、Bootstrap、seed bytes。
+較廣的 retained-prefix observation 加三個檔案、三個目錄、Launcher/Bootstrap bytes，以及恰好 65,536 bytes。
+Recovery bound 保留三個檔案、三個目錄、Launcher/Bootstrap bytes，以及恰好 1,048,576 bytes。
+不會默默放寬任何上限。
+執行器準備 held tree 時，每個檔案只雜湊一次；測試計數檔案與位元組，不用經過時間判斷。
+
+每個 native acquisition、identity、topology 與 deletion 操作仍由 Files 擁有。
+唯一 Files 修改是 `WindowsStablePathCustody.cs`：單一非 partial 的 limit 宣告擁有 recovery-skeleton 標記、private 建構函式及 internal 零檔案／零位元組 factory。
+保留凍結機制界限 `(0,0,0)`、`(0,1,0)`、`(0,3,0)`。
+一般產品上限與 default struct 仍拒絕零值；factory 拒絕負目錄數。
+沒有新增 native function、刪除 primitive 或 writer owner。
+`WindowsStablePathCustody.OpenReadOnlyFile` 回傳的 stream 建立在複製出來的 handle 上，而複製的 handle 與 held handle 共用檔案位置。因此同一個 custody 對同一個檔案的第二次讀取，會從上一次讀取結束處開始，算出的雜湊是空檔案的雜湊。Core 透過 held custody 的每次讀取都先設定 `stream.Position = 0`；重啟前綴證明以同一個 custody 讀取 launcher、bootstrap、payload 檔案、checksum 檔案與保留的 manifest，都是這樣做。
+該宣告是單一宣告；為 recovery 標記另開 partial 宣告無法編譯。
+Files 的變更在 pull request 中是獨立的 commit，Files 負責人可單獨閱讀。
+
+### Source-to-Core 測試對照
+
+Core 案例位於 `tests/Nvt.Core.Tests/Launcher/Recovery/Execution/`。
+十一個指定的凍結名稱與泛用斷言均保留。
+以合成檔名取代產品資產，保留原本 23 個 tree entries 及獨立的 25／26 次刪除總數。
+
+| 凍結來源與案例 | Core class，案例同名 |
+| --- | --- |
+| Application execution `:10 MissingRollbackConfirmationDoesNotAcquireLeaseOrExecute` | `RecoveryCoordinatorTests` |
+| Application execution `:208 EvidenceTokenDriftReturnsRecoveryRequiredWithoutExecution` | `RecoveryCoordinatorTests` |
+| Application execution `:336 StablePlanHandsSameLeaseInstanceToPortInsideLexicalScope` | `RecoveryCoordinatorTests` |
+| Infrastructure execution `:288 RollbackDeletesLauncherStateBeforeApplicationState` | `RecoveryPhysicalExecutionTests` |
+| Infrastructure execution `:327 EveryDeleteBoundaryReobservesAndCompletesFromExactPrefix` | `RecoveryPhysicalExecutionTests`；每個原始邊界成為 theory row，保留 25／26 總數。 |
+| Infrastructure execution `:465 FullStagingChildCrashPrefixReobservesAndCompletes` | `RecoveryPhysicalExecutionTests`；凍結案例注入取消，並非實際終止 child。 |
+| Infrastructure execution `:220 FullRollbackDeletesAuthorityManifestAfterEveryOtherTreeFile` | `RecoveryPhysicalExecutionTests` |
+| Infrastructure execution `:422 RollbackTreeProofIsLinearInFileCountAndBytes` | `RecoveryPhysicalExecutionTests`；保留原始精確檔案／位元組計數斷言。 |
+| Mutation guards `:142 ByteIdenticalApplicationStateReplacementFailsBeforeDeletion` | `RecoveryMutationGuardTests`；將舊檔改名保留，保證新檔有不同身分。 |
+| Boundaries `:290 ArbitraryDisposableLeaseCannotAuthorizeRecoveryMutation` | `RecoveryMutationGuardTests` |
+| Boundaries `:144 ResidueRecreatedAtMarkerDeleteBoundaryCannotComplete` | `RecoveryMutationGuardTests`；保留全部三種原始目標及第 25 次邊界。 |
+
+其餘泛用 coordinator 與 mutation-guard 案例也保留原斷言。
+Coordinator 邊界測試涵蓋非正值 writer timeout，以及最小正值 tick 與其相鄰值。
+`RecoveryExecutionBoundaryTests` 增加凍結與 caller 上限精確／相鄰值、複製參數零／負值、installed 與具體量測 tree 的 file/directory/byte 界限、相對路徑字元、retained-manifest bytes 與精確空骨架界限。
+`RecoveryPrefixGuardTests` 增加 held hashing 期間取消並釋放 custody、有序 prefix 缺洞、保留 authority 竄改、相同位元組的拓樸替換、torn-marker 及無法證明 staging 的零變更案例。
+`RecoveryExecutionRegressionTests` 涵蓋 authority 刪除前的 foreign root 檔案／目錄、大小寫不同但仍為 25 次刪除的 manifest、seed 移除後經各終端邊界且仍為總計 26 次刪除的 staging 重啟、僅有 foreign 檔案且缺少 seed 的 staging、新建／替換的空 staging，以及缺失 root 觀察後重建的空 final root。
+`RecoveryPreparationRegressionTests` 在 held-hash gate 加入 root 的 `foreign.txt`，要求 `SourceChanged`、零刪除、兩份 state 不變且 custody 已釋放。第十三次刪除後及第一個 ordinary file 刪除後重啟時，manifest policy 的 `IOException` 與 `UnauthorizedAccessException` 在 staging 及非 staging root 都必須回傳 `StateUnavailable` 並釋放 custody，涵蓋兩種 prefix 入口。
+`RecoveryCaseSpellingTests` 使用 production payload repository 與既有固定 Launcher fixture，涵蓋 `Versions` 對 `versions`，以及磁碟 `readme.txt` 對宣告 `README.txt`。完整 rollback 保留 25／26 兩種總數；第一個 ordinary file 刪除後重啟仍保留精確剩餘次數。預期剩餘名稱先採用 snapshot 拼法再以 ordinal 排序，suffix 則使用產品 path comparer 比對。
+`RecoveryProductionExecutionTests.ProductionRecoveryConsumesInclusiveAdmissionByteCeiling` 使用 public 建構函式及兩個 production repository，搭配合成 Launcher 宣告與執行檔。Admission 文件在精確位元組上限與多一位元組的上限經過真正 bounded reader 並完成實體 rollback；少一位元組的上限則零修改拒絕。整體 tree 界限保持充裕，因此由獨立 admission-reader 上限決定結果。
+量測目錄邊界計算九個 descendant，不含 held root，與 `CaptureTree` 一致；保留精確、少一及多一案例。
+既有凍結案例涵蓋相同長度內容漂移、晚到殘留、偽造／Dispose／異路徑 lease，以及不可逆刪除前後的取消。
+Fixture state 與檔案皆為合成資料，使用唯一系統暫存 workspace 與共用測試 helper。
+Native 案例對不支援的平台或被拒絕的 custody capability 明確 skip；symbolic-link 案例對缺少權限明確 skip。
+
+`RecoveryInterruptionTests` 明確 skip 全部 25／26 個 root 與 26 個 staging 刪除邊界的兩側，包括 marker 移除。
+缺少的依賴是 `Nvt.Core.LinkedProbe`／`Nvt.Core.TestProbe` 共用 `recovery-executor` child mode。
+這些 project 與 wiring 仍由 host 擁有。
+Host 必須提供該 mode，實際強制終止 child，且每次重啟重新載入序列化合成 state。
+實體 hard-stop 證據待補；注入取消不等於該證據。
+
+### 差異與驗證狀態
+
+成功證據依 Core-only 建立規則處理，不移植 public execution token。
+產品解碼與常數透過既有必要 adapter 及明確參數提供。
+凍結來源的大方法拆為 private 方法；下列刻意變更的判斷仍保留實體刪除順序與原始刪除總數。
+Tree 準備階段另外以 `finally` 保證雜湊、取消或 staging observation 拋錯時釋放已取得 custody；此時尚未刪除。
+單次執行的 deletion counter 提供衍生 mutation flag；callback 保留原始從 1 起算的計數與位置。
+省略凍結來源無使用端的 staging-inventory helper。
+Repository 使用 `net10.0`；沒有 project、package 或 reference 變更。
+
+#### 刻意採用的復原差異
+
+- 凍結 NFC 可能先刪除 authority，才在後續刪除時發現 foreign root 殘留。Core 在刪除 authority manifest 前重新驗證完整 held 拓樸，要求恰為一份 manifest 加固定目錄骨架。當時可見的 foreign 殘留會回傳 `ManualInterventionRequired` 並保留 manifest，留下人工處理所需的 authority。
+- 凍結 NFC 以 `Ordinal` 從 ordinary files 排除 manifest，卻用忽略大小寫的 comparer 加入 manifest step，因此大小寫不同的 manifest 會列出兩次。Core 對兩項決定使用已接受名稱的 comparer，並以 held entry 拼法刪除，確保 manifest 恰有一步且位於所有其他 tree file 之後。
+- 凍結 NFC 的 early-staging 證明在 retained-manifest 或 terminal-skeleton 證明前返回，之後讀取 seed 長度；合法 seedless 後綴因此變成不可用，只有 foreign 檔案且缺少 seed 的 staging 可能回傳 `HealthUnavailable`。Core 在任何 seed 長度讀取前嘗試兩種後綴證明，並將 staging 骨架證明綁定剩餘 child inventory，保留合法重啟，同時對 foreign 殘留零修改回傳 `ManualInterventionRequired`。其餘完整 staging 路徑若缺少 seed，會分類為無效證據，包括 application state 仍存在的情況，因為無法證明完整 tree。
+- 凍結 NFC 刪除空 staging container 時，未將其身分與觀察 token 比對。Core 先比較保留的 container-root proof，再於 delete-capable custody 下重做證明；新建或替換的 container 會回傳 `SourceChanged` 並保留，因為只有空目錄並不足以授權刪除。
+- 凍結 NFC 比對已捕捉的 rollback inventory 與雜湊後，沒有在 state 刪除前再次檢查封閉拓樸。Core 在雜湊與 staging 證明完成後，以 held 非 staging tree 的拓樸重驗作為準備階段最後一項檢查。當時可見的新增或遺失 entry 會零修改回傳 `SourceChanged`，避免過時 snapshot 授權刪除 state。
+- 凍結 NFC 的舊 staging 路徑可能在 seed 讀取時先回傳 typed `StateUnavailable`，尚未進入 retained-manifest 解析。Core 新近可達的 marker-derived prefix 路徑在所有分支捕捉 `IOException` 與 `UnauthorizedAccessException`；held-inventory prefix fallback 也採相同映射。兩者都回報 `StateUnavailable`，讓產品 manifest policy 拋錯時仍維持 typed failure 邊界。
+- 凍結 NFC 的產品名稱集合接受大小寫差異，但 manifest 與固定骨架 step 採用宣告拼法，重啟 step 則用 `Ordinal` 比對。Core 對頂層與固定骨架名稱、manifest 及預期後綴使用產品 comparer，先將預期剩餘名稱對應至 snapshot 拼法再以 ordinal 排序，所有刪除 step 均取自 snapshot 拼法。Recovery 透過 held custody 以相同順序重做既有 seed、executable 與 repository 檢查；L10 共用的 ordinal 頂層 verifier 不變。這讓已接受的大小寫差異可執行；當每個已刪除項目相對於剩餘項目的位置不取決於它的拼法時也可重啟（見「大小寫拼法的殘餘限制」），同時保留最深優先、manifest 為最後檔案、固定骨架最後與 canonical 刪除總數。
+- 凍結 NFC 對重建空非 staging root 的成功 custody acquisition 套用失敗映射，可能拋錯。Core 對該情況直接回傳 `SourceChanged`，讓先前缺失的 root 觀察既不能授權刪除新目錄，也不會漏出映射例外。
+
+其餘所有 execution-issue 映射呼叫均已追蹤至非成功結果。
+記錄 writer lease 的測試支援以 nullable local 持有 lease result 與其 scope，除非記錄下來的 observation 接手，否則在 `finally` 釋放。測試中的非同步取消 await `CancelAsync`；同步故障 gate 保留同步取消。
+
+#### 殘餘競態空窗（Residual race windows）
+
+- 其他程序可在 `RevalidateClosedTree` 完成後、manifest 刪除前新增 root entry。Held root 刪除回傳 typed `SourceChanged` 時，manifest 可能已刪除；marker 保留，執行的 `finally` 會釋放 tree custody。凍結 NFC 具有相同空窗。保留現有 authority guard；檔案系統檢查無法與隨後刪除形成原子操作。
+- 其他程序可在準備階段最後的封閉 tree 檢查後、第一份 state 刪除前改變拓樸。該檢查對準備期間可見的漂移零修改拒絕；之後的 root 殘留可能在 state 已刪除後，由 authority guard 回報 `ManualInterventionRequired`，或由 held root 刪除回報 `SourceChanged`，marker 均保留。凍結 NFC 具有相同的非原子檢查／刪除限制，且缺少 Core 新增的最後準備重驗。
+
+#### 大小寫拼法的殘餘限制（Residual case-spelling limits）
+
+檔案系統不記錄已刪除項目當時的拼法。刪除之後，Core 只知道 manifest 宣告的拼法與固定名稱。因此有兩項限制。第二項凍結 NFC 也有。第一項在凍結 NFC 中是「只要仍有大小寫不同的項目存在，重啟就被拒絕」，所以 Core 接受的合法重啟比凍結 NFC 多，不會更少。
+
+- 大小寫不同的樹要重啟，條件是：剩餘項目依磁碟拼法排出的順序，仍與依已刪除項目宣告拼法建出的順序一致。若已刪除項目在其未知的磁碟拼法下排序不同（例如宣告目錄為 `versions`、磁碟為 `Versions` 時的 `policy.json`），合法後綴會以 `SourceChanged` 拒絕，樹維持不變，沒有資料遺失，需要人工處理。回歸測試涵蓋第一個 ordinary file 刪除後立即重啟；在 fixture 中該檔案是其深度唯一的項目。
+- 若其他程序亂序移除某個大小寫不同的項目，且沒有其他項目顯示大小寫差異，剩餘的樹看起來會像宣告順序的合法後綴，recovery 會繼續。每個剩餘檔案在刪除前仍依 manifest 雜湊驗證，recovery 只刪除 manifest 與固定名稱宣告的項目。這一個情況只是「刪除依原順序進行」的證明較弱。
+
+傳入 Core source head：`d999cd213c122cc7325e3d58f1d3b1011b5607a8`。
+在 Windows 11 上，Release `Nvt.Core.Tests` 建置沒有錯誤，L11 檔案也沒有 warning。針對 `Nvt.Core.Tests.Launcher.Recovery` 的測試通過 562 個案例、略過 164 個（154 個真實 executor hard-stop 案例與 10 個既有 L10 hard-stop 案例），沒有失敗。完整 `Nvt.Core.Tests` 通過 4,925 個案例、略過 180 個，沒有失敗。
+實際 executor hard-stop 證據如上待補。
+三輪獨立唯讀審查已處理 executor。上方的殘餘競態空窗與大小寫拼法限制，是依設計保留的未解項目。
+NFC adoption、產品／pixel parity、merge、publication 均待完成。
+NFC 只有在保留的 adapter 經 Core 重現凍結 values、traces、bytes 與必要實體 restart 證據後，才刪除移轉的 executor。
+此次抽取不授權 Bootstrap package wiring。

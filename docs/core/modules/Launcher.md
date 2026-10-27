@@ -2,22 +2,6 @@
 
 # Launcher
 
-## Breaking changes before 0.9.0
-
-`InstalledApplicationCoordinator`, `InstalledApplicationPresentation`, `InstalledApplicationInfo`, `IInstalledApplicationPresentation` and `ManagedPackageVerifier` are internal. Use `IManagedVersionRepository.VerifyPackageAsync` instead of `ManagedPackageVerifier`. Use `FileSystemManagedVersionRepository.ReadInstalledApplicationAsync` instead of `InstalledApplicationCoordinator`. The caller now supplies the exact installed admission and the display values, and resolves the active version itself (`IVersionManagerStateReader.LoadAsync`).
-
-`UpdateCatalogPackagePath.Value` is now `string?`.
-Its positional constructor parameter and `Deconstruct` output carry the same annotation.
-The uninitialized default has a null value.
-`UpdateCatalogVersionSnapshot.Create` remains the admission boundary and rejects that default.
-Validated snapshot identities retain the same composition and bytes.
-
-Guard a raw path before string operations.
-Admit catalog data through `Create` before repository use.
-Repository callers check the path before resolution.
-Hash consumers also check nullable `BoundedReadResult.Sha256` before verification or executable measurement.
-Tests retain identity parity and verify default-path rejection at admission.
-
 Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
 
 - `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedAppVersion.cs`
@@ -75,7 +59,32 @@ Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit
 - `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedFirstInstallationExperienceTestSupport.cs` — synthetic installation ports and fixtures.
 - `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedFirstInstallationBootstrapOutcomeTests.cs` — generic typed receipt and budget assertions; Core TestSupport replaces the private clock.
 
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — L11 execution contracts and coordinator, lines 120–448; L10 owns the remaining declarations.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryExecution.cs` — mechanical evidence and ordered execution; product codecs remain adapters.
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.MutationGuards.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.Boundaries.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — execution-only harness and ports.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.Support.cs` — generic fixture topology and assertions.
+
 <!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+## Breaking changes before 0.9.0
+
+`InstalledApplicationCoordinator`, `InstalledApplicationPresentation`, `InstalledApplicationInfo`, `IInstalledApplicationPresentation` and `ManagedPackageVerifier` are internal. Use `IManagedVersionRepository.VerifyPackageAsync` instead of `ManagedPackageVerifier`. Use `FileSystemManagedVersionRepository.ReadInstalledApplicationAsync` instead of `InstalledApplicationCoordinator`. The caller now supplies the exact installed admission and the display values, and resolves the active version itself (`IVersionManagerStateReader.LoadAsync`).
+
+`UpdateCatalogPackagePath.Value` is now `string?`.
+Its positional constructor parameter and `Deconstruct` output carry the same annotation.
+The uninitialized default has a null value.
+`UpdateCatalogVersionSnapshot.Create` remains the admission boundary and rejects that default.
+Validated snapshot identities retain the same composition and bytes.
+
+Guard a raw path before string operations.
+Admit catalog data through `Create` before repository use.
+Repository callers check the path before resolution.
+Hash consumers also check nullable `BoundedReadResult.Sha256` before verification or executable measurement.
+Tests retain identity parity and verify default-path rejection at admission.
 
 `Nvt.Core.Launcher.Contracts` and `Nvt.Core.Launcher.Activation` provide BCL-only `net10.0` values and ports for managed application and launcher activation. `Nvt.Core.Launcher.Persistence` supplies bounded raw state access and the exact application-state writer. Verification and the internal Windows lease adapter are described below. Pure path normalization uses the current platform's path rules. `Nvt.Core.Launcher.Coordination` supervises READY through injected process ports; process creation and native custody use their respective mechanism owners.
 
@@ -736,3 +745,179 @@ H's progress cases remain at nine passed, zero failed and five skipped.
 Full solution tests, repo-health, independent review, merge and publication are not claimed.
 
 NFC adoption: pending.
+
+## L11 physical recovery execution
+
+Frozen parent baseline: NFC (`nvt_fw_combiner`), ref `origin/1.2.x`, full commit `60e3f28e9c9f9926097e642e22e59d2a92ebc00e`. Extracted source paths:
+
+- `src/NvtFwCombiner.VersionManagement.Application/VersionManagement/ManagedSetupRecoveryExecution.cs` — execution contracts and coordinator, lines 120–448; L10 continues to own the existing plan, evidence and policy declarations.
+- `src/NvtFwCombiner.VersionManagement.Infrastructure/VersionManagement/FileSystemManagedSetupRecoveryExecution.cs` — complete mechanical evidence and ordered executor; strict manifest, seed and state decoding remain with mandatory product adapters.
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.MutationGuards.cs`
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryMutationGuardTests.Boundaries.cs`
+- `tests/NvtFwCombiner.Application.Tests/VersionManagement/ManagedSetupRecoveryDiagnosisTests.Support.cs` — execution-only synthetic ports and harness; L10 diagnosis helpers are reused.
+- `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/ManagedSetupRecoveryExecutionTests.Support.cs` — generic fixture topology and assertions only; product package generation stays in NFC.
+
+<!-- Copyright (c) 2026 Dennis Liu. All rights reserved. -->
+
+### API and ownership receipt
+
+All execution source is under `Launcher/Recovery/Execution/`, in `Nvt.Core.Launcher.Recovery`.
+No L10 declaration is redefined or edited.
+The following table lists every new public API group, including its members; all 36 declaration lines are recorded in `PublicAPI.Unshipped.txt`.
+
+| Public type and members | Consumer and reason |
+| --- | --- |
+| `ManagedSetupRecoveryExecutionCoordinator`, its constructor and `ExecuteAsync(plan, confirmedAction, writerLeaseTimeout, cancellationToken)` | The retained product recovery UI invokes one selected immutable plan under the existing state-store writer. |
+| `ManagedSetupRecoveryExecutionOutcome` and all eleven values | Reports `Completed`, `ConfirmationRequired`, `Busy`, `LifetimeActive`, `HealthUnavailable`, `StateUnavailable`, `PermissionDenied`, `SourceChanged`, `RecoveryRequired`, `ManualInterventionRequired` and `Cancelled`. |
+| `ManagedSetupRecoveryExecutionResult`, its positional constructor and `Outcome` get/init | Carries that typed terminal result. |
+| `ManagedSetupRecoveryExecutionRequest` and `Action` getter | Carries the selected action to the port. Both its constructor and token property are internal. |
+| `IManagedSetupRecoveryExecutionPort.ExecuteAsync(request, writerLease, cancellationToken)` | Passes the same live lease instance into the filesystem execution scope without transferring disposal ownership. |
+| `ManagedSetupRecoveryExecutionPortOutcome` and all eight values | Reports `Completed`, `HealthUnavailable`, `StateUnavailable`, `PermissionDenied`, `SourceChanged`, `RecoveryRequired`, `ManualInterventionRequired` and `Cancelled` without selecting product policy. |
+| `FileSystemManagedSetupRecoveryExecution`, its constructor, `ObserveAsync` and `ExecuteAsync` | Core produces successful evidence itself, then consumes it through the existing diagnosis/evidence ports and the execution port. |
+
+The concrete constructor requires the existing exact application-state reader, fixed launcher-state suffix, launcher-state store, setup layout, seed-store factory, product package policy, package limits and admission codec.
+It derives the launcher-state path through `LauncherBootstrapStateFile.DerivePath` and composes the existing concrete repositories and verifier.
+There is no new product-admission interface, permissive default adapter or fallback.
+The public failure-observation constructor remains the only observation constructor available outside Core.
+Successful observation construction, plan construction, every execution token and every fault hook remain internal.
+No NFC assembly receives friend access.
+
+NFC retains strict marker/state/seed/manifest/admission schemas, product ceilings, trust, confirmation wording and release authority.
+Core checks exact path and object identity, complete byte digests, bounded executable sizes, mechanical manifest facts, topology and ordered restart proof.
+The existing repository and package verifier consume the mandatory strict manifest and admission adapters; the seed factory consumes the existing state-store port.
+Recovery contacts no update source, starts no process and writes no replacement marker or durable state.
+`AtomicOutput` grants no recovery deletion authority.
+
+### Preserved predicates and physical order
+
+The coordinator checks the plan and positive writer timeout before confirmation, then acquires exactly one writer receipt.
+Under its lexical `using` scope it observes Bootstrap, Application and Launcher lifetimes, application state, root, marker and evidence in frozen order.
+It reselects the action and matches the durable snapshot, every transaction field and the exact value-equal evidence token before handing that same receipt to the port.
+Evidence drift yields `RecoveryRequired` without calling the port.
+
+The port checks cancellation, live `HoldsStatePath`, token type/path, marker and state identities before preparing held tree custody.
+Fake, disposed and foreign-path writer capabilities fail before any destructive operation.
+State evidence includes raw byte hashes and held volume/file identities, so a byte-identical replacement is different evidence.
+Tree proof hashes complete held bytes and identities; admitted size/hash hints never substitute for actual proof.
+Only the original ordered suffix is restartable; holes, foreign residue and a tampered retained authority manifest fail closed. The one exception is a deleted entry whose on-disk spelling differs in case from the declared spelling and is no longer observable (see "Residual case-spelling limits").
+
+The physical deletion order is unchanged:
+
+1. Exact Launcher state, then exact Application state, reobserving marker and expected state identities between steps.
+2. Ordinary files, deepest first and then ordinal; nonterminal directories in the same ordering.
+3. The authority `RELEASE-MANIFEST.json`, only after every other tree file is gone.
+4. The fixed version directory, `versions`, and root skeleton.
+5. Only verified-empty exact staging, then the marker last.
+6. Action-specific postconditions and exact marker absence are checked again after marker deletion.
+
+`ConvergeReady` preserves both durable states and the complete root, removing only exact staging and marker residue.
+Cancellation before mutation is `Cancelled`; cancellation after an irreversible deletion remains recovery-owned.
+The final marker boundary deliberately completes its uncancelled terminal observation.
+Unprovable staging and torn markers remain non-actionable with zero mutation.
+No replacement marker is written when external residue reappears after marker removal.
+
+### Limits and Files reuse
+
+NFC supplies the existing positive `PackageVerificationLimits`: 4,096 archive entries, 134,217,728 package bytes, 536,870,912 expanded bytes, 1,048,576 manifest/checksum bytes, 4,096 admission bytes, 200,000,000 executable bytes and 4,096 installed directories.
+Installed-tree reservations remain 4,097 files and 536,875,008 bytes.
+The existing relative-path mechanism retains its 512-character bound.
+Every copied positive ceiling is checked again at construction.
+The closed setup bound adds three files, two directories and measured Launcher, Bootstrap and seed bytes.
+Broad retained-prefix observation adds three files, three directories, Launcher/Bootstrap bytes and exactly 65,536 bytes.
+The recovery bound retains three files, three directories, Launcher/Bootstrap bytes and exactly 1,048,576 bytes.
+No limit is silently widened.
+The executor's held tree preparation hashes each file exactly once; tests count files and bytes rather than elapsed time.
+
+Files continues to own every native acquisition, identity, topology and deletion operation.
+The only Files edit is `WindowsStablePathCustody.cs`: its single non-partial limit declaration owns the recovery-skeleton tag, private constructor and internal zero-file/zero-byte factory.
+The frozen mechanism bounds `(0,0,0)`, `(0,1,0)` and `(0,3,0)` are preserved.
+Ordinary product limits and default structs still reject zero values; the factory rejects negative directories.
+No new native function, deletion primitive or writer owner is added.
+A stream from `WindowsStablePathCustody.OpenReadOnlyFile` is built on a duplicated handle, and a duplicated handle shares the file position with the held handle. A second read of the same file through one custody therefore starts where the previous read ended, and its hash is the hash of an empty file. Every Core read through a held custody sets `stream.Position = 0` first; the restart-prefix proof reads the launcher, bootstrap, payload files, checksum file and retained manifest through one custody this way.
+The declaration is a single one; a separate partial declaration for the recovery tag does not compile.
+The Files change is its own commit in the pull request, so the Files owner can read it alone.
+
+### Source-to-Core test map
+
+Core cases are in `tests/Nvt.Core.Tests/Launcher/Recovery/Execution/`.
+The eleven required frozen names and generic assertions are retained.
+Synthetic filenames replace product assets while preserving the original 23 tree entries and independent 25/26 deletion totals.
+
+| Frozen source and case | Core class, same case name |
+| --- | --- |
+| Application execution `:10 MissingRollbackConfirmationDoesNotAcquireLeaseOrExecute` | `RecoveryCoordinatorTests` |
+| Application execution `:208 EvidenceTokenDriftReturnsRecoveryRequiredWithoutExecution` | `RecoveryCoordinatorTests` |
+| Application execution `:336 StablePlanHandsSameLeaseInstanceToPortInsideLexicalScope` | `RecoveryCoordinatorTests` |
+| Infrastructure execution `:288 RollbackDeletesLauncherStateBeforeApplicationState` | `RecoveryPhysicalExecutionTests` |
+| Infrastructure execution `:327 EveryDeleteBoundaryReobservesAndCompletesFromExactPrefix` | `RecoveryPhysicalExecutionTests`; each original boundary is a theory row, preserving totals 25/26. |
+| Infrastructure execution `:465 FullStagingChildCrashPrefixReobservesAndCompletes` | `RecoveryPhysicalExecutionTests`; the frozen case injects cancellation, not a physical child kill. |
+| Infrastructure execution `:220 FullRollbackDeletesAuthorityManifestAfterEveryOtherTreeFile` | `RecoveryPhysicalExecutionTests` |
+| Infrastructure execution `:422 RollbackTreeProofIsLinearInFileCountAndBytes` | `RecoveryPhysicalExecutionTests`; exact original file/byte count assertions. |
+| Mutation guards `:142 ByteIdenticalApplicationStateReplacementFailsBeforeDeletion` | `RecoveryMutationGuardTests`; retain the old file under another name to guarantee a distinct new identity. |
+| Boundaries `:290 ArbitraryDisposableLeaseCannotAuthorizeRecoveryMutation` | `RecoveryMutationGuardTests` |
+| Boundaries `:144 ResidueRecreatedAtMarkerDeleteBoundaryCannotComplete` | `RecoveryMutationGuardTests`; all three original targets and boundary 25 remain. |
+
+The remaining generic coordinator and mutation-guard cases also retain their assertions.
+Coordinator boundary tests cover nonpositive writer timeouts and the minimum positive tick with its adjacent value.
+`RecoveryExecutionBoundaryTests` adds exact/adjacent frozen and caller ceilings, zero/negative copied parameters, installed and concrete measured tree file/directory/byte bounds, relative-path characters, retained-manifest bytes and exact empty skeleton bounds.
+`RecoveryPrefixGuardTests` adds cancellation during held hashing with custody release, an ordered-prefix hole, tampered retained authority, same-byte topology replacement, torn-marker and unproved-staging zero-mutation cases.
+`RecoveryExecutionRegressionTests` covers foreign root files/directories before authority deletion, a differently cased manifest with the same 25 deletions, staging restart after seed removal through each terminal boundary with the same 26 total deletions, foreign-only seedless staging, newly created/replaced empty staging and an empty final root recreated after an absent-root observation.
+`RecoveryPreparationRegressionTests` adds a root `foreign.txt` at the held-hash gate and requires `SourceChanged`, zero deletions, both states unchanged and released custody. Manifest-policy `IOException` and `UnauthorizedAccessException` at the thirteenth deletion restart and after the first ordinary deletion must return `StateUnavailable` for both staging and non-staging roots and release custody, covering both prefix entry paths.
+`RecoveryCaseSpellingTests` covers `Versions` versus `versions` and on-disk `readme.txt` versus declared `README.txt`, using the production payload repository and the existing fixed Launcher fixture. Full rollback retains both 25/26 totals; a restart after the first ordinary deletion retains the exact remaining count. Expected surviving names adopt snapshot spelling before ordinal sorting, while suffix matching uses the product path comparer.
+`RecoveryProductionExecutionTests.ProductionRecoveryConsumesInclusiveAdmissionByteCeiling` uses the public constructor and both production repositories with a synthetic Launcher declaration and executable. Its admission document passes through the real bounded reader at its exact byte limit and one byte above, completes physical rollback, and is rejected without mutation at one byte below. Aggregate tree bounds remain generous, so the independent admission-reader limit decides the result.
+The measured directory boundary counts nine descendants, excluding the held root as `CaptureTree` does; exact, one-below and one-above cases remain.
+Existing frozen cases cover same-length content drift, late residue, fake/disposed/foreign leases and cancellation on both sides of irreversible deletion.
+Fixture state and files are synthetic, with unique system temporary workspaces and the shared test helpers.
+Native cases explicitly skip unsupported platforms or denied custody capability; symbolic-link cases explicitly skip missing privilege.
+
+`RecoveryInterruptionTests` explicitly skips both sides of all 25/26 root and 26 staging deletion boundaries, including marker removal.
+The missing dependency is the shared `recovery-executor` child mode in `Nvt.Core.LinkedProbe` / `Nvt.Core.TestProbe`.
+Those projects and their wiring remain host-owned.
+The host must supply that mode, hard-stop an actual child and reload serialized synthetic state for each restart.
+Physical hard-stop evidence is pending; injected cancellation is not that evidence.
+
+### Differences and verification status
+
+The success-evidence seam follows the Core-only construction rule; no public execution token is ported.
+Product decoding and constants are supplied through existing mandatory adapters and explicit parameters.
+Large frozen methods are factored into private methods; the deliberate predicate changes below retain the physical deletion order and original deletion totals.
+Tree preparation additionally releases acquired custody in `finally` when hashing, cancellation or staging observation throws, before any deletion.
+An execution-local deletion counter supplies the derived mutation flag; callbacks retain their original 1-based counts and positions.
+Unused frozen staging-inventory helpers are omitted.
+The repository targets `net10.0`; no project, package or reference changes are included.
+
+#### Deliberate recovery deviations
+
+- Frozen NFC could delete authority before detecting foreign root residue at a later deletion. Core revalidates the complete held topology before deleting the authority manifest and requires exactly one manifest plus the fixed directory skeleton. Visible foreign residue yields `ManualInterventionRequired` with the manifest retained, preserving authority for intervention.
+- Frozen NFC excluded the manifest from ordinary files with `Ordinal` but added the manifest step with the case-insensitive comparer, so a differently cased manifest was listed twice. Core uses the accepted-name comparer for both decisions and the held entry's spelling for deletion, ensuring exactly one manifest step after every other tree file.
+- Frozen NFC returned from early-staging proof before retained-manifest or terminal-skeleton proof and then read seed length; legal seedless suffixes became unavailable, and foreign-only seedless staging could yield `HealthUnavailable`. Core tries both suffix proofs before any seed-length read and binds staging skeleton proof to the surviving child inventory, preserving legal restarts while returning zero-mutation `ManualInterventionRequired` for foreign residue. A missing seed on the remaining full-staging path is invalid evidence, including when application state still exists, because it cannot prove a complete tree.
+- Frozen NFC deleted an empty staging container without comparing its identity to the observed token. Core compares the retained container-root proof, then repeats it under delete-capable custody; new or replaced containers yield `SourceChanged` and remain because emptiness alone does not authorize their deletion.
+- Frozen NFC compared the captured rollback inventory and hashes without a final closed-topology check before state deletion. Core revalidates the held non-staging tree as preparation's last check, after hashing and staging proof. An added or lost entry visible then yields `SourceChanged` with zero mutation, preventing stale snapshots from authorizing state deletion.
+- Frozen NFC's old staging path could return typed `StateUnavailable` at the seed read before reaching retained-manifest parsing. Core's newly reachable marker-derived prefix path catches `IOException` and `UnauthorizedAccessException` across every branch; the held-inventory prefix fallback maps them identically. Both report `StateUnavailable`, preserving the typed failure boundary when a product manifest policy throws.
+- Frozen NFC accepted case variants through product name sets but built manifest and fixed-skeleton steps from declared spelling and compared restart steps with `Ordinal`. Core matches top-level and fixed-skeleton names, manifests and expected suffixes with the product comparer, maps surviving expected names to snapshot spelling before ordinal sorting, and builds every deletion step from snapshot spelling. Recovery repeats the existing seed, executable and repository checks through held custody in the same order; L10's shared ordinal top-level verifier is unchanged. This makes accepted case variants executable, and restartable when the position of every deleted entry among the survivors does not depend on its spelling (see "Residual case-spelling limits"), without changing deepest-first order, manifest-last-file order, fixed-skeleton-last order or canonical deletion totals.
+- Frozen NFC mapped a successful custody acquisition of a recreated empty non-staging root as a failure, which could throw. Core returns `SourceChanged` directly for that case so an observed-missing root cannot authorize deletion of a new directory or leak a mapping exception.
+
+All other execution-issue mapping sites were traced to non-success results.
+The test support that records a writer lease owns the lease result and its scope through nullable locals and disposes them in `finally` unless the recorded observation takes them over. Asynchronous cancellation in tests awaits `CancelAsync`; synchronous fault gates keep synchronous cancellation.
+
+#### Residual race windows
+
+- A process can create a root entry after `RevalidateClosedTree` finishes and before manifest deletion. The manifest may already be deleted when held root deletion returns typed `SourceChanged`; the marker remains, and execution's `finally` releases tree custody. Frozen NFC has the same window. The authority guard is retained; a filesystem check cannot be atomic with the following deletion.
+- A process can change topology after preparation's final closed-tree check and before the first state deletion. That check rejects drift visible during preparation with zero mutation; later root residue can be detected after state deletion by the authority guard (`ManualInterventionRequired`) or held root deletion (`SourceChanged`), with the marker retained. Frozen NFC has the same non-atomic check/deletion limitation and lacks Core's final preparation revalidation.
+
+#### Residual case-spelling limits
+
+The filesystem keeps no record of the spelling a deleted entry had. After a deletion, Core knows only the spelling declared by the manifest and the fixed names. Two limits follow. Frozen NFC has the second one as well. For the first, frozen NFC rejects a restart whenever a case-variant entry still exists, so Core accepts more legal restarts than frozen NFC and never fewer.
+
+- A restart of a case-variant tree is accepted only where the order of the survivors, by their on-disk spelling, still matches the order built from the declared spelling of the deleted entries. If a deleted entry sorts differently under its unknown on-disk spelling (for example `policy.json` under a `Versions` directory while the declared directory is `versions`), the legal prefix is rejected as `SourceChanged` and the tree is left unchanged. No data is lost and the tree needs manual intervention. The regression tests cover a restart right after the first ordinary file is deleted; in the fixture that file is the only entry at its depth.
+- If another process removes a case-variant entry out of order and no other entry shows a case difference, the remaining tree looks like a legal suffix of the declared order, and recovery continues. Every remaining file is still verified against the manifest hashes before it is deleted, and recovery deletes only entries that the manifest and fixed names declare. Only the proof that the deletions followed the original order is weaker for this one case.
+
+Incoming Core source head: `d999cd213c122cc7325e3d58f1d3b1011b5607a8`.
+On Windows 11, the Release `Nvt.Core.Tests` build had no errors and no warning in the L11 files. The targeted `Nvt.Core.Tests.Launcher.Recovery` run passed 562 cases and skipped 164 (the 154 real executor hard-stop cases and the 10 existing L10 hard-stop cases), with no failure. The full `Nvt.Core.Tests` run passed 4,925 cases and skipped 180, with no failure.
+Real executor hard-stop evidence is pending as described above.
+Three independent read-only reviews addressed the executor. The residual race windows and case-spelling limits above are the findings that stay open by design.
+NFC adoption, product/pixel parity, merge and publication remain pending.
+NFC removes its relocated executor only after its retained adapters reproduce the frozen values, traces, bytes and required physical restart evidence through Core.
+This extraction authorizes no Bootstrap package wiring.
