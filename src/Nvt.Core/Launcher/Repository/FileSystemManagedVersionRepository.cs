@@ -4,6 +4,7 @@ using System.Text.Json;
 using Nvt.Core.Files.Windows;
 using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
+using Nvt.Core.Launcher.Setup;
 using Nvt.Core.Launcher.Verification;
 
 namespace Nvt.Core.Launcher.Repository;
@@ -22,6 +23,7 @@ public sealed partial class FileSystemManagedVersionRepository : IManagedVersion
     private readonly ManagedPackageVerifier verifier;
     private readonly InstalledPayloadProof proof;
     private readonly RepositoryOperations operations;
+    private readonly IProgress<ManagedFirstInstallationProgress>? _installationProgress;
 
     /// <summary>Creates an application repository with mandatory product adapters and explicit positive ceilings.</summary>
     /// <param name="descriptor">The caller's exact application and runtime identity.</param>
@@ -47,6 +49,25 @@ public sealed partial class FileSystemManagedVersionRepository : IManagedVersion
         this.operations = operations;
         proof = new InstalledPayloadProof(this, descriptor, productPolicy, limits, verifier);
     }
+
+    // Shares every adapter, ceiling and hook with the source. Only the progress sink differs.
+    private FileSystemManagedVersionRepository(FileSystemManagedVersionRepository source,
+        IProgress<ManagedFirstInstallationProgress> installationProgress)
+    {
+        descriptor = source.descriptor;
+        policy = source.policy;
+        limits = source.limits;
+        admissionCodec = source.admissionCodec;
+        verifier = source.verifier;
+        proof = source.proof;
+        operations = source.operations;
+        _installationProgress = installationProgress;
+    }
+
+    // Held-root installation on the returned repository reports the four first-installation stages.
+    // Progress is instance state so that the signatures of the installation methods stay unchanged.
+    internal FileSystemManagedVersionRepository WithInstallationProgress(
+        IProgress<ManagedFirstInstallationProgress>? progress) => progress is null ? this : new(this, progress);
 
     internal WindowsStableTreeLimits TreeLimits => WindowsStableTreeLimits.ForInstalledVersion(
         checked(limits.MaximumArchiveEntries + 1), limits.MaximumInstalledDirectories,

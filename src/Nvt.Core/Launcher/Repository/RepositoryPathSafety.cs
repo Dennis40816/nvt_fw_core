@@ -7,6 +7,25 @@ namespace Nvt.Core.Launcher.Repository;
 
 internal static class RepositoryPathSafety
 {
+    internal static bool TryNormalizeExactAbsolutePath(string? value, out string normalized) =>
+        Nvt.Core.Launcher.Transport.LifetimeStatePath.TryNormalizeExactAbsolutePath(value, out normalized);
+
+    internal static StringComparer PathComparer => Nvt.Core.Launcher.Transport.LifetimeStatePath.PathComparer;
+
+    internal static bool HasReparseComponent(string path)
+    {
+        string? current = path;
+        while (!string.IsNullOrEmpty(current))
+        {
+            if (IsReparsePoint(current))
+            {
+                return true;
+            }
+            current = Path.GetDirectoryName(current);
+        }
+        return false;
+    }
+
     internal static bool TryResolveRelativeFile(string root, string relativePath, out string resolved)
     {
         resolved = string.Empty;

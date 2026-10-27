@@ -19,6 +19,8 @@ internal sealed class ManagedPackageVerifier
     private readonly ProductDescriptor descriptor;
     private readonly IProductPackagePolicy productPolicy;
     private readonly PackageVerificationLimits limits;
+    private readonly Action<long, long>? _packageReadProgress;
+    private readonly Action<long, long>? _verificationProgress;
 
     /// <summary>Creates a verifier using explicit product names, strict policy and positive ceilings.</summary>
     /// <param name="descriptor">The product's runtime descriptor.</param>
@@ -46,6 +48,22 @@ internal sealed class ManagedPackageVerifier
         this.productPolicy = productPolicy;
         this.limits = limits;
     }
+
+    private ManagedPackageVerifier(ManagedPackageVerifier source, Action<long, long>? packageReadProgress,
+        Action<long, long>? verificationProgress)
+    {
+        descriptor = source.descriptor;
+        productPolicy = source.productPolicy;
+        limits = source.limits;
+        _packageReadProgress = packageReadProgress;
+        _verificationProgress = verificationProgress;
+    }
+
+    // Plans of the returned verifier report the package hash read, then payload verification, in bytes.
+    // Progress is instance state so that the signatures of the plan methods stay unchanged.
+    internal ManagedPackageVerifier WithProgress(Action<long, long>? packageReadProgress,
+        Action<long, long>? verificationProgress) => packageReadProgress is null && verificationProgress is null
+            ? this : new(this, packageReadProgress, verificationProgress);
 
     /// <summary>Checks the complete package identity, exact manifest bytes, inventory, checksums and actual expanded content.</summary>
     /// <param name="package">A borrowed readable, seekable stream held stable by the caller; it remains open.</param>
@@ -93,8 +111,12 @@ internal sealed class ManagedPackageVerifier
             }
 
             package.Position = 0;
+            using PackageReadProgressStream? progressStream = _packageReadProgress is null
+                ? null : new(package, observedLength, _packageReadProgress);
+            _packageReadProgress?.Invoke(0, observedLength);
             BoundedReadResult read = await BoundedFileReader.ReadAndHashAsync(
-                package, observedLength, FileCaptureMode.IdentityOnly, cancellationToken).ConfigureAwait(false);
+                progressStream ?? package, observedLength, FileCaptureMode.IdentityOnly,
+                cancellationToken).ConfigureAwait(false);
             if (read.Sha256 is null || !string.Equals(Convert.ToHexString(read.Sha256).ToLowerInvariant(),
                     candidate.PackageSha256, StringComparison.Ordinal))
             {
@@ -253,10 +275,11 @@ internal sealed class ManagedPackageVerifier
     }
 
     // Hashes every declared payload file against the manifest. Returns the failure, or null when all match.
-    private static async ValueTask<ManagedPackagePlanResult?> VerifyPayloadFilesAsync(
+    private async ValueTask<ManagedPackagePlanResult?> VerifyPayloadFilesAsync(
         Dictionary<string, ZipArchiveEntry> entries, IReadOnlyList<PackageFile> files, ExpandedByteBudget budget,
         CancellationToken cancellationToken)
     {
+        Action<int>? verified = VerifiedByteProgress.Start(_verificationProgress, files);
         foreach (PackageFile file in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -266,7 +289,7 @@ internal sealed class ManagedPackageVerifier
             }
             await using Stream input = entry.Open();
             BoundedArchiveReadResult content = await BoundedArchiveReader.ReadAndHashAsync(
-                input, file.Size, budget, cancellationToken).ConfigureAwait(false);
+                input, file.Size, budget, cancellationToken, verified).ConfigureAwait(false);
             if (!content.IsSuccess)
             {
                 return ReadFailure(content);
