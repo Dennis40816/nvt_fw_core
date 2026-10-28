@@ -190,7 +190,7 @@
       ],
       "kind": "member",
       "ceilings": {
-        "methodLines": 220
+        "methodLines": 218
       }
     },
     {
@@ -204,7 +204,7 @@
       ],
       "kind": "member",
       "ceilings": {
-        "methodLines": 176
+        "methodLines": 174
       }
     },
     {
@@ -233,20 +233,6 @@
       "kind": "member",
       "ceilings": {
         "methodLines": 95
-      }
-    },
-    {
-      "contentHash": "12e9b83a487848ffcd08d544a6d1df2f3136aafdcbec7e44118e00850260b5ed",
-      "project": "Nvt.Core",
-      "issue": "health-refactor/2026-10-31",
-      "owner": "NVT CORE",
-      "symbol": "Nvt.Core.Launcher.Repository.FileSystemManagedVersionRepository.MaterializeVerifiedPayloadWithinHeldRootAsync(WindowsStableRelativeWriteRoot,string,UpdateCatalogVersionSnapshot,bool,CancellationToken)",
-      "locations": [
-        "src/Nvt.Core/Launcher/Repository/FileSystemManagedVersionRepository.Installation.cs"
-      ],
-      "kind": "member",
-      "ceilings": {
-        "methodLines": 131
       }
     },
     {
@@ -331,20 +317,6 @@
       "kind": "member",
       "ceilings": {
         "methodLines": 116
-      }
-    },
-    {
-      "contentHash": "1932b5ead1be3d0d60181719e344976cedaf8c74f6b6d27c98955cbc03237eb2",
-      "project": "Nvt.Core",
-      "issue": "health-refactor/2026-10-31",
-      "owner": "NVT CORE",
-      "symbol": "Nvt.Core.Launcher.Verification.ManagedPackageVerifier.CreateArchivePlanAsync(ZipArchive,UpdateCatalogVersionSnapshot,CancellationToken)",
-      "locations": [
-        "src/Nvt.Core/Launcher/Verification/ManagedPackageVerifier.cs"
-      ],
-      "kind": "member",
-      "ceilings": {
-        "methodLines": 135
       }
     },
     {
@@ -4540,16 +4512,6 @@
       "owner": "NVT CORE",
       "symbol": "CA2000",
       "path": "tests/Nvt.Core.Tests/LogConsole/WriterFailureTests.cs"
-    },
-    {
-      "rule": "CA2000",
-      "syntaxHash": "3a7a7e8f165a2249a04daf4dfa2e9f5561f99244ce7fc4a4eccc6641dc18dfc7",
-      "member": "Nvt.Core.Launcher.Repository.FileSystemManagedVersionRepository.MaterializeVerifiedPayloadWithinHeldRootAsync(WindowsStableRelativeWriteRoot,string,UpdateCatalogVersionSnapshot,bool,CancellationToken)",
-      "count": 1,
-      "project": "Nvt.Core",
-      "owner": "NVT CORE",
-      "symbol": "CA2000",
-      "path": "src/Nvt.Core/Launcher/Repository/FileSystemManagedVersionRepository.Installation.cs"
     },
     {
       "rule": "CA2000",
