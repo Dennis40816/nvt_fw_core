@@ -13,17 +13,20 @@ internal static partial class VersionManagementExperienceTestSupport
         IntegrationTestData.Limits, [Row(version)]);
 
     internal static UpdateCatalogVersionSnapshot Row(string version, string? notes = null,
-        UpdateNotificationPolicy policy = UpdateNotificationPolicy.Notify) => UpdateCatalogVersionSnapshot.Create(
-            134_217_728, 65_536, ManagedAppVersion.Parse(version), IntegrationTestData.PublishedAt,
-            new($"packages/Fixture-v{version}-synthetic.zip"), 42, Hash, Hash, notes ?? $"Release {version}", policy);
+        UpdateNotificationPolicy policy = UpdateNotificationPolicy.Notify, DateTimeOffset? publishedAt = null,
+        long packageSize = 42) => UpdateCatalogVersionSnapshot.Create(
+            134_217_728, 65_536, ManagedAppVersion.Parse(version), publishedAt ?? new(2026, 8, 21, 0, 0, 0, TimeSpan.Zero),
+            new($"packages/Fixture-v{version}-synthetic.zip"), packageSize, Hash, Hash, notes ?? $"Release {version}", policy);
 
     internal static UpdateCatalogSnapshot CatalogV2(params (string Version, string Policy)[] versions) =>
         UpdateCatalogSnapshot.Create(IntegrationTestData.Limits,
             [.. versions.Select(row => Row(row.Version, policy: row.Policy == "notify"
-                ? UpdateNotificationPolicy.Notify : UpdateNotificationPolicy.ManualOnly))]);
+                ? UpdateNotificationPolicy.Notify : UpdateNotificationPolicy.ManualOnly,
+                publishedAt: new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero)))]);
 
     internal static UpdateCatalogSnapshot CatalogWithOlderReleaseNote(string olderNote) =>
-        UpdateCatalogSnapshot.Create(IntegrationTestData.Limits, [Row("0.10.6"), Row("0.10.5", olderNote)]);
+        UpdateCatalogSnapshot.Create(IntegrationTestData.Limits,
+            [Row("0.10.6"), Row("0.10.5", olderNote, publishedAt: new(2026, 8, 20, 0, 0, 0, TimeSpan.Zero), packageSize: 41)]);
 
     internal static UpdateCatalogSnapshot CatalogWithVersionCount(int count) => UpdateCatalogSnapshot.Create(
         IntegrationTestData.Limits, [.. Enumerable.Range(1, count).Select(index => Row($"0.10.{index}"))]);

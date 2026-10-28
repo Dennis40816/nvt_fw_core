@@ -58,10 +58,13 @@ internal static class IntegrationTestData
     {
         // Guard: Interlocked/Volatile protects the count; Started publishes the captured token.
         private int _loadCount;
+        // Guard: the test reads the captured token after awaiting Started.Task.
         private CancellationToken _receivedToken;
         internal int LoadCount => Volatile.Read(ref _loadCount);
         internal CancellationToken ReceivedToken => _receivedToken;
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource<UpdateSourceRegistryLoadResult> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

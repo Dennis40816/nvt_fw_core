@@ -515,6 +515,7 @@ public sealed partial class VersionManagementExperienceTests
 
     private sealed class CountingCatalogSource : IRootCatalogSourceTestDouble
     {
+        // Guard: the owning test awaits each check before reading the count or checking again.
         internal int LoadCount { get; private set; }
 
         public ValueTask<UpdateCatalogLoadResult> LoadAsync(
@@ -529,8 +530,10 @@ public sealed partial class VersionManagementExperienceTests
     private sealed class SupersedingCatalogSource(UpdateCatalogSnapshot newSourceSnapshot)
         : IRootCatalogSourceTestDouble
     {
+        // Guard: Interlocked/Volatile publishes cancellation to the owning test.
         private int _firstCheckWasCancelled;
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource<bool> FirstCheckStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -560,9 +563,12 @@ public sealed partial class VersionManagementExperienceTests
     private sealed class CompletedThenBlockingCatalogSource(UpdateCatalogLoadResult firstResult)
         : IRootCatalogSourceTestDouble
     {
+        // Guard: Interlocked selects the first load across concurrent checks.
         private int _loadCount;
+        // Guard: Interlocked/Volatile publishes cancellation to the owning test.
         private int _secondCheckWasCancelled;
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource<bool> SecondCheckStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

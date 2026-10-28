@@ -169,18 +169,23 @@ public sealed partial class VersionManagementExperienceConcurrencyTests
 
     private sealed class FirstInstallBlockingRepository : IManagedVersionRepository
     {
+        // Guard: Interlocked/Volatile publishes install calls across the install gate.
         private int _installCount;
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource FirstInstallStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource ReleaseFirstInstall { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        internal int InstallCount => _installCount;
+        internal int InstallCount => Volatile.Read(ref _installCount);
 
+        // Guard: the coordinator serializes mutations; tests read after awaiting their completion.
         internal int DeleteCount { get; private set; }
 
+        // Guard: the coordinator serializes inventory reads; tests observe after awaited calls or gates.
         internal int InventoryCount { get; private set; }
 
         internal bool OmitInventory { get; init; }

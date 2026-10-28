@@ -362,6 +362,7 @@ public sealed class VersionManagementExperienceAdmissionTests
 
     private sealed class SequenceFence(int denyAt) : ILauncherMutationFence
     {
+        // Guard: the coordinator serializes fence reads; the test observes after awaiting the operation.
         internal int LoadCount { get; private set; }
         public ValueTask<LauncherMutationProtection> LoadAsync(CancellationToken cancellationToken)
         {
@@ -373,6 +374,7 @@ public sealed class VersionManagementExperienceAdmissionTests
             ManagedVersionAdmission expectedOwner, CancellationToken cancellationToken) => throw new InvalidOperationException();
     }
 
+    // Guard: the owning test awaits the single commit before reading the captured trace.
     private sealed class TraceCatalog(List<string> trace, UpdateCatalogSnapshot catalog) : IRootCatalogSourceTestDouble
     {
         public ValueTask<UpdateCatalogLoadResult> LoadAsync(string sourceRoot, CancellationToken cancellationToken)
@@ -382,6 +384,7 @@ public sealed class VersionManagementExperienceAdmissionTests
         }
     }
 
+    // Guard: the owning test awaits the single commit before reading the captured trace or store.
     private sealed class TraceFence(List<string> trace, MemoryStateStore store) : ILauncherMutationFence
     {
         public ValueTask<LauncherMutationProtection> LoadAsync(CancellationToken cancellationToken)
@@ -396,6 +399,7 @@ public sealed class VersionManagementExperienceAdmissionTests
 
     private sealed class WriterOverrideStore(VersionManagerState state) : MemoryStateStore(state)
     {
+        // Guard: the owning test sets the override between awaited experience calls.
         internal VersionManagerWriteLeaseResult? Writer { get; set; }
         public override ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(
             TimeSpan waitTimeout, CancellationToken cancellationToken) => Writer is { } writer

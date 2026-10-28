@@ -13,6 +13,7 @@ internal static partial class VersionManagementExperienceTestSupport
     // and its workspace; memory observations retain frozen object-identity assertions.
     internal class MemoryStateStore : IVersionManagerStateStore, IDisposable
     {
+        // Guard: the owning test and coordinator order calls through awaited operations and test gates.
         private readonly CoordinationStateStore _writer;
         // Guard: test gates serialize successful acquisition; a contending result cannot replace live custody.
         private VersionManagerWriteLeaseResult? _lastWriter;
@@ -23,14 +24,22 @@ internal static partial class VersionManagementExperienceTestSupport
         }
         internal string StatePath => _writer.StatePath;
         internal bool HoldsWriter => _lastWriter?.HoldsStatePath(StatePath) == true;
+        // Guard: the coordinator writer or a test callback changes state between ordered loads.
         internal VersionManagerState State { get; private set; }
+        // Guard: the coordinator serializes saves; the test reads the count after awaiting it.
         internal int SaveCount { get; private set; }
+        // Guard: awaited operations and test gates order writer requests and test observations.
         internal int WriteLeaseCount { get; private set; }
         internal int LeaseRequestCount => WriteLeaseCount;
+        // Guard: the coordinator serializes loads; the test reads the count after awaiting it.
         internal int LoadCount { get; private set; }
+        // Guard: the owning test sets fault injection between awaited experience calls.
         internal int FailOnSave { get; set; } = int.MaxValue;
+        // Guard: the owning test configures callbacks before starting the corresponding operation.
         internal Action? BeforeAcquire { get; set; }
+        // Guard: the owning test configures callbacks before starting the corresponding operation.
         internal Action? BeforeLoad { get; set; }
+        // Guard: the owning test configures callbacks before starting the corresponding operation.
         internal Action? BeforeSave { get; set; }
         internal void ReplaceState(VersionManagerState state) => State = state;
         public virtual async ValueTask<VersionManagerWriteLeaseResult> TryAcquireWriteLeaseAsync(

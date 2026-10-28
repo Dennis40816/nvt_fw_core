@@ -51,8 +51,10 @@ internal static partial class VersionManagementExperienceTestSupport
 
     internal sealed class MutableCatalogSource(UpdateCatalogSnapshot snapshot) : IRootCatalogSourceTestDouble
     {
+        // Guard: the owning test changes the catalog only between awaited experience calls.
         internal UpdateCatalogSnapshot Snapshot { get; set; } = snapshot;
 
+        // Guard: the owning test awaits each catalog call before reading or starting another.
         internal int LoadCount { get; private set; }
 
         public ValueTask<UpdateCatalogLoadResult> LoadAsync(
@@ -69,9 +71,12 @@ internal static partial class VersionManagementExperienceTestSupport
         ManagedVersionDeleteIssue deleteIssue = ManagedVersionDeleteIssue.None,
         ManagedPackageVerificationResult? verificationResult = null) : IManagedVersionRepository
     {
+        // Guard: the owning test reads the trace only after an awaited mutation completes.
         internal List<ManagedAppVersion> Deleted { get; } = [];
 
+        // Guard: test gates or awaited calls serialize verification and observation of its count.
         internal int VerifyCount { get; private set; }
+        // Guard: the owning test configures the callback before starting verification.
         internal Action? BeforeVerification { get; set; }
 
         public ValueTask<ManagedPackageVerificationResult> VerifyPackageAsync(

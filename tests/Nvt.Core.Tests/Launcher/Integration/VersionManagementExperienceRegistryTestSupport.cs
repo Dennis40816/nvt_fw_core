@@ -12,9 +12,10 @@ internal static partial class VersionManagementExperienceTestSupport
     internal sealed class SequenceRegistrySource(params UpdateSourceRegistryLoadResult[] results)
         : IUpdateSourceRegistry
     {
+        // Guard: Interlocked advances the sequence; Volatile publishes its count to the test.
         private int _next;
 
-        internal int LoadCount => _next;
+        internal int LoadCount => Volatile.Read(ref _next);
 
         public ValueTask<UpdateSourceRegistryLoadResult> LoadAsync(CancellationToken cancellationToken)
         {
@@ -26,9 +27,11 @@ internal static partial class VersionManagementExperienceTestSupport
     internal sealed class PathCatalogSource(
         params (string Path, UpdateCatalogLoadResult Outcome)[] results) : IRootCatalogSourceTestDouble
     {
+        // Guard: construction owns all writes; catalog loads only read the completed dictionary.
         private readonly Dictionary<string, UpdateCatalogLoadResult> _results =
             results.ToDictionary(entry => entry.Path, entry => entry.Outcome, StringComparer.Ordinal);
 
+        // Guard: the owning test awaits each catalog call before reading or starting another.
         internal List<string> LoadedRoots { get; } = [];
 
         public ValueTask<UpdateCatalogLoadResult> LoadAsync(
@@ -46,6 +49,7 @@ internal static partial class VersionManagementExperienceTestSupport
         string path,
         params UpdateCatalogSnapshot[] snapshots) : IRootCatalogSourceTestDouble
     {
+        // Guard: Interlocked selects the snapshot for each catalog call.
         private int _next;
 
         public ValueTask<UpdateCatalogLoadResult> LoadAsync(
@@ -64,8 +68,10 @@ internal static partial class VersionManagementExperienceTestSupport
     internal sealed class CancelFirstCatalogSource(UpdateCatalogSnapshot snapshot)
         : IRootCatalogSourceTestDouble
     {
+        // Guard: Interlocked selects the first blocked load.
         private int _loadCount;
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource FirstLoadStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -95,10 +101,13 @@ internal static partial class VersionManagementExperienceTestSupport
     internal sealed class CountingRepository(ManagedAppVersion? mismatchedVersion = null)
         : IManagedVersionRepository
     {
+        // Guard: the owning test awaits each repository call before starting another.
         private readonly HealthyRepository _inner = new();
 
+        // Guard: the owning test reads the trace only after awaited verification completes.
         internal List<string> VerifiedRoots { get; } = [];
 
+        // Guard: the owning test reads the trace only after awaited verification completes.
         internal List<ManagedAppVersion> VerifiedVersions { get; } = [];
 
         public ValueTask<ManagedPackageVerificationResult> VerifyPackageAsync(
@@ -153,12 +162,16 @@ internal static partial class VersionManagementExperienceTestSupport
 
     internal sealed class BlockingFirstVerificationRepository : IManagedVersionRepository
     {
+        // Guard: the first verification gate orders calls into the mutable inner double.
         private readonly HealthyRepository _inner = new();
+        // Guard: Interlocked selects the first blocked verification.
         private int _verifyCount;
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource FirstVerificationStarted { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource ReleaseFirstVerification { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

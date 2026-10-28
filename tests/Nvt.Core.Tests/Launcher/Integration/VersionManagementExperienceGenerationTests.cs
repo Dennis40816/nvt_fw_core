@@ -20,8 +20,49 @@ public sealed class VersionManagementExperienceGenerationTests
     {
         string latest = SourcePath("generation");
         using var store = Store(latest);
+        var catalogs = new GatedCatalog(Catalog(registry ? "0.10.6" : "0.10.7"), Catalog("0.10.6"));
+        var repository = new HealthyRepository();
+        using VersionManagementExperience experience = Create(store, catalogs, registry, latest, repository);
+        Task<VersionManagementSnapshot> old = experience.CheckAsync(true, TestContext.Current.CancellationToken).AsTask();
+        await catalogs.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
+
+        VersionManagementSnapshot current = await experience.CheckAsync(true, TestContext.Current.CancellationToken);
+        _ = catalogs.Release.TrySetResult();
+        VersionManagementSnapshot obsolete = await old;
+
+        Assert.True(current.ShouldPromptForUpdate);
+        if (registry)
+        {
+            // The valid obsolete publication reaches readmission with an already cancelled token.
+            // Frozen registry checks return a superseded receipt without replacing the publication.
+            Assert.NotSame(current, obsolete);
+            Assert.Equal(current with
+            {
+                RegistryIssue = UpdateSourceRegistryIssue.Superseded,
+            }, obsolete);
+            Assert.Equal(3, repository.VerifyCount);
+            Assert.Equal(2, store.WriteLeaseCount);
+            Assert.Equal(2, store.LoadCount);
+            Assert.Equal(1, store.SaveCount);
+        }
+        else
+        {
+            Assert.Same(current, obsolete);
+        }
+        Assert.Equal(2, current.Generation);
+        Assert.Equal(ManagedAppVersion.Parse("0.10.6"), current.VerifiedCandidate!.Version);
+        VersionManagementSnapshot repeated = await experience.CheckAsync(true, TestContext.Current.CancellationToken);
+        Assert.False(repeated.ShouldPromptForUpdate);
+    }
+
+    /// <summary>An obsolete publication mismatch cannot overwrite a newer successful registry result.</summary>
+    [Fact]
+    public async Task ObsoleteRegistryPublicationMismatchKeepsNewerSnapshotIdentity()
+    {
+        string latest = SourcePath("generation-publication-mismatch");
+        using var store = Store(latest);
         var catalogs = new GatedCatalog(Catalog("0.10.7"), Catalog("0.10.6"));
-        using VersionManagementExperience experience = Create(store, catalogs, registry, latest);
+        using VersionManagementExperience experience = Create(store, catalogs, true, latest);
         Task<VersionManagementSnapshot> old = experience.CheckAsync(true, TestContext.Current.CancellationToken).AsTask();
         await catalogs.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
 
@@ -167,9 +208,10 @@ public sealed class VersionManagementExperienceGenerationTests
         Assert.Equal(dispose ? 2 : 1, recovered.Inventory.HealthyCount);
     }
 
-    private static VersionManagementExperience Create(MemoryStateStore store, IUpdateCatalogSource catalogs, bool registry, string latest) =>
+    private static VersionManagementExperience Create(MemoryStateStore store, IUpdateCatalogSource catalogs,
+        bool registry, string latest, HealthyRepository? repository = null) =>
         VersionManagementExperienceTestFactory.Create(ManagedAppVersion.Parse("0.10.5"), "managed-root", store,
-            catalogs, new HealthyRepository(), registry ? new SequenceRegistrySource(Registry(
+            catalogs, repository ?? new HealthyRepository(), registry ? new SequenceRegistrySource(Registry(
                 1, FirstRegistryDigest, (latest, UpdateSourceRegistryEntryStatus.Latest))) : null);
 
     private sealed class GatedCatalog(UpdateCatalogSnapshot first, UpdateCatalogSnapshot later, bool throwAfterRelease = false)
@@ -177,7 +219,9 @@ public sealed class VersionManagementExperienceGenerationTests
     {
         // Guard: Interlocked assigns the first invocation; the signals own completion ordering.
         private int _calls;
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async ValueTask<UpdateCatalogLoadResult> LoadAsync(string sourceRoot, CancellationToken cancellationToken)
         {
@@ -193,8 +237,11 @@ public sealed class VersionManagementExperienceGenerationTests
 
     private sealed class GatedInstallRepository(IReadOnlyList<ManagedVersionAdmission> admissions) : IManagedVersionRepository
     {
+        // Guard: the coordinator serializes calls; the install gate orders test observations.
         private readonly TransactionRepository _inner = new(admissions);
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public ValueTask<ManagedPackageVerificationResult> VerifyPackageAsync(string sourceRoot,
             UpdateCatalogVersionSnapshot package, CancellationToken cancellationToken) => _inner.VerifyPackageAsync(sourceRoot, package, cancellationToken);
