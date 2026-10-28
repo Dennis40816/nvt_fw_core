@@ -17,9 +17,7 @@ public sealed partial class ManagedMutationCoordinator
         await _mutation.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using VersionManagerWriteLeaseResult lease = await AcquireWriteLeaseAsync(
-                TimeSpan.Zero,
-                cancellationToken).ConfigureAwait(false);
+            using VersionManagerWriteLeaseResult lease = await AcquireSupersedingWriteLeaseAsync(cancellationToken).ConfigureAwait(false);
             if (!lease.IsAcquired)
             {
                 return new(
