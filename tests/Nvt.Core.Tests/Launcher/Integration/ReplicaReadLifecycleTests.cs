@@ -180,7 +180,7 @@ public sealed class ReplicaReadLifecycleTests
     {
         var primary = new GatedRegistry(synchronous: true);
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var registry = new ReplicatedUpdateSourceRegistry([primary]);
+        var registry = new ReplicatedUpdateSourceRegistry([primary], TimeSpan.FromSeconds(45), Clock());
         try
         {
             Task<OperationCanceledException> canceled = Assert.ThrowsAnyAsync<OperationCanceledException>(
@@ -203,7 +203,7 @@ public sealed class ReplicaReadLifecycleTests
     {
         var primary = new GatedRegistry();
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        var registry = new ReplicatedUpdateSourceRegistry([primary]);
+        var registry = new ReplicatedUpdateSourceRegistry([primary], TimeSpan.FromSeconds(45), Clock());
         Task<OperationCanceledException> canceled = Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => registry.LoadAsync(caller.Token).AsTask());
         Task<UpdateSourceRegistryLoadResult> remaining = registry.LoadAsync(TestContext.Current.CancellationToken).AsTask();
@@ -224,7 +224,7 @@ public sealed class ReplicaReadLifecycleTests
         var primary = new GatedRegistry();
         using var caller = new CancellationTokenSource();
         await caller.CancelAsync();
-        var registry = new ReplicatedUpdateSourceRegistry([primary]);
+        var registry = new ReplicatedUpdateSourceRegistry([primary], TimeSpan.FromSeconds(45), Clock());
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => registry.LoadAsync(caller.Token).AsTask());
         Assert.Equal(0, primary.LoadCount);
     }

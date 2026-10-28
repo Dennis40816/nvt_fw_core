@@ -11,7 +11,7 @@ using static Nvt.Core.Tests.Launcher.Coordination.ManagedMutationTestSupport;
 namespace Nvt.Core.Tests.Launcher.Coordination;
 
 /// <summary>Scoped source transactions share mutation ordering and exact writer authority.</summary>
-public sealed class ManagedMutationCoordinatorSourceTransactionTests
+public sealed partial class ManagedMutationCoordinatorSourceTransactionTests
 {
     /// <summary>Each frozen superseding operation invokes its callback once before writer acquisition.</summary>
     [Theory]
@@ -71,7 +71,7 @@ public sealed class ManagedMutationCoordinatorSourceTransactionTests
             await holder;
             await queued;
         }
-        Assert.Equal("supersede", store.Trace[0]);
+        Assert.Equal(["supersede", "acquire:0", "writer:None"], store.Trace.Take(3));
         Assert.Equal(1, store.Trace.Count(static entry => entry == "supersede"));
     }
 
@@ -103,14 +103,11 @@ public sealed class ManagedMutationCoordinatorSourceTransactionTests
         using ManagedMutationCoordinator coordinator = Create(store);
         coordinator.SupersedeRunningCheck = () => store.Trace.Add("supersede");
 
-        bool admitted = await coordinator.RunSourceTransactionAsync(false, (_, _) =>
-        {
-            store.Trace.Add("owns-check:false");
-            return ValueTask.FromResult(false);
-        }, TestContext.Current.CancellationToken);
+        bool admitted = await coordinator.RunSourceTransactionAsync(false,
+            static (_, _) => ValueTask.FromResult(false), TestContext.Current.CancellationToken);
 
         Assert.False(admitted);
-        Assert.Equal(["owns-check:false"], store.Trace);
+        Assert.Empty(store.Trace);
         Assert.Equal(0, store.WriteLeaseCount);
     }
 
@@ -442,7 +439,10 @@ public sealed class ManagedMutationCoordinatorSourceTransactionTests
         ManagedMutationCoordinator.SourceTransaction expired = Assert.IsType<ManagedMutationCoordinator.SourceTransaction>(escaped);
         await Assert.ThrowsAsync<ObjectDisposedException>(() => expired.AcquireWriterAsync(TestContext.Current.CancellationToken).AsTask());
         await Assert.ThrowsAsync<ObjectDisposedException>(() => expired.ReloadAsync(TestContext.Current.CancellationToken).AsTask());
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => expired.TrySaveAsync(
+            Initial(), Proposed(Initial()), true, TestContext.Current.CancellationToken).AsTask());
         Assert.Throws<ObjectDisposedException>(() => expired.MatchesDurableSnapshot(Initial()));
+        Assert.Equal(0, store.SaveCount);
         Assert.False(store.HoldsWriter);
         Assert.Equal(1, store.WriteLeaseCount);
     }
@@ -560,19 +560,22 @@ public sealed class ManagedMutationCoordinatorSourceTransactionTests
     }
 
     /// <summary>A throwing supersession callback leaves the gate reusable and never acquires a writer.</summary>
-    [Fact]
-    public async Task SupersessionFailureReleasesGateBeforeWriterAcquisition()
+    [Theory]
+    [InlineData("source"), InlineData("install"), InlineData("delete"), InlineData("activation")]
+    public async Task SupersessionFailureReleasesGateBeforeWriterAcquisition(string operation)
     {
         using var store = new MemoryStateStore(Initial());
         using ManagedMutationCoordinator coordinator = Create(store);
-        coordinator.SupersedeRunningCheck = () => throw new IOException("Synthetic supersession failure.");
-
-        await Assert.ThrowsAsync<IOException>(() => RunOperationAsync("source", coordinator, TestContext.Current.CancellationToken));
-
+        var failure = new IOException("Synthetic supersession failure.");
+        coordinator.SupersedeRunningCheck = () => throw failure;
+        IOException thrown = await Assert.ThrowsAsync<IOException>(() => RunOperationAsync(operation, coordinator, TestContext.Current.CancellationToken));
+        Assert.Same(failure, thrown);
+        Assert.False(store.HoldsWriter);
         Assert.Equal(0, store.WriteLeaseCount);
         coordinator.SupersedeRunningCheck = null;
-        await RunOperationAsync("source", coordinator, TestContext.Current.CancellationToken);
+        await RunOperationAsync(operation, coordinator, TestContext.Current.CancellationToken);
         Assert.Equal(1, store.WriteLeaseCount);
+        Assert.False(store.HoldsWriter);
     }
 
     private static VersionManagerState Initial() => State(

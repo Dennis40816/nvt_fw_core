@@ -79,11 +79,11 @@ public sealed partial class ManagedMutationCoordinator
     }
 
     // Only the awaited callback may use this scope. _mutation serializes mutations;
-    // _lifetimeLock protects the phase, writer and snapshot, including late completions.
+    // _gate protects the phase, writer and snapshot, including late completions.
     internal sealed class SourceTransaction : IDisposable
     {
         private readonly ManagedMutationCoordinator _owner;
-        private readonly Lock _lifetimeLock = new();
+        private readonly Lock _gate = new();
         private TransactionLifetime _lifetime = new(WriterPhase.None, null, null);
 
         internal SourceTransaction(ManagedMutationCoordinator owner)
@@ -96,7 +96,7 @@ public sealed partial class ManagedMutationCoordinator
 
         internal async ValueTask<bool> AcquireWriterAsync(CancellationToken cancellationToken)
         {
-            lock (_lifetimeLock)
+            lock (_gate)
             {
                 TransactionLifetime lifetime = RequireLifetime();
                 if (lifetime.Phase != WriterPhase.None)
@@ -109,7 +109,7 @@ public sealed partial class ManagedMutationCoordinator
                 TimeSpan.Zero, cancellationToken).ConfigureAwait(false);
             try
             {
-                lock (_lifetimeLock)
+                lock (_gate)
                 {
                     TransactionLifetime lifetime = RequireLifetime();
                     _lifetime = lifetime with { Phase = WriterPhase.Held, Writer = acquired };
@@ -129,7 +129,7 @@ public sealed partial class ManagedMutationCoordinator
             _ = RequireWriter();
             ManagedMutationSnapshot snapshot = await _owner.ReloadDurableCurrentWithoutLockAsync(
                 cancellationToken).ConfigureAwait(false);
-            lock (_lifetimeLock)
+            lock (_gate)
             {
                 _lifetime = RequireLifetime() with { Snapshot = snapshot };
             }
@@ -169,7 +169,7 @@ public sealed partial class ManagedMutationCoordinator
             {
                 return false;
             }
-            lock (_lifetimeLock)
+            lock (_gate)
             {
                 ManagedMutationSnapshot snapshot = Snapshot;
                 if (stateChanged)
@@ -190,7 +190,7 @@ public sealed partial class ManagedMutationCoordinator
 
         private TransactionLifetime RequireLifetime()
         {
-            lock (_lifetimeLock)
+            lock (_gate)
             {
                 return _lifetime.Phase != WriterPhase.Closed ? _lifetime
                     : throw new ObjectDisposedException(nameof(SourceTransaction));
@@ -207,7 +207,7 @@ public sealed partial class ManagedMutationCoordinator
 
         void IDisposable.Dispose()
         {
-            lock (_lifetimeLock)
+            lock (_gate)
             {
                 TransactionLifetime lifetime = _lifetime;
                 _lifetime = new(WriterPhase.Closed, null, null);
