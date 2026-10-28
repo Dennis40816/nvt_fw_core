@@ -19,6 +19,8 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
     private DiscoveryCheck? _activeCheck;
     private VersionManagementSnapshot? _current;
     private VersionManagementSnapshot? _recoverableSourceAuthority;
+    // Guard: Dispose writes this under _generationSync; ThrowIfDisposed reads it with Volatile and takes no lock,
+    // as the frozen helper takes none, so a query can never wait behind a cancellation callback.
     private bool _disposed;
 
     /// <summary>Creates a use-case graph with explicit product admission and retention ports.</summary>
@@ -139,13 +141,13 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
             if (_disposed) { return; }
             CancelRunningCheckUnderLock();
             _coordinator.Dispose();
-            _disposed = true;
+            Volatile.Write(ref _disposed, true);
         }
     }
 
     private void ThrowIfDisposed()
     {
-        lock (_generationSync) { ObjectDisposedException.ThrowIf(_disposed, this); }
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
     }
 
     private sealed record ExperienceServices(

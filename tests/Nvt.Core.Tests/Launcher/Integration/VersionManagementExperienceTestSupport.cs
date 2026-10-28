@@ -76,8 +76,12 @@ internal static partial class VersionManagementExperienceTestSupport
 
         // Guard: test gates or awaited calls serialize verification and observation of its count.
         internal int VerifyCount { get; private set; }
+        // Guard: the owning test reads this count after awaited repository calls complete.
+        internal int InstallCount { get; private set; }
         // Guard: the owning test configures the callback before starting verification.
         internal Action? BeforeVerification { get; set; }
+        // Guard: the owning test replaces the receipt only between awaited verification calls.
+        internal ManagedPackageVerificationResult? VerificationResultOverride { get; set; } = verificationResult;
 
         public ValueTask<ManagedPackageVerificationResult> VerifyPackageAsync(
             string sourceRoot,
@@ -86,7 +90,7 @@ internal static partial class VersionManagementExperienceTestSupport
         {
             BeforeVerification?.Invoke();
             VerifyCount++;
-            return ValueTask.FromResult(verificationResult ?? (verifyPackages
+            return ValueTask.FromResult(VerificationResultOverride ?? (verifyPackages
                 ? new ManagedPackageVerificationResult(
                     new(package.Version, package.Identity, package.ReleaseNotes),
                     ManagedVersionInstallIssue.None)
@@ -104,6 +108,7 @@ internal static partial class VersionManagementExperienceTestSupport
             UpdateCatalogVersionSnapshot package,
             CancellationToken cancellationToken)
         {
+            InstallCount++;
             return ValueTask.FromResult(new ManagedVersionInstallResult(
                 new(package.Version, package.Identity, package.ReleaseManifestSha256),
                 ManagedVersionInstallIssue.None,
