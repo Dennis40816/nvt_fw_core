@@ -13,7 +13,7 @@ Internal deployment records, product plans, compatibility inventories, and histo
 - Quota checks validate JSON samples. Fresh exhaustion stops new work. Unreadable samples delay claims.
 - Host acceptance removes common credential environment variables. Host programs still use the operator's account permissions.
 - Refill splits validated briefs from the final report. Report-only output creates no tasks.
-- The wrapper uses caller-selected model and effort values. Empty values use Codex defaults.
+- The wrapper uses caller-selected model and effort values. Empty values use Codex defaults. Every run also passes the fast service tier.
 - Offline suites use synthetic queues, mocked programs, and disposable Git repositories.
 
 Use the README source hashes to compare this copy with the deployed queue tools.

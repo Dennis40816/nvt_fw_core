@@ -12,7 +12,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.5 - 2026-10-28
 
-Launcher steps L09 to L12, moved from NFC, so that NFC and NFH can pin them before 1.0.0. This version comes before the 1.0.0 API freeze.
+Launcher steps L09 to L12, moved from NFC, so that NFC and NFH can pin them before 1.0.0, and the flatter LogConsole header (#251). This version comes before the 1.0.0 API freeze.
 Unlike earlier versions, it does not move the new public API to `PublicAPI.Shipped.txt`. The 673 entries stay in `src/Nvt.Core/PublicAPI.Unshipped.txt`, so a later 0.9.x version can still change their shape.
 `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
 
@@ -27,6 +27,9 @@ Unlike earlier versions, it does not move the new public API to `PublicAPI.Shipp
 
 - Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
 - Licensing: 34 more files carry an `SPDX-License-Identifier: MIT` header in place of "All rights reserved". They are `AtomicOutput` and its tests, six `Nvt.Core.TestSupport` helpers and their tests (not `ChildProcessFixture`), the six external-process contract types and the six background-job and progress types, with their tests. Each of the eight folders has a `LICENSE` file for the scope. No C# API, namespace or behavior changes.
+- Launcher API clean-up before the 1.0.0 freeze (#259): the `VersionManagementExperience` constructor no longer takes `packagePolicy` and `admissionCodec`. Their entry in `src/Nvt.Core/PublicAPI.Unshipped.txt` changes with it. The type is new in this version, so no 0.9.4 code is affected.
+- Launcher API clean-up before the 1.0.0 freeze (#259): the zero value of `ManagedSetupRecoveryAction` is now `ConvergeReady` (`ConvergeReady = 0`, `RemoveIncompleteInstallation = 1`; it was the other way round). So `default(ManagedSetupRecoveryAction)` never selects the removal of an incomplete installation. The type is new in this version, so no 0.9.4 code is affected.
+- LogConsole look (#251): the header is one `NfcControlHeight` row (32 DIP, was 40 DIP) with no vertical padding, and the toolbar's zoom group (zoom out, zoom value, zoom in) has no border. The toolbar stays 40 DIP. The owner asked for both on 2026-10-18. No C# API, resource key or token changes.
 
 ## 0.9.4 - 2026-10-14
 

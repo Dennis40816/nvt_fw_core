@@ -8,6 +8,7 @@ Set-Content -LiteralPath $prompt -Value 'Synthetic read-only fixture' -Encoding 
 function global:codex {
     # Consume input without emitting it; no installed CLI is invoked.
     $null = $input | Out-String
+    $global:CodexArgs = @($args)
     $global:LASTEXITCODE = 0
 }
 foreach ($mode in 'read-only', 'workspace-write') {
@@ -21,6 +22,9 @@ foreach ($mode in 'read-only', 'workspace-write') {
     & $Wrapper -PromptFile $prompt -Out (Join-Path $dir 'out.md') -Log $log -Sandbox $mode -Dir $dir
     if ((Get-FileHash -LiteralPath $sentinel -Algorithm SHA256).Hash -ne $before) { throw 'cache changed' }
     if (-not (Select-String -LiteralPath $log -Pattern '^cache-residue-count=1$' -Quiet)) { throw 'missing cache report' }
+    $tier = [array]::IndexOf($global:CodexArgs, 'service_tier="fast"')
+    if ($tier -lt 1 -or $global:CodexArgs[$tier - 1] -cne '-c') { throw 'missing fast service tier argument' }
 }
 Remove-Item Function:\codex
-Write-Output 'PASS wrapper cache hashes unchanged in both sandbox modes'
+Remove-Variable -Name CodexArgs -Scope Global
+Write-Output 'PASS wrapper cache hashes unchanged and fast service tier passed in both sandbox modes'
