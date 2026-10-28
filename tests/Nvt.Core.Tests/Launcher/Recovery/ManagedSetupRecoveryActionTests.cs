@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Recovery;
 
-/// <summary>The recovery action values are part of the frozen public contract and the zero value never deletes.</summary>
+/// <summary>The recovery action values are part of the frozen public contract and the zero value never selects the removal.</summary>
 public sealed class ManagedSetupRecoveryActionTests
 {
     /// <summary>The numeric values are pinned, so a reorder is a reviewed change and never an accident.</summary>
@@ -15,7 +15,7 @@ public sealed class ManagedSetupRecoveryActionTests
     public void ActionValuesAreFrozen(ManagedSetupRecoveryAction action, int value) =>
         Assert.Equal(value, (int)action);
 
-    /// <summary>An unset or zeroed action is the harmless one and is never the deletion.</summary>
+    /// <summary>An unset or zeroed action keeps the committed installation and is never the removal.</summary>
     [Fact]
     public void DefaultActionIsNotTheDeleteAction()
     {

@@ -529,7 +529,7 @@ Coordinator 先檢查 plan 與正值 writer timeout，再檢查確認動作，�
 5. 僅刪已驗證為空的精確 staging，最後刪 marker。
 6. Marker 刪除後再次檢查各動作的後置條件與精確 marker 不存在。
 
-`ManagedSetupRecoveryAction` 將 `ConvergeReady` 排為 0、`RemoveIncompleteInstallation` 排為 1，因此 `default(ManagedSetupRecoveryAction)` 是無害動作，絕不刪除。`ManagedSetupRecoveryActionTests` 釘住兩個值。
+`ManagedSetupRecoveryAction` 將 `ConvergeReady` 排為 0、`RemoveIncompleteInstallation` 排為 1，因此 `default(ManagedSetupRecoveryAction)` 會保留已提交的安裝與 durable state，絕不會選到移除未完成安裝；它仍會像 `ConvergeReady` 一樣移除精確的 Setup 殘留。`ManagedSetupRecoveryActionTests` 釘住兩個值。
 
 `ConvergeReady` 保留兩份 durable state 與完整 root，只移除精確 staging／marker 殘留。 變更前取消回傳 `Cancelled`；不可逆刪除後的取消仍由復原持有責任。 最後 marker 邊界刻意以不可取消觀察完成終態檢查。 無法證明的 staging 與 torn marker 仍不可執行，且零變更。 Marker 移除後若外部重建殘留，不寫入替代 marker。
 
@@ -718,7 +718,7 @@ Core 新增測試以方法計數，以下數量不含 theory row。Replica class
 - 僅觀察、未變更：replica result `(null, None)` 沒有 snapshot，但 `Issue == None`；`Dispose()` 不等待執行中的 transaction；managed layout 回傳的 root 沒有尾端 separator。
 - 首次安裝 query 直接呼叫 registry port，與 Check／self-test 的 descriptor／limit readmission 不同。現有測試未證明此路徑會拒絕不符 consumer registry descriptor／entry limit 的值；本次不修改 predicate。
 - Delete 在 policy 檢查之後失敗（launcher fallback-owner 退役失敗，或 prepare save 失敗）時，結果帶的是該操作觀察到的 snapshot，內含第一次 inventory 讀取；凍結版在結果中回傳第二次讀取。只有兩次讀取之間 payload 改變時才有差異，沒有測試涵蓋。
-- 以下公開 API 形狀照現狀凍結，因為日後的改動都是增量：`FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` 接受公開的 `IManagedDistributionPayloadCapture`，實際卻要求 Core 內部的 `IManagedDistributionPayloadContent`，Core 之外建立的 capture 會回傳 `SourceChanged`；`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 帶 `progress` 的預設多載呼叫不帶 `progress` 的多載，會丟掉進度，要回報進度的實作自行覆寫；`IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` 把 token 放在選用旗標之前，與凍結的 NFC 形狀相同，日後加 token 在最後的多載不會破壞呼叫端。
+- 以下公開 API 形狀照現狀凍結，因為日後的改動都是增量：`FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` 接受公開的 `IManagedDistributionPayloadCapture`，實際卻要求 Core 內部的 `IManagedDistributionPayloadContent`，Core 之外建立的 capture 會回傳 `SourceChanged`；`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 帶 `progress` 的預設多載呼叫不帶 `progress` 的多載，會丟掉進度，要回報進度的實作自行覆寫；`IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` 把 token 放在選用旗標之前，與凍結的 NFC 形狀相同，日後加 token 在最後的多載不會破壞位置引數的呼叫，但同時以具名引數傳兩個參數的呼叫會變得有歧義。
 
 ### 失敗矩陣
 

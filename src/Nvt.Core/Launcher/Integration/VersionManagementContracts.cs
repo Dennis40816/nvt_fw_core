@@ -40,7 +40,7 @@ public interface IVersionManagementExperience
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <param name="isReadOnly">Reads without acquiring a writer lease or reconciling pending mutations.</param>
     /// <returns>The initial immutable snapshot.</returns>
-    /// <remarks>The token precedes the optional flag; a later overload with the token last would not break callers.</remarks>
+    /// <remarks>The token precedes the optional flag; a later overload with the token last would keep positional calls working, but a call that passes both parameters by name would become ambiguous.</remarks>
     ValueTask<VersionManagementSnapshot> InitializeAsync(CancellationToken cancellationToken, bool isReadOnly = false);
 
     /// <summary>Loads durable state after an exact inherited READY write while the launcher commits.</summary>
