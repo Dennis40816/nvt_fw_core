@@ -8,12 +8,13 @@ using Nvt.Core.Launcher.Persistence;
 namespace Nvt.Core.Launcher.Recovery;
 
 /// <summary>The only actions selected by the managed Setup recovery policy.</summary>
+/// <remarks>The zero value is the harmless action, so <c>default(ManagedSetupRecoveryAction)</c> never deletes.</remarks>
 public enum ManagedSetupRecoveryAction
 {
-    /// <summary>Delete only the exact incomplete transaction state and residue.</summary>
-    RemoveIncompleteInstallation,
     /// <summary>Preserve the committed installation and remove exact Setup residue.</summary>
     ConvergeReady,
+    /// <summary>Delete only the exact incomplete transaction state and residue.</summary>
+    RemoveIncompleteInstallation,
 }
 
 /// <summary>Stable issue from exact candidate, inventory, and launcher-state observation.</summary>

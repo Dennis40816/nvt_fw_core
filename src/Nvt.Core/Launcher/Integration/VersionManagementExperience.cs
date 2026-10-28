@@ -4,7 +4,6 @@ using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Coordination;
 using Nvt.Core.Launcher.Persistence;
-using Nvt.Core.Launcher.Repository;
 
 namespace Nvt.Core.Launcher.Integration;
 
@@ -34,15 +33,12 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
     /// <param name="descriptor">Product identity and runtime names.</param>
     /// <param name="limits">Mandatory positive normalized admission ceilings.</param>
     /// <param name="retention">Product retention advice.</param>
-    /// <param name="packagePolicy">Mandatory strict package policy. The experience only checks that it is supplied and does not call it; the caller gives the same instance to its repository.</param>
-    /// <param name="admissionCodec">Mandatory strict admission codec. The experience only checks that it is supplied and does not call it; the caller gives the same instance to its repository.</param>
     /// <param name="sourceRegistry">Optional fixed-registry port.</param>
     public VersionManagementExperience(
         ManagedAppVersion currentAppVersion, string managedRoot, string statePath,
         IVersionManagerStateStore stateStore, IUpdateCatalogSource catalogSource,
         IManagedVersionRepository repository, ILauncherMutationFence launcherFence,
         ProductDescriptor descriptor, VersionManagementLimits limits, IManagedRetentionPolicy retention,
-        IProductPackagePolicy packagePolicy, IManagedVersionAdmissionCodec admissionCodec,
         IUpdateSourceRegistry? sourceRegistry = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(managedRoot);
@@ -54,8 +50,6 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(limits);
         ArgumentNullException.ThrowIfNull(retention);
-        ArgumentNullException.ThrowIfNull(packagePolicy);
-        ArgumentNullException.ThrowIfNull(admissionCodec);
         _services = new(currentAppVersion, stateStore, catalogSource, repository,
             sourceRegistry, descriptor, limits);
         _coordinator = new(root, statePath, stateStore, repository, launcherFence,

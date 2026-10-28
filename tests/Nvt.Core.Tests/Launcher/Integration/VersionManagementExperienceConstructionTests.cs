@@ -3,8 +3,6 @@
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Integration;
 using Nvt.Core.Tests.Launcher.Coordination;
-using Nvt.Core.Tests.Launcher.Repository;
-using Nvt.Core.Tests.Launcher.Verification;
 using Xunit;
 using static Nvt.Core.Tests.Launcher.Integration.VersionManagementExperienceTestSupport;
 
@@ -22,8 +20,6 @@ public sealed class VersionManagementExperienceConstructionTests
     [InlineData("descriptor")]
     [InlineData("limits")]
     [InlineData("retention")]
-    [InlineData("packagePolicy")]
-    [InlineData("admissionCodec")]
     public void MissingMandatoryAdapterIsRejected(string parameter)
     {
         ManagedAppVersion version = ManagedAppVersion.Parse("0.10.5");
@@ -38,9 +34,7 @@ public sealed class VersionManagementExperienceConstructionTests
                 parameter == "launcherFence" ? null! : new ManagedMutationTestSupport.ClearLauncherFence(),
                 parameter == "descriptor" ? null! : IntegrationTestData.Descriptor(),
                 parameter == "limits" ? null! : IntegrationTestData.Limits,
-                parameter == "retention" ? null! : new ManagedMutationTestSupport.RetentionPolicy(),
-                parameter == "packagePolicy" ? null! : new FixturePolicy(new("Fixture", "synthetic-runtime", version, [], null)),
-                parameter == "admissionCodec" ? null! : new AdmissionCodec());
+                parameter == "retention" ? null! : new ManagedMutationTestSupport.RetentionPolicy());
         });
 
         Assert.Equal(parameter, exception.ParamName);

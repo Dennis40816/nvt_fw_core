@@ -531,6 +531,8 @@ The physical deletion order is unchanged:
 5. Only verified-empty exact staging, then the marker last.
 6. Action-specific postconditions and exact marker absence are checked again after marker deletion.
 
+`ManagedSetupRecoveryAction` orders `ConvergeReady` as 0 and `RemoveIncompleteInstallation` as 1, so `default(ManagedSetupRecoveryAction)` is the harmless action and never deletes. `ManagedSetupRecoveryActionTests` pins both values.
+
 `ConvergeReady` preserves both durable states and the complete root, removing only exact staging and marker residue. Cancellation before mutation is `Cancelled`; cancellation after an irreversible deletion remains recovery-owned. The final marker boundary deliberately completes its uncancelled terminal observation. Unprovable staging and torn markers remain non-actionable with zero mutation. No replacement marker is written when external residue reappears after marker removal.
 
 ### Limits and Files reuse
@@ -600,7 +602,7 @@ Incoming Core source head: `d999cd213c122cc7325e3d58f1d3b1011b5607a8`. On Window
 
 `Nvt.Core.Launcher.Integration.VersionManagementExperience` composes the existing `ManagedMutationCoordinator`; it adds no second mutation lock, semaphore or writer owner. `_generationSync` protects discovery/publication only. NFC keeps strict schemas, locators, release authority, signing, three-version retention and UI/MessageCenter policy. Mandatory adapters supply admitted facts; Core rechecks mechanical identity and limits. There is no `LauncherEngine`, plugin or signing framework.
 
-The six partials, with current physical line counts, are `VersionManagementExperience.cs` (167), `.Check.cs` (211), `.Registry.cs` (308), `.Registry.Admission.cs` (321), `.FreshInstallation.cs` (165) and `.Publication.cs` (277). Other Integration owners are `VersionManagementContracts.cs`, `VersionManagementLimits.cs`, `UpdateCatalogSource.cs`, `UpdateCatalogSnapshot.cs`, `UpdateSourceRegistryModels.cs`, `UpdateSourceRegistryStatus.cs`, `VersionEnvironmentSelfTest.cs`, `VersionDiscoverySession.cs`, `ReplicatedUpdateSourceRegistry.cs`, `ReplicaReadSlot.cs`, `ExperiencePackageSelection.cs` and `ManagedInstallationLayout.cs`.
+The six partials, with current physical line counts, are `VersionManagementExperience.cs` (161), `.Check.cs` (211), `.Registry.cs` (308), `.Registry.Admission.cs` (321), `.FreshInstallation.cs` (165) and `.Publication.cs` (277). Other Integration owners are `VersionManagementContracts.cs`, `VersionManagementLimits.cs`, `UpdateCatalogSource.cs`, `UpdateCatalogSnapshot.cs`, `UpdateSourceRegistryModels.cs`, `UpdateSourceRegistryStatus.cs`, `VersionEnvironmentSelfTest.cs`, `VersionDiscoverySession.cs`, `ReplicatedUpdateSourceRegistry.cs`, `ReplicaReadSlot.cs`, `ExperiencePackageSelection.cs` and `ManagedInstallationLayout.cs`.
 
 First-install inspection tries Latest, then Available in declared order, never Deprecated; success requires a supported managed launcher and the newest package at least as new as the running version. Reverification matches registry/publication, source role/paths and the complete captured candidate identity without repeating that running-version threshold. These queries neither acquire a writer nor mutate discovery or durable state.
 
@@ -622,10 +624,10 @@ public VersionManagementExperience(
     ProductDescriptor descriptor,
     VersionManagementLimits limits,
     IManagedRetentionPolicy retention,
-    IProductPackagePolicy packagePolicy,
-    IManagedVersionAdmissionCodec admissionCodec,
     IUpdateSourceRegistry? sourceRegistry = null)
 ```
+
+The repository passed in carries the product package policy and admission codec; the experience takes neither.
 
 `VersionManagementLimits` has no defaults: all six parameters are mandatory and reject zero/negative values. NFC supplies `maximumCatalogEntries = 128`, `maximumPackageBytes = 134,217,728`, `maximumReleaseNoteBytes = 65,536` (UTF-8), `maximumRelativePathCharacters = 512`, `maximumRegistryEntries = 16` and `maximumRegistryIdCharacters = 128`; configured relative paths cannot exceed the shared 512-character mechanism bound. Package identity remains `version|path|invariant-size|package-hash|manifest-hash`.
 
@@ -720,7 +722,7 @@ New Core tests are counted as test methods, with theory rows excluded from these
 - Observations only, unchanged: a replica result `(null, None)` has `Issue == None` without a snapshot; `Dispose()` does not wait for a running transaction; the managed-layout root has no trailing separator.
 - Fresh-install queries call the registry port directly, unlike Check/self-test's descriptor/limit readmission. Consumer registry descriptor/entry-limit rejection on this path is not established by the current tests; this run changes no predicate.
 - When a delete fails after the policy check (the launcher fallback-owner retirement fails, or the prepare save fails), the result carries the snapshot the operation observed, which holds the first inventory read. Frozen returned the second read in the result. The two differ only if the payload changes between the two reads; no test covers it.
-- `packagePolicy` and `admissionCodec` are mandatory constructor ports that the experience only checks for null and does not call. The caller is expected to give the same instances to the repository it passes; nothing in Core checks that they match.
+- Public API shapes frozen as they are, because later changes are additive: `FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` accepts the public `IManagedDistributionPayloadCapture` but requires the Core-internal `IManagedDistributionPayloadContent`, and a capture from outside Core returns `SourceChanged`; the default `IManagedFirstInstallationRootMaterializer.MaterializeAsync` overload with `progress` calls the overload without it and drops the progress, so an implementation that reports progress overrides it; `IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` keeps the token before the optional flag, as in the frozen NFC shape, and an overload with the token last would not break callers.
 
 ### Failure matrix
 
