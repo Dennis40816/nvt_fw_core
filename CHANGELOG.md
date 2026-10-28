@@ -12,6 +12,8 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.5 - 2026-10-28
 
+Tag `core-v0.9.5` on commit `0eca3f8713ff64a1d3fe5438f911e329d3c97390` (#261).
+
 Launcher steps L09 to L12, moved from NFC, so that NFC and NFH can pin them before 1.0.0, and the flatter LogConsole header (#251). This version comes before the 1.0.0 API freeze.
 Unlike earlier versions, it does not move the new public API to `PublicAPI.Shipped.txt`. The 673 entries stay in `src/Nvt.Core/PublicAPI.Unshipped.txt`, so a later 0.9.x version can still change their shape.
 `PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
