@@ -47,7 +47,7 @@ public sealed partial class ManagedMutationCoordinator
             : managedRootMismatch ? VersionManagerStateLoadIssue.ManagedRootMismatch
             : loaded.Issue == VersionManagerStateLoadIssue.Missing ? VersionManagerStateLoadIssue.None : loaded.Issue,
             inventory.Issue);
-        return _current;
+        return ObserveReloadedSnapshot(_current);
     }
 
     private ManagedMutationSnapshot PublishStateUnavailable()

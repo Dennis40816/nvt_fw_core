@@ -70,7 +70,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
@@ -290,7 +290,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 

@@ -7,6 +7,24 @@ namespace Nvt.Core.Launcher.Coordination;
 
 public sealed partial class ManagedMutationCoordinator
 {
+    // Invoked only under _mutation, before releasing it. Integration owns the projection.
+    internal Action<ManagedMutationSnapshot, bool>? ObserveExperienceSnapshot { get; set; }
+
+    private ManagedMutationSnapshot ObserveReloadedSnapshot(ManagedMutationSnapshot snapshot)
+    {
+        ObserveExperienceSnapshot?.Invoke(snapshot, true);
+        return snapshot;
+    }
+
+    private void PublishAndReleaseMutation()
+    {
+        try
+        {
+            if (_current is { } snapshot) { ObserveExperienceSnapshot?.Invoke(snapshot, false); }
+        }
+        finally { _ = _mutation.Release(); }
+    }
+
     internal Action? SupersedeRunningCheck
     {
         get => Volatile.Read(ref _supersedeRunningCheck);

@@ -603,3 +603,71 @@ static Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.Create(st
 static Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!>! versions) -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot!
 static Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.Create(string! catalogPath, Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus status) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!
 static Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, string! registryId, long registryRevision, System.DateTimeOffset publishedAtUtc, Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion! catalogPublication, string! contentDigest, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!>! entries) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot!
+Nvt.Core.Launcher.Integration.IVersionManagementExperience
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.AcknowledgeRetentionReviewAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CancelPendingActivationAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CheckAsync(bool isAutomatic, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CommitUpdateSourceAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.DeleteAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, bool rollbackLossConfirmed, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionDeleteOperationResult!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InitializeAfterManagedReadyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InitializeAsync(System.Threading.CancellationToken cancellationToken, bool isReadOnly = false) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InstallAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionInstallOperationResult!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.PrepareActivationAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerState!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.ResumeRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.RunEnvironmentSelfTestAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult!>
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Decision.get -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision!
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Decision.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.OperationIssue.get -> Nvt.Core.Launcher.Coordination.VersionDeleteOperationIssue
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.OperationIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.RepositoryIssue.get -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue?
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.RepositoryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Snapshot.get -> Nvt.Core.Launcher.Integration.VersionManagementSnapshot!
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.VersionDeleteOperationResult(Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision! Decision, Nvt.Core.Launcher.Coordination.VersionDeleteOperationIssue OperationIssue, Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue? RepositoryIssue, Nvt.Core.Launcher.Integration.VersionManagementSnapshot! Snapshot) -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Install.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult!
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Install.init -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Snapshot.get -> Nvt.Core.Launcher.Integration.VersionManagementSnapshot!
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.VersionInstallOperationResult(Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult! Install, Nvt.Core.Launcher.Integration.VersionManagementSnapshot! Snapshot) -> void
+Nvt.Core.Launcher.Integration.VersionManagementExperience
+Nvt.Core.Launcher.Integration.VersionManagementExperience.AcknowledgeRetentionReviewAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CancelPendingActivationAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CheckAsync(bool isAutomatic, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CommitUpdateSourceAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.DeleteAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, bool rollbackLossConfirmed, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionDeleteOperationResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.Dispose() -> void
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InitializeAfterManagedReadyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InitializeAsync(System.Threading.CancellationToken cancellationToken, bool isReadOnly = false) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InstallAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionInstallOperationResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.PrepareActivationAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerState!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.ResumeRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.RunEnvironmentSelfTestAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.VersionManagementExperience(Nvt.Core.Launcher.Contracts.ManagedAppVersion currentAppVersion, string! managedRoot, string! statePath, Nvt.Core.Launcher.Persistence.IVersionManagerStateStore! stateStore, Nvt.Core.Launcher.Integration.IUpdateCatalogSource! catalogSource, Nvt.Core.Launcher.Activation.IManagedVersionRepository! repository, Nvt.Core.Launcher.Activation.ILauncherMutationFence! launcherFence, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, Nvt.Core.Launcher.Coordination.IManagedRetentionPolicy! retention, Nvt.Core.Launcher.Contracts.IProductPackagePolicy! packagePolicy, Nvt.Core.Launcher.Repository.IManagedVersionAdmissionCodec! admissionCodec, Nvt.Core.Launcher.Integration.IUpdateSourceRegistry? sourceRegistry = null) -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Catalog.get -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Catalog.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.CatalogIssue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.CatalogIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Generation.get -> long
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Generation.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Inventory.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventory!
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Inventory.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.InventoryIssue.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.InventoryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryStatus.get -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryStatus.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.ShouldPromptForUpdate.get -> bool
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.ShouldPromptForUpdate.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.SourceStatus.get -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.SourceStatus.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.State.get -> Nvt.Core.Launcher.Activation.VersionManagerState?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.State.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.StateIssue.get -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.StateIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.get -> Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VersionManagementSnapshot(Nvt.Core.Launcher.Activation.VersionManagerState? State, Nvt.Core.Launcher.Activation.ManagedVersionInventory! Inventory, Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot? Catalog, Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate? VerifiedCandidate, Nvt.Core.Launcher.Integration.VersionSourceStatus SourceStatus, Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue? CatalogIssue, long Generation, bool ShouldPromptForUpdate, Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue StateIssue, Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue InventoryIssue = Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue.None, Nvt.Core.Launcher.Integration.VersionRegistryStatus RegistryStatus = Nvt.Core.Launcher.Integration.VersionRegistryStatus.NotConfigured, Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue RegistryIssue = Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.None) -> void
