@@ -70,7 +70,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
@@ -173,7 +173,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
                     decision,
                     VersionDeleteOperationIssue.PolicyBlocked,
                     RepositoryIssue: null,
-                    current with { Inventory = inventory });
+                    PublishObservedInventory(current, inventory));
             }
             if (decision.RequiresRollbackLossWarning && !rollbackLossConfirmed)
             {
@@ -181,7 +181,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
                     decision,
                     VersionDeleteOperationIssue.RollbackConfirmationRequired,
                     RepositoryIssue: null,
-                    current with { Inventory = inventory });
+                    PublishObservedInventory(current, inventory));
             }
             ManagedVersionAdmission exactAdmission = admission ??
                 throw new InvalidOperationException("Delete target admission is absent.");
@@ -290,7 +290,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 

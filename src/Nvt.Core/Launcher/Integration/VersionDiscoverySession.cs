@@ -4,7 +4,7 @@ using Nvt.Core.Launcher.Contracts;
 
 namespace Nvt.Core.Launcher.Integration;
 
-// Guard: the owning experience's _checkSync lock protects _state.
+// Guard: the owning experience calls this session under its _generationSync lock, which protects _state.
 internal sealed class VersionDiscoverySession
 {
     private SessionState _state = new(0, false);

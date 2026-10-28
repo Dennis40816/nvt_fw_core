@@ -58,10 +58,13 @@ internal static class IntegrationTestData
     {
         // Guard: Interlocked/Volatile protects the count; Started publishes the captured token.
         private int _loadCount;
+        // Guard: the test reads the captured token after awaiting Started.Task.
         private CancellationToken _receivedToken;
         internal int LoadCount => Volatile.Read(ref _loadCount);
         internal CancellationToken ReceivedToken => _receivedToken;
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Guard: TaskCompletionSource synchronizes the adapter and test continuations.
         internal TaskCompletionSource<UpdateSourceRegistryLoadResult> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -85,7 +88,10 @@ internal static class IntegrationTestData
 
     internal static async Task<UpdateSourceRegistryLoadResult> LoadUntilRecoveredAsync(IUpdateSourceRegistry registry)
     {
-        while (true)
+        // The slot's Task.Run completion/retirement has no exposed signal; adapter completion
+        // alone precedes it. Bound scheduler retries as well as the callers' watchdog/token.
+        // Advancing the manual timeout cannot signal completion of that physical task.
+        for (int attempt = 0; attempt < 65_536; attempt++)
         {
             TestContext.Current.CancellationToken.ThrowIfCancellationRequested();
             UpdateSourceRegistryLoadResult outcome = await registry.LoadAsync(TestContext.Current.CancellationToken);
@@ -95,5 +101,6 @@ internal static class IntegrationTestData
             }
             await Task.Yield();
         }
+        throw new TimeoutException("The abandoned replica read did not retire within the bounded scheduling attempts.");
     }
 }

@@ -180,7 +180,7 @@ public sealed partial class ManagedMutationCoordinator
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 }
