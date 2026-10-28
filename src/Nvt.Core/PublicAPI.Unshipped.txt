@@ -253,3 +253,423 @@ static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultA
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultCleanupObservationBudget -> System.TimeSpan
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.DefaultCompletionOperationCutoff -> System.TimeSpan
 static readonly Nvt.Core.Launcher.Setup.ManagedLauncherEntryCoordinator.ProgressDelay -> System.TimeSpan
+
+Nvt.Core.Launcher.Recovery.EmbeddedManagedDistributionPayloadSource
+Nvt.Core.Launcher.Recovery.EmbeddedManagedDistributionPayloadSource.AdmitEntryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedDistributionPayloadEntryAdmissionResult!>
+Nvt.Core.Launcher.Recovery.EmbeddedManagedDistributionPayloadSource.CaptureExactAsync(Nvt.Core.Launcher.Setup.ManagedDistributionPayloadIdentity! expected, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedDistributionPayloadCaptureResult!>
+Nvt.Core.Launcher.Recovery.EmbeddedManagedDistributionPayloadSource.EmbeddedManagedDistributionPayloadSource(string! launcherPath, System.Func<System.IO.Stream?>! openDescriptor, System.Func<System.IO.Stream?>! openBootstrap, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, Nvt.Core.Launcher.Recovery.IManagedSetupPayloadDescriptorReader! descriptorReader, int maximumDescriptorBytes, long maximumExecutableBytes) -> void
+Nvt.Core.Launcher.Recovery.EmbeddedManagedDistributionPayloadSource.InspectAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedDistributionPayloadInspectionResult!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedFirstInstallationRootMaterializer
+Nvt.Core.Launcher.Recovery.FileSystemManagedFirstInstallationRootMaterializer.AdmitDestinationAsync(string! managedRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedFirstInstallationMaterializationIssue>
+Nvt.Core.Launcher.Recovery.FileSystemManagedFirstInstallationRootMaterializer.FileSystemManagedFirstInstallationRootMaterializer(Nvt.Core.Launcher.Repository.FileSystemManagedVersionRepository! repository, Nvt.Core.Launcher.Recovery.ManagedSetupLayout! layout, System.Func<string!, Nvt.Core.Launcher.Persistence.IVersionManagerStateStore!>! seedStoreFactory, Nvt.Core.Launcher.Recovery.IManagedSetupMarkerCodec! markerCodec, int maximumMarkerBytes, int maximumDescriptorBytes, long maximumExecutableBytes, System.Action<System.Exception!>? observerDiagnostics = null) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync(string! managedRoot, string! statePathIdentity, Nvt.Core.Launcher.Setup.IManagedDistributionPayloadCapture! payload, Nvt.Core.Launcher.Setup.FreshInstallationCandidate! candidate, Nvt.Core.Launcher.Activation.VersionManagerState! seed, System.IProgress<Nvt.Core.Launcher.Setup.ManagedFirstInstallationProgress>? progress, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedFirstInstallationMaterializationResult!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync(string! managedRoot, string! statePathIdentity, Nvt.Core.Launcher.Setup.IManagedDistributionPayloadCapture! payload, Nvt.Core.Launcher.Setup.FreshInstallationCandidate! candidate, Nvt.Core.Launcher.Activation.VersionManagerState! seed, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedFirstInstallationMaterializationResult!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedInstallationRootProbe
+Nvt.Core.Launcher.Recovery.FileSystemManagedInstallationRootProbe.FileSystemManagedInstallationRootProbe() -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedInstallationRootProbe.ObserveAsync(string! managedRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.ManagedInstallationRootObservation!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedProcessLifetimeProbe
+Nvt.Core.Launcher.Recovery.FileSystemManagedProcessLifetimeProbe.FileSystemManagedProcessLifetimeProbe(Nvt.Core.Launcher.Contracts.LauncherProtocolNames! protocolNames, string! jobNamePrefix) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedProcessLifetimeProbe.ObserveAsync(string! statePath, Nvt.Core.Launcher.Coordination.ManagedProcessLifetimeKind kind, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Coordination.ManagedProcessLifetimeStatus>
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryProbe
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryProbe.FileSystemManagedSetupRecoveryProbe(Nvt.Core.Launcher.Recovery.IManagedSetupMarkerCodec! markerCodec, int maximumMarkerBytes, int maximumDescriptorBytes) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryProbe.ObserveAsync(string! managedRoot, string! statePathIdentity, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFact!>
+Nvt.Core.Launcher.Recovery.IManagedProcessLifetimeProbe
+Nvt.Core.Launcher.Recovery.IManagedProcessLifetimeProbe.ObserveAsync(string! statePath, Nvt.Core.Launcher.Coordination.ManagedProcessLifetimeKind kind, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Coordination.ManagedProcessLifetimeStatus>
+Nvt.Core.Launcher.Recovery.IManagedSetupMarkerCodec
+Nvt.Core.Launcher.Recovery.IManagedSetupMarkerCodec.Decode(System.ReadOnlyMemory<byte> exactBytes) -> Nvt.Core.Launcher.Recovery.ManagedSetupMarker?
+Nvt.Core.Launcher.Recovery.IManagedSetupMarkerCodec.Encode(Nvt.Core.Launcher.Recovery.ManagedSetupMarker! marker) -> System.ReadOnlyMemory<byte>
+Nvt.Core.Launcher.Recovery.IManagedSetupPayloadDescriptorReader
+Nvt.Core.Launcher.Recovery.IManagedSetupPayloadDescriptorReader.ReadValidated(System.ReadOnlyMemory<byte> exactBytes) -> Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor?
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryEvidenceProbe
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryEvidenceProbe.ObserveAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction! transaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation!>
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryProbe
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryProbe.ObserveAsync(string! managedRoot, string! statePathIdentity, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFact!>
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateReader
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateReader.StatePathIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateStore
+Nvt.Core.Launcher.Recovery.ManagedInstallationRecoveryExperience
+Nvt.Core.Launcher.Recovery.ManagedInstallationRecoveryExperience.DiagnoseAsync(string! managedRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryDiagnosis!>
+Nvt.Core.Launcher.Recovery.ManagedInstallationRecoveryExperience.ManagedInstallationRecoveryExperience(Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateReader! stateReader, Nvt.Core.Launcher.Setup.IManagedInstallationRootProbe! rootProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryProbe! markerProbe, Nvt.Core.Launcher.Recovery.IManagedProcessLifetimeProbe! lifetimeProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryEvidenceProbe! evidenceProbe) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.InstalledFileName.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.InstalledFileName.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.Sha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.Sha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.Size.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.Size.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.SourceCommit.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.SourceCommit.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout.BootstrapFileName.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout.Descriptor.get -> Nvt.Core.Launcher.Contracts.ProductDescriptor!
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout.DistributionLauncherFileName.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout.ManagedSetupLayout(Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, string! distributionLauncherFileName, string! seedFileName) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupLayout.SeedFileName.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Candidate.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Candidate.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.ManagedRootIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.ManagedRootIdentity.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.OwnedPaths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.OwnedPaths.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Payload.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Payload.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Phase.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.Phase.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.StatePathIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.StatePathIdentity.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.TransactionId.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.TransactionId.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.Bootstrap.get -> Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap!
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.Bootstrap.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.LauncherVersion.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.LauncherVersion.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.SourceCommit.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.SourceCommit.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction.ConvergeReady = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction.RemoveIncompleteInstallation = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogDigest.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogDigest.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogLatestVersion.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogLatestVersion.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogPath.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogPath.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogSchemaVersion.get -> int
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.CatalogSchemaVersion.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.EntryIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.EntryIdentity.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackagePath.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackagePath.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackageSha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackageSha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackageSize.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.PackageSize.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryDigest.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryDigest.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryId.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryId.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryRevision.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.RegistryRevision.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.ReleaseManifestSha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.ReleaseManifestSha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.SourceRoot.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.SourceRoot.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.SourceStatus.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.SourceStatus.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.Version.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.Version.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryDiagnosis
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryDiagnosis.Outcome.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryDiagnosis.Plan.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPlan?
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryDiagnosis.Transaction.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction?
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue.Invalid = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue.None = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue.PermissionDenied = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue.SourceChanged = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue.StateUnavailable = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation.Issue.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation.ManagedSetupRecoveryEvidenceObservation(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceIssue issue) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFact
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFact.Kind.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFact.Transaction.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction?
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.Absent = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.AccessDenied = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.Changed = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.Exact = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.IdentityMismatch = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.Malformed = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind.Unavailable = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryFactKind
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome.ActionAvailable = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome.Busy = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome.HealthUnavailable = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome.ManualInterventionRequired = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome.NoRecoveryNeeded = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapFileName.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapFileName.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapSha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapSha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapSize.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.BootstrapSize.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.DescriptorSha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.DescriptorSha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.DescriptorSize.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.DescriptorSize.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.LauncherSha256.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.LauncherSha256.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.LauncherSize.get -> long
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.LauncherSize.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase.BootstrapLaunchRecorded = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase.RootPromoted = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase.Staging = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPlan
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPlan.Action.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.Candidate.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.ManagedRootIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.OwnedPaths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.Payload.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.Phase.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPhase
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.StatePathIdentity.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction.TransactionId.get -> string!
+Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap.ManagedSetupEmbeddedBootstrap(string! InstalledFileName, long Size, string! Sha256, string! SourceCommit) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupMarker.ManagedSetupMarker(string! TransactionId, string! ManagedRootIdentity, string! StatePathIdentity, Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity! Payload, Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity! Candidate, System.Collections.Generic.IReadOnlyList<string!>! OwnedPaths, string! Phase) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.ManagedSetupPayloadDescriptor(string! LauncherVersion, string! SourceCommit, Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap! Bootstrap) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.ManagedSetupRecoveryCandidateIdentity(long RegistryRevision, string! RegistryDigest, int CatalogSchemaVersion, string! CatalogLatestVersion, string! CatalogDigest, string! CatalogPath, string! RegistryId, string! SourceRoot, string! SourceStatus, string! Version, string! PackagePath, long PackageSize, string! PackageSha256, string! ReleaseManifestSha256, string! EntryIdentity) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.ManagedSetupRecoveryPayloadIdentity(long LauncherSize, string! LauncherSha256, long DescriptorSize, string! DescriptorSha256, string! BootstrapFileName, long BootstrapSize, string! BootstrapSha256) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.FileSystemManagedSetupRecoveryExecution(Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateReader! applicationStateReader, string! launcherStatePathSuffix, Nvt.Core.Launcher.Activation.ILauncherBootstrapStateStore! launcherStateStore, Nvt.Core.Launcher.Recovery.ManagedSetupLayout! layout, System.Func<string!, Nvt.Core.Launcher.Persistence.IVersionManagerStateStore!>! seedStoreFactory, Nvt.Core.Launcher.Contracts.IProductPackagePolicy! productPolicy, Nvt.Core.Launcher.Contracts.PackageVerificationLimits! limits, Nvt.Core.Launcher.Repository.IManagedVersionAdmissionCodec! admissionCodec) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.ObserveAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction! transaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest! request, Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult! writerLease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome>
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest! request, Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult! writerLease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome>
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator.ManagedSetupRecoveryExecutionCoordinator(Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateStore! stateStore, Nvt.Core.Launcher.Setup.IManagedInstallationRootProbe! rootProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryProbe! markerProbe, Nvt.Core.Launcher.Recovery.IManagedProcessLifetimeProbe! lifetimeProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryEvidenceProbe! evidenceProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort! executionPort) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPlan! plan, Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction? confirmedAction, System.TimeSpan writerLeaseTimeout, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult!>
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest.Action.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.ManagedSetupRecoveryExecutionResult(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome Outcome) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.Outcome.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.Outcome.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Completed = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.ConfirmationRequired = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Busy = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.LifetimeActive = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.HealthUnavailable = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.StateUnavailable = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.PermissionDenied = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.SourceChanged = 7 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.RecoveryRequired = 8 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.ManualInterventionRequired = 9 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Cancelled = 10 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.Completed = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.HealthUnavailable = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.StateUnavailable = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.PermissionDenied = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.SourceChanged = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.RecoveryRequired = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.ManualInterventionRequired = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.Cancelled = 7 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource.LoadAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult!>
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource.LoadCatalogAsync(string! catalogPath, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult!>
+Nvt.Core.Launcher.Integration.IUpdateSourceRegistry
+Nvt.Core.Launcher.Integration.IUpdateSourceRegistry.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult!>
+Nvt.Core.Launcher.Integration.ManagedInstallationLayout
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult!>
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry.ReplicatedUpdateSourceRegistry(System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.IUpdateSourceRegistry!>! replicas) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.SchemaVersion.get -> int
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.Sha256.get -> string!
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.UpdateCatalogContentIdentity(int schemaVersion, string! sha256) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.CatalogTooLarge = 5 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.InvalidManifest = 6 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.PermissionDenied = 3 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.SourceMissing = 1 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.SourceUnavailable = 2 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.UnsafeSource = 4 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.UnstableRead = 7 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.ContentIdentity.get -> Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity?
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.ContentIdentity.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Issue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Snapshot.get -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot?
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.UpdateCatalogLoadResult(Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot? Snapshot, Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue Issue, Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity? ContentIdentity = null) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.CatalogSchemaVersion.get -> int
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.CatalogSha256.get -> string!
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.LatestVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot
+Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot.Versions.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!>!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.CatalogPath.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.SourceRoot.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.Status.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Available = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Deprecated = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Latest = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.AuthenticationRequired = 4 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.CandidatesExhausted = 9 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.CurrentSourceDeprecated = 13 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Invalid = 6 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.NotConfigured = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.PermissionDenied = 3 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RegistryChanged = 10 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RevisionConflict = 8 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RevisionRollback = 7 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.StateUnavailable = 11 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Superseded = 12 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.TimedOut = 5 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Unavailable = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.AuthenticationRequired = 5 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.InvalidManifest = 9 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.NotConfigured = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.PermissionDenied = 4 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryMissing = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryTimedOut = 6 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryTooLarge = 8 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryUnavailable = 3 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.ReplicaConflict = 11 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.UnsafeLocator = 7 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.UnstableRead = 10 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Issue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Replicas.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Replicas.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Snapshot.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.UpdateSourceRegistryLoadResult(Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot? Snapshot, Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue Issue, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>? Replicas = null) -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.IsSelected.get -> bool
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.IsSelected.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Issue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Position.get -> int
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Position.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.RegistryRevision.get -> long?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.RegistryRevision.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.UpdateSourceRegistryReplicaObservation(int Position, Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue Issue, long? RegistryRevision, bool IsSelected) -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.CatalogPublication.get -> Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.ContentDigest.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.Entries.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!>!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.PublishedAtUtc.get -> System.DateTimeOffset
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.RegistryId.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.RegistryRevision.get -> long
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.CatalogIssue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.IsVerified.get -> bool
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.NewestVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.PackageIssue.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.SourceRoot.get -> string!
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.Status.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.AcceptedRegistryRevision.get -> long?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.Attempts.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt!>!
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.AuthorityIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.RegistryIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.Replicas.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>!
+Nvt.Core.Launcher.Integration.VersionManagementLimits
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumCatalogEntries.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumPackageBytes.get -> long
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRegistryEntries.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRegistryIdCharacters.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRelativePathCharacters.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumReleaseNoteBytes.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.VersionManagementLimits(int maximumCatalogEntries, long maximumPackageBytes, int maximumReleaseNoteBytes, int maximumRelativePathCharacters, int maximumRegistryEntries, int maximumRegistryIdCharacters) -> void
+Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.DeprecatedRetained = 7 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Exhausted = 5 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.FallbackSelected = 3 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.LatestSelected = 2 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.ManualPin = 1 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.NotConfigured = 0 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Rejected = 6 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Unavailable = 4 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Checking = 1 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Connected = 2 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Invalid = 5 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.NotConfigured = 0 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Offline = 3 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.PermissionDenied = 4 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+static Nvt.Core.Launcher.Integration.ManagedInstallationLayout.ResolveManagedRoot(string! applicationBaseDirectory) -> string!
+static Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.Create(string! latestVersion, int catalogSchemaVersion, string! catalogSha256) -> Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion!
+static Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!>! versions) -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot!
+static Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.Create(string! catalogPath, Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus status) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!
+static Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, string! registryId, long registryRevision, System.DateTimeOffset publishedAtUtc, Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion! catalogPublication, string! contentDigest, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!>! entries) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot!
+Nvt.Core.Launcher.Integration.IVersionManagementExperience
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.AcknowledgeRetentionReviewAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CancelPendingActivationAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CheckAsync(bool isAutomatic, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.CommitUpdateSourceAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.DeleteAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, bool rollbackLossConfirmed, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionDeleteOperationResult!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InitializeAfterManagedReadyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InitializeAsync(System.Threading.CancellationToken cancellationToken, bool isReadOnly = false) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.InstallAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionInstallOperationResult!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.PrepareActivationAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerState!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.ResumeRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.IVersionManagementExperience.RunEnvironmentSelfTestAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult!>
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Decision.get -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision!
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Decision.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.OperationIssue.get -> Nvt.Core.Launcher.Coordination.VersionDeleteOperationIssue
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.OperationIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.RepositoryIssue.get -> Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue?
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.RepositoryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Snapshot.get -> Nvt.Core.Launcher.Integration.VersionManagementSnapshot!
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.VersionDeleteOperationResult.VersionDeleteOperationResult(Nvt.Core.Launcher.Activation.ManagedVersionDeleteDecision! Decision, Nvt.Core.Launcher.Coordination.VersionDeleteOperationIssue OperationIssue, Nvt.Core.Launcher.Activation.ManagedVersionDeleteIssue? RepositoryIssue, Nvt.Core.Launcher.Integration.VersionManagementSnapshot! Snapshot) -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Install.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult!
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Install.init -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Snapshot.get -> Nvt.Core.Launcher.Integration.VersionManagementSnapshot!
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.VersionInstallOperationResult.VersionInstallOperationResult(Nvt.Core.Launcher.Contracts.ManagedVersionInstallResult! Install, Nvt.Core.Launcher.Integration.VersionManagementSnapshot! Snapshot) -> void
+Nvt.Core.Launcher.Integration.VersionManagementExperience
+Nvt.Core.Launcher.Integration.VersionManagementExperience.AcknowledgeRetentionReviewAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CancelPendingActivationAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CheckAsync(bool isAutomatic, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.CommitUpdateSourceAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.DeleteAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, bool rollbackLossConfirmed, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionDeleteOperationResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.Dispose() -> void
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InitializeAfterManagedReadyAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InitializeAsync(System.Threading.CancellationToken cancellationToken, bool isReadOnly = false) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InstallAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionInstallOperationResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.InspectFreshInstallationAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.FreshInstallationCandidateResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.PrepareActivationAsync(Nvt.Core.Launcher.Contracts.ManagedAppVersion version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Activation.VersionManagerState!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.ResumeRegistryAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionManagementSnapshot!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.ReverifyFreshInstallationAsync(Nvt.Core.Launcher.Setup.FreshInstallationCandidate! expected, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Setup.FreshInstallationCandidateResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.RunEnvironmentSelfTestAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult!>
+Nvt.Core.Launcher.Integration.VersionManagementExperience.VersionManagementExperience(Nvt.Core.Launcher.Contracts.ManagedAppVersion currentAppVersion, string! managedRoot, string! statePath, Nvt.Core.Launcher.Persistence.IVersionManagerStateStore! stateStore, Nvt.Core.Launcher.Integration.IUpdateCatalogSource! catalogSource, Nvt.Core.Launcher.Activation.IManagedVersionRepository! repository, Nvt.Core.Launcher.Activation.ILauncherMutationFence! launcherFence, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, Nvt.Core.Launcher.Coordination.IManagedRetentionPolicy! retention, Nvt.Core.Launcher.Integration.IUpdateSourceRegistry? sourceRegistry = null) -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Catalog.get -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Catalog.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.CatalogIssue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.CatalogIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Generation.get -> long
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Generation.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Inventory.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventory!
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.Inventory.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.InventoryIssue.get -> Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.InventoryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryStatus.get -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.RegistryStatus.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.ShouldPromptForUpdate.get -> bool
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.ShouldPromptForUpdate.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.SourceStatus.get -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.SourceStatus.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.State.get -> Nvt.Core.Launcher.Activation.VersionManagerState?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.State.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.StateIssue.get -> Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.StateIssue.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.get -> Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate?
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.init -> void
+Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VersionManagementSnapshot(Nvt.Core.Launcher.Activation.VersionManagerState? State, Nvt.Core.Launcher.Activation.ManagedVersionInventory! Inventory, Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot? Catalog, Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate? VerifiedCandidate, Nvt.Core.Launcher.Integration.VersionSourceStatus SourceStatus, Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue? CatalogIssue, long Generation, bool ShouldPromptForUpdate, Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue StateIssue, Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue InventoryIssue = Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue.None, Nvt.Core.Launcher.Integration.VersionRegistryStatus RegistryStatus = Nvt.Core.Launcher.Integration.VersionRegistryStatus.NotConfigured, Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue RegistryIssue = Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.None) -> void

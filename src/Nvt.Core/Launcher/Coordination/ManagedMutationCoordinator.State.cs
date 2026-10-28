@@ -24,6 +24,7 @@ public sealed partial class ManagedMutationCoordinator
     private async ValueTask<ManagedMutationSnapshot> ReloadDurableCurrentWithoutLockAsync(
         CancellationToken cancellationToken, bool recoverPendingMutation = true)
     {
+        object? context = CaptureExperienceReload?.Invoke();
         VersionManagerStateLoadResult loaded = await _stateStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         bool managedRootMismatch = loaded.IsSuccess && !loaded.State!.IsBoundToManagedRoot(_managedRoot);
         VersionManagerState? state = loaded.IsSuccess && !managedRootMismatch ? loaded.State
@@ -47,21 +48,21 @@ public sealed partial class ManagedMutationCoordinator
             : managedRootMismatch ? VersionManagerStateLoadIssue.ManagedRootMismatch
             : loaded.Issue == VersionManagerStateLoadIssue.Missing ? VersionManagerStateLoadIssue.None : loaded.Issue,
             inventory.Issue);
-        return _current;
+        return ObserveReloadedSnapshot(_current, context);
     }
 
     private ManagedMutationSnapshot PublishStateUnavailable()
     {
         _current = new(_current?.State, ManagedVersionInventory.Create([]),
             VersionManagerStateLoadIssue.Unavailable, ManagedVersionInventoryReadIssue.Unavailable);
-        return _current;
+        return PublishObservedSnapshot(_current);
     }
 
     private ManagedMutationSnapshot PublishInventoryUnavailable(VersionManagerState state)
     {
         _current = new(state, ManagedVersionInventory.Create([]),
             _current?.StateIssue ?? VersionManagerStateLoadIssue.None, ManagedVersionInventoryReadIssue.Unavailable);
-        return _current;
+        return PublishObservedSnapshot(_current);
     }
 
     private static ManagedMutationSnapshot WithInventory(

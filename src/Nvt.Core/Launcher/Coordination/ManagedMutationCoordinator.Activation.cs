@@ -16,9 +16,7 @@ public sealed partial class ManagedMutationCoordinator
         await _mutation.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using VersionManagerWriteLeaseResult lease = await AcquireWriteLeaseAsync(
-                TimeSpan.Zero,
-                cancellationToken).ConfigureAwait(false);
+            using VersionManagerWriteLeaseResult lease = await AcquireSupersedingWriteLeaseAsync(cancellationToken).ConfigureAwait(false);
             if (!lease.IsAcquired)
             {
                 return PublishStateUnavailable();
@@ -47,7 +45,7 @@ public sealed partial class ManagedMutationCoordinator
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
@@ -60,9 +58,7 @@ public sealed partial class ManagedMutationCoordinator
         await _mutation.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using VersionManagerWriteLeaseResult lease = await AcquireWriteLeaseAsync(
-                TimeSpan.Zero,
-                cancellationToken).ConfigureAwait(false);
+            using VersionManagerWriteLeaseResult lease = await AcquireSupersedingWriteLeaseAsync(cancellationToken).ConfigureAwait(false);
             if (!lease.IsAcquired)
             {
                 throw new InvalidOperationException("Another version-management writer is active.");
@@ -106,7 +102,7 @@ public sealed partial class ManagedMutationCoordinator
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
@@ -142,7 +138,7 @@ public sealed partial class ManagedMutationCoordinator
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 

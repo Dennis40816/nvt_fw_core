@@ -296,6 +296,22 @@ The write tree stores one closed lifecycle phase: `Writing`, `Prepared`, `Promot
 
 Every operation checks its phase before accessing handles or invoking callbacks. A wrong live phase throws `InvalidOperationException` naming the current phase and attempted operation. After disposal, every member except `Dispose` throws `ObjectDisposedException`, including `StagingPath` and both cleanup methods.
 
+### Setup custody
+
+`WindowsSetupPathCustody` is internal. It serves the Launcher first-install setup (see [Launcher](Launcher.md)).
+It holds one writable parent, one staging container and one promotable child.
+All native work uses the stable-custody primitives above.
+It never interprets a Launcher marker.
+
+- `ObserveEntry` reports the status of one direct child of the parent without following links.
+- `CreateMarker` and `CreateStaging` create the marker file and the staging child. `Promote` moves the staging child to its final name and never replaces an existing entry.
+- `ProbeWriteAccess` checks that the parent accepts a new entry, and reports any residue.
+- `ObserveEmptyStagingChild` and `DeleteObservedEmptyStagingChild` work on one direct, empty child of the staging child. The delete call needs the identity from the observation. A changed identity returns `ChangedOrUnsafe` and deletes nothing.
+- `ObserveOwnedStagingDeletion` only observes a deletion that is already pending. It never issues another delete.
+- Each cleanup method closes the handle it opened before it returns. This also holds when the internal status hook for that open throws.
+
+`ManagedSetupCleanupTests` covers the handle release (`ThrowingStatusHookReleasesTheOpenedDirectoryHandle`), the bound of twenty attempts (`StagingCleanupStopsAfterTwentyContendedAttempts`), observation without a second delete (`PendingOwnedDeletionIsObservedAndNotDeletedAgain`) and the changed identity (`ReplacedStagingChildIsRejectedAsChanged`).
+
 ### Custody test mapping
 
 Source filenames below are under `tests/NvtFwCombiner.Infrastructure.Tests/VersionManagement/`; Core Files tests are under `tests/Nvt.Core.Tests/Files/Windows/`.

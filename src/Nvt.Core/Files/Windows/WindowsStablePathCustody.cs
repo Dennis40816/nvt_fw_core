@@ -43,6 +43,19 @@ internal sealed record WindowsStableCustodyResult(
 }
 internal readonly record struct WindowsStableTreeLimits
 {
+    private readonly bool _isRecoverySkeleton;
+
+    // Recovery's fixed empty-tree proofs admit no file and no byte. Product limits
+    // continue to use the positive public-to-Core constructor and validation path.
+    private WindowsStableTreeLimits(int maximumDirectories)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(maximumDirectories);
+        MaximumFiles = 0;
+        MaximumDirectories = maximumDirectories;
+        MaximumBytes = 0;
+        _isRecoverySkeleton = true;
+    }
+
     internal WindowsStableTreeLimits(int maximumFiles, int maximumDirectories, long maximumBytes)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maximumFiles);
@@ -68,6 +81,11 @@ internal readonly record struct WindowsStableTreeLimits
 
     internal void Validate()
     {
+        if (_isRecoverySkeleton)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(MaximumDirectories);
+            return;
+        }
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumFiles);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumDirectories);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaximumBytes);
@@ -82,6 +100,9 @@ internal readonly record struct WindowsStableTreeLimits
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumAdmissionBytes);
         return new(maximumFiles, maximumDirectories, checked(maximumExpandedBytes + maximumAdmissionBytes));
     }
+
+    internal static WindowsStableTreeLimits ForRecoverySkeleton(int maximumDirectories) =>
+        new(maximumDirectories);
 }
 
 internal readonly record struct WindowsStablePathIdentity(

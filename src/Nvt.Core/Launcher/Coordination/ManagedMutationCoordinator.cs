@@ -17,6 +17,8 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
     private readonly IManagedPackageSelection _packages;
     private readonly IManagedRetentionPolicy _retention;
     private readonly SemaphoreSlim _mutation = new(1, 1);
+    // Guard: Volatile.Read/Write publishes the callback; invocation is under _mutation only.
+    private Action? _supersedeRunningCheck;
     private ManagedMutationSnapshot? _current;
     private bool _disposed;
 
@@ -68,7 +70,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
@@ -82,9 +84,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         await _mutation.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            using VersionManagerWriteLeaseResult lease = await AcquireWriteLeaseAsync(
-                TimeSpan.Zero,
-                cancellationToken).ConfigureAwait(false);
+            using VersionManagerWriteLeaseResult lease = await AcquireSupersedingWriteLeaseAsync(cancellationToken).ConfigureAwait(false);
             if (!lease.IsAcquired)
             {
                 ManagedMutationSnapshot unavailable = PublishStateUnavailable();
@@ -173,7 +173,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
                     decision,
                     VersionDeleteOperationIssue.PolicyBlocked,
                     RepositoryIssue: null,
-                    current with { Inventory = inventory });
+                    PublishObservedInventory(current, inventory));
             }
             if (decision.RequiresRollbackLossWarning && !rollbackLossConfirmed)
             {
@@ -181,7 +181,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
                     decision,
                     VersionDeleteOperationIssue.RollbackConfirmationRequired,
                     RepositoryIssue: null,
-                    current with { Inventory = inventory });
+                    PublishObservedInventory(current, inventory));
             }
             ManagedVersionAdmission exactAdmission = admission ??
                 throw new InvalidOperationException("Delete target admission is absent.");
@@ -290,7 +290,7 @@ public sealed partial class ManagedMutationCoordinator : IManagedApplicationInit
         }
         finally
         {
-            _ = _mutation.Release();
+            PublishAndReleaseMutation();
         }
     }
 
