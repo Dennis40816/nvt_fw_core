@@ -12,6 +12,11 @@ using System.Text.Json;
 namespace Nvt.Core.Launcher.Recovery;
 
 /// <summary>Stages one closed first installation and promotes it by one same-volume move.</summary>
+/// <remarks>
+/// The <c>payload</c> must be a capture produced by Core, which implements the Core-internal
+/// <c>IManagedDistributionPayloadContent</c>. Once the root and state-path checks pass, a capture
+/// from outside Core returns <c>ManagedFirstInstallationMaterializationIssue.SourceChanged</c>.
+/// </remarks>
 public sealed partial class FileSystemManagedFirstInstallationRootMaterializer
     : IManagedFirstInstallationRootMaterializer
 {

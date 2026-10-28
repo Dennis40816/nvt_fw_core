@@ -529,6 +529,8 @@ Coordinator 先檢查 plan 與正值 writer timeout，再檢查確認動作，�
 5. 僅刪已驗證為空的精確 staging，最後刪 marker。
 6. Marker 刪除後再次檢查各動作的後置條件與精確 marker 不存在。
 
+`ManagedSetupRecoveryAction` 將 `ConvergeReady` 排為 0、`RemoveIncompleteInstallation` 排為 1，因此 `default(ManagedSetupRecoveryAction)` 會保留已提交的安裝與 durable state，絕不會選到移除未完成安裝；它仍會像 `ConvergeReady` 一樣移除精確的 Setup 殘留。`ManagedSetupRecoveryActionTests` 釘住兩個值。
+
 `ConvergeReady` 保留兩份 durable state 與完整 root，只移除精確 staging／marker 殘留。 變更前取消回傳 `Cancelled`；不可逆刪除後的取消仍由復原持有責任。 最後 marker 邊界刻意以不可取消觀察完成終態檢查。 無法證明的 staging 與 torn marker 仍不可執行，且零變更。 Marker 移除後若外部重建殘留，不寫入替代 marker。
 
 ### 上限與 Files 重用
@@ -596,7 +598,7 @@ Core 案例位於 `tests/Nvt.Core.Tests/Launcher/Recovery/Execution/`。 十一�
 
 `Nvt.Core.Launcher.Integration.VersionManagementExperience` 組合既有 `ManagedMutationCoordinator`，不新增第二個 mutation lock、semaphore 或 writer owner。`_generationSync` 只保護 discovery／publication。NFC 保留嚴格 schema、locator、release authority、signing、三版本 retention 與 UI／MessageCenter policy。必要 adapter 提供已准入 facts，Core 重查機械身分與上限。不新增 `LauncherEngine`、plugin 或 signing framework。
 
-六個 partial 與目前實體行數為 `VersionManagementExperience.cs`（167）、`.Check.cs`（211）、`.Registry.cs`（308）、`.Registry.Admission.cs`（321）、`.FreshInstallation.cs`（165）、`.Publication.cs`（277）。其他 Integration owner 為 `VersionManagementContracts.cs`、`VersionManagementLimits.cs`、`UpdateCatalogSource.cs`、`UpdateCatalogSnapshot.cs`、`UpdateSourceRegistryModels.cs`、`UpdateSourceRegistryStatus.cs`、`VersionEnvironmentSelfTest.cs`、`VersionDiscoverySession.cs`、`ReplicatedUpdateSourceRegistry.cs`、`ReplicaReadSlot.cs`、`ExperiencePackageSelection.cs`、`ManagedInstallationLayout.cs`。
+六個 partial 與目前實體行數為 `VersionManagementExperience.cs`（161）、`.Check.cs`（211）、`.Registry.cs`（308）、`.Registry.Admission.cs`（321）、`.FreshInstallation.cs`（165）、`.Publication.cs`（277）。其他 Integration owner 為 `VersionManagementContracts.cs`、`VersionManagementLimits.cs`、`UpdateCatalogSource.cs`、`UpdateCatalogSnapshot.cs`、`UpdateSourceRegistryModels.cs`、`UpdateSourceRegistryStatus.cs`、`VersionEnvironmentSelfTest.cs`、`VersionDiscoverySession.cs`、`ReplicatedUpdateSourceRegistry.cs`、`ReplicaReadSlot.cs`、`ExperiencePackageSelection.cs`、`ManagedInstallationLayout.cs`。
 
 首次安裝 inspection 依序嘗試 Latest、宣告順序的 Available，絕不選 Deprecated；成功要求支援 managed launcher，且最新 package 不早於執行中的版本。Reverification 比對 registry／publication、source role／path 與完整 captured candidate identity，不重做執行中版本門檻。這些 query 不取得 writer，也不改變 discovery 或 durable state。
 
@@ -618,10 +620,10 @@ public VersionManagementExperience(
     ProductDescriptor descriptor,
     VersionManagementLimits limits,
     IManagedRetentionPolicy retention,
-    IProductPackagePolicy packagePolicy,
-    IManagedVersionAdmissionCodec admissionCodec,
     IUpdateSourceRegistry? sourceRegistry = null)
 ```
+
+Core 的 `FileSystemManagedVersionRepository` 自行接收產品的 package policy 與 admission codec；experience 兩者都不接收。
 
 `VersionManagementLimits` 沒有預設值：六個參數均為必要相依，拒絕零與負數。NFC 提供 `maximumCatalogEntries = 128`、`maximumPackageBytes = 134,217,728`、`maximumReleaseNoteBytes = 65,536`（UTF-8）、`maximumRelativePathCharacters = 512`、`maximumRegistryEntries = 16`、`maximumRegistryIdCharacters = 128`；設定的相對路徑上限不得超過共用機制的 512 字元。Package identity 保留 `version|path|invariant-size|package-hash|manifest-hash`。
 
@@ -716,7 +718,7 @@ Core 新增測試以方法計數，以下數量不含 theory row。Replica class
 - 僅觀察、未變更：replica result `(null, None)` 沒有 snapshot，但 `Issue == None`；`Dispose()` 不等待執行中的 transaction；managed layout 回傳的 root 沒有尾端 separator。
 - 首次安裝 query 直接呼叫 registry port，與 Check／self-test 的 descriptor／limit readmission 不同。現有測試未證明此路徑會拒絕不符 consumer registry descriptor／entry limit 的值；本次不修改 predicate。
 - Delete 在 policy 檢查之後失敗（launcher fallback-owner 退役失敗，或 prepare save 失敗）時，結果帶的是該操作觀察到的 snapshot，內含第一次 inventory 讀取；凍結版在結果中回傳第二次讀取。只有兩次讀取之間 payload 改變時才有差異，沒有測試涵蓋。
-- `packagePolicy` 與 `admissionCodec` 是必要的建構式 port，experience 只檢查非 null，不呼叫它們。Caller 應把同一組實例交給所傳入的 repository；Core 不檢查兩者是否一致。
+- 以下公開 API 形狀維持現狀，只在此記錄、不更動：`FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` 接受公開的 `IManagedDistributionPayloadCapture`，實際卻要求 Core 內部的 `IManagedDistributionPayloadContent`，root 與 state-path 檢查通過後，Core 之外建立的 capture 會回傳 `SourceChanged`；`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 帶 `progress` 的預設多載呼叫不帶 `progress` 的多載，會丟掉進度，要回報進度的實作自行覆寫；`IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` 把 token 放在選用旗標之前，與凍結的 NFC 形狀相同；日後加 token 在最後的多載需另做相容性檢查，因為以具名引數傳兩個參數的呼叫會變得有歧義，而新的 interface 成員只有帶預設實作時才與既有實作者相容。
 
 ### 失敗矩陣
 
