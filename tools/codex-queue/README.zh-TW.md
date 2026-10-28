@@ -44,7 +44,7 @@ bash tools/codex-queue/qfocus.sh '<QUEUE>'
 | `PROJECT_PREFIX` | 預設 `Project`；`Prebuild:` 所建置 .NET 專案的名稱前綴，例如 `NvtFwCombiner` 對應 `src/NvtFwCombiner.Desktop/NvtFwCombiner.Desktop.csproj`。必須是普通專案名（英數、`_`、`.`）。 |
 | `EXTRA_ADD_DIRS` | 舊設定；worker 忽略共用資料夾，只授予本任務暫存資料夾。 |
 
-worker 將 `QUEUE_BUILD_NOTES` 設為 `<QUEUE>/build-notes.md`；直接呼叫 `q.py prompt` 可將此環境變數設為選用的 notes 檔。wrapper 保留原無 bytecode／pytest cache、遙測及語言環境設定，並非呼叫者設定項。
+worker 將 `QUEUE_BUILD_NOTES` 設為 `<QUEUE>/build-notes.md`；直接呼叫 `q.py prompt` 可將此環境變數設為選用的 notes 檔。wrapper 保留原無 bytecode／pytest cache、遙測及語言環境設定，並非呼叫者設定項。 wrapper 每次執行也會傳入 `-c service_tier="fast"`（owner 2026-10-28 決定），不修改 `~/.codex/config.toml`。
 
 最小本機 `queue.env`（替換佔位符，填妥後勿提交）：
 
@@ -128,11 +128,11 @@ test-p0.sh 共用 gate fixture helpers，執行自己的整合案例、Python �
 - `qrefill.sh`: 新增版權標頭及 TRUNK_WT／BASE 必填檢查，移除產品 queue 範例；未更新部署邏輯。
 - `qworker.sh`: 新增版權標頭；REPO、WT、BASE 及 quota 設定改為必填，移除本機 quota 預設與路徑註解。
 - `restart-pool.sh`: 新增版權標頭；queue 改由參數指定，以通用 pool 操作說明取代部署歷史。
-- `run-codex-ws.ps1`: 僅新增版權標頭。
+- `run-codex-ws.ps1`: 新增版權標頭與 `service_tier="fast"` 參數。
 - `tests/test-gate.sh`: 新增版權標頭；使用合成 Git 身分與明確 mock quota 指令，驗證缺少 quota 設定。
 - `tests/test-p0.py`: 新增版權標頭；移除兩種產品盤點模式，改用合成 queue 規則、通用範例、匿名專案及動態絕對路徑負例。
 - `tests/test-p0.sh`: 新增版權標頭；改用合成 queue 規則與 fixture 推導的共用路徑。
-- `tests/test-wrapper.ps1`: 僅新增版權標頭。
+- `tests/test-wrapper.ps1`: 新增版權標頭，並檢查有傳入 `service_tier="fast"` 參數。
 
 兩份 README 及四個通用範例檔由 repository 撰寫；不匯入各工具設定、相容性報告、備份與執行期狀態。
 
