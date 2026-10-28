@@ -450,7 +450,7 @@ All intents and disposal require the UI thread. Export flags belong to
 `ConsoleHeader`, `ConsoleToolbar`, and `ConsoleEmptyState` receive a `Controller`
 styled property. Load `LogConsole/LogConsoleStyles.axaml` like the other Core style
 entry points; the controls include `LogConsole/ConsoleControlStyles.axaml` locally. Hosts load Core theme tokens and
-Fonts roles and keep the console at least 640 DIP wide. The header is 40 DIP high.
+Fonts roles and keep the console at least 640 DIP wide. The header is one `NfcControlHeight` row (32 DIP) with no vertical padding.
 It holds the title, the Display menu (time mode and dedupe) and the More menu (copy, save,
 export options and clear). The toolbar is one 40 DIP row. From left to right it holds the
 level summary, the search field and the actions: Sources, Copy selected, Copy visible rows,
@@ -848,7 +848,7 @@ The host owns failures of its queued platform operations.
 The list zooms its rows. `Zoom` is a factor from 0.8 to 3.0 with a default of 1.0, and `ZoomStep` is 0.1.
 The zoom scales the row height, the five column widths and the four row font sizes.
 It does not scale the toolbar, the header, the jump button, the retention notice or the row padding.
-The toolbar's zoom group steps the factor by `ZoomStep`, shows it as a percentage, and resets it to 1.0 when pressed.
+The toolbar's zoom group steps the factor by `ZoomStep`, shows it as a percentage, and resets it to 1.0 when pressed. The group has no border of its own.
 A paused list keeps its first visible row and its offset inside that row.
 While the list has focus, Ctrl+Plus (also Ctrl+= and the number pad plus) zooms in, Ctrl+Minus zooms out, and Ctrl+0 resets.
 Ctrl with the mouse wheel over the list zooms too, with or without focus. One notch is one step, and a touchpad adds up its fractions.

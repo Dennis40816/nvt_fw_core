@@ -86,14 +86,15 @@ public sealed class ConsoleResourceTests
         var window = ConsoleTestView.Create(surface, height: 300);
         try
         {
-            Assert.Equal(40, header.Bounds.Height);
+            Assert.Equal(32, header.Bounds.Height);
             Assert.Equal(40, toolbar.Bounds.Height);
             window.Resources["NfcControlHeight"] = 40d;
             ConsoleTestView.Pump(window);
-            Assert.Equal(48, header.Bounds.Height);
+            Assert.Equal(40, header.Bounds.Height);
             Assert.Equal(48, toolbar.Bounds.Height);
             window.Width = 640;
             ConsoleTestView.Pump(window);
+            Assert.Equal(40, header.Bounds.Height);
             Assert.Equal(48, toolbar.Bounds.Height);
         }
         finally { window.Close(); }
