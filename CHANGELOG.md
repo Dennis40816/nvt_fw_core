@@ -6,9 +6,20 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Changed
+
+- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+
+## 0.9.5 - 2026-10-28
+
+Launcher steps L09 to L12, moved from NFC, so that NFC and NFH can pin them before 1.0.0, and the flatter LogConsole header (#251). This version comes before the 1.0.0 API freeze.
+Unlike earlier versions, it does not move the new public API to `PublicAPI.Shipped.txt`. The 673 entries stay in `src/Nvt.Core/PublicAPI.Unshipped.txt`, so a later 0.9.x version can still change their shape.
+`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
+
 ### Added
 
 - Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
+- Launcher setup materialization and read-only recovery diagnosis (L10, #250), moved from NFC. `ManagedInstallationRecoveryExperience`, with its plan and policy, lives in `Nvt.Core.Launcher.Recovery`. So do the adapters for the setup marker and descriptor, the embedded capture, the closed-root verifier, the root materializer, and the root, marker and lifetime probes. Setup custody operations are added to the internal Windows stable-path custody. Core provides no default adapter; the host supplies them. This adds 171 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
 - Launcher recovery execution (L11), moved from NFC. `ManagedSetupRecoveryExecutionCoordinator` and the filesystem executor `FileSystemManagedSetupRecoveryExecution` live in `Nvt.Core.Launcher.Recovery`. Only Core's own probe creates the success evidence, so an adapter outside Core can report failure but never success. This adds 7 public types and 36 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
 - Launcher engine composition (L12), moved from NFC, in two parts. Part 1 (#256) adds the update-catalog, update-source registry and replica contracts in `Nvt.Core.Launcher.Integration`, the replicated registry, and `ManagedMutationCoordinator.RunSourceTransactionAsync`, which lets one gated operation reload state, hold the writer lease once and save. It adds 142 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. Part 2 (#257) adds `VersionManagementExperience`: discovery generations, the registry check and commit order, anti-rollback, candidate readmission, publication, the environment self-test and resume. It also implements `IFreshInstallationCandidateSource`, so the first-install experience can take its candidate from the registry. It adds 70 entries. The deliberate differences from the NFC source are listed in `docs/core/modules/Launcher.md`; the main one is that a superseding operation restores the interrupted source status before it cancels the running check. No existing API changes.
 
@@ -16,8 +27,9 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 - Licensing: the repository root `LICENSE` now states the copyright only and grants no license. 36 files (`src/Nvt.Core.Avalonia/Theme`, `src/Nvt.Core.Avalonia/Icons` and `src/Nvt.Core.Fonts/FontRoles.axaml`) carry an `SPDX-License-Identifier: MIT` header and a folder `LICENSE`. The other files stay under the grant in Part 1 of the new `LICENSE-COMPONENTS.txt`, which the packages carry as `LICENSE`. `THIRD-PARTY-NOTICES.md` is new. No C# API, resource URI or namespace changes.
 - Licensing: 34 more files carry an `SPDX-License-Identifier: MIT` header in place of "All rights reserved". They are `AtomicOutput` and its tests, six `Nvt.Core.TestSupport` helpers and their tests (not `ChildProcessFixture`), the six external-process contract types and the six background-job and progress types, with their tests. Each of the eight folders has a `LICENSE` file for the scope. No C# API, namespace or behavior changes.
+- Launcher API clean-up before the 1.0.0 freeze (#259): the `VersionManagementExperience` constructor no longer takes `packagePolicy` and `admissionCodec`. Their entry in `src/Nvt.Core/PublicAPI.Unshipped.txt` changes with it. The type is new in this version, so no 0.9.4 code is affected.
+- Launcher API clean-up before the 1.0.0 freeze (#259): the zero value of `ManagedSetupRecoveryAction` is now `ConvergeReady` (`ConvergeReady = 0`, `RemoveIncompleteInstallation = 1`; it was the other way round). So `default(ManagedSetupRecoveryAction)` never selects the removal of an incomplete installation. The type is new in this version, so no 0.9.4 code is affected.
 - LogConsole look (#251): the header is one `NfcControlHeight` row (32 DIP, was 40 DIP) with no vertical padding, and the toolbar's zoom group (zoom out, zoom value, zoom in) has no border. The toolbar stays 40 DIP. The owner asked for both on 2026-10-18. No C# API, resource key or token changes.
-- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
 
 ## 0.9.4 - 2026-10-14
 
