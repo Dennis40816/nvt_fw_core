@@ -4,8 +4,6 @@ using Nvt.Core.Launcher.Activation;
 using Nvt.Core.Launcher.Contracts;
 using Nvt.Core.Launcher.Integration;
 using Nvt.Core.Tests.Launcher.Coordination;
-using Nvt.Core.Tests.Launcher.Repository;
-using Nvt.Core.Tests.Launcher.Verification;
 using static Nvt.Core.Tests.Launcher.Integration.VersionManagementExperienceTestSupport;
 
 namespace Nvt.Core.Tests.Launcher.Integration;
@@ -25,7 +23,5 @@ internal static class VersionManagementExperienceTestFactory
         VersionManagementLimits? limits = null) => new(
             currentAppVersion, managedRoot, stateStore.StatePath, stateStore, catalogSource, repository,
             launcherFence ?? new ManagedMutationTestSupport.ClearLauncherFence(), IntegrationTestData.Descriptor(),
-            limits ?? IntegrationTestData.Limits, new ManagedMutationTestSupport.RetentionPolicy(),
-            new FixturePolicy(new("Fixture", "synthetic-runtime", currentAppVersion, [], null)),
-            new AdmissionCodec(), sourceRegistry);
+            limits ?? IntegrationTestData.Limits, new ManagedMutationTestSupport.RetentionPolicy(), sourceRegistry);
 }

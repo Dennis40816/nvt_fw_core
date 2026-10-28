@@ -172,6 +172,8 @@ public interface IManagedFirstInstallationRootMaterializer
     /// Once promotion starts, return a typed result even for cancellation; never throw cancellation.
     /// Retain the recovery marker on failure and release custody not transferred in the result.
     /// Progress is not a promotion signal; a thrown exception cannot transfer custody to the caller.
+    /// The default implementation calls the overload without <c>progress</c>, so it reports no progress;
+    /// an implementation that reports progress overrides this overload.
     /// </remarks>
     ValueTask<ManagedFirstInstallationMaterializationResult> MaterializeAsync(
         string managedRoot,
