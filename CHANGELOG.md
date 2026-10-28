@@ -6,9 +6,16 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+## 1.0.0 (draft, not released)
+
+Core 1.0.0 declares the public API stable. It contains 0.9.4 and the changes listed below.
+From this version, 1.x makes no breaking changes. A change that would break a host waits for 2.0.0.
+`PublicAPI.Shipped.txt` of every published project keeps all of its 0.9.4 entries.
+
 ### Added
 
 - Launcher entry and first-install use cases (#243), moved from NFC. `ManagedLauncherEntryCoordinator` and `ManagedFirstInstallationExperience` live in `Nvt.Core.Launcher.Setup`, with their plan, result, progress and port types. The host supplies the adapters: candidate source, payload source, root probe and root materializer. This adds 34 public types and 254 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
+- Launcher setup materialization and read-only recovery diagnosis (L10, #250), moved from NFC. `ManagedInstallationRecoveryExperience`, with its plan and policy, lives in `Nvt.Core.Launcher.Recovery`. So do the adapters for the setup marker and descriptor, the embedded capture, the closed-root verifier, the root materializer, and the root, marker and lifetime probes. Setup custody operations are added to the internal Windows stable-path custody. Core provides no default adapter; the host supplies them. This adds 171 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
 - Launcher recovery execution (L11), moved from NFC. `ManagedSetupRecoveryExecutionCoordinator` and the filesystem executor `FileSystemManagedSetupRecoveryExecution` live in `Nvt.Core.Launcher.Recovery`. Only Core's own probe creates the success evidence, so an adapter outside Core can report failure but never success. This adds 7 public types and 36 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. No existing API changes.
 - Launcher engine composition (L12), moved from NFC, in two parts. Part 1 (#256) adds the update-catalog, update-source registry and replica contracts in `Nvt.Core.Launcher.Integration`, the replicated registry, and `ManagedMutationCoordinator.RunSourceTransactionAsync`, which lets one gated operation reload state, hold the writer lease once and save. It adds 142 entries to `src/Nvt.Core/PublicAPI.Unshipped.txt`. Part 2 (#257) adds `VersionManagementExperience`: discovery generations, the registry check and commit order, anti-rollback, candidate readmission, publication, the environment self-test and resume. It also implements `IFreshInstallationCandidateSource`, so the first-install experience can take its candidate from the registry. It adds 70 entries. The deliberate differences from the NFC source are listed in `docs/core/modules/Launcher.md`; the main one is that a superseding operation restores the interrupted source status before it cancels the running check. No existing API changes.
 
