@@ -59,6 +59,7 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
         _coordinator = new(root, statePath, stateStore, repository, launcherFence,
             new ExperiencePackageSelection(this), retention);
         _coordinator.SupersedeRunningCheck = SupersedeRunningCheck;
+        _coordinator.CaptureExperienceReload = CaptureReloadObservation;
         _coordinator.ObserveExperienceSnapshot = ObserveCoordinatorSnapshot;
     }
 
@@ -113,11 +114,12 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
     }
 
     /// <inheritdoc />
-    public ValueTask<VersionManagerState> PrepareActivationAsync(
+    public async ValueTask<VersionManagerState> PrepareActivationAsync(
         ManagedAppVersion version, CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
-        return _coordinator.PrepareActivationAsync(version, cancellationToken);
+        using var observation = ObserveMutation();
+        return await _coordinator.PrepareActivationAsync(version, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

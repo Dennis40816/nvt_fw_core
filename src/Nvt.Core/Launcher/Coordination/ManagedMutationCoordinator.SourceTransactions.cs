@@ -7,20 +7,34 @@ namespace Nvt.Core.Launcher.Coordination;
 
 public sealed partial class ManagedMutationCoordinator
 {
-    // Invoked only under _mutation, before releasing it. Integration owns the projection.
-    internal Action<ManagedMutationSnapshot, bool>? ObserveExperienceSnapshot { get; set; }
+    // Both callbacks run under _mutation. The opaque reload context is captured before I/O.
+    internal Func<object?>? CaptureExperienceReload { get; set; }
+    internal Action<ManagedMutationSnapshot, object?, bool>? ObserveExperienceSnapshot { get; set; }
 
-    private ManagedMutationSnapshot ObserveReloadedSnapshot(ManagedMutationSnapshot snapshot)
+    private ManagedMutationSnapshot ObserveReloadedSnapshot(ManagedMutationSnapshot snapshot, object? context)
     {
-        ObserveExperienceSnapshot?.Invoke(snapshot, true);
+        ObserveExperienceSnapshot?.Invoke(snapshot, context, false);
         return snapshot;
     }
+
+    private ManagedMutationSnapshot PublishObservedSnapshot(ManagedMutationSnapshot snapshot)
+    {
+        _current = snapshot;
+        ObserveExperienceSnapshot?.Invoke(snapshot, null, false);
+        return snapshot;
+    }
+
+    private ManagedMutationSnapshot PublishObservedInventory(
+        ManagedMutationSnapshot snapshot, ManagedVersionInventory inventory) => PublishObservedSnapshot(snapshot with
+        {
+            Inventory = inventory,
+        });
 
     private void PublishAndReleaseMutation()
     {
         try
         {
-            if (_current is { } snapshot) { ObserveExperienceSnapshot?.Invoke(snapshot, false); }
+            if (_current is { } snapshot) { ObserveExperienceSnapshot?.Invoke(snapshot, null, true); }
         }
         finally { _ = _mutation.Release(); }
     }
@@ -59,6 +73,7 @@ public sealed partial class ManagedMutationCoordinator
         }
         finally
         {
+            // Integration publishes each source transaction's own commit result before this release.
             _ = _mutation.Release();
         }
     }

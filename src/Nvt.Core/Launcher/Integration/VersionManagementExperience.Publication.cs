@@ -8,23 +8,40 @@ namespace Nvt.Core.Launcher.Integration;
 
 public sealed partial class VersionManagementExperience
 {
-    private void ObserveCoordinatorSnapshot(ManagedMutationSnapshot snapshot, bool isReload)
+    private ReloadObservation CaptureReloadObservation()
+    {
+        lock (_generationSync)
+        {
+            bool recovering = _current is null || !HasUsableAuthority(_current);
+            return new ReloadObservation(recovering ? _recoverableSourceAuthority : _current, recovering);
+        }
+    }
+
+    private void ObserveCoordinatorSnapshot(ManagedMutationSnapshot snapshot, object? context, bool isRelease)
     {
         lock (_generationSync)
         {
             if (_disposed) { return; }
-            if (isReload)
+            MutationObservation? observation = _services.MutationObservation.Value;
+            // A release cannot adopt an unobserved coordinator cache or throw for an absent
+            // publication: either would replace this operation's outcome with unrelated state.
+            if (isRelease && (_current is null || observation?.HasSnapshot != true)) { return; }
+            if (context is ReloadObservation reload)
             {
-                PublishReloadedSnapshot(snapshot);
+                PublishReloadedSnapshot(snapshot, reload);
             }
             else if (snapshot.StateIssue == VersionManagerStateLoadIssue.Unavailable)
             {
                 _ = PublishStateUnavailable();
             }
+            else if (_current is not { } current)
+            {
+                return;
+            }
             else if (snapshot.InventoryIssue != ManagedVersionInventoryReadIssue.None)
             {
                 PreserveRecoverableSourceAuthority();
-                _current = RequirePublishedSnapshotUnderLock() with
+                _current = current with
                 {
                     State = snapshot.State,
                     Inventory = snapshot.Inventory,
@@ -39,7 +56,7 @@ public sealed partial class VersionManagementExperience
             }
             else
             {
-                _current = RequirePublishedSnapshotUnderLock() with
+                _current = current with
                 {
                     State = snapshot.State,
                     Inventory = snapshot.Inventory,
@@ -47,10 +64,7 @@ public sealed partial class VersionManagementExperience
                     InventoryIssue = snapshot.InventoryIssue,
                 };
             }
-            if (!isReload && _services.MutationObservation.Value is { } observation)
-            {
-                observation.Record(RequirePublishedSnapshotUnderLock());
-            }
+            if (_current is { } published) { observation?.Record(published); }
         }
     }
 
@@ -73,15 +87,19 @@ public sealed partial class VersionManagementExperience
         internal VersionManagementSnapshot Snapshot => _snapshot ??
             throw new InvalidOperationException("Version-manager state is invalid and requires recovery.");
 
+        internal bool HasSnapshot => _snapshot is not null;
+
         internal void Record(VersionManagementSnapshot snapshot) => _snapshot = snapshot;
 
         public void Dispose() => _slot.Value = _prior;
     }
 
-    private void PublishReloadedSnapshot(ManagedMutationSnapshot snapshot)
+    private sealed record ReloadObservation(VersionManagementSnapshot? Prior, bool Recovering);
+
+    private void PublishReloadedSnapshot(ManagedMutationSnapshot snapshot, ReloadObservation observation)
     {
-        bool recovering = _current is null || !HasUsableAuthority(_current);
-        VersionManagementSnapshot? prior = recovering ? _recoverableSourceAuthority : _current;
+        bool recovering = observation.Recovering;
+        VersionManagementSnapshot? prior = observation.Prior;
         VersionManagerState? state = snapshot.State;
         bool sameSource = state is not null && snapshot.InventoryIssue == ManagedVersionInventoryReadIssue.None &&
             prior?.State?.UpdateSource == state.UpdateSource;
@@ -195,11 +213,14 @@ public sealed partial class VersionManagementExperience
         lock (_generationSync)
         {
             _ = _session.BeginCheck();
-            // Restore first: cancelling can complete the interrupted check inline on this thread,
-            // and that completion reads the published snapshot under this same lock.
+            // Unlike the frozen cancel-first order, restore before cancellation: it can complete
+            // the interrupted check inline, whose caller must see the restored source status.
             if (_current?.SourceStatus == VersionSourceStatus.Checking)
             {
-                _current = _current with { SourceStatus = ResolveInterruptedSourceStatus(_current) };
+                _current = _current with
+                {
+                    SourceStatus = ResolveInterruptedSourceStatus(_current),
+                };
             }
             CancelRunningCheckUnderLock();
         }
