@@ -461,3 +461,145 @@ Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.SourceChange
 Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.RecoveryRequired = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
 Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.ManualInterventionRequired = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
 Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.Cancelled = 7 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource.LoadAsync(string! sourceRoot, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult!>
+Nvt.Core.Launcher.Integration.IUpdateCatalogSource.LoadCatalogAsync(string! catalogPath, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult!>
+Nvt.Core.Launcher.Integration.IUpdateSourceRegistry
+Nvt.Core.Launcher.Integration.IUpdateSourceRegistry.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult!>
+Nvt.Core.Launcher.Integration.ManagedInstallationLayout
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry.LoadAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult!>
+Nvt.Core.Launcher.Integration.ReplicatedUpdateSourceRegistry.ReplicatedUpdateSourceRegistry(System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.IUpdateSourceRegistry!>! replicas) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.SchemaVersion.get -> int
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.Sha256.get -> string!
+Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity.UpdateCatalogContentIdentity(int schemaVersion, string! sha256) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.CatalogTooLarge = 5 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.InvalidManifest = 6 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.PermissionDenied = 3 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.SourceMissing = 1 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.SourceUnavailable = 2 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.UnsafeSource = 4 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue.UnstableRead = 7 -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.ContentIdentity.get -> Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity?
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.ContentIdentity.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Issue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Snapshot.get -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot?
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogLoadResult.UpdateCatalogLoadResult(Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot? Snapshot, Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue Issue, Nvt.Core.Launcher.Integration.UpdateCatalogContentIdentity? ContentIdentity = null) -> void
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.CatalogSchemaVersion.get -> int
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.CatalogSha256.get -> string!
+Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.LatestVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion
+Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot
+Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot.Versions.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!>!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.CatalogPath.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.SourceRoot.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.Status.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Available = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Deprecated = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus.Latest = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.AuthenticationRequired = 4 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.CandidatesExhausted = 9 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.CurrentSourceDeprecated = 13 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Invalid = 6 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.NotConfigured = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.PermissionDenied = 3 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RegistryChanged = 10 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RevisionConflict = 8 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.RevisionRollback = 7 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.StateUnavailable = 11 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Superseded = 12 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.TimedOut = 5 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.Unavailable = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.AuthenticationRequired = 5 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.InvalidManifest = 9 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.None = 0 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.NotConfigured = 1 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.PermissionDenied = 4 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryMissing = 2 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryTimedOut = 6 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryTooLarge = 8 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.RegistryUnavailable = 3 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.ReplicaConflict = 11 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.UnsafeLocator = 7 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue.UnstableRead = 10 -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Issue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Replicas.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Replicas.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Snapshot.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.Snapshot.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadResult.UpdateSourceRegistryLoadResult(Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot? Snapshot, Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue Issue, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>? Replicas = null) -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.IsSelected.get -> bool
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.IsSelected.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Issue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Issue.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Position.get -> int
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.Position.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.RegistryRevision.get -> long?
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.RegistryRevision.init -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation.UpdateSourceRegistryReplicaObservation(int Position, Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue Issue, long? RegistryRevision, bool IsSelected) -> void
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.CatalogPublication.get -> Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.ContentDigest.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.Entries.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!>!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.PublishedAtUtc.get -> System.DateTimeOffset
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.RegistryId.get -> string!
+Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.RegistryRevision.get -> long
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.CatalogIssue.get -> Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.IsVerified.get -> bool
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.NewestVersion.get -> Nvt.Core.Launcher.Contracts.ManagedAppVersion?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.PackageIssue.get -> Nvt.Core.Launcher.Contracts.ManagedVersionInstallIssue?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.SourceRoot.get -> string!
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt.Status.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.AcceptedRegistryRevision.get -> long?
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.Attempts.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestAttempt!>!
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.AuthorityIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.IsSuccess.get -> bool
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.RegistryIssue.get -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryLoadIssue
+Nvt.Core.Launcher.Integration.VersionEnvironmentSelfTestResult.Replicas.get -> System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryReplicaObservation!>!
+Nvt.Core.Launcher.Integration.VersionManagementLimits
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumCatalogEntries.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumPackageBytes.get -> long
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRegistryEntries.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRegistryIdCharacters.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumRelativePathCharacters.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.MaximumReleaseNoteBytes.get -> int
+Nvt.Core.Launcher.Integration.VersionManagementLimits.VersionManagementLimits(int maximumCatalogEntries, long maximumPackageBytes, int maximumReleaseNoteBytes, int maximumRelativePathCharacters, int maximumRegistryEntries, int maximumRegistryIdCharacters) -> void
+Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.DeprecatedRetained = 7 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Exhausted = 5 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.FallbackSelected = 3 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.LatestSelected = 2 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.ManualPin = 1 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.NotConfigured = 0 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Rejected = 6 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionRegistryStatus.Unavailable = 4 -> Nvt.Core.Launcher.Integration.VersionRegistryStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Checking = 1 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Connected = 2 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Invalid = 5 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.NotConfigured = 0 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.Offline = 3 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+Nvt.Core.Launcher.Integration.VersionSourceStatus.PermissionDenied = 4 -> Nvt.Core.Launcher.Integration.VersionSourceStatus
+static Nvt.Core.Launcher.Integration.ManagedInstallationLayout.ResolveManagedRoot(string! applicationBaseDirectory) -> string!
+static Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion.Create(string! latestVersion, int catalogSchemaVersion, string! catalogSha256) -> Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion!
+static Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Contracts.UpdateCatalogVersionSnapshot!>! versions) -> Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot!
+static Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry.Create(string! catalogPath, Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntryStatus status) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!
+static Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot.Create(Nvt.Core.Launcher.Integration.VersionManagementLimits! limits, Nvt.Core.Launcher.Contracts.ProductDescriptor! descriptor, string! registryId, long registryRevision, System.DateTimeOffset publishedAtUtc, Nvt.Core.Launcher.Integration.UpdateCatalogPublicationAssertion! catalogPublication, string! contentDigest, System.Collections.Generic.IReadOnlyList<Nvt.Core.Launcher.Integration.UpdateSourceRegistryEntry!>! entries) -> Nvt.Core.Launcher.Integration.UpdateSourceRegistrySnapshot!
