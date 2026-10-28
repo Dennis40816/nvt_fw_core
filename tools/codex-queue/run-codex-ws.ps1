@@ -13,6 +13,8 @@ $prompt = Get-Content -Raw -Encoding utf8 -LiteralPath $PromptFile; if (-not $pr
 # Owner decision (2026-10-03): no model or effort is hard-coded. Without -Model/-Effort Codex uses its own default
 # (~/.codex/config.toml, adjusted by the owner/commander); a task that needs another model or effort passes it for that one run.
 $modelArgs = @(); if ($Model) { $modelArgs += '-m'; $modelArgs += $Model }; if ($Effort) { $modelArgs += '-c'; $modelArgs += "model_reasoning_effort=`"$Effort`"" }
+# Owner decision (2026-10-28): every run asks for the fast service tier with this per-run argument; ~/.codex/config.toml stays unchanged.
+$modelArgs += '-c'; $modelArgs += 'service_tier="fast"'
 $modelLabel = if ($Model) { $Model } else { 'codex-default' }; $effortLabel = if ($Effort) { $Effort } else { 'codex-default' }
 "start $(Get-Date -Format o) model=$modelLabel effort=$effortLabel out=$Out" | Out-File -Encoding utf8 $Log
 $extra = @(); foreach ($d in $AddDirs.Split(';', [StringSplitOptions]::RemoveEmptyEntries)) { $extra += '--add-dir'; $extra += $d }

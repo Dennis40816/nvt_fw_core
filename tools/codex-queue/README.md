@@ -44,7 +44,7 @@ Replace all angle-bracket placeholders with reviewed paths before running. Use G
 | `PROJECT_PREFIX` | Default `Project`; name prefix of the .NET projects that `Prebuild:` builds, for example `NvtFwCombiner` for `src/NvtFwCombiner.Desktop/NvtFwCombiner.Desktop.csproj`. Must be a plain project name (letters, digits, `_`, `.`). |
 | `EXTRA_ADD_DIRS` | Legacy setting; worker ignores shared directories and grants only the task's temporary directory. |
 
-The worker sets `QUEUE_BUILD_NOTES` to `<QUEUE>/build-notes.md`; direct `q.py prompt` callers may set that environment variable to an optional notes file. The wrapper sets no-bytecode/no-pytest-cache and existing telemetry/language environment settings; they are not caller configuration.
+The worker sets `QUEUE_BUILD_NOTES` to `<QUEUE>/build-notes.md`; direct `q.py prompt` callers may set that environment variable to an optional notes file. The wrapper sets no-bytecode/no-pytest-cache and existing telemetry/language environment settings; they are not caller configuration. Every wrapper run also passes `-c service_tier="fast"` (owner decision of 2026-10-28); the wrapper does not change `~/.codex/config.toml`.
 
 Minimal local `queue.env` (replace placeholders; do not commit the filled file):
 
@@ -129,11 +129,11 @@ Every imported script adds the owner-required copyright notice. Text changes use
 - `qrefill.sh`: Adds a copyright header and required TRUNK_WT/BASE checks. Removes the product queue example. No deployed logic refresh.
 - `qworker.sh`: Adds a copyright header. Requires REPO, WT, BASE and explicit quota configuration. Removes the local quota default and path comment.
 - `restart-pool.sh`: Adds a copyright header. Takes the queue as an argument. Uses generic pool instructions instead of deployment history.
-- `run-codex-ws.ps1`: Adds a copyright header only.
+- `run-codex-ws.ps1`: Adds a copyright header and the `service_tier="fast"` argument.
 - `tests/test-gate.sh`: Adds a copyright header. Uses a synthetic Git identity and explicit mock quota command. Tests missing quota configuration.
 - `tests/test-p0.py`: Adds a copyright header. Removes both product audit modes. Uses synthetic queue rules, example files, anonymous projects and derived absolute-path negatives.
 - `tests/test-p0.sh`: Adds a copyright header. Uses synthetic queue rules and fixture-derived shared paths.
-- `tests/test-wrapper.ps1`: Adds a copyright header only.
+- `tests/test-wrapper.ps1`: Adds a copyright header and a check that the `service_tier="fast"` argument is passed.
 
 The two READMEs and four example files are repository-authored. Per-tool configurations, compatibility reports, backups, and runtime state are excluded.
 
