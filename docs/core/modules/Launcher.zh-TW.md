@@ -707,6 +707,7 @@ Core 新增測試以方法計數，以下數量不含 theory row。Replica class
 - 凍結來源儲存 `VersionEnvironmentSelfTestAttempt.IsVerified` 與 registry-entry `SourceRoot`；Core 從 authoritative field 計算，避免重複事實，仍保留凍結 consistency 檢查。由 `EnvironmentSelfTestContractTests.VerifiedAttemptPreservesValues`、`InconsistentAttemptsAreRejected` 與 `RegistryContractTests.EntryPreservesAdmittedPathsAndRole` 固定。
 - 凍結的 `UpdateSourceRegistryLoadResult.Replicas` 保留 caller list；Core 在建構與 `init` 時擁有防禦性唯讀副本。因此兩個 record 即使傳入同一個非 null list，也可能因集合 wrapper 不同而不相等。所有權由 `RegistryContractTests.PublishedCollectionsOwnReadOnlyCopies` 固定；equality 影響**沒有專用測試（not covered）**。
 - 凍結的 replica read／abandoned 欄位改為單一 nullable lifecycle；Core scoped transaction 讓逸出 scope 或晚到 writer 不再有 authority，仍沿用原 gate 與 writer。這些狀態所有權調整由 `ReplicaReadLifecycleTests.CompletedAbandonedReadAllowsOneFreshPhysicalRead`、`ManagedMutationCoordinatorSourceTransactionTests.CompletedTransactionInvalidatesEscapedScope`、`ClosedScopeRejectsLateWriterWithoutRevival` 固定。
+- 凍結版在 policy 擋下或未確認 rollback 的 delete 結果中回傳第二次 inventory 讀取，但快取狀態停在第一次讀取；Core 的 coordinator 也會發布第二次讀取，後續操作從它開始。由 `VersionManagementExperiencePublicationTests.RejectedDeletePublishesItsSecondInventoryRead` 固定。
 
 ### 已知缺口與待補證據
 
@@ -714,6 +715,8 @@ Core 新增測試以方法計數，以下數量不含 theory row。Replica class
 - 實體 hard-stop 證據仍明確 skip：**10 個 setup-materializer rows** 與 **154 個 recovery-executor rows**，直到 host 提供共用 child mode。Host 在獨立的最終 pull request 補上真實 stop／restart 證據。Native execution、真實 repository 的 experience 組合、NFC adoption 與 Bootstrap wiring 仍待完成；合成 port 不證明這些結果。
 - 僅觀察、未變更：replica result `(null, None)` 沒有 snapshot，但 `Issue == None`；`Dispose()` 不等待執行中的 transaction；managed layout 回傳的 root 沒有尾端 separator。
 - 首次安裝 query 直接呼叫 registry port，與 Check／self-test 的 descriptor／limit readmission 不同。現有測試未證明此路徑會拒絕不符 consumer registry descriptor／entry limit 的值；本次不修改 predicate。
+- Delete 在 policy 檢查之後失敗（launcher fallback-owner 退役失敗，或 prepare save 失敗）時，結果帶的是該操作觀察到的 snapshot，內含第一次 inventory 讀取；凍結版在結果中回傳第二次讀取。只有兩次讀取之間 payload 改變時才有差異，沒有測試涵蓋。
+- `packagePolicy` 與 `admissionCodec` 是必要的建構式 port，experience 只檢查非 null，不呼叫它們。Caller 應把同一組實例交給所傳入的 repository；Core 不檢查兩者是否一致。
 
 ### 失敗矩陣
 

@@ -8,6 +8,7 @@ namespace Nvt.Core.Launcher.Coordination;
 public sealed partial class ManagedMutationCoordinator
 {
     // Both callbacks run under _mutation. The opaque reload context is captured before I/O.
+    // Guard: the experience sets both once in its constructor, before the coordinator is shared.
     internal Func<object?>? CaptureExperienceReload { get; set; }
     internal Action<ManagedMutationSnapshot, object?, bool>? ObserveExperienceSnapshot { get; set; }
 

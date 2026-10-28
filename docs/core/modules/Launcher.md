@@ -711,6 +711,7 @@ New Core tests are counted as test methods, with theory rows excluded from these
 - Frozen stores `VersionEnvironmentSelfTestAttempt.IsVerified` and registry-entry `SourceRoot`; Core computes them from their authoritative fields, avoiding duplicated facts. Frozen consistency checks remain; pinned by `EnvironmentSelfTestContractTests.VerifiedAttemptPreservesValues`, `InconsistentAttemptsAreRejected` and `RegistryContractTests.EntryPreservesAdmittedPathsAndRole`.
 - Frozen `UpdateSourceRegistryLoadResult.Replicas` retains the caller's list; Core owns a defensive read-only copy at construction and `init`. Consequently separate records given the same non-null list can compare unequal because their collection wrappers differ. Ownership is pinned by `RegistryContractTests.PublishedCollectionsOwnReadOnlyCopies`; the equality consequence is **not covered** by a dedicated test.
 - Frozen replica read/abandoned fields become one nullable lifecycle; Core's scoped transaction invalidates escaped/late writer authority while retaining the original gate and writer. These state-ownership adaptations are pinned by `ReplicaReadLifecycleTests.CompletedAbandonedReadAllowsOneFreshPhysicalRead`, `ManagedMutationCoordinatorSourceTransactionTests.CompletedTransactionInvalidatesEscapedScope` and `ClosedScopeRejectsLateWriterWithoutRevival`.
+- Frozen returns the second inventory read in the result of a policy-blocked or rollback-unconfirmed delete but keeps the cached state at the first read. Core's coordinator also publishes that second read, so a later operation starts from it. Pinned by `VersionManagementExperiencePublicationTests.RejectedDeletePublishesItsSecondInventoryRead`.
 
 ### Known gaps and pending evidence
 
@@ -718,6 +719,8 @@ New Core tests are counted as test methods, with theory rows excluded from these
 - Physical hard-stop evidence remains explicitly skipped: **10 setup-materializer rows** and **154 recovery-executor rows** until host-owned child modes exist. The host supplies actual stop/restart evidence in a separate final pull request. Native execution, real-repository experience composition, NFC adoption and Bootstrap wiring remain pending; synthetic ports do not prove those results.
 - Observations only, unchanged: a replica result `(null, None)` has `Issue == None` without a snapshot; `Dispose()` does not wait for a running transaction; the managed-layout root has no trailing separator.
 - Fresh-install queries call the registry port directly, unlike Check/self-test's descriptor/limit readmission. Consumer registry descriptor/entry-limit rejection on this path is not established by the current tests; this run changes no predicate.
+- When a delete fails after the policy check (the launcher fallback-owner retirement fails, or the prepare save fails), the result carries the snapshot the operation observed, which holds the first inventory read. Frozen returned the second read in the result. The two differ only if the payload changes between the two reads; no test covers it.
+- `packagePolicy` and `admissionCodec` are mandatory constructor ports that the experience only checks for null and does not call. The caller is expected to give the same instances to the repository it passes; nothing in Core checks that they match.
 
 ### Failure matrix
 

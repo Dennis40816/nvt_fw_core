@@ -34,8 +34,8 @@ public sealed partial class VersionManagementExperience : IVersionManagementExpe
     /// <param name="descriptor">Product identity and runtime names.</param>
     /// <param name="limits">Mandatory positive normalized admission ceilings.</param>
     /// <param name="retention">Product retention advice.</param>
-    /// <param name="packagePolicy">Mandatory strict package policy used by the repository.</param>
-    /// <param name="admissionCodec">Mandatory strict admission codec used by the repository.</param>
+    /// <param name="packagePolicy">Mandatory strict package policy. The experience only checks that it is supplied and does not call it; the caller gives the same instance to its repository.</param>
+    /// <param name="admissionCodec">Mandatory strict admission codec. The experience only checks that it is supplied and does not call it; the caller gives the same instance to its repository.</param>
     /// <param name="sourceRegistry">Optional fixed-registry port.</param>
     public VersionManagementExperience(
         ManagedAppVersion currentAppVersion, string managedRoot, string statePath,
