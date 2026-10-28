@@ -425,3 +425,39 @@ Nvt.Core.Launcher.Recovery.ManagedSetupMarker.ManagedSetupMarker(string! Transac
 Nvt.Core.Launcher.Recovery.ManagedSetupPayloadDescriptor.ManagedSetupPayloadDescriptor(string! LauncherVersion, string! SourceCommit, Nvt.Core.Launcher.Recovery.ManagedSetupEmbeddedBootstrap! Bootstrap) -> void
 Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryCandidateIdentity.ManagedSetupRecoveryCandidateIdentity(long RegistryRevision, string! RegistryDigest, int CatalogSchemaVersion, string! CatalogLatestVersion, string! CatalogDigest, string! CatalogPath, string! RegistryId, string! SourceRoot, string! SourceStatus, string! Version, string! PackagePath, long PackageSize, string! PackageSha256, string! ReleaseManifestSha256, string! EntryIdentity) -> void
 Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPayloadIdentity.ManagedSetupRecoveryPayloadIdentity(long LauncherSize, string! LauncherSha256, long DescriptorSize, string! DescriptorSha256, string! BootstrapFileName, long BootstrapSize, string! BootstrapSha256) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.FileSystemManagedSetupRecoveryExecution(Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateReader! applicationStateReader, string! launcherStatePathSuffix, Nvt.Core.Launcher.Activation.ILauncherBootstrapStateStore! launcherStateStore, Nvt.Core.Launcher.Recovery.ManagedSetupLayout! layout, System.Func<string!, Nvt.Core.Launcher.Persistence.IVersionManagerStateStore!>! seedStoreFactory, Nvt.Core.Launcher.Contracts.IProductPackagePolicy! productPolicy, Nvt.Core.Launcher.Contracts.PackageVerificationLimits! limits, Nvt.Core.Launcher.Repository.IManagedVersionAdmissionCodec! admissionCodec) -> void
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.ObserveAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryTransaction! transaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryEvidenceObservation!>
+Nvt.Core.Launcher.Recovery.FileSystemManagedSetupRecoveryExecution.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest! request, Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult! writerLease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome>
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort
+Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest! request, Nvt.Core.Launcher.Persistence.VersionManagerWriteLeaseResult! writerLease, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome>
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator.ManagedSetupRecoveryExecutionCoordinator(Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryStateStore! stateStore, Nvt.Core.Launcher.Setup.IManagedInstallationRootProbe! rootProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryProbe! markerProbe, Nvt.Core.Launcher.Recovery.IManagedProcessLifetimeProbe! lifetimeProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryEvidenceProbe! evidenceProbe, Nvt.Core.Launcher.Recovery.IManagedSetupRecoveryExecutionPort! executionPort) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionCoordinator.ExecuteAsync(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryPlan! plan, Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction? confirmedAction, System.TimeSpan writerLeaseTimeout, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult!>
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionRequest.Action.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryAction
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.ManagedSetupRecoveryExecutionResult(Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome Outcome) -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.Outcome.get -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionResult.Outcome.init -> void
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Completed = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.ConfirmationRequired = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Busy = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.LifetimeActive = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.HealthUnavailable = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.StateUnavailable = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.PermissionDenied = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.SourceChanged = 7 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.RecoveryRequired = 8 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.ManualInterventionRequired = 9 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome.Cancelled = 10 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.Completed = 0 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.HealthUnavailable = 1 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.StateUnavailable = 2 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.PermissionDenied = 3 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.SourceChanged = 4 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.RecoveryRequired = 5 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.ManualInterventionRequired = 6 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
+Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome.Cancelled = 7 -> Nvt.Core.Launcher.Recovery.ManagedSetupRecoveryExecutionPortOutcome
