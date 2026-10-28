@@ -623,7 +623,7 @@ public VersionManagementExperience(
     IUpdateSourceRegistry? sourceRegistry = null)
 ```
 
-傳入的 repository 自行持有產品的 package policy 與 admission codec；experience 兩者都不接收。
+Core 的 `FileSystemManagedVersionRepository` 自行接收產品的 package policy 與 admission codec；experience 兩者都不接收。
 
 `VersionManagementLimits` 沒有預設值：六個參數均為必要相依，拒絕零與負數。NFC 提供 `maximumCatalogEntries = 128`、`maximumPackageBytes = 134,217,728`、`maximumReleaseNoteBytes = 65,536`（UTF-8）、`maximumRelativePathCharacters = 512`、`maximumRegistryEntries = 16`、`maximumRegistryIdCharacters = 128`；設定的相對路徑上限不得超過共用機制的 512 字元。Package identity 保留 `version|path|invariant-size|package-hash|manifest-hash`。
 
@@ -718,7 +718,7 @@ Core 新增測試以方法計數，以下數量不含 theory row。Replica class
 - 僅觀察、未變更：replica result `(null, None)` 沒有 snapshot，但 `Issue == None`；`Dispose()` 不等待執行中的 transaction；managed layout 回傳的 root 沒有尾端 separator。
 - 首次安裝 query 直接呼叫 registry port，與 Check／self-test 的 descriptor／limit readmission 不同。現有測試未證明此路徑會拒絕不符 consumer registry descriptor／entry limit 的值；本次不修改 predicate。
 - Delete 在 policy 檢查之後失敗（launcher fallback-owner 退役失敗，或 prepare save 失敗）時，結果帶的是該操作觀察到的 snapshot，內含第一次 inventory 讀取；凍結版在結果中回傳第二次讀取。只有兩次讀取之間 payload 改變時才有差異，沒有測試涵蓋。
-- 以下公開 API 形狀照現狀凍結，因為日後的改動都是增量：`FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` 接受公開的 `IManagedDistributionPayloadCapture`，實際卻要求 Core 內部的 `IManagedDistributionPayloadContent`，Core 之外建立的 capture 會回傳 `SourceChanged`；`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 帶 `progress` 的預設多載呼叫不帶 `progress` 的多載，會丟掉進度，要回報進度的實作自行覆寫；`IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` 把 token 放在選用旗標之前，與凍結的 NFC 形狀相同，日後加 token 在最後的多載不會破壞位置引數的呼叫，但同時以具名引數傳兩個參數的呼叫會變得有歧義。
+- 以下公開 API 形狀維持現狀，只在此記錄、不更動：`FileSystemManagedFirstInstallationRootMaterializer.MaterializeAsync` 接受公開的 `IManagedDistributionPayloadCapture`，實際卻要求 Core 內部的 `IManagedDistributionPayloadContent`，root 與 state-path 檢查通過後，Core 之外建立的 capture 會回傳 `SourceChanged`；`IManagedFirstInstallationRootMaterializer.MaterializeAsync` 帶 `progress` 的預設多載呼叫不帶 `progress` 的多載，會丟掉進度，要回報進度的實作自行覆寫；`IVersionManagementExperience.InitializeAsync(CancellationToken, bool isReadOnly = false)` 把 token 放在選用旗標之前，與凍結的 NFC 形狀相同；日後加 token 在最後的多載需另做相容性檢查，因為以具名引數傳兩個參數、或省略有預設值的 token 的呼叫會變得有歧義，而新的 interface 成員只有帶預設實作時才與既有實作者相容。
 
 ### 失敗矩陣
 
