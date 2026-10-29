@@ -1466,6 +1466,20 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { Invoke-ReviewMergeFixture } | Should Match 'no review ledger entry'
             @(Get-Calls).Count | Should Be 1
         }
+        It 'refuses to merge when the ledger cannot be opened, and does not call it a missing entry' {
+            [void][IO.Directory]::CreateDirectory($script:LedgerFile)
+            try {
+                Set-Responses @((New-PrStep))
+                Get-Message { Invoke-ReviewMergeFixture } | Should Match 'The review ledger contains an invalid entry or could not be read\.'
+                @(Get-Calls).Count | Should Be 1
+            } finally { [IO.Directory]::Delete($script:LedgerFile) }
+        }
+        It 'treats an empty ledger as no entry when it merges' {
+            [IO.File]::WriteAllText($script:LedgerFile, '')
+            Set-Responses @((New-PrStep))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match 'no review ledger entry'
+            @(Get-Calls).Count | Should Be 1
+        }
         It 'uses the latest appended entry even when its timestamp is earlier' {
             Add-LedgerFixture -Head $script:NonMerge -RequestedAt '2026-01-01T01:00:00Z'
             Add-LedgerFixture -Head $script:ReviewedSha
@@ -1747,6 +1761,13 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         if ($Total -lt 0) { $Total = @($Runs).Count }
         New-ApiStep "actions/runs?head_sha=$Head&per_page=100&page=$Page" -Value @{ total_count = $Total; workflow_runs = @($Runs) }
     }
+    function New-RunPages {
+        param([int]$Pages, [int]$Total)
+        foreach ($page in 1..$Pages) {
+            $runs = @(1..100 | ForEach-Object { New-Run -Id ($page * 1000 + $_) -Name Core -WorkflowId 10 })
+            New-RunsStep $runs -Page $page -Total $Total
+        }
+    }
     function New-FilesStep {
         param([int]$Number = 7)
         New-ApiStep "pulls/$Number/files?per_page=100&page=1" -Value @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 })
@@ -1841,7 +1862,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             (Get-Row $result 'Run: Core').Detail | Should Match 'run 2 is completed/failure'
         }
         It 'breaks a tie between runs created in the same second by the run ID' {
-            $runs = @((New-Run -Id 9 -Conclusion success), (New-Run -Id 8 -Conclusion failure))
+            # 9 and 10 sort differently as numbers and as text, so the test tells the two orders apart.
+            $runs = @((New-Run -Id 10 -Conclusion success), (New-Run -Id 9 -Conclusion failure))
             Set-Responses @(New-ReadinessSteps -Runs $runs)
             (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'Run: Core').Result | Should Be 'PASS'
         }
@@ -1885,6 +1907,55 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $result.Ready | Should Be $false
             @($result.Checks | Where-Object { $_.Name -ceq 'Run: Core' }).Count | Should Be 2
             @($result.Checks | Where-Object { $_.Name -ceq 'Run: Core' -and $_.Result -ceq 'FAIL' }).Count | Should Be 1
+        }
+        It 'accepts exactly 1,000 runs over ten pages as a complete read' {
+            $steps = @((New-PrStep -Pr (New-Pr -MergeState BLOCKED)), (New-ReviewStep -Reviews @((New-RecordReview))))
+            $steps += @(New-RunPages -Pages 10 -Total 1000)
+            $steps += (New-FilesStep)
+            Set-Responses $steps
+            $result = Get-GhAppPullRequestReadiness -Number 7
+            $result.Ready | Should Be $true
+            @($result.Checks | Where-Object { $_.Name -ceq 'Runs' }).Count | Should Be 0
+            @(Get-Calls).Count | Should Be 13
+        }
+        It 'fails at 1,001 runs after ten pages and asks for no eleventh page' {
+            $steps = @((New-PrStep -Pr (New-Pr -MergeState BLOCKED)), (New-ReviewStep -Reviews @((New-RecordReview))))
+            $steps += @(New-RunPages -Pages 10 -Total 1001)
+            $steps += (New-FilesStep)
+            Set-Responses $steps
+            $result = Get-GhAppPullRequestReadiness -Number 7
+            $result.Ready | Should Be $false
+            (Get-Row $result 'Runs').Detail | Should Be 'only 1000 of 1001 runs of this head were read'
+            @(Get-Calls).Count | Should Be 13
+        }
+        It 'fails when a short page ends the read before total_count' {
+            $short = @(1..40 | ForEach-Object { New-Run -Id (2000 + $_) -Name Core -WorkflowId 10 })
+            Set-Responses @((New-PrStep -Pr (New-Pr -MergeState BLOCKED)), (New-ReviewStep -Reviews @((New-RecordReview))),
+                (New-RunsStep $short -Total 150), (New-FilesStep))
+            $result = Get-GhAppPullRequestReadiness -Number 7
+            $result.Ready | Should Be $false
+            (Get-Row $result 'Runs').Detail | Should Be 'only 40 of 150 runs of this head were read'
+            @(Get-Calls).Count | Should Be 4
+        }
+        It 'stops with the API error when a later page cannot be read, and returns no readiness' {
+            $first = @(1..100 | ForEach-Object { New-Run -Id (1000 + $_) -Name Core -WorkflowId 10 })
+            Set-Responses @((New-PrStep -Pr (New-Pr -MergeState BLOCKED)), (New-ReviewStep -Reviews @((New-RecordReview))),
+                (New-RunsStep $first -Total 150),
+                (New-ApiStep "actions/runs?head_sha=$script:HeadSha&per_page=100&page=2" -ExitCode 1 -ErrorText 'HTTP 403'))
+            Get-Message { Get-GhAppPullRequestReadiness -Number 7 } |
+                Should Be "HTTP 403 /repos/$script:RepositoryName/actions/runs?head_sha=$script:HeadSha&per_page=100&page=2"
+            @(Get-Calls).Count | Should Be 4
+        }
+        It 'groups runs by name when the workflow ID is missing' {
+            $older = New-Run -Id 1 -Name Core -CreatedAt '2026-01-01T00:00:00Z'
+            $older.Remove('workflow_id')
+            $newer = New-Run -Id 2 -Name Core -Conclusion failure -CreatedAt '2026-01-01T01:00:00Z'
+            $newer.Remove('workflow_id')
+            Set-Responses @(New-ReadinessSteps -Runs @($older, $newer))
+            $result = Get-GhAppPullRequestReadiness -Number 7
+            $result.Ready | Should Be $false
+            @($result.Checks | Where-Object { $_.Name -ceq 'Run: Core' }).Count | Should Be 1
+            (Get-Row $result 'Run: Core').Detail | Should Match 'run 2 is completed/failure'
         }
         It 'fails when the head has no workflow run' {
             Set-Responses @(New-ReadinessSteps -Runs @())
@@ -2003,6 +2074,12 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { Set-GhAppPullRequestBody -Number 7 -BodyFile $script:BodyFile -ExpectedHeadSha bad } | Should Be 'ExpectedHeadSha is not a 40-character SHA.'
             @(Get-Calls).Count | Should Be 0
         }
+        It 'refuses a changed head given as the fourth positional parameter' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            Get-Message { Set-GhAppPullRequestBody 7 $script:BodyFile $script:RepositoryName $script:HeadSha } |
+                Should Be "#7 head changed. Expected $script:HeadSha; found $script:NextSha."
+            @(Get-Calls).Count | Should Be 1
+        }
         It 'reads the body file before the PR' {
             Get-Message { Set-GhAppPullRequestBody -Number 7 -BodyFile (Join-Path $script:FixtureRoot 'missing.txt') -ExpectedHeadSha $script:HeadSha } |
                 Should Be 'The body or message file is missing.'
@@ -2099,6 +2176,29 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 (New-PrStep -Pr (New-Pr -Head $script:NextSha)))
             (Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LedgerPath $missing).NewHead | Should Be $script:NextSha
         }
+        It 'treats an empty ledger file as no entry' {
+            [IO.File]::WriteAllText($script:LedgerFile, '')
+            Set-Responses @((New-PrStep), (New-ReviewStep -Reviews @()), (New-ApiStep pulls/7/update-branch PUT @{} -App),
+                (New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            (Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha $script:HeadSha).NewHead | Should Be $script:NextSha
+        }
+        It 'closes the ledger file after a read that succeeds' {
+            Add-LedgerFixture 8
+            Set-Responses @((New-PrStep), (New-ReviewStep -Reviews @()), (New-ApiStep pulls/7/update-branch PUT @{} -App),
+                (New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            $null = Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha $script:HeadSha
+            # File.Delete fails with a sharing violation while a reader still holds the file.
+            [IO.File]::Delete($script:LedgerFile)
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'closes the ledger file after a read that fails' {
+            [IO.File]::WriteAllText($script:LedgerFile, 'not json')
+            Set-Responses @((New-PrStep))
+            Get-Message { Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha $script:HeadSha } |
+                Should Be 'The review ledger contains an invalid entry or could not be read.'
+            [IO.File]::Delete($script:LedgerFile)
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
         It 'reports a refused update without retrying' {
             Set-Responses @((New-PrStep), (New-ReviewStep -Reviews @()),
                 (New-ApiStep pulls/7/update-branch PUT @{} -App -ExitCode 1 -ErrorText 'HTTP 422'))
@@ -2193,6 +2293,57 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $result = Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -BranchPrefix 'test/'
             $result.Reason | Should Be 'ref changed before delete'
             @(Get-Calls | Where-Object AppToken).Count | Should Be 0
+        }
+        It 'gets the App token before the last ref read, so a helper retry cannot sit between that read and the delete' {
+            $env:NVT_GHAPP_HELPER_FAIL = '2'
+            $script:SleepAt = @()
+            Mock Start-Sleep { $script:SleepAt += @(Get-Calls).Count }
+            Set-Responses @(New-RemovalSteps)
+            (Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -BranchPrefix 'test/').Deleted | Should Be $true
+            # Both waits of the helper retry came after the third gh call, before the last ref read (call 4) and the delete (call 5).
+            ($script:SleepAt -join ',') | Should Be '3,3'
+            @(Get-HelperRecords).Count | Should Be 3
+            @(Get-Calls).Count | Should Be 5
+            @(Get-Calls)[3].AppToken | Should Be $false
+            @(Get-Calls)[4].AppToken | Should Be $true
+        }
+        It 'keeps a branch that was pushed while the token helper retried, and sends no delete' {
+            $env:NVT_GHAPP_HELPER_FAIL = '2'
+            $script:SleepAt = @()
+            Mock Start-Sleep { $script:SleepAt += @(Get-Calls).Count }
+            Set-Responses @((New-PrStep -Pr (New-Pr -State MERGED)),
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $script:HeadSha } }),
+                (New-ApiStep "compare/main...$script:HeadSha" -Value @{ status = 'behind'; ahead_by = 0 }),
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $script:NextSha } }))
+            $result = Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -BranchPrefix 'test/'
+            $result.Deleted | Should Be $false
+            $result.Reason | Should Be 'ref changed before delete'
+            ($script:SleepAt -join ',') | Should Be '3,3'
+            @(Get-HelperRecords).Count | Should Be 3
+            @(Get-Calls).Count | Should Be 4
+            @(Get-Calls | Where-Object AppToken).Count | Should Be 0
+        }
+        It 'stops before the last ref read when the App token cannot be fetched' {
+            $env:NVT_GHAPP_HELPER_FAIL = '99'
+            Mock Start-Sleep {}
+            Set-Responses @((New-PrStep -Pr (New-Pr -State MERGED)),
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $script:HeadSha } }),
+                (New-ApiStep "compare/main...$script:HeadSha" -Value @{ status = 'behind'; ahead_by = 0 }))
+            Get-Message { Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -BranchPrefix 'test/' } |
+                Should Be "HTTP unknown /repos/$script:RepositoryName/git/refs/heads/test%2Fmodule (token helper exit 1) (after 3 attempts)"
+            @(Get-Calls).Count | Should Be 3
+            @(Get-HelperRecords).Count | Should Be 3
+        }
+        It 'does not repeat a delete that failed' {
+            Mock Start-Sleep {}
+            $steps = @(New-RemovalSteps)
+            $steps[4] = New-ApiStep 'git/refs/heads/test%2Fmodule' DELETE -App -ExitCode 1 -ErrorText 'HTTP 502'
+            Set-Responses $steps
+            Get-Message { Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -BranchPrefix 'test/' } |
+                Should Be "HTTP 502 /repos/$script:RepositoryName/git/refs/heads/test%2Fmodule"
+            @(Get-Calls).Count | Should Be 5
+            @(Get-HelperRecords).Count | Should Be 1
+            Assert-MockCalled Start-Sleep -Times 0 -Exactly -Scope It
         }
         It 'refuses a PR that is not merged' {
             Set-Responses @((New-PrStep))

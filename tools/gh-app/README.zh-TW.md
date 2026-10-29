@@ -262,8 +262,8 @@ Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -De
 分支不能是 `main` 或 PR 的 base，ref 必須仍指向合併的 head，PR 的 base 必須已包含該 head。
 函式和合併一樣把結果寫進 `-LogPath`，並傳回 `Number`、`Branch`、`Deleted`、`Reason`。
 
-GitHub 沒有指定預期 SHA 的刪除 ref。函式在刪除前最後再讀一次 ref，分支已經移動就保留（`Reason` 是 `ref changed before delete`）。
-最後一次讀取與刪除之間仍有幾毫秒的空隙，這段時間內的 push 會隨分支一起消失。合併後的刪除也一樣。
+GitHub 沒有指定預期 SHA 的刪除 ref。函式先取得 App token，因為 token helper 可能花數秒並重試。接著再讀一次 ref，分支已經移動就保留（`Reason` 是 `ref changed before delete`）。
+token 準備好之後，刪除前只剩這次最後的讀取與比對。刪除不重試。最後一次讀取與刪除之間的 push 仍會隨分支一起消失，程式無法封住這段空隙。合併後的刪除也一樣。
 
 ```powershell
 Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'

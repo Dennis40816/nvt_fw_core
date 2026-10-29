@@ -2,6 +2,7 @@
 #Requires -Version 7.4
 Set-StrictMode -Version Latest
 $script:Configuration = $null
+$script:WriteTokenAttempts = 3
 
 function Get-GhAppConfigPath {
     param([string]$Owner, [string]$Repo)
@@ -143,16 +144,37 @@ function Get-GhAppToken {
     }
 }
 
+# A token failure happens before gh starts, so nothing reached GitHub and a write may retry it. The helper can take
+# seconds and the waits add more, so a caller that needs no gap before its write fetches the token first.
+function Get-GhAppTokenWithRetry {
+    param([hashtable]$Context, [string]$ApiPath, [int]$TokenAttempts = 1)
+    for ($attempt = 1; ; $attempt++) {
+        try { return Get-GhAppToken $Context $ApiPath }
+        catch {
+            if ($attempt -lt $TokenAttempts) { Start-Sleep -Seconds (2 * $attempt); continue }
+            $failure = $_.Exception.Message
+            if ($TokenAttempts -gt 1) { $failure = "$failure (after $TokenAttempts attempts)" }
+            throw $failure
+        }
+    }
+}
+
+# The token for one write to a repository path, fetched ahead of the write. Pass it to Invoke-GhAppApi as PreparedToken.
+function Get-GhAppWriteToken {
+    param([hashtable]$Context, [string]$Suffix)
+    Get-GhAppTokenWithRetry $Context "/repos/$($Context.owner)/$($Context.repo)/$Suffix" $script:WriteTokenAttempts
+}
+
 function Invoke-GhAppGh {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
         [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
-        [switch]$Read)
+        [switch]$Read, [string]$PreparedToken)
     # Only reads retry. A write that fails after GitHub applied it must never repeat, for example a comment or a merge.
     $attempts = $(if ($Read) { 3 } else { 1 })
     [void]$PSBoundParameters.Remove('Read')
     # A token failure happens before gh starts, so nothing reached GitHub and a write may retry it too.
     # A read already retries the whole call, so its token step runs once per attempt.
-    $PSBoundParameters['TokenAttempts'] = $(if ($Read) { 1 } else { 3 })
+    $PSBoundParameters['TokenAttempts'] = $(if ($Read) { 1 } else { $script:WriteTokenAttempts })
     for ($attempt = 1; ; $attempt++) {
         try { return Invoke-GhAppGhOnce @PSBoundParameters }
         catch {
@@ -171,7 +193,7 @@ function Invoke-GhAppGh {
 function Invoke-GhAppGhOnce {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
         [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
-        [int]$TokenAttempts = 1)
+        [int]$TokenAttempts = 1, [string]$PreparedToken)
     $process = $null
     $token = $null
     $info = $null
@@ -185,14 +207,10 @@ function Invoke-GhAppGhOnce {
         $info.Environment['GH_REPO'] = "$($Context.owner)/$($Context.repo)"
         $info.Environment['GH_PROMPT_DISABLED'] = '1'
         if ($AsApp) {
-            for ($attempt = 1; $null -eq $token; $attempt++) {
-                try { $token = Get-GhAppToken $Context $ApiPath }
-                catch {
-                    $failure = $_.Exception.Message
-                    if ($attempt -lt $TokenAttempts) { Start-Sleep -Seconds (2 * $attempt); continue }
-                    if ($TokenAttempts -gt 1) { $failure = "$failure (after $TokenAttempts attempts)" }
-                    throw
-                }
+            if ($PreparedToken) { $token = $PreparedToken }
+            else {
+                try { $token = Get-GhAppTokenWithRetry $Context $ApiPath $TokenAttempts }
+                catch { $failure = $_.Exception.Message; throw }
             }
             $info.Environment['GH_TOKEN'] = $token
         }
@@ -228,7 +246,7 @@ function Invoke-GhAppGhOnce {
 
 function Invoke-GhAppApi {
     param([hashtable]$Context, [string]$Method, [string]$Suffix, [hashtable]$Body,
-        [switch]$AsApp, [switch]$AllowNotFound)
+        [switch]$AsApp, [switch]$AllowNotFound, [string]$PreparedToken)
     $decoded = [Uri]::UnescapeDataString($Suffix.Split('?')[0])
     if ($decoded -match '(^|/)\.\.?(/|$)|\\|//|[\x00-\x20\x7f]' -or $decoded.Contains('%') -or $decoded.StartsWith('/')) {
         throw "Repository mismatch. Expected $($Context.owner)/$($Context.repo)."
@@ -241,7 +259,7 @@ function Invoke-GhAppApi {
         $inputText = ConvertTo-Json -InputObject $Body -Depth 30 -Compress
     }
     $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -InputText $inputText -Read:($Method -ceq 'GET') `
-        -AsApp:$AsApp -AllowNotFound:$AllowNotFound
+        -AsApp:$AsApp -AllowNotFound:$AllowNotFound -PreparedToken $PreparedToken
     if ($null -eq $result -or [string]::IsNullOrWhiteSpace($result.Output)) { return $null }
     try { ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
     catch { throw "HTTP unknown $path" }
@@ -353,7 +371,11 @@ function Get-GhAppLatestRuns {
         if ($batch.Count -lt 100 -or $runs.Count -ge $total) { break }
     }
     # The key is the workflow ID, because two workflows can share a name. The name is the key only when the ID is missing.
-    $groups = @($runs | Group-Object { if ($null -ne $_.workflow_id) { [string]$_.workflow_id } else { [string]$_.name } })
+    # StrictMode makes a missing property an error, so the property is looked up by name.
+    $groups = @($runs | Group-Object {
+        $workflowId = $_.PSObject.Properties['workflow_id']
+        if ($null -ne $workflowId -and $null -ne $workflowId.Value) { [string]$workflowId.Value } else { [string]$_.name }
+    })
     # @(foreach ...) is empty for no group, where @($null) would hold one null item.
     $latest = @(foreach ($group in $groups) {
         $ordered = @($group.Group | Sort-Object -Property @{ Expression = { [DateTimeOffset]$_.created_at }; Descending = $true },
@@ -1060,14 +1082,19 @@ function Remove-GhAppBranchAfterMerge {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; $base does not contain $Head"
         return New-GhAppBranchOutcome $Number $branch $false "$base does not contain $Head"
     }
-    # GitHub has no delete that names the expected SHA. Read the ref once more as late as possible, so a branch that
-    # was pushed after the first read is kept. A window of a few milliseconds between this read and the delete remains.
-    $last = Invoke-GhAppApi $Context GET "git/ref/heads/$encoded" -AllowNotFound
-    if ($null -eq $last -or $last.object.sha -cne $Head) {
-        Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed before delete"
-        return New-GhAppBranchOutcome $Number $branch $false 'ref changed before delete'
-    }
-    $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp
+    # GitHub has no delete that names the expected SHA. So the App token comes first: the token helper can take
+    # seconds and retry. Then the ref is read once more, compared, and deleted. A delete is never retried, so no
+    # token request, wait or retry sits between that read and the delete. Only the comparison and the start of gh do.
+    $token = $null
+    try {
+        $token = Get-GhAppWriteToken $Context "git/refs/heads/$encoded"
+        $last = Invoke-GhAppApi $Context GET "git/ref/heads/$encoded" -AllowNotFound
+        if ($null -eq $last -or $last.object.sha -cne $Head) {
+            Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed before delete"
+            return New-GhAppBranchOutcome $Number $branch $false 'ref changed before delete'
+        }
+        $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp -PreparedToken $token
+    } finally { $token = $null }
     Write-GhAppMergeLog $LogPath "#$Number deleted branch $branch at $Head"
     New-GhAppBranchOutcome $Number $branch $true 'deleted'
 }

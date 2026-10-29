@@ -322,8 +322,8 @@ It has the same conditions as the deletion after a merge, plus two checks of its
 The branch must not be `main` or the PR base, its ref must still match the merged head, and the PR base must contain that head.
 The function logs the outcome to `-LogPath` like the merge, and returns `Number`, `Branch`, `Deleted` and `Reason`.
 
-GitHub has no ref delete that names the expected SHA. The function reads the ref again just before the delete and keeps the branch when it moved (`Reason` is `ref changed before delete`).
-A window of a few milliseconds between that read and the delete remains. A push inside that window is lost with the branch. The same holds for the deletion after a merge.
+GitHub has no ref delete that names the expected SHA. The function gets the App token first, because the token helper can take seconds and retry. It then reads the ref again and keeps the branch when it moved (`Reason` is `ref changed before delete`).
+After the token is ready, only that last read and the comparison come before the delete. The delete is never retried. A push between that read and the delete is still lost with the branch, and the code cannot close that gap. The same holds for the deletion after a merge.
 
 ```powershell
 Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'
