@@ -116,9 +116,34 @@ New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
 ## Set-GhAppPullRequestBody
 
 This function replaces a PR description with the contents of a body file.
+`-ExpectedHeadSha` reads the PR first and stops before the write when the head is another one.
+This is a check before the write, not a lock. The PATCH cannot carry the expected head, so a head that moves between the check and the PATCH still receives the new text.
+Use it to catch a body that was written for an older head, for example one that quotes the head, its CI run or its review. It does not protect against a push at the same moment.
 
 ```powershell
-Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt
+Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
+```
+
+## Update-GhAppPullRequestBranch
+
+This function merges the base branch into the PR branch through `PUT pulls/{n}/update-branch`.
+It sends `-ExpectedHeadSha` as `expected_head_sha`, so GitHub also refuses a head that moved.
+
+A new head voids a review request and its review record, so the function stops before any write when:
+
+- the PR is not open, or its author is not `botLogin`;
+- the head is not `-ExpectedHeadSha`;
+- the review ledger has an entry for the PR, which means it was sent to the owner;
+- the owner has reviewed the PR.
+
+A draft PR may be updated.
+After the call the function polls the PR every `-PollSeconds` (default 5) until the head changes, for at most `-TimeoutSeconds` (default 120), and returns `Number`, `OldHead` and `NewHead`.
+A timeout means GitHub accepted the update but the head has not changed yet; check the PR before calling again.
+`-LedgerPath` must be the same ledger that `Request-GhAppOwnerReview` writes.
+`Merge-GhAppApprovedPullRequest` updates a behind branch after approval by itself and proves the result, so do not call this function for a PR that the owner has seen.
+
+```powershell
+Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
 ```
 
 ## Add-GhAppComment
@@ -164,6 +189,41 @@ Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json -Apply -IssuesLogPat
 
 `tools/gh-app/sync-labels.ps1 -Owner OWNER -Repo REPO [-Apply -IssuesLogPath PATH]` imports the repository config and runs the function.
 
+## Get-GhAppPullRequestReadiness
+
+This function checks whether a PR can go to the owner. It reads only and never writes to GitHub.
+It returns `Number`, `Head`, `Ready`, `Checks` and `Files`.
+`Ready` is true when no check failed. Each row of `Checks` has `Name`, `Result` (`PASS` or `FAIL`) and `Detail` with the reason.
+A failed check does not stop the others, so one call lists every problem.
+`Files` lists the changed files with their added and deleted line counts.
+
+| Check | Passes when |
+| --- | --- |
+| `State` | the PR is open |
+| `Draft` | the PR is not a draft |
+| `Author` | the author is `botLogin` |
+| `Head` | the head equals `-ExpectedHeadSha`; without that parameter the row only shows the head |
+| `MergeState` | the merge state is `CLEAN`, `BLOCKED`, `UNSTABLE` or `HAS_HOOKS`. `BLOCKED` is normal before the owner approves. `BEHIND` fails, because the head would change at merge time. `DIRTY` and `UNKNOWN` fail. |
+| `ReviewRecord` | a submitted review sits on the head commit and its body matches the pattern |
+| `Run: <workflow>` | the latest run of that workflow on the head is completed with the conclusion `success` |
+
+The review record format differs between repositories, so the module does not fix it.
+`-ReviewRecordPattern` is a regular expression, matched case-sensitively against the review body. `^` and `$` match at every line.
+`{HEAD}` in the pattern becomes the head SHA.
+The default is `^Review record: {HEAD} accept\b`.
+A repository whose record reads `Verdict: accept` passes `-ReviewRecordPattern '^Verdict: accept$'`.
+
+The latest run of each workflow decides, not the PR status rollup.
+When a review record is posted after CI, the rollup of the PR can keep an older failed run for good, and the App cannot re-run it (see [What the App cannot do](#what-the-app-cannot-do)).
+The function reads every page of the runs of the head, up to 1,000 runs. It groups them by workflow, takes the newest run of each group, and names the number of older runs it ignored.
+The group key is the workflow ID, not the name, because two workflows can share a name. Each row shows the name, so two rows can read alike.
+If fewer runs were read than GitHub reports, the `Runs` row fails: a workflow whose latest run was not read could hide a failure.
+
+```powershell
+$readiness = Get-GhAppPullRequestReadiness -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
+$readiness.Checks | Format-Table Name, Result, Detail -AutoSize
+```
+
 ## Request-GhAppOwnerReview
 
 Call this function when a session sends a PR to the owner for review.
@@ -171,6 +231,11 @@ It reads the current head and appends an external review request record.
 The PR must be open, not a draft, in the configured repository, and authored by `botLogin`.
 It makes no GitHub write and returns the recorded entry.
 A new head sent for review needs a new call.
+
+Two optional guards run before the ledger line is written:
+
+- `-ExpectedHeadSha` stops the call when the head is another one.
+- `-CheckReadiness` runs the checks of `Get-GhAppPullRequestReadiness` on the head that the ledger will record and stops when one fails. The message lists each failed check. `-ReviewRecordPattern` is passed through, and it is refused without `-CheckReadiness`.
 
 The default ledger is `~/.nvt/gh-app/review-ledger.jsonl`, beside the repository config.
 Both this ledger and any optional `-LedgerPath` must be outside every repository.
@@ -224,7 +289,8 @@ The default timeout is 1,200 seconds, and the default poll interval is 15 second
 Use `-TimeoutSeconds` and `-PollSeconds` to change those limits.
 
 Branch deletion after a merge is opt-in through `-DeleteBranchPrefix`.
-Without it, every head branch is kept, including release branches.
+Without it, every head branch is kept, including release branches, and the function prints a warning for each kept branch.
+Delete such a branch later with `Remove-GhAppMergedBranch`.
 Pass only a branch category that the owner has authorized for deletion.
 Before deleting any other branch, send its name and head to the owner for confirmation.
 With it, the function deletes the head branch only when all of these hold:
@@ -242,6 +308,25 @@ That observation never allows a merge: commit times can predate pushes. An unava
 
 ```powershell
 Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
+```
+
+## Remove-GhAppMergedBranch
+
+This function deletes the head branch of a merged PR. Use it when the merge ran without `-DeleteBranchPrefix`, or when the branch was kept on purpose until the owner agreed to delete it.
+It has the same conditions as the deletion after a merge, plus two checks of its own:
+
+- the PR is merged;
+- the PR head equals `-ExpectedHeadSha`, so write down the branch head before you delete.
+
+`-BranchPrefix` is required and must be nonempty. The branch name must start with it, so pass the full branch name when you mean one branch.
+The branch must not be `main` or the PR base, its ref must still match the merged head, and the PR base must contain that head.
+The function logs the outcome to `-LogPath` like the merge, and returns `Number`, `Branch`, `Deleted` and `Reason`.
+
+GitHub has no ref delete that names the expected SHA. The function gets the App token first, because the token helper can take seconds and retry. It then reads the ref again and keeps the branch when it moved (`Reason` is `ref changed before delete`).
+After the token is ready, only that last read and the comparison come before the delete. The delete is never retried. A push between that read and the delete is still lost with the branch, and the code cannot close that gap. The same holds for the deletion after a merge.
+
+```powershell
+Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'
 ```
 
 ## Close-GhAppPullRequest
@@ -273,6 +358,13 @@ PR and issue identifiers must be numbers.
 ```powershell
 Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 ```
+
+## What the App cannot do
+
+The installation has no `actions: write` permission.
+A request to re-run a workflow or a job returns `HTTP 403`. Do not try it.
+A failed run on a head cannot be repaired from here. The owner re-runs it, or the PR gets a new head.
+`Get-GhAppPullRequestReadiness` judges the latest run of each workflow, so an old failed run that a newer run replaced does not block a PR.
 
 ## Token rules
 

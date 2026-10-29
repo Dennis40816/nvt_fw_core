@@ -9,6 +9,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 ### Changed
 
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+- `tools/gh-app`: new `Get-GhAppPullRequestReadiness` lists a PR's checks as PASS or FAIL before it goes to the owner. It judges the latest run of each workflow, so an old failed run that the App cannot re-run no longer blocks a PR. `Request-GhAppOwnerReview` can run it first (`-CheckReadiness`) and can pin the head (`-ExpectedHeadSha`). New `Update-GhAppPullRequestBranch` updates a branch with an expected-head guard and refuses a PR that was sent to the owner. `Set-GhAppPullRequestBody` takes an optional `-ExpectedHeadSha`. `Remove-GhAppMergedBranch` is now public, and a merge without `-DeleteBranchPrefix` prints a warning for each kept branch. The README states that the App cannot re-run workflows.
 
 ## 0.9.5 - 2026-10-28
 

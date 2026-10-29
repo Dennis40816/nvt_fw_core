@@ -2,6 +2,7 @@
 #Requires -Version 7.4
 Set-StrictMode -Version Latest
 $script:Configuration = $null
+$script:WriteTokenAttempts = 3
 
 function Get-GhAppConfigPath {
     param([string]$Owner, [string]$Repo)
@@ -143,16 +144,37 @@ function Get-GhAppToken {
     }
 }
 
+# A token failure happens before gh starts, so nothing reached GitHub and a write may retry it. The helper can take
+# seconds and the waits add more, so a caller that needs no gap before its write fetches the token first.
+function Get-GhAppTokenWithRetry {
+    param([hashtable]$Context, [string]$ApiPath, [int]$TokenAttempts = 1)
+    for ($attempt = 1; ; $attempt++) {
+        try { return Get-GhAppToken $Context $ApiPath }
+        catch {
+            if ($attempt -lt $TokenAttempts) { Start-Sleep -Seconds (2 * $attempt); continue }
+            $failure = $_.Exception.Message
+            if ($TokenAttempts -gt 1) { $failure = "$failure (after $TokenAttempts attempts)" }
+            throw $failure
+        }
+    }
+}
+
+# The token for one write to a repository path, fetched ahead of the write. Pass it to Invoke-GhAppApi as PreparedToken.
+function Get-GhAppWriteToken {
+    param([hashtable]$Context, [string]$Suffix)
+    Get-GhAppTokenWithRetry $Context "/repos/$($Context.owner)/$($Context.repo)/$Suffix" $script:WriteTokenAttempts
+}
+
 function Invoke-GhAppGh {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
         [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
-        [switch]$Read)
+        [switch]$Read, [string]$PreparedToken)
     # Only reads retry. A write that fails after GitHub applied it must never repeat, for example a comment or a merge.
     $attempts = $(if ($Read) { 3 } else { 1 })
     [void]$PSBoundParameters.Remove('Read')
     # A token failure happens before gh starts, so nothing reached GitHub and a write may retry it too.
     # A read already retries the whole call, so its token step runs once per attempt.
-    $PSBoundParameters['TokenAttempts'] = $(if ($Read) { 1 } else { 3 })
+    $PSBoundParameters['TokenAttempts'] = $(if ($Read) { 1 } else { $script:WriteTokenAttempts })
     for ($attempt = 1; ; $attempt++) {
         try { return Invoke-GhAppGhOnce @PSBoundParameters }
         catch {
@@ -171,7 +193,7 @@ function Invoke-GhAppGh {
 function Invoke-GhAppGhOnce {
     param([hashtable]$Context, [string[]]$Arguments, [string]$ApiPath,
         [AllowNull()][string]$InputText, [switch]$AsApp, [int[]]$AllowedExitCodes = @(0), [switch]$AllowNotFound,
-        [int]$TokenAttempts = 1)
+        [int]$TokenAttempts = 1, [string]$PreparedToken)
     $process = $null
     $token = $null
     $info = $null
@@ -185,14 +207,10 @@ function Invoke-GhAppGhOnce {
         $info.Environment['GH_REPO'] = "$($Context.owner)/$($Context.repo)"
         $info.Environment['GH_PROMPT_DISABLED'] = '1'
         if ($AsApp) {
-            for ($attempt = 1; $null -eq $token; $attempt++) {
-                try { $token = Get-GhAppToken $Context $ApiPath }
-                catch {
-                    $failure = $_.Exception.Message
-                    if ($attempt -lt $TokenAttempts) { Start-Sleep -Seconds (2 * $attempt); continue }
-                    if ($TokenAttempts -gt 1) { $failure = "$failure (after $TokenAttempts attempts)" }
-                    throw
-                }
+            if ($PreparedToken) { $token = $PreparedToken }
+            else {
+                try { $token = Get-GhAppTokenWithRetry $Context $ApiPath $TokenAttempts }
+                catch { $failure = $_.Exception.Message; throw }
             }
             $info.Environment['GH_TOKEN'] = $token
         }
@@ -228,7 +246,7 @@ function Invoke-GhAppGhOnce {
 
 function Invoke-GhAppApi {
     param([hashtable]$Context, [string]$Method, [string]$Suffix, [hashtable]$Body,
-        [switch]$AsApp, [switch]$AllowNotFound)
+        [switch]$AsApp, [switch]$AllowNotFound, [string]$PreparedToken)
     $decoded = [Uri]::UnescapeDataString($Suffix.Split('?')[0])
     if ($decoded -match '(^|/)\.\.?(/|$)|\\|//|[\x00-\x20\x7f]' -or $decoded.Contains('%') -or $decoded.StartsWith('/')) {
         throw "Repository mismatch. Expected $($Context.owner)/$($Context.repo)."
@@ -241,7 +259,7 @@ function Invoke-GhAppApi {
         $inputText = ConvertTo-Json -InputObject $Body -Depth 30 -Compress
     }
     $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -InputText $inputText -Read:($Method -ceq 'GET') `
-        -AsApp:$AsApp -AllowNotFound:$AllowNotFound
+        -AsApp:$AsApp -AllowNotFound:$AllowNotFound -PreparedToken $PreparedToken
     if ($null -eq $result -or [string]::IsNullOrWhiteSpace($result.Output)) { return $null }
     try { ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
     catch { throw "HTTP unknown $path" }
@@ -321,18 +339,146 @@ function Get-GhAppLedgerPath {
     $LedgerPath
 }
 
+# The default review record: the first line names the head and the verdict. A repository with another format passes its own pattern.
+$script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
+
+function New-GhAppCheckRow {
+    param([string]$Name, [bool]$Pass, [string]$Detail)
+    [pscustomobject]@{ Name = $Name; Result = $(if ($Pass) { 'PASS' } else { 'FAIL' }); Detail = $Detail }
+}
+
+function Assert-GhAppReviewRecordPattern {
+    param([string]$Pattern)
+    if ([string]::IsNullOrEmpty($Pattern)) { return }
+    try { $null = [regex]::new($Pattern.Replace('{HEAD}', 'a' * 40)) }
+    catch { throw 'ReviewRecordPattern is not a valid regular expression.' }
+}
+
+function Get-GhAppLatestRuns {
+    param([hashtable]$Context, [string]$Head)
+    # The runs of a head can fill several pages, and the latest run of a workflow can sit on a later page.
+    # The loop reads until it holds total_count runs, or stops at 1000 runs. A result that is not complete says so.
+    $runs = @()
+    $total = 0
+    for ($page = 1; $page -le 10; $page++) {
+        $response = Invoke-GhAppApi $Context GET "actions/runs?head_sha=$Head&per_page=100&page=$page"
+        $batch = @()
+        if ($null -ne $response -and $null -ne $response.PSObject.Properties['workflow_runs']) {
+            $batch = @($response.workflow_runs)
+            $total = $(if ($null -ne $response.PSObject.Properties['total_count']) { [int]$response.total_count } else { $batch.Count })
+        }
+        $runs += $batch
+        if ($batch.Count -lt 100 -or $runs.Count -ge $total) { break }
+    }
+    # The key is the workflow ID, because two workflows can share a name. The name is the key only when the ID is missing.
+    # StrictMode makes a missing property an error, so the property is looked up by name.
+    $groups = @($runs | Group-Object {
+        $workflowId = $_.PSObject.Properties['workflow_id']
+        if ($null -ne $workflowId -and $null -ne $workflowId.Value) { [string]$workflowId.Value } else { [string]$_.name }
+    })
+    # @(foreach ...) is empty for no group, where @($null) would hold one null item.
+    $latest = @(foreach ($group in $groups) {
+        $ordered = @($group.Group | Sort-Object -Property @{ Expression = { [DateTimeOffset]$_.created_at }; Descending = $true },
+            @{ Expression = { [long]$_.id }; Descending = $true })
+        [pscustomobject]@{ Run = $ordered[0]; Older = @($ordered | Select-Object -Skip 1) }
+    })
+    [pscustomobject]@{ Latest = $latest; Read = $runs.Count; Total = $total; Complete = ($runs.Count -ge $total) }
+}
+
+function Get-GhAppReadiness {
+    param([hashtable]$Context, [int]$Number, $Pr, [string]$ExpectedHeadSha, [string]$ReviewRecordPattern)
+    $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
+    if ([string]::IsNullOrEmpty($ReviewRecordPattern)) { $ReviewRecordPattern = $script:DefaultReviewRecordPattern }
+    $pattern = $ReviewRecordPattern.Replace('{HEAD}', [regex]::Escape($head))
+    $checks = [Collections.Generic.List[object]]::new()
+    $checks.Add((New-GhAppCheckRow 'State' ($Pr.state -ceq 'OPEN') "state is $($Pr.state)"))
+    $checks.Add((New-GhAppCheckRow 'Draft' (-not $Pr.isDraft) $(if ($Pr.isDraft) { 'the PR is still a draft' } else { 'not a draft' })))
+    $author = $(if ($null -ne $Pr.author) { [string]$Pr.author.login } else { 'none' })
+    $checks.Add((New-GhAppCheckRow 'Author' (Test-GhAppBotAuthor $Context $Pr.author) "author is $author; botLogin is $($Context.botLogin)"))
+    if ($ExpectedHeadSha) {
+        $checks.Add((New-GhAppCheckRow 'Head' ($head -ceq $ExpectedHeadSha) $(if ($head -ceq $ExpectedHeadSha) { "head is $head" } else { "head is $head; expected $ExpectedHeadSha" })))
+    } else {
+        $checks.Add((New-GhAppCheckRow 'Head' $true "head is $head; no expected head given"))
+    }
+    # BLOCKED is the normal state before the owner approves. BEHIND would change the head at merge time and void the review record.
+    $stateDetail = "merge state is $($Pr.mergeStateStatus)"
+    if ($Pr.mergeStateStatus -ceq 'BEHIND') { $stateDetail += "; update the branch first, or the head changes at merge time" }
+    elseif ($Pr.mergeStateStatus -ceq 'DIRTY') { $stateDetail += '; the branch conflicts with its base' }
+    elseif ($Pr.mergeStateStatus -ceq 'UNKNOWN') { $stateDetail += '; GitHub has not computed it yet, try again' }
+    $checks.Add((New-GhAppCheckRow 'MergeState' ($Pr.mergeStateStatus -cin @('CLEAN', 'BLOCKED', 'UNSTABLE', 'HAS_HOOKS')) $stateDetail))
+
+    $reviews = @(Get-GhAppItems $Context "pulls/$Number/reviews")
+    $records = @($reviews | Where-Object {
+        $_.state -cne 'PENDING' -and [string]$_.commit_id -ceq $head -and
+        [regex]::IsMatch([string]$_.body, $pattern, [Text.RegularExpressions.RegexOptions]::Multiline, [TimeSpan]::FromSeconds(2)) })
+    if ($records.Count -gt 0) {
+        $checks.Add((New-GhAppCheckRow 'ReviewRecord' $true "$($records.Count) review(s) on this head match; the latest is by $($records[-1].user.login)"))
+    } else {
+        $checks.Add((New-GhAppCheckRow 'ReviewRecord' $false "no review on this head matches the pattern $pattern"))
+    }
+
+    # The latest run of each workflow decides. An older failed run stays in the PR rollup for good, because the App cannot re-run it.
+    $runs = Get-GhAppLatestRuns $Context $head
+    if (-not $runs.Complete) {
+        # A workflow whose latest run was not read could hide a failure, so an incomplete list never passes.
+        $checks.Add((New-GhAppCheckRow 'Runs' $false "only $($runs.Read) of $($runs.Total) runs of this head were read"))
+    }
+    elseif ($runs.Latest.Count -eq 0) {
+        $checks.Add((New-GhAppCheckRow 'Runs' $false 'no workflow run found for this head'))
+    }
+    foreach ($item in @($runs.Latest | Sort-Object -Property { [string]$_.Run.name })) {
+        $run = $item.Run
+        $pass = ($run.status -ceq 'completed' -and $run.conclusion -ceq 'success')
+        $detail = "$($run.event) run $($run.id) is $($run.status)"
+        if ($run.status -ceq 'completed') { $detail += "/$($run.conclusion)" }
+        $ignored = @($item.Older | Where-Object { $_.conclusion -cne 'success' }).Count
+        if ($ignored -gt 0) { $detail += "; $ignored older run(s) of this workflow ignored" }
+        $checks.Add((New-GhAppCheckRow "Run: $($run.name)" $pass "$detail $($run.html_url)"))
+    }
+
+    $files = @(Get-GhAppItems $Context "pulls/$Number/files" | ForEach-Object {
+        [pscustomobject]@{ Path = [string]$_.filename; Added = [int]$_.additions; Deleted = [int]$_.deletions } })
+    [pscustomobject]@{ Number = $Number; Head = $head; Ready = (@($checks | Where-Object { $_.Result -ceq 'FAIL' }).Count -eq 0);
+        Checks = $checks.ToArray(); Files = $files }
+}
+
+function Get-GhAppPullRequestReadiness {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [string]$ExpectedHeadSha, [string]$ReviewRecordPattern, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    if ($PSBoundParameters.ContainsKey('ExpectedHeadSha')) { $null = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha }
+    Assert-GhAppReviewRecordPattern $ReviewRecordPattern
+    $pr = Get-GhAppPullRequest $context $Number
+    Get-GhAppReadiness $context $Number $pr $ExpectedHeadSha $ReviewRecordPattern
+}
+
 function Request-GhAppOwnerReview {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
-        [string]$LedgerPath, [Alias('Repo')][string]$Repository)
+        [string]$LedgerPath, [Alias('Repo')][string]$Repository,
+        [string]$ExpectedHeadSha, [switch]$CheckReadiness, [string]$ReviewRecordPattern)
+    if ($PSBoundParameters.ContainsKey('ReviewRecordPattern') -and -not $CheckReadiness) { throw 'ReviewRecordPattern requires CheckReadiness.' }
     $context = Get-GhAppContext $Repository
+    if ($PSBoundParameters.ContainsKey('ExpectedHeadSha')) { $null = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha }
+    Assert-GhAppReviewRecordPattern $ReviewRecordPattern
     $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
     $pr = Get-GhAppPullRequest $context $Number
     if ($pr.state -cne 'OPEN' -or $pr.isDraft) { throw "#$Number must be open and not a draft before requesting owner review." }
     if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
     Assert-GhAppBranch $pr.baseRefName
+    $head = Assert-GhAppSha "head of #$Number" $pr.headRefOid
+    if ($ExpectedHeadSha -and $head -cne $ExpectedHeadSha) { throw "#$Number head changed. Expected $ExpectedHeadSha; found $head." }
+    if ($CheckReadiness) {
+        # The checks cover the head that the ledger records, so a head that moves later fails the merge proof instead.
+        $readiness = Get-GhAppReadiness $context $Number $pr $ExpectedHeadSha $ReviewRecordPattern
+        if (-not $readiness.Ready) {
+            $failed = @($readiness.Checks | Where-Object { $_.Result -ceq 'FAIL' } | ForEach-Object { "$($_.Name): $($_.Detail)" })
+            throw "#$Number is not ready for owner review. $($failed -join '; ')"
+        }
+    }
     $entry = [pscustomobject][ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number;
-        head = (Assert-GhAppSha "head of #$Number" $pr.headRefOid);
+        head = $head;
         requestedAt = (Get-GhAppUtcNow).ToUniversalTime().ToString('o'); base = $pr.baseRefName }
     try {
         $line = ConvertTo-Json -InputObject $entry -Compress
@@ -341,13 +487,25 @@ function Request-GhAppOwnerReview {
     $entry
 }
 
+# Only a missing file means "no ledger". File.Exists also returns false when the file cannot be reached, for example
+# when the path is a directory, so opening the file is the test. Any other failure must stop the caller.
+function Open-GhAppLedgerReader {
+    param([string]$LedgerPath)
+    try { return [IO.StreamReader]::new($LedgerPath, [Text.UTF8Encoding]::new($false, $true)) }
+    catch {
+        $inner = $(if ($null -ne $_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception })
+        if ($inner -is [IO.FileNotFoundException] -or $inner -is [IO.DirectoryNotFoundException]) { return $null }
+        throw
+    }
+}
+
 function Get-GhAppReviewRequest {
     param([hashtable]$Context, [int]$Number, [string]$LedgerPath)
     $latest = $null
-    if ([IO.File]::Exists($LedgerPath)) {
-        $reader = $null
-        try {
-            $reader = [IO.StreamReader]::new($LedgerPath, [Text.UTF8Encoding]::new($false, $true))
+    $reader = $null
+    try {
+        $reader = Open-GhAppLedgerReader $LedgerPath
+        if ($null -ne $reader) {
             while ($null -ne ($line = $reader.ReadLine())) {
                 # Keep timestamps as JSON strings on every supported PowerShell version.
                 $document = [Text.Json.JsonDocument]::Parse($line)
@@ -364,9 +522,9 @@ function Get-GhAppReviewRequest {
                     $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base }
                 } finally { $document.Dispose() }
             }
-        } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
-        finally { if ($null -ne $reader) { $reader.Dispose() } }
-    }
+        }
+    } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
+    finally { if ($null -ne $reader) { $reader.Dispose() } }
     if ($null -eq $latest) { throw "#$Number stop: no review ledger entry; send the head to the owner and record a review request." }
     $latest
 }
@@ -551,9 +709,61 @@ function New-GhAppPullRequest {
 function Set-GhAppPullRequestBody {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
-        [Parameter(Mandatory)][string]$BodyFile, [Alias('Repo')][string]$Repository)
+        [Parameter(Mandatory)][string]$BodyFile, [Alias('Repo')][string]$Repository, [string]$ExpectedHeadSha)
     $context = Get-GhAppContext $Repository
-    Invoke-GhAppApi $context PATCH "pulls/$Number" @{ body = (Read-GhAppBody $BodyFile) } -AsApp
+    $body = Read-GhAppBody $BodyFile
+    if ($PSBoundParameters.ContainsKey('ExpectedHeadSha')) {
+        # A body quotes the head, its CI run and its review. This is a check before the write, not a lock: the head
+        # can still move between the check and the PATCH, because the PATCH cannot carry the expected head.
+        $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+        $pr = Get-GhAppPullRequest $context $Number
+        if ($pr.headRefOid -cne $expected) { throw "#$Number head changed. Expected $expected; found $($pr.headRefOid)." }
+    }
+    Invoke-GhAppApi $context PATCH "pulls/$Number" @{ body = $body } -AsApp
+}
+
+function Test-GhAppReviewRequested {
+    param([hashtable]$Context, [int]$Number, [string]$LedgerPath)
+    try { $null = Get-GhAppReviewRequest $Context $Number $LedgerPath; return $true }
+    catch {
+        if ($_.Exception.Message -clike "#$Number stop: no review ledger entry*") { return $false }
+        throw
+    }
+}
+
+function Update-GhAppPullRequestBranch {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [Parameter(Mandatory)][string]$ExpectedHeadSha, [string]$LedgerPath,
+        [ValidateRange(1, 3600)][int]$TimeoutSeconds = 120, [ValidateRange(1, 60)][int]$PollSeconds = 5,
+        [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
+    $pr = Get-GhAppPullRequest $context $Number
+    if ($pr.state -cne 'OPEN') { throw "#$Number must be open to update its branch." }
+    if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
+    if ($pr.headRefOid -cne $expected) { throw "#$Number head changed. Expected $expected; found $($pr.headRefOid)." }
+    # A new head voids a review request and its review record. Merge-GhAppApprovedPullRequest updates a behind branch
+    # after approval and proves the result, so a PR that was sent to the owner is refused here.
+    if (Test-GhAppReviewRequested $context $Number $LedgerPath) {
+        throw "#$Number was sent for owner review; update refused. Merge-GhAppApprovedPullRequest updates the branch after approval."
+    }
+    $reviews = @(Get-GhAppItems $context "pulls/$Number/reviews" | Where-Object { $_.user.login -ieq $context.owner })
+    if ($reviews.Count -gt 0) { throw "#$Number has an owner review; update refused. Open a follow-up PR instead." }
+    $deadline = (Get-GhAppUtcNow).AddSeconds($TimeoutSeconds)
+    $null = Invoke-GhAppApi $context PUT "pulls/$Number/update-branch" @{ expected_head_sha = $expected } -AsApp
+    # The update is asynchronous. The new head appears when the merge commit exists.
+    while ($true) {
+        Start-Sleep -Seconds $PollSeconds
+        $fresh = Get-GhAppPullRequest $context $Number
+        if ($fresh.headRefOid -cne $expected) {
+            return [pscustomobject]@{ Number = $Number; OldHead = $expected; NewHead = (Assert-GhAppSha "head of #$Number" $fresh.headRefOid) }
+        }
+        if ((Get-GhAppUtcNow) -ge $deadline) {
+            throw "#$Number update was accepted but the head did not change within $TimeoutSeconds seconds. Check the PR before trying again."
+        }
+    }
 }
 
 function Add-GhAppComment {
@@ -840,7 +1050,12 @@ function Wait-GhAppApprovedHead {
     }
 }
 
-function Remove-GhAppMergedBranch {
+function New-GhAppBranchOutcome {
+    param([int]$Number, [string]$Branch, [bool]$Deleted, [string]$Reason)
+    [pscustomobject]@{ Number = $Number; Branch = $Branch; Deleted = $Deleted; Reason = $Reason }
+}
+
+function Remove-GhAppBranchAfterMerge {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$Head, [string]$LogPath, [string]$Prefix)
     $branch = $Pr.headRefName
     $base = $Pr.baseRefName
@@ -848,24 +1063,55 @@ function Remove-GhAppMergedBranch {
     # Deletion is opt-in by prefix, so release and other long-lived branches are never deleted.
     if (-not $Prefix -or -not $branch.StartsWith($Prefix, [StringComparison]::Ordinal)) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; no matching delete prefix"
-        return
+        if (-not $Prefix) {
+            Write-Warning "#$Number kept branch $branch because no delete prefix was given. Delete it with Remove-GhAppMergedBranch, or pass -DeleteBranchPrefix to the merge."
+        }
+        return New-GhAppBranchOutcome $Number $branch $false 'no matching delete prefix'
     }
     if ($branch -ceq 'main' -or $branch -ceq $base) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; base branch"
-        return
+        return New-GhAppBranchOutcome $Number $branch $false 'base branch'
     }
     $ref = Invoke-GhAppApi $Context GET "git/ref/heads/$encoded" -AllowNotFound
     if ($null -eq $ref -or $ref.object.sha -cne $Head) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed or absent"
-        return
+        return New-GhAppBranchOutcome $Number $branch $false 'ref changed or absent'
     }
     $comparison = Invoke-GhAppApi $Context GET "compare/$([Uri]::EscapeDataString($base))...$Head"
     if ($comparison.status -notin @('behind', 'identical') -or $comparison.ahead_by -ne 0) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; $base does not contain $Head"
-        return
+        return New-GhAppBranchOutcome $Number $branch $false "$base does not contain $Head"
     }
-    $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp
+    # GitHub has no delete that names the expected SHA. So the App token comes first: the token helper can take
+    # seconds and retry. Then the ref is read once more, compared, and deleted. A delete is never retried, so no
+    # token request, wait or retry sits between that read and the delete. Only the comparison and the start of gh do.
+    $token = $null
+    try {
+        $token = Get-GhAppWriteToken $Context "git/refs/heads/$encoded"
+        $last = Invoke-GhAppApi $Context GET "git/ref/heads/$encoded" -AllowNotFound
+        if ($null -eq $last -or $last.object.sha -cne $Head) {
+            Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed before delete"
+            return New-GhAppBranchOutcome $Number $branch $false 'ref changed before delete'
+        }
+        $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp -PreparedToken $token
+    } finally { $token = $null }
     Write-GhAppMergeLog $LogPath "#$Number deleted branch $branch at $Head"
+    New-GhAppBranchOutcome $Number $branch $true 'deleted'
+}
+
+function Remove-GhAppMergedBranch {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [Parameter(Mandatory)][string]$ExpectedHeadSha, [Parameter(Mandatory)][Alias('Log')][string]$LogPath,
+        [Parameter(Mandatory)][Alias('DeleteBranchPrefix')][string]$BranchPrefix, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    $head = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+    if ([string]::IsNullOrWhiteSpace($BranchPrefix)) { throw 'BranchPrefix must be nonempty.' }
+    $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
+    $pr = Get-GhAppPullRequest $context $Number
+    if ($pr.state -cne 'MERGED') { throw "#$Number is $($pr.state), not merged; branch deletion refused." }
+    if ($pr.headRefOid -cne $head) { throw "#$Number head changed. Expected $head; found $($pr.headRefOid)." }
+    Remove-GhAppBranchAfterMerge $context $Number $pr $head $LogPath $BranchPrefix
 }
 
 function Merge-GhAppApprovedPullRequest {
@@ -898,7 +1144,7 @@ function Merge-GhAppApprovedPullRequest {
             Write-GhAppMergeLog $LogPath "#$number review requested at $($evidence.Request.Head); approved $approvedAt; merged head $head; differences only from $($evidence.Request.Base)"
             $observation = Get-GhAppTimelineObservation $context $number $evidence.Approval
             Write-GhAppMergeLog $LogPath "#$number timeline observation only: last PullRequestCommit before approval $observation"
-            Remove-GhAppMergedBranch $context $number $pr $head $LogPath $DeleteBranchPrefix
+            $null = Remove-GhAppBranchAfterMerge $context $number $pr $head $LogPath $DeleteBranchPrefix
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
             throw
@@ -998,5 +1244,6 @@ function Invoke-GhAppRead {
 }
 
 Export-ModuleMember -Function Import-GhAppConfig, Push-GhAppBranch, New-GhAppPullRequest,
-    Set-GhAppPullRequestBody, Add-GhAppComment, Sync-GhAppLabels, Add-GhAppReviewRecord, Request-GhAppOwnerReview,
-    Merge-GhAppApprovedPullRequest, Close-GhAppPullRequest, Invoke-GhAppRead
+    Set-GhAppPullRequestBody, Update-GhAppPullRequestBranch, Add-GhAppComment, Sync-GhAppLabels, Add-GhAppReviewRecord,
+    Get-GhAppPullRequestReadiness, Request-GhAppOwnerReview, Merge-GhAppApprovedPullRequest, Remove-GhAppMergedBranch,
+    Close-GhAppPullRequest, Invoke-GhAppRead
