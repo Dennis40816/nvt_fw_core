@@ -117,7 +117,8 @@ New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
 
 This function replaces a PR description with the contents of a body file.
 `-ExpectedHeadSha` reads the PR first and stops before the write when the head is another one.
-Use it for a body that quotes the head, its CI run or its review, so that the text never lands on a PR that has moved on.
+This is a check before the write, not a lock. The PATCH cannot carry the expected head, so a head that moves between the check and the PATCH still receives the new text.
+Use it to catch a body that was written for an older head, for example one that quotes the head, its CI run or its review. It does not protect against a push at the same moment.
 
 ```powershell
 Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
@@ -214,8 +215,9 @@ A repository whose record reads `Verdict: accept` passes `-ReviewRecordPattern '
 
 The latest run of each workflow decides, not the PR status rollup.
 When a review record is posted after CI, the rollup of the PR can keep an older failed run for good, and the App cannot re-run it (see [What the App cannot do](#what-the-app-cannot-do)).
-The function groups the runs of the head by workflow, takes the newest run of each group, and names the number of older runs it ignored.
-It reads the newest 100 runs of the head.
+The function reads every page of the runs of the head, up to 1,000 runs. It groups them by workflow, takes the newest run of each group, and names the number of older runs it ignored.
+The group key is the workflow ID, not the name, because two workflows can share a name. Each row shows the name, so two rows can read alike.
+If fewer runs were read than GitHub reports, the `Runs` row fails: a workflow whose latest run was not read could hide a failure.
 
 ```powershell
 $readiness = Get-GhAppPullRequestReadiness -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
@@ -319,6 +321,9 @@ It has the same conditions as the deletion after a merge, plus two checks of its
 `-BranchPrefix` is required and must be nonempty. The branch name must start with it, so pass the full branch name when you mean one branch.
 The branch must not be `main` or the PR base, its ref must still match the merged head, and the PR base must contain that head.
 The function logs the outcome to `-LogPath` like the merge, and returns `Number`, `Branch`, `Deleted` and `Reason`.
+
+GitHub has no ref delete that names the expected SHA. The function reads the ref again just before the delete and keeps the branch when it moved (`Reason` is `ref changed before delete`).
+A window of a few milliseconds between that read and the delete remains. A push inside that window is lost with the branch. The same holds for the deletion after a merge.
 
 ```powershell
 Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'

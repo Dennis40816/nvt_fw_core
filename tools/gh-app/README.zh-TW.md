@@ -84,7 +84,8 @@ New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
 
 `Set-GhAppPullRequestBody` 使用檔案內容取代 PR 描述。
 加上 `-ExpectedHeadSha` 時，函式先讀取 PR，head 不同就在寫入前停止。
-描述若引用 head、CI run 或 review，就加這個選項，避免文字貼到已經前進的 PR 上。
+這只是寫入前的檢查，不是鎖。PATCH 帶不了預期的 head，所以檢查與 PATCH 之間 head 若改變，新內容仍會寫進去。
+用它來擋下為舊 head 寫的描述，例如引用 head、CI run 或 review 的描述。它擋不住同一時刻的 push。
 
 ```powershell
 Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
@@ -169,8 +170,9 @@ Record 寫成 `Verdict: accept` 的 repository，傳 `-ReviewRecordPattern '^Ver
 
 判斷依據是每個 workflow 最新的一次 run，不是 PR 的狀態 rollup。
 Review record 貼在 CI 之後時，PR 的 rollup 可能永遠留著一個較舊的失敗 run，而 App 不能重跑它（見[App 沒有的權限](#app-沒有的權限)）。
-函式把這個 head 的 run 依 workflow 分組，取每組最新的一次，並說明略過了幾次較舊的 run。
-它讀取這個 head 最新的 100 次 run。
+函式讀取這個 head 的每一頁 run，最多 1,000 次。它依 workflow 分組，取每組最新的一次，並說明略過了幾次較舊的 run。
+分組的鍵是 workflow ID，不是名稱，因為兩個 workflow 可以同名。每一列顯示名稱，所以兩列可能看起來一樣。
+讀到的 run 比 GitHub 回報的少時，`Runs` 這一列判 FAIL：沒讀到最新 run 的 workflow 可能藏著失敗。
 
 ```powershell
 $readiness = Get-GhAppPullRequestReadiness -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
@@ -259,6 +261,9 @@ Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -De
 `-BranchPrefix` 必填且不可為空。分支名稱必須以它開頭，只想刪一個分支時就傳完整分支名稱。
 分支不能是 `main` 或 PR 的 base，ref 必須仍指向合併的 head，PR 的 base 必須已包含該 head。
 函式和合併一樣把結果寫進 `-LogPath`，並傳回 `Number`、`Branch`、`Deleted`、`Reason`。
+
+GitHub 沒有指定預期 SHA 的刪除 ref。函式在刪除前最後再讀一次 ref，分支已經移動就保留（`Reason` 是 `ref changed before delete`）。
+最後一次讀取與刪除之間仍有幾毫秒的空隙，這段時間內的 push 會隨分支一起消失。合併後的刪除也一樣。
 
 ```powershell
 Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'

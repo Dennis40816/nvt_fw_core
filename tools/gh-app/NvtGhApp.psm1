@@ -338,16 +338,29 @@ function Assert-GhAppReviewRecordPattern {
 
 function Get-GhAppLatestRuns {
     param([hashtable]$Context, [string]$Head)
-    # GitHub lists the newest runs first, so one page holds the latest run of every workflow.
-    $response = Invoke-GhAppApi $Context GET "actions/runs?head_sha=$Head&per_page=100"
+    # The runs of a head can fill several pages, and the latest run of a workflow can sit on a later page.
+    # The loop reads until it holds total_count runs, or stops at 1000 runs. A result that is not complete says so.
     $runs = @()
-    if ($null -ne $response -and $null -ne $response.PSObject.Properties['workflow_runs']) { $runs = @($response.workflow_runs) }
+    $total = 0
+    for ($page = 1; $page -le 10; $page++) {
+        $response = Invoke-GhAppApi $Context GET "actions/runs?head_sha=$Head&per_page=100&page=$page"
+        $batch = @()
+        if ($null -ne $response -and $null -ne $response.PSObject.Properties['workflow_runs']) {
+            $batch = @($response.workflow_runs)
+            $total = $(if ($null -ne $response.PSObject.Properties['total_count']) { [int]$response.total_count } else { $batch.Count })
+        }
+        $runs += $batch
+        if ($batch.Count -lt 100 -or $runs.Count -ge $total) { break }
+    }
+    # The key is the workflow ID, because two workflows can share a name. The name is the key only when the ID is missing.
     $groups = @($runs | Group-Object { if ($null -ne $_.workflow_id) { [string]$_.workflow_id } else { [string]$_.name } })
-    foreach ($group in $groups) {
+    # @(foreach ...) is empty for no group, where @($null) would hold one null item.
+    $latest = @(foreach ($group in $groups) {
         $ordered = @($group.Group | Sort-Object -Property @{ Expression = { [DateTimeOffset]$_.created_at }; Descending = $true },
             @{ Expression = { [long]$_.id }; Descending = $true })
         [pscustomobject]@{ Run = $ordered[0]; Older = @($ordered | Select-Object -Skip 1) }
-    }
+    })
+    [pscustomobject]@{ Latest = $latest; Read = $runs.Count; Total = $total; Complete = ($runs.Count -ge $total) }
 }
 
 function Get-GhAppReadiness {
@@ -383,11 +396,15 @@ function Get-GhAppReadiness {
     }
 
     # The latest run of each workflow decides. An older failed run stays in the PR rollup for good, because the App cannot re-run it.
-    $latest = @(Get-GhAppLatestRuns $Context $head)
-    if ($latest.Count -eq 0) {
+    $runs = Get-GhAppLatestRuns $Context $head
+    if (-not $runs.Complete) {
+        # A workflow whose latest run was not read could hide a failure, so an incomplete list never passes.
+        $checks.Add((New-GhAppCheckRow 'Runs' $false "only $($runs.Read) of $($runs.Total) runs of this head were read"))
+    }
+    elseif ($runs.Latest.Count -eq 0) {
         $checks.Add((New-GhAppCheckRow 'Runs' $false 'no workflow run found for this head'))
     }
-    foreach ($item in @($latest | Sort-Object -Property { [string]$_.Run.name })) {
+    foreach ($item in @($runs.Latest | Sort-Object -Property { [string]$_.Run.name })) {
         $run = $item.Run
         $pass = ($run.status -ceq 'completed' -and $run.conclusion -ceq 'success')
         $detail = "$($run.event) run $($run.id) is $($run.status)"
@@ -448,13 +465,25 @@ function Request-GhAppOwnerReview {
     $entry
 }
 
+# Only a missing file means "no ledger". File.Exists also returns false when the file cannot be reached, for example
+# when the path is a directory, so opening the file is the test. Any other failure must stop the caller.
+function Open-GhAppLedgerReader {
+    param([string]$LedgerPath)
+    try { return [IO.StreamReader]::new($LedgerPath, [Text.UTF8Encoding]::new($false, $true)) }
+    catch {
+        $inner = $(if ($null -ne $_.Exception.InnerException) { $_.Exception.InnerException } else { $_.Exception })
+        if ($inner -is [IO.FileNotFoundException] -or $inner -is [IO.DirectoryNotFoundException]) { return $null }
+        throw
+    }
+}
+
 function Get-GhAppReviewRequest {
     param([hashtable]$Context, [int]$Number, [string]$LedgerPath)
     $latest = $null
-    if ([IO.File]::Exists($LedgerPath)) {
-        $reader = $null
-        try {
-            $reader = [IO.StreamReader]::new($LedgerPath, [Text.UTF8Encoding]::new($false, $true))
+    $reader = $null
+    try {
+        $reader = Open-GhAppLedgerReader $LedgerPath
+        if ($null -ne $reader) {
             while ($null -ne ($line = $reader.ReadLine())) {
                 # Keep timestamps as JSON strings on every supported PowerShell version.
                 $document = [Text.Json.JsonDocument]::Parse($line)
@@ -471,9 +500,9 @@ function Get-GhAppReviewRequest {
                     $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base }
                 } finally { $document.Dispose() }
             }
-        } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
-        finally { if ($null -ne $reader) { $reader.Dispose() } }
-    }
+        }
+    } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
+    finally { if ($null -ne $reader) { $reader.Dispose() } }
     if ($null -eq $latest) { throw "#$Number stop: no review ledger entry; send the head to the owner and record a review request." }
     $latest
 }
@@ -658,11 +687,12 @@ function New-GhAppPullRequest {
 function Set-GhAppPullRequestBody {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
-        [Parameter(Mandatory)][string]$BodyFile, [string]$ExpectedHeadSha, [Alias('Repo')][string]$Repository)
+        [Parameter(Mandatory)][string]$BodyFile, [Alias('Repo')][string]$Repository, [string]$ExpectedHeadSha)
     $context = Get-GhAppContext $Repository
     $body = Read-GhAppBody $BodyFile
     if ($PSBoundParameters.ContainsKey('ExpectedHeadSha')) {
-        # A body quotes the head, its CI run and its review. Refuse to put it on a PR that has moved on.
+        # A body quotes the head, its CI run and its review. This is a check before the write, not a lock: the head
+        # can still move between the check and the PATCH, because the PATCH cannot carry the expected head.
         $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
         $pr = Get-GhAppPullRequest $context $Number
         if ($pr.headRefOid -cne $expected) { throw "#$Number head changed. Expected $expected; found $($pr.headRefOid)." }
@@ -1029,6 +1059,13 @@ function Remove-GhAppBranchAfterMerge {
     if ($comparison.status -notin @('behind', 'identical') -or $comparison.ahead_by -ne 0) {
         Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; $base does not contain $Head"
         return New-GhAppBranchOutcome $Number $branch $false "$base does not contain $Head"
+    }
+    # GitHub has no delete that names the expected SHA. Read the ref once more as late as possible, so a branch that
+    # was pushed after the first read is kept. A window of a few milliseconds between this read and the delete remains.
+    $last = Invoke-GhAppApi $Context GET "git/ref/heads/$encoded" -AllowNotFound
+    if ($null -eq $last -or $last.object.sha -cne $Head) {
+        Write-GhAppMergeLog $LogPath "#$Number kept branch $branch; ref changed before delete"
+        return New-GhAppBranchOutcome $Number $branch $false 'ref changed before delete'
     }
     $null = Invoke-GhAppApi $Context DELETE "git/refs/heads/$encoded" -AsApp
     Write-GhAppMergeLog $LogPath "#$Number deleted branch $branch at $Head"
