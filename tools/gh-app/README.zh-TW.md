@@ -83,9 +83,29 @@ New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
 ```
 
 `Set-GhAppPullRequestBody` 使用檔案內容取代 PR 描述。
+加上 `-ExpectedHeadSha` 時，函式先讀取 PR，head 不同就在寫入前停止。
+描述若引用 head、CI run 或 review，就加這個選項，避免文字貼到已經前進的 PR 上。
 
 ```powershell
-Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt
+Set-GhAppPullRequestBody -Number 7 -BodyFile .\pr-body.txt -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
+```
+
+`Update-GhAppPullRequestBranch` 透過 `PUT pulls/{n}/update-branch` 把 base 分支合併進 PR 分支。
+它把 `-ExpectedHeadSha` 當作 `expected_head_sha` 送出，所以 GitHub 也會拒絕已移動的 head。
+新 head 會讓送審 request 與 review record 失效，因此遇到以下情形，函式在任何寫入前停止：
+
+- PR 不是開啟狀態，或作者不是 `botLogin`;
+- head 不是 `-ExpectedHeadSha`;
+- Review ledger 有這個 PR 的 entry，也就是它已送 owner;
+- Owner 已經審查過這個 PR。
+
+草稿 PR 可以更新。呼叫後函式每隔 `-PollSeconds`（預設 5）輪詢，直到 head 改變，最久 `-TimeoutSeconds`（預設 120），並傳回 `Number`、`OldHead`、`NewHead`。
+逾時表示 GitHub 已接受更新但 head 還沒變，再次呼叫前先檢查 PR。
+`-LedgerPath` 必須與 `Request-GhAppOwnerReview` 寫入的是同一個 ledger。
+`Merge-GhAppApprovedPullRequest` 會在核准後自己更新落後的分支並證明結果，owner 已看過的 PR 不要呼叫這個函式。
+
+```powershell
+Update-GhAppPullRequestBranch -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
 ```
 
 `Add-GhAppComment` 使用檔案內容新增 PR 或 issue 留言。
@@ -123,12 +143,51 @@ Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json -Apply -IssuesLogPat
 
 `tools/gh-app/sync-labels.ps1 -Owner OWNER -Repo REPO [-Apply -IssuesLogPath PATH]` 會載入 repo 設定檔並執行這個函式。
 
+## Get-GhAppPullRequestReadiness
+
+這個函式檢查 PR 能不能送 owner。它只讀取，不寫入 GitHub。
+它傳回 `Number`、`Head`、`Ready`、`Checks` 與 `Files`。
+沒有任何檢查失敗時 `Ready` 為 true。`Checks` 的每一列有 `Name`、`Result`（`PASS` 或 `FAIL`）與說明原因的 `Detail`。
+一項失敗不會讓其他檢查停止，所以一次呼叫就列出所有問題。
+`Files` 列出變更的檔案及新增、刪除的行數。
+
+| 檢查 | 通過條件 |
+| --- | --- |
+| `State` | PR 是開啟狀態 |
+| `Draft` | PR 不是草稿 |
+| `Author` | 作者是 `botLogin` |
+| `Head` | head 等於 `-ExpectedHeadSha`;沒有這個參數時，這一列只顯示 head |
+| `MergeState` | merge state 是 `CLEAN`、`BLOCKED`、`UNSTABLE` 或 `HAS_HOOKS`。Owner 核准前 `BLOCKED` 是正常的。`BEHIND` 不通過，因為合併時 head 會改變。`DIRTY` 與 `UNKNOWN` 不通過。 |
+| `ReviewRecord` | head 這個 commit 上有已送出的 review，內容符合 pattern |
+| `Run: <workflow>` | 該 workflow 在這個 head 上最新的一次 run 已完成，結論是 `success` |
+
+各 repository 的 review record 格式不同，所以模組不寫死格式。
+`-ReviewRecordPattern` 是正規表示式，對 review 內容區分大小寫比對，`^` 與 `$` 對每一行都有效。
+Pattern 裡的 `{HEAD}` 會換成 head SHA。
+預設是 `^Review record: {HEAD} accept\b`。
+Record 寫成 `Verdict: accept` 的 repository，傳 `-ReviewRecordPattern '^Verdict: accept$'`。
+
+判斷依據是每個 workflow 最新的一次 run，不是 PR 的狀態 rollup。
+Review record 貼在 CI 之後時，PR 的 rollup 可能永遠留著一個較舊的失敗 run，而 App 不能重跑它（見[App 沒有的權限](#app-沒有的權限)）。
+函式把這個 head 的 run 依 workflow 分組，取每組最新的一次，並說明略過了幾次較舊的 run。
+它讀取這個 head 最新的 100 次 run。
+
+```powershell
+$readiness = Get-GhAppPullRequestReadiness -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
+$readiness.Checks | Format-Table Name, Result, Detail -AutoSize
+```
+
 ## Request-GhAppOwnerReview
 
 Session 把 PR 送 owner 審查時，呼叫此函式記錄當下的 head。
 PR 必須在設定的 repository 內、保持開啟、不是草稿，且作者等於 `botLogin`。
 函式只讀取 GitHub，不執行 GitHub 寫入，並傳回已記錄的 entry。
 送審的新 head 需要重新呼叫。
+
+寫入 ledger 之前，有兩個選用的檢查:
+
+- `-ExpectedHeadSha` 在 head 不同時停止呼叫。
+- `-CheckReadiness` 對 ledger 即將記錄的 head 執行 `Get-GhAppPullRequestReadiness` 的檢查，有一項失敗就停止，訊息列出每一項失敗的檢查。`-ReviewRecordPattern` 會傳給檢查；沒有 `-CheckReadiness` 時使用它會被拒絕。
 
 預設 ledger 是設定檔旁的 `~/.nvt/gh-app/review-ledger.jsonl`。
 預設位置與選用的 `-LedgerPath` 都必須在所有 repository 之外。
@@ -172,7 +231,8 @@ S 之後出現非 merge commit、second parent 不在 base、merge tree 被修�
 模組等待必要 checks 通過及 merge state 為 clean，並在合併前重新核對 ledger、核准與歷史，再以 `sha` 等於 H 合併。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
-合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支。
+合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支，函式會對每個保留的分支印出警告。
+之後要刪除這類分支，用 `Remove-GhAppMergedBranch`。
 只能傳 owner 已授權可刪除的分支類別。刪除其他分支前，要先把分支名稱和 head 送 owner 確認。
 有指定時，以下條件全部成立才刪除:
 
@@ -188,6 +248,20 @@ Commit 時間可能早於 push，因此 timeline 永遠不能授權合併；無�
 
 ```powershell
 Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
+```
+
+`Remove-GhAppMergedBranch` 刪除已合併 PR 的 head 分支。合併時沒有帶 `-DeleteBranchPrefix`，或分支要等 owner 同意才刪時使用。
+刪除條件與合併後的刪除相同，另外多兩項檢查:
+
+- PR 已合併;
+- PR 的 head 等於 `-ExpectedHeadSha`，所以刪除前要先記下分支的 head。
+
+`-BranchPrefix` 必填且不可為空。分支名稱必須以它開頭，只想刪一個分支時就傳完整分支名稱。
+分支不能是 `main` 或 PR 的 base，ref 必須仍指向合併的 head，PR 的 base 必須已包含該 head。
+函式和合併一樣把結果寫進 `-LogPath`，並傳回 `Number`、`Branch`、`Deleted`、`Reason`。
+
+```powershell
+Remove-GhAppMergedBranch -Number 7 -ExpectedHeadSha '<MERGED_HEAD_SHA>' -LogPath .\merge.log -BranchPrefix 'docs/release/record-0.9.5'
 ```
 
 `Close-GhAppPullRequest` 先留言，再關閉 PR。留言失敗時不會關閉。
@@ -210,6 +284,13 @@ API input 與 field 選項可能選擇 POST，因此也會拒絕。PR 與 issue 
 ```powershell
 Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 ```
+
+## App 沒有的權限
+
+安裝沒有 `actions: write` 權限。
+要求重跑 workflow 或 job 會得到 `HTTP 403`。不要嘗試。
+某個 head 上失敗的 run 無法從這裡修復。由 owner 重跑，或讓 PR 有新的 head。
+`Get-GhAppPullRequestReadiness` 以每個 workflow 最新的一次 run 為準，所以已被較新 run 取代的舊失敗不會擋住 PR。
 
 ## Token 規則
 
