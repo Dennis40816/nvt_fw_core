@@ -130,14 +130,14 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         // Guard: the awaited handoff callbacks and timestamp delegate serialize these observations.
         int? admissionReads = null;
         int? readsAtAdmission = null;
-        var time = new DelegateTimeProvider(manual.GetUtcNow, () =>
+        var time = new ManualTimerDelegateProvider(manual, () =>
         {
             if (admissionReads is { } count)
             {
                 admissionReads = count + 1;
             }
             return manual.GetTimestamp();
-        }, manual.TimestampFrequency);
+        });
         using var handoff = new RecordingBootstrapHandoff(ImmutableBootstrapCompletionOutcome.Ready)
         {
             StartAction = () => admissionReads = 0,
@@ -150,6 +150,23 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
 
         Assert.Equal(ManagedLauncherEntryOutcome.LaunchInstalled, result.Outcome);
         Assert.Equal(1, readsAtAdmission);
+    }
+
+    /// <summary>The counting provider's timers fire only when the manual clock reaches their due time.</summary>
+    [Theory]
+    [InlineData(249, 0)]
+    [InlineData(250, 1)]
+    public void CountingProviderTimersFollowTheManualClock(int advanceMilliseconds, int expectedFired)
+    {
+        var manual = new ManualTimeProvider(DateTimeOffset.UnixEpoch);
+        var time = new ManualTimerDelegateProvider(manual, manual.GetTimestamp);
+        int fired = 0;
+        using ITimer timer = time.CreateTimer(_ => { _ = Interlocked.Increment(ref fired); }, null,
+            ManagedLauncherEntryCoordinator.DefaultHealthObservationDeadline, Timeout.InfiniteTimeSpan);
+
+        manual.Advance(TimeSpan.FromMilliseconds(advanceMilliseconds));
+
+        Assert.Equal(expectedFired, Volatile.Read(ref fired));
     }
 
     /// <summary>Exact health expiry stops before handoff, including an uncooperative returned observation.</summary>
@@ -260,6 +277,14 @@ public sealed partial class ManagedLauncherEntryCoordinatorTests
         Assert.True(Path.IsPathFullyQualified(Assert.IsType<string>(result.ManagedRoot)));
         Assert.Equal(1, roots.ObserveCount);
         Assert.Equal(0, handoff.StartCount);
+    }
+
+    // Counts timestamp reads only: clock reads and every timer stay with the shared manual provider.
+    private sealed class ManualTimerDelegateProvider(ManualTimeProvider manual, Func<long> timestamp)
+        : DelegateTimeProvider(manual.GetUtcNow, timestamp, manual.TimestampFrequency)
+    {
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period) =>
+            manual.CreateTimer(callback, state, dueTime, period);
     }
 
     private sealed class AdvancingRootProbe(ManualTimeProvider time, TimeSpan elapsed) : IManagedInstallationRootProbe
