@@ -107,6 +107,10 @@ The function leaves that PR open for inspection by default.
 `-CloseOnWrongAuthor` closes it through the App before throwing when the author does not match.
 `-Base` defaults to `main`, and `-Draft` creates a draft.
 Head and base names must identify branches in the configured repository.
+A PR that opens ready (without `-Draft`) is registered for owner review at once, as `Request-GhAppOwnerReview` does.
+The returned object has a `ReviewRequest` property with the recorded entry, or `$null` for a draft.
+A draft is never registered.
+`-LedgerPath` selects the ledger, and `-Worktree` adds the patch-id described under `Request-GhAppOwnerReview`.
 
 ```powershell
 New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
@@ -237,15 +241,63 @@ Two optional guards run before the ledger line is written:
 - `-ExpectedHeadSha` stops the call when the head is another one.
 - `-CheckReadiness` runs the checks of `Get-GhAppPullRequestReadiness` on the head that the ledger will record and stops when one fails. The message lists each failed check. `-ReviewRecordPattern` is passed through, and it is refused without `-CheckReadiness`.
 
+`-Worktree` names a local clone with complete history. With it, the entry also holds `patchId`.
+The patch-id is `git patch-id --stable` of the diff from the merge base of the head and the base to the head.
+It identifies the content that the owner sees. A rebase or a base change that leaves the content alone keeps it.
+Without `-Worktree`, the entry has no `patchId`, and a later base change cannot be proven harmless.
+
 The default ledger is `~/.nvt/gh-app/review-ledger.jsonl`, beside the repository config.
 Both this ledger and any optional `-LedgerPath` must be outside every repository.
 Writes append one JSON object per line in UTF-8 without a BOM.
 Each object contains `owner`, `repo`, `number`, `head` (a 40-character SHA), `requestedAt` (UTC ISO 8601), and `base` (the branch name).
+It may also contain `patchId`, and an entry that `Set-GhAppPullRequestBase` writes adds `registeredAt`, `reason` and `fromBase`.
 Keep this file private and retain earlier entries.
 Use the same optional `-LedgerPath` when recording requests and merging.
 
 ```powershell
-Request-GhAppOwnerReview -Number 7
+Request-GhAppOwnerReview -Number 7 -Worktree .
+```
+
+## Set-GhAppPullRequestReady
+
+This function marks a draft ready and registers the owner review request for its head in one call.
+Use it instead of marking a draft ready by hand, so that no ready PR is left without a record.
+The PR must be open, authored by `botLogin`, still a draft, and at `-ExpectedHeadSha`.
+`-Worktree` is mandatory, so the entry always has a `patchId`.
+The App marks the PR ready through GraphQL, and the function then records the entry.
+A PR that is already ready is refused, because a second registration would void an approval that the owner already gave.
+Use `Request-GhAppOwnerReview` for such a PR. If the ready change fails, nothing is recorded.
+
+```powershell
+Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha '<HEAD_SHA>' -Worktree .
+```
+
+## Set-GhAppPullRequestBase
+
+This function changes the base of a PR and keeps its review request. Sessions use it for every base change.
+Changing the base by other means leaves a request that names the old base.
+The PR must be open, authored by `botLogin`, and at `-ExpectedHeadSha`, and it must not already use `-NewBase`.
+`-Worktree` and `-LogPath` are mandatory.
+
+A PR without a review request (a draft) gets the new base and a log line. No entry is written.
+For a PR with a review request, the function proves first that the content stays the same:
+
+1. The latest request must be for the current head and must hold a `patchId`.
+2. The function reads the tip of `-NewBase` and computes the patch-id of the head against it.
+3. If the patch-id differs, the function stops **before** it changes anything. It logs the refusal and says which values differ. The owner must approve again, and the session registers a new request.
+4. If the patch-id is the same, the App changes the base. The function appends a new entry with the new base.
+
+The new entry keeps the original `requestedAt`, so an approval that the owner gave after the original request stays valid.
+Nothing about the content changed, so the owner saw the same diff.
+The entry also records `registeredAt` (the real time), `reason` (`base-change`) and `fromBase`.
+The log line names the old and new base, the patch-id, the carried time and the new registration time.
+If the base moved between the check and the change and the patch-id then differs, the function throws after the change and keeps no request.
+
+GitHub can dismiss an approval when the base changes. The module does not turn that setting off.
+The owner then approves once more, and that approval is later than the original request, so the merge accepts it.
+
+```powershell
+Set-GhAppPullRequestBase -Number 7 -NewBase main -ExpectedHeadSha '<HEAD_SHA>' -Worktree . -LogPath .\base.log
 ```
 
 ## Merge-GhAppApprovedPullRequest
@@ -263,7 +315,7 @@ All three approval conditions must hold:
 
 1. The latest appended ledger entry for this owner, repository, and PR supplies requested head S and request time T.
 2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED`, `DISMISSED`, and `PENDING` block merging. The approval's `commit_id` must also be S or a proven merge after S. T comes from this machine's clock, so this binding stops an approval of an older head from counting when the clock runs behind GitHub.
-3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request.
+3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request. One exception: when the request holds a `patchId`, H is S, and the patch-id of H against the current base is the same, a changed base name is accepted.
 
 Every merge after the review request is recomputed with `git merge-tree --write-tree P1 P2`.
 It must report no conflicts and produce exactly the merge commit's tree.
@@ -418,7 +470,7 @@ This addition leaves the existing scripts intact.
 3. Replace branch pushes with `Push-GhAppBranch`.
 4. Replace PR creation and description edits with the matching PR functions.
 5. Replace comments and review records with their matching functions.
-6. Record heads sent to the owner with `Request-GhAppOwnerReview`; replace approved merges with `Merge-GhAppApprovedPullRequest` and supply `-Worktree`.
+6. Record heads sent to the owner with `Set-GhAppPullRequestReady` or `Request-GhAppOwnerReview -Worktree`; change a base only with `Set-GhAppPullRequestBase`; replace approved merges with `Merge-GhAppApprovedPullRequest` and supply `-Worktree`.
 7. Use `Invoke-GhAppRead` for supported owner-authenticated reads.
 8. Run offline tests and review the adoption before retiring old copies.
 
