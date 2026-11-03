@@ -76,6 +76,9 @@ Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
 作者不等於 `botLogin` 時，它會傳回含完整 PR URL 的錯誤。PR 預設保持開啟。
 加上 `-CloseOnWrongAuthor` 時，作者不符會先透過 App 關閉 PR，再拋出錯誤。
 `-Base` 預設為 `main`。`-Draft` 建立草稿。Head 與 base 都必須是設定儲存庫中的分支。
+沒有加 `-Draft` 的 PR 一開出來就是 ready，函式會立刻登記 owner 審查請求，作法和 `Request-GhAppOwnerReview` 相同。
+傳回物件的 `ReviewRequest` 屬性是記錄的 entry；草稿是 `$null`。草稿一律不登記。
+`-LedgerPath` 指定 ledger；`-Worktree` 會加上 `Request-GhAppOwnerReview` 一節說明的 patch-id。
 
 ```powershell
 New-GhAppPullRequest -Head 'feature/example' -Title 'Add shared behavior' `
@@ -195,10 +198,56 @@ PR 必須在設定的 repository 內、保持開啟、不是草稿，且作者�
 預設位置與選用的 `-LedgerPath` 都必須在所有 repository 之外。
 寫入只附加，不覆寫；每行一個 JSON object，採 UTF-8 且沒有 BOM。
 欄位包含 `owner`、`repo`、`number`、`head`（40 字元 SHA）、`requestedAt`（UTC ISO 8601）與 `base`（分支名稱）。
+Entry 還可以有 `patchId`；`Set-GhAppPullRequestBase` 寫入的 entry 另有 `registeredAt`、`reason` 與 `fromBase`。
 Ledger 保持私有並保留舊紀錄。送審與合併必須使用相同的 `-LedgerPath`。
 
+`-Worktree` 指定具完整歷史的本機 clone。加上它，entry 會多一個 `patchId`。
+Patch-id 是「head 與 base 的 merge base 到 head 的 diff」的 `git patch-id --stable`。
+它代表 owner 看到的內容。Rebase 或改 base 只要內容不變，值就不變。
+沒有 `-Worktree` 時 entry 沒有 `patchId`，之後改 base 就無法證明無害。
+
 ```powershell
-Request-GhAppOwnerReview -Number 7
+Request-GhAppOwnerReview -Number 7 -Worktree .
+```
+
+## Set-GhAppPullRequestReady
+
+此函式一次完成「草稿轉 ready」與「登記 owner 審查請求」。
+請用它取代手動轉 ready，這樣不會留下沒有紀錄的 ready PR。
+PR 必須開啟、作者是 `botLogin`、仍是草稿，且 head 等於 `-ExpectedHeadSha`。
+`-Worktree` 必填，所以 entry 一定有 `patchId`。
+App 透過 GraphQL 轉 ready，函式再記錄 entry。
+已經是 ready 的 PR 會被拒絕，因為再登記一次會讓 owner 已給的核准失效。這種 PR 請用 `Request-GhAppOwnerReview`。轉 ready 失敗時，不記錄任何東西。
+
+```powershell
+Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha '<HEAD_SHA>' -Worktree .
+```
+
+## Set-GhAppPullRequestBase
+
+此函式改 PR 的 base，並保留審查請求。Session 改 base 一律用它。
+用其他方式改 base，ledger 內的請求仍寫舊 base。
+PR 必須開啟、作者是 `botLogin`、head 等於 `-ExpectedHeadSha`，而且還不是 `-NewBase`。
+`-Worktree` 與 `-LogPath` 必填。
+
+沒有審查請求的 PR（草稿）只改 base 並寫一行日誌，不寫 entry。
+有審查請求的 PR，函式先證明內容不變：
+
+1. 最新的請求必須是目前的 head，而且有 `patchId`。
+2. 函式讀 `-NewBase` 的最新位置，算出 head 相對它的 patch-id。
+3. Patch-id 不同時，函式在改任何東西**之前**就停止。它寫下拒絕的日誌並說明哪兩個值不同。Owner 必須重新核准，session 登記新的請求。
+4. Patch-id 相同時，App 改 base，函式追加一筆含新 base 的 entry。
+
+新 entry 沿用原本的 `requestedAt`，所以 owner 在原請求之後給的核准仍然有效。內容沒有變，owner 看到的是同一份 diff。
+Entry 另記 `registeredAt`（實際時間）、`reason`（`base-change`）與 `fromBase`。
+日誌那一行寫出新舊 base、patch-id、沿用的時間與新的登記時間。
+若 base 在檢查與修改之間又動了，且 patch-id 因此不同，函式會在修改之後拋出錯誤，並且不保留請求。
+
+GitHub 可能在改 base 時撤銷核准。模組不關這個設定。
+這時 owner 再核准一次；新核准晚於原請求，合併會接受它。
+
+```powershell
+Set-GhAppPullRequestBase -Number 7 -NewBase main -ExpectedHeadSha '<HEAD_SHA>' -Worktree . -LogPath .\base.log
 ```
 
 ## Merge-GhAppApprovedPullRequest
@@ -214,7 +263,7 @@ GitHub 可能把 review 的 `commit_id` 移到新 head，因此不能用該欄�
 
 1. Ledger 內此 owner、repository 與 PR 最新附加的 entry 提供送審 head S 與時間 T。
 2. Owner 最新會改變狀態的 review 是 `APPROVED`，而且提交時間嚴格晚於 T。依提交時間排序，同時間以 review ID 排序。`COMMENTED` 不影響核准；`CHANGES_REQUESTED`、`DISMISSED` 與 `PENDING` 禁止合併。 核准的 `commit_id` 也必須是 S,或 S 之後經證明的 merge。T 取自本機時鐘，本機時鐘比 GitHub 慢時，這個綁定可以防止舊 head 的核准被算成 S 的核准。
-3. 從目前 head H 沿 first parent 回走，20 個 commit 內到達 S。S 之後每個 commit 都恰有兩個 parent，second parent 必須包含在目前 PR base 中。Base 分支名稱必須和送審紀錄相同。
+3. 從目前 head H 沿 first parent 回走，20 個 commit 內到達 S。S 之後每個 commit 都恰有兩個 parent，second parent 必須包含在目前 PR base 中。Base 分支名稱必須和送審紀錄相同。例外：送審紀錄有 `patchId`、H 就是 S，而且 H 相對目前 base 的 patch-id 相同時，接受改過的 base 名稱。
 
 送審 request 之後的每個 merge 都會使用 `git merge-tree --write-tree P1 P2` 重算。
 重算必須沒有衝突，tree 必須恰好等於 merge commit 的 tree。

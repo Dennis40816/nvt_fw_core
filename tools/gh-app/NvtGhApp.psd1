@@ -9,7 +9,7 @@
         'Import-GhAppConfig', 'Push-GhAppBranch', 'New-GhAppPullRequest',
         'Set-GhAppPullRequestBody', 'Update-GhAppPullRequestBranch', 'Add-GhAppComment', 'Sync-GhAppLabels', 'Add-GhAppReviewRecord',
         'Get-GhAppPullRequestReadiness', 'Request-GhAppOwnerReview', 'Merge-GhAppApprovedPullRequest', 'Remove-GhAppMergedBranch',
-        'Close-GhAppPullRequest', 'Invoke-GhAppRead'
+        'Close-GhAppPullRequest', 'Invoke-GhAppRead', 'Set-GhAppPullRequestReady', 'Set-GhAppPullRequestBase'
     )
     CmdletsToExport = @()
     VariablesToExport = @()
