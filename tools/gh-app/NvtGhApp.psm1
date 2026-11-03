@@ -453,11 +453,35 @@ function Get-GhAppPullRequestReadiness {
     Get-GhAppReadiness $context $Number $pr $ExpectedHeadSha $ReviewRecordPattern
 }
 
+# The content of a pull request as git patch-id: the diff from the merge base of the head and the base, to the head.
+# A rebase or a base change that leaves the content alone keeps the value. Options are fixed so that local Git
+# configuration cannot change the diff text.
+function Get-GhAppPatchId {
+    param([string]$Worktree, [string]$Head, [string]$BaseSha)
+    $null = Assert-GhAppSha 'patch-id head' $Head
+    $null = Assert-GhAppSha 'patch-id base' $BaseSha
+    $mergeBase = Assert-GhAppSha 'merge base' (Invoke-GhAppGit $Worktree @('merge-base', $BaseSha, $Head)).Trim()
+    $diff = Invoke-GhAppGit -Worktree $Worktree -Bytes -Arguments @('diff', '--binary', '--no-color', '--no-ext-diff',
+        '--no-textconv', '--no-renames', '--diff-algorithm=myers', '--unified=3', '--inter-hunk-context=0',
+        '--src-prefix=a/', '--dst-prefix=b/', $mergeBase, $Head, '--')
+    if ($diff.Length -eq 0) { throw 'The pull request has no diff to identify.' }
+    $line = (Invoke-GhAppGit -Worktree $Worktree -InputBytes $diff -Arguments @('patch-id', '--stable')).Trim()
+    Assert-GhAppSha 'patch-id' $line.Split(' ')[0]
+}
+
+function Add-GhAppLedgerEntry {
+    param([string]$LedgerPath, $Entry)
+    try {
+        $line = ConvertTo-Json -InputObject $Entry -Compress
+        [IO.File]::AppendAllText($LedgerPath, $line + "`n", [Text.UTF8Encoding]::new($false))
+    } catch { throw 'The review ledger could not be appended.' }
+}
+
 function Request-GhAppOwnerReview {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
         [string]$LedgerPath, [Alias('Repo')][string]$Repository,
-        [string]$ExpectedHeadSha, [switch]$CheckReadiness, [string]$ReviewRecordPattern)
+        [string]$ExpectedHeadSha, [switch]$CheckReadiness, [string]$ReviewRecordPattern, [string]$Worktree)
     if ($PSBoundParameters.ContainsKey('ReviewRecordPattern') -and -not $CheckReadiness) { throw 'ReviewRecordPattern requires CheckReadiness.' }
     $context = Get-GhAppContext $Repository
     if ($PSBoundParameters.ContainsKey('ExpectedHeadSha')) { $null = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha }
@@ -480,10 +504,13 @@ function Request-GhAppOwnerReview {
     $entry = [pscustomobject][ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number;
         head = $head;
         requestedAt = (Get-GhAppUtcNow).ToUniversalTime().ToString('o'); base = $pr.baseRefName }
-    try {
-        $line = ConvertTo-Json -InputObject $entry -Compress
-        [IO.File]::AppendAllText($LedgerPath, $line + "`n", [Text.UTF8Encoding]::new($false))
-    } catch { throw 'The review ledger could not be appended.' }
+    if ($PSBoundParameters.ContainsKey('Worktree')) {
+        # The patch-id binds the request to the content, so a later base change can be proven harmless.
+        $baseSha = Assert-GhAppSha "base of #$Number" $pr.baseRefOid
+        Sync-GhAppReviewCommits $context $Worktree @($head, $baseSha)
+        $entry | Add-Member -NotePropertyName patchId -NotePropertyValue (Get-GhAppPatchId $Worktree $head $baseSha)
+    }
+    Add-GhAppLedgerEntry $LedgerPath $entry
     $entry
 }
 
@@ -519,7 +546,11 @@ function Get-GhAppReviewRequest {
                     $stamp = $entry.GetProperty('requestedAt').GetString()
                     if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|\+00:00)$') { throw 'Expected UTC ISO 8601.' }
                     $time = [DateTimeOffset]::Parse($stamp, [Globalization.CultureInfo]::InvariantCulture)
-                    $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base }
+                    $patchId = $null
+                    foreach ($property in $entry.EnumerateObject()) {
+                        if ($property.Name -ceq 'patchId') { $patchId = Assert-GhAppSha 'review request patch-id' $property.Value.GetString() }
+                    }
+                    $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base; PatchId = $patchId }
                 } finally { $document.Dispose() }
             }
         }
@@ -552,7 +583,7 @@ function Get-GhAppOwnerApproval {
 
 function Invoke-GhAppGit {
     param([string]$Worktree, [string[]]$Arguments, [switch]$Bytes, [switch]$OwnerCredentials,
-        [int[]]$AllowedExitCodes = @(0), [switch]$Result)
+        [int[]]$AllowedExitCodes = @(0), [switch]$Result, [byte[]]$InputBytes)
     $process = $null
     $buffer = [IO.MemoryStream]::new()
     try {
@@ -571,9 +602,14 @@ function Invoke-GhAppGit {
             [void]$info.Environment.Remove($name)
         }
         $process = [Diagnostics.Process]::Start($info)
-        $process.StandardInput.Close()
+        # Output is read before the input is written, so a large input cannot block on a full output pipe.
         $outputTask = $process.StandardOutput.BaseStream.CopyToAsync($buffer)
         $errorTask = $process.StandardError.ReadToEndAsync()
+        if ($null -ne $InputBytes -and $InputBytes.Length -gt 0) {
+            $process.StandardInput.BaseStream.Write($InputBytes, 0, $InputBytes.Length)
+            $process.StandardInput.BaseStream.Flush()
+        }
+        $process.StandardInput.Close()
         $process.WaitForExit()
         $null = $outputTask.GetAwaiter().GetResult()
         $null = $errorTask.GetAwaiter().GetResult()
@@ -687,7 +723,7 @@ function New-GhAppPullRequest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Head, [Parameter(Mandatory)][string]$Title,
         [Parameter(Mandatory)][string]$BodyFile, [string]$Base = 'main', [switch]$Draft,
-        [Alias('Repo')][string]$Repository, [switch]$CloseOnWrongAuthor)
+        [Alias('Repo')][string]$Repository, [switch]$CloseOnWrongAuthor, [string]$LedgerPath, [string]$Worktree)
     $context = Get-GhAppContext $Repository
     Assert-GhAppBranch $Head
     Assert-GhAppBranch $Base
@@ -703,7 +739,101 @@ function New-GhAppPullRequest {
         }
         throw "PR author does not match botLogin. Inspect $url"
     }
-    [pscustomobject]@{ Number = $created.number; Url = $url }
+    # A draft is not sent to the owner. A pull request that opens ready is registered at once.
+    $request = $null
+    if (-not $Draft) {
+        $arguments = @{ Number = [int]$created.number; Repository = $Repository }
+        if ($LedgerPath) { $arguments.LedgerPath = $LedgerPath }
+        if ($Worktree) { $arguments.Worktree = $Worktree }
+        $request = Request-GhAppOwnerReview @arguments
+    }
+    [pscustomobject]@{ Number = $created.number; Url = $url; ReviewRequest = $request }
+}
+
+# Marks a bot-authored draft ready and registers the owner review request for the head. A draft is never registered.
+function Set-GhAppPullRequestReady {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [Parameter(Mandatory)][string]$ExpectedHeadSha, [Parameter(Mandatory)][string]$Worktree,
+        [string]$LedgerPath, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
+    $pr = Get-GhAppPullRequest $context $Number
+    if ($pr.state -cne 'OPEN') { throw "#$Number must be open to be marked ready." }
+    if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
+    if ($pr.headRefOid -cne $expected) { throw "#$Number head changed. Expected $expected; found $($pr.headRefOid)." }
+    # A second registration would void an approval that the owner already gave.
+    if (-not $pr.isDraft) { throw "#$Number is already ready. Use Request-GhAppOwnerReview to register it." }
+    $node = Invoke-GhAppApi $context GET "pulls/$Number"
+    $query = 'mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{number isDraft}}}'
+    $body = ConvertTo-Json -InputObject @{ query = $query; variables = @{ id = [string]$node.node_id } } -Compress
+    $null = Invoke-GhAppGh -Context $context -Arguments @('api', 'graphql', '--hostname', 'github.com', '--input', '-') `
+        -ApiPath '/graphql' -InputText $body -AsApp
+    Request-GhAppOwnerReview -Number $Number -Repository $Repository -LedgerPath $LedgerPath -ExpectedHeadSha $expected -Worktree $Worktree
+}
+
+# Changes the base of a pull request. A pull request with a review request keeps it when the content is the same:
+# the new entry carries the original request time, so an approval that the owner gave stays valid.
+function Set-GhAppPullRequestBase {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [Parameter(Mandatory)][string]$NewBase, [Parameter(Mandatory)][string]$ExpectedHeadSha,
+        [Parameter(Mandatory)][string]$Worktree, [Parameter(Mandatory)][Alias('Log')][string]$LogPath,
+        [string]$LedgerPath, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    Assert-GhAppBranch $NewBase
+    $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
+    $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
+    $pr = Get-GhAppPullRequest $context $Number
+    if ($pr.state -cne 'OPEN') { throw "#$Number must be open to change its base." }
+    if (-not (Test-GhAppBotAuthor $context $pr.author)) { throw "#$Number PR author does not match botLogin." }
+    if ($pr.headRefOid -cne $expected) { throw "#$Number head changed. Expected $expected; found $($pr.headRefOid)." }
+    $oldBase = $pr.baseRefName
+    if ($oldBase -ceq $NewBase) { throw "#$Number is already based on $NewBase." }
+    $request = $null
+    if (Test-GhAppReviewRequested $context $Number $LedgerPath) {
+        $request = Get-GhAppReviewRequest $context $Number $LedgerPath
+        if ($request.Head -cne $expected) {
+            throw "#$Number stop: the review request is for $($request.Head), not for the current head; send the head for review again."
+        }
+        if (-not $request.PatchId) {
+            throw "#$Number stop: the review request has no patch-id; register it again with a worktree before the base change."
+        }
+        $ref = Invoke-GhAppApi $context GET "git/ref/heads/$NewBase"
+        $newBaseSha = Assert-GhAppSha "tip of $NewBase" $ref.object.sha
+        Sync-GhAppReviewCommits $context $Worktree @($expected, $newBaseSha)
+        $patchId = Get-GhAppPatchId $Worktree $expected $newBaseSha
+        if ($patchId -cne $request.PatchId) {
+            Write-GhAppMergeLog $LogPath "#$Number base change $oldBase -> $NewBase refused: patch-id $($request.PatchId) would become $patchId; base not changed"
+            throw "#$Number stop: base $NewBase changes the patch-id from $($request.PatchId) to $patchId; the base was not changed. Owner approval and a new review request required."
+        }
+    }
+    $null = Invoke-GhAppApi $context PATCH "pulls/$Number" @{ base = $NewBase } -AsApp
+    $fresh = Get-GhAppPullRequest $context $Number
+    if ($fresh.baseRefName -cne $NewBase -or $fresh.headRefOid -cne $expected) {
+        throw "#$Number base change was not confirmed. Check the pull request."
+    }
+    if ($null -eq $request) {
+        Write-GhAppMergeLog $LogPath "#$Number base changed $oldBase -> $NewBase; no review request on file"
+        return [pscustomobject]@{ Number = $Number; OldBase = $oldBase; NewBase = $NewBase; ReviewRequest = $null }
+    }
+    if ($fresh.baseRefOid -cne $newBaseSha) {
+        # The base moved between the check and the change. The kept request must still describe the content.
+        Sync-GhAppReviewCommits $context $Worktree @($expected, $fresh.baseRefOid)
+        if ((Get-GhAppPatchId $Worktree $expected $fresh.baseRefOid) -cne $request.PatchId) {
+            Write-GhAppMergeLog $LogPath "#$Number base changed $oldBase -> $NewBase; the base moved during the change and the patch-id differs; no review request kept"
+            throw "#$Number stop: the base moved during the change and the patch-id differs; the review request was not kept. Owner approval and a new review request required."
+        }
+    }
+    $now = (Get-GhAppUtcNow).ToUniversalTime().ToString('o')
+    $entry = [pscustomobject][ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number; head = $expected;
+        requestedAt = $request.RequestedAt.ToUniversalTime().ToString('o'); base = $NewBase; patchId = $request.PatchId;
+        registeredAt = $now; reason = 'base-change'; fromBase = $oldBase }
+    Add-GhAppLedgerEntry $LedgerPath $entry
+    Write-GhAppMergeLog $LogPath "#$Number base changed $oldBase -> $NewBase; patch-id $($request.PatchId) unchanged; review request kept with its original time $($entry.requestedAt) (registered again at $now)"
+    [pscustomobject]@{ Number = $Number; OldBase = $oldBase; NewBase = $NewBase; ReviewRequest = $entry }
 }
 
 function Set-GhAppPullRequestBody {
@@ -920,7 +1050,16 @@ function Sync-GhAppReviewCommits {
 function Assert-GhAppReviewHistory {
     param([hashtable]$Context, [int]$Number, [string]$Worktree, $Pr, $Request)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-    if ($Pr.baseRefName -cne $Request.Base) { throw "#$Number stop: review request base changed; owner approval and a new review request required." }
+    if ($Pr.baseRefName -cne $Request.Base) {
+        # A base change is harmless when the head is the requested head and the content is the same.
+        if ($Request.PatchId -and $head -ceq $Request.Head) {
+            $baseSha = Assert-GhAppSha "base of #$Number" $Pr.baseRefOid
+            Sync-GhAppReviewCommits $Context $Worktree @($head, $baseSha)
+            if ((Get-GhAppPatchId $Worktree $head $baseSha) -ceq $Request.PatchId) { return ,@($head) }
+            throw "#$Number stop: review request base changed and the patch-id differs; owner approval and a new review request required."
+        }
+        throw "#$Number stop: review request base changed; owner approval and a new review request required."
+    }
     # Returns the proven chain from the current head back to the review request head, both included.
     if ($head -ceq $Request.Head) { return ,@($head) }
     $base = Assert-GhAppSha "base of #$Number" $Pr.baseRefOid
@@ -1246,4 +1385,4 @@ function Invoke-GhAppRead {
 Export-ModuleMember -Function Import-GhAppConfig, Push-GhAppBranch, New-GhAppPullRequest,
     Set-GhAppPullRequestBody, Update-GhAppPullRequestBranch, Add-GhAppComment, Sync-GhAppLabels, Add-GhAppReviewRecord,
     Get-GhAppPullRequestReadiness, Request-GhAppOwnerReview, Merge-GhAppApprovedPullRequest, Remove-GhAppMergedBranch,
-    Close-GhAppPullRequest, Invoke-GhAppRead
+    Close-GhAppPullRequest, Invoke-GhAppRead, Set-GhAppPullRequestReady, Set-GhAppPullRequestBase

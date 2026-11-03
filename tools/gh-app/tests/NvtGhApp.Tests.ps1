@@ -59,8 +59,8 @@ InModuleScope NvtGhApp {
     function New-Pr {
         param([string]$Head = $script:HeadSha, [string]$MergeState = 'CLEAN', [string]$State = 'OPEN',
             [string]$Branch = 'test/module', [switch]$Fork, [switch]$Draft,
-            [string]$Author = 'app/example-app', [string]$BaseHead = $script:NextSha)
-        @{ state = $State; headRefOid = $Head; headRefName = $Branch; baseRefName = 'main';
+            [string]$Author = 'app/example-app', [string]$BaseHead = $script:NextSha, [string]$BaseName = 'main')
+        @{ state = $State; headRefOid = $Head; headRefName = $Branch; baseRefName = $BaseName;
             baseRefOid = $BaseHead; isDraft = [bool]$Draft; author = @{ login = $Author; is_bot = $Author.StartsWith('app/') -or $Author.EndsWith('[bot]') };
             mergeStateStatus = $MergeState; isCrossRepository = [bool]$Fork; mergeCommit = @{ oid = $script:MergeSha } }
     }
@@ -121,8 +121,10 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
     function Add-LedgerFixture {
         param([int]$Number = 7, [string]$Head = $script:HeadSha,
-            [string]$RequestedAt = '2025-12-31T23:00:00Z', [string]$Owner = $script:Owner, [string]$Repo = $script:RepoName)
-        $entry = @{ owner = $Owner; repo = $Repo; number = $Number; head = $Head; requestedAt = $RequestedAt; base = 'main' }
+            [string]$RequestedAt = '2025-12-31T23:00:00Z', [string]$Owner = $script:Owner, [string]$Repo = $script:RepoName,
+            [string]$PatchId, [string]$Base = 'main')
+        $entry = [ordered]@{ owner = $Owner; repo = $Repo; number = $Number; head = $Head; requestedAt = $RequestedAt; base = $Base }
+        if ($PatchId) { $entry.patchId = $PatchId }
         [IO.File]::AppendAllText($script:LedgerFile, (ConvertTo-Json $entry -Compress) + "`n", [Text.UTF8Encoding]::new($false))
     }
     function Assert-NoToken {
@@ -202,7 +204,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { Get-GhAppContext '' } | Should Be 'Import-GhAppConfig must succeed before using this module.'
         }
         foreach ($publicFunction in @('Push-GhAppBranch', 'New-GhAppPullRequest', 'Set-GhAppPullRequestBody', 'Add-GhAppComment',
-            'Add-GhAppReviewRecord', 'Request-GhAppOwnerReview', 'Merge-GhAppApprovedPullRequest', 'Close-GhAppPullRequest', 'Invoke-GhAppRead')) {
+            'Add-GhAppReviewRecord', 'Request-GhAppOwnerReview', 'Merge-GhAppApprovedPullRequest', 'Close-GhAppPullRequest', 'Invoke-GhAppRead',
+            'Set-GhAppPullRequestReady', 'Set-GhAppPullRequestBase')) {
             It "rejects another repository in $publicFunction before gh" {
                 Import-Fixture
                 $parameters = @{ Repository = 'other-owner/other-repo' }
@@ -211,6 +214,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                     'New-GhAppPullRequest' { $parameters += @{ Head = 'test/module'; Title = 'Synthetic title'; BodyFile = $script:BodyFile } }
                     'Merge-GhAppApprovedPullRequest' { $parameters += @{ Numbers = @(7); Worktree = $script:FixtureRoot; LogPath = $script:LogFile } }
                     'Request-GhAppOwnerReview' { $parameters += @{ Number = 7 } }
+                    'Set-GhAppPullRequestReady' { $parameters += @{ Number = 7; ExpectedHeadSha = $script:HeadSha; Worktree = $script:FixtureRoot } }
+                    'Set-GhAppPullRequestBase' { $parameters += @{ Number = 7; NewBase = 'release'; ExpectedHeadSha = $script:HeadSha; Worktree = $script:FixtureRoot; LogPath = $script:LogFile } }
                     'Invoke-GhAppRead' { $parameters += @{ Arguments = @('pr', 'list') } }
                     'Close-GhAppPullRequest' { $parameters += @{ Number = 7; CommentFile = $script:BodyFile } }
                     default { $parameters += @{ Number = 7; BodyFile = $script:BodyFile }; if ($publicFunction -eq 'Add-GhAppReviewRecord') { $parameters.ExpectedHeadSha = $script:HeadSha } }
@@ -261,13 +266,14 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $calls[2].AppToken | Should Be $true
             Assert-NoToken
         }
-        It 'leaves a correct-author PR open with CloseOnWrongAuthor' {
+        It 'leaves a correct-author PR open with CloseOnWrongAuthor and registers it, because it is not a draft' {
             Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App),
-                (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }))
+                (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }), (New-PrStep))
             $result = New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile -CloseOnWrongAuthor
             $result.Number | Should Be 7
             $result.Url | Should Be "https://github.com/$script:RepositoryName/pull/7"
-            @(Get-Calls).Count | Should Be 2
+            $result.ReviewRequest.head | Should Be $script:HeadSha
+            @(Get-Calls).Count | Should Be 3
             Assert-NoToken ($result | Out-String)
         }
         It 'replaces a PR body from a file through the App' {
@@ -1434,14 +1440,14 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
     function New-ReviewMergeSteps {
         param([string]$Head = $script:ReviewedSha, [string]$Base = $script:ReviewBase,
-            [object[]]$Reviews = @((New-Review -Head $script:ReviewedSha)))
-        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base)
+            [object[]]$Reviews = @((New-Review -Head $script:ReviewedSha)), [string]$BaseName = 'main')
+        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base -BaseName $BaseName)
         New-ReviewStep -Reviews $Reviews
         New-ChecksStep
-        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base)
+        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base -BaseName $BaseName)
         New-ReviewStep -Reviews $Reviews
         New-ApiStep pulls/7/merge PUT @{ merged = $true; sha = $script:MergeSha } -App
-        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base -State MERGED)
+        New-PrStep -Pr (New-Pr -Head $Head -BaseHead $Base -BaseName $BaseName -State MERGED)
     }
 
     Describe 'Ledger approval and the 10-05 rule' {
@@ -2417,6 +2423,221 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Should Be "HTTP 409 /repos/$script:RepositoryName/pulls/7"
             @(Get-Calls).Count | Should Be 3
             Assert-NoToken
+        }
+    }
+
+    Describe 'Review request binding by patch-id' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            # The fixtures already contain every object. Only fetching is replaced; patch-ids and proof use real Git.
+            Mock Sync-GhAppReviewCommits {}
+            Mock Get-GhAppTimelineObservation { 'unavailable' }
+            $script:PatchId = Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:ReviewBase
+            $script:OtherPatchId = Get-GhAppPatchId $script:ReviewGitRoot $script:BaseUpdateMerges[0] $script:ReviewBase
+            $script:GraphqlReady = @{ Arguments = @('api', 'graphql', '--hostname', 'github.com', '--input', '-'); App = $true;
+                Output = '{"data":{"markPullRequestReadyForReview":{"pullRequest":{"number":7,"isDraft":false}}}}'; Error = ''; ExitCode = 0 }
+        }
+        It 'gives the same patch-id to the same content on another base and another one to other content' {
+            $script:PatchId | Should Match '^[0-9a-f]{40}$'
+            Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:BaseUpdateCommits[0] | Should Be $script:PatchId
+            Get-GhAppPatchId $script:ReviewGitRoot $script:BaseUpdateMerges[0] $script:BaseUpdateCommits[0] | Should Be $script:PatchId
+            $script:OtherPatchId | Should Not Be $script:PatchId
+        }
+        It 'refuses to identify an empty diff' {
+            Get-Message { Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:ReviewedSha } | Should Be 'The pull request has no diff to identify.'
+        }
+        It 'records the patch-id when a worktree is given and keeps the old shape otherwise' {
+            $pr = New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase
+            Set-Responses @((New-PrStep -Pr $pr), (New-PrStep -Pr $pr))
+            $withTree = Request-GhAppOwnerReview 7 -Worktree $script:ReviewGitRoot
+            $withoutTree = Request-GhAppOwnerReview 7
+            ($withTree.PSObject.Properties.Name -join ',') | Should Be 'owner,repo,number,head,requestedAt,base,patchId'
+            $withTree.patchId | Should Be $script:PatchId
+            ($withoutTree.PSObject.Properties.Name -join ',') | Should Be 'owner,repo,number,head,requestedAt,base'
+            @([IO.File]::ReadAllLines($script:LedgerFile)).Count | Should Be 2
+        }
+        It 'registers a pull request that opens ready, with its patch-id' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App), (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }),
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)))
+            $result = New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile -Worktree $script:ReviewGitRoot
+            $result.ReviewRequest.head | Should Be $script:ReviewedSha
+            $result.ReviewRequest.patchId | Should Be $script:PatchId
+            @([IO.File]::ReadAllLines($script:LedgerFile)).Count | Should Be 1
+        }
+        It 'registers a pull request that opens ready, without a patch-id when no worktree is given' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App), (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }), (New-PrStep))
+            $result = New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile
+            $result.ReviewRequest.head | Should Be $script:HeadSha
+            ($result.ReviewRequest.PSObject.Properties.Name -join ',') | Should Be 'owner,repo,number,head,requestedAt,base'
+        }
+        It 'does not register a draft pull request' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App), (New-ApiStep pulls/7 -Value @{ user = @{ login = 'example-app[bot]' } }))
+            $result = New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile -Draft -Worktree $script:ReviewGitRoot
+            $result.ReviewRequest | Should Be $null
+            @(Get-Calls).Count | Should Be 2
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'does not register a pull request whose author is wrong' {
+            Set-Responses @((New-ApiStep pulls POST @{ number = 7 } -App), (New-ApiStep pulls/7 -Value @{ user = @{ login = 'other-author' } }))
+            Get-Message { New-GhAppPullRequest -Head test/module -Title title -BodyFile $script:BodyFile } | Should Match '^PR author does not match botLogin'
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'marks a draft ready through the App and registers the head with its patch-id' {
+            $draft = New-Pr -Draft -Head $script:ReviewedSha -BaseHead $script:ReviewBase
+            Set-Responses @((New-PrStep -Pr $draft), (New-ApiStep pulls/7 -Value @{ node_id = 'PR_node_1' }), $script:GraphqlReady,
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)))
+            $entry = Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot
+            $entry.head | Should Be $script:ReviewedSha
+            $entry.patchId | Should Be $script:PatchId
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 4
+            $calls[2].AppToken | Should Be $true
+            (ConvertFrom-Json $calls[2].Input).variables.id | Should Be 'PR_node_1'
+            @([IO.File]::ReadAllLines($script:LedgerFile)).Count | Should Be 1
+            Assert-NoToken
+        }
+        It 'does not register when the ready change fails' {
+            $draft = New-Pr -Draft -Head $script:ReviewedSha -BaseHead $script:ReviewBase
+            $failed = @{ Arguments = $script:GraphqlReady.Arguments; App = $true; Output = ''; Error = 'HTTP 403 __TOKEN__'; ExitCode = 1 }
+            Set-Responses @((New-PrStep -Pr $draft), (New-ApiStep pulls/7 -Value @{ node_id = 'PR_node_1' }), $failed)
+            Get-Message { Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot } | Should Be 'HTTP 403 /graphql'
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'refuses a pull request that is already ready, so an approval is not voided' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)))
+            Get-Message { Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot } |
+                Should Be '#7 is already ready. Use Request-GhAppOwnerReview to register it.'
+            @(Get-Calls).Count | Should Be 1
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'refuses to mark a draft ready when its head is not the expected head' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Draft -Head $script:NextSha)))
+            Get-Message { Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot } |
+                Should Be "#7 head changed. Expected $script:ReviewedSha; found $script:NextSha."
+            @(Get-Calls).Count | Should Be 1
+        }
+        It 'refuses to mark a pull request ready that the App did not open' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Draft -Author other-author -Head $script:ReviewedSha)))
+            Get-Message { Set-GhAppPullRequestReady -Number 7 -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot } |
+                Should Be '#7 PR author does not match botLogin.'
+        }
+        It 'changes the base when the patch-id stays, keeps the request time, and logs the carry' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)),
+                (New-ApiStep git/ref/heads/release -Value @{ object = @{ sha = $script:BaseUpdateCommits[0] } }),
+                (New-ApiStep pulls/7 PATCH @{} -App),
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)))
+            $result = Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 4
+            (ConvertFrom-Json $calls[2].Input).base | Should Be release
+            $calls[2].AppToken | Should Be $true
+            $lines = @([IO.File]::ReadAllLines($script:LedgerFile))
+            $lines.Count | Should Be 2
+            $lines[1] | Should Match '"requestedAt":"2025-12-31T23:00:00\.0000000\+00:00"'
+            $lines[1] | Should Match '"base":"release"'
+            $lines[1] | Should Match "`"patchId`":`"$script:PatchId`""
+            $lines[1] | Should Match '"reason":"base-change"'
+            $lines[1] | Should Match '"fromBase":"main"'
+            $result.NewBase | Should Be release
+            $log = [IO.File]::ReadAllText($script:LogFile)
+            $log | Should Match "#7 base changed main -> release; patch-id $script:PatchId unchanged; review request kept with its original time 2025-12-31T23:00:00\.0000000\+00:00 \(registered again at "
+            Assert-NoToken $log
+            # The owner's approval, given after the original request, still counts. It is older than the second registration.
+            [IO.File]::Delete($env:NVT_GHAPP_INDEX)
+            Set-Responses @(New-ReviewMergeSteps -Head $script:ReviewedSha -Base $script:BaseUpdateCommits[0] -BaseName release)
+            Invoke-ReviewMergeFixture
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+        }
+        It 'stops before the change when the new base changes the patch-id' {
+            Add-LedgerFixture -Head $script:BaseUpdateMerges[0] -PatchId $script:OtherPatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:BaseUpdateMerges[0] -BaseHead $script:ReviewBase)),
+                (New-ApiStep git/ref/heads/release -Value @{ object = @{ sha = $script:BaseUpdateCommits[0] } }))
+            Get-Message { Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:BaseUpdateMerges[0] -Worktree $script:ReviewGitRoot -LogPath $script:LogFile } |
+                Should Be "#7 stop: base release changes the patch-id from $script:OtherPatchId to $script:PatchId; the base was not changed. Owner approval and a new review request required."
+            @(Get-Calls).Count | Should Be 2
+            @([IO.File]::ReadAllLines($script:LedgerFile)).Count | Should Be 1
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 base change main -> release refused: patch-id $script:OtherPatchId would become $script:PatchId; base not changed"
+        }
+        It 'changes the base of a pull request without a review request and writes no entry' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)),
+                (New-ApiStep pulls/7 PATCH @{} -App),
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)))
+            $result = Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile
+            $result.ReviewRequest | Should Be $null
+            @(Get-Calls).Count | Should Be 3
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+            [IO.File]::ReadAllText($script:LogFile) | Should Match '#7 base changed main -> release; no review request on file'
+        }
+        It 'refuses a base change for a request without a patch-id before any write' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)))
+            Get-Message { Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile } |
+                Should Be '#7 stop: the review request has no patch-id; register it again with a worktree before the base change.'
+            @(Get-Calls).Count | Should Be 1
+        }
+        It 'refuses a base change when the request is for another head' {
+            Add-LedgerFixture -Head $script:NextSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)))
+            Get-Message { Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile } |
+                Should Be "#7 stop: the review request is for $script:NextSha, not for the current head; send the head for review again."
+            @(Get-Calls).Count | Should Be 1
+        }
+        It 'refuses a base change when the head is not the expected head or the base is already the new base' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            Get-Message { Set-GhAppPullRequestBase -Number 7 -NewBase release -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile } |
+                Should Be "#7 head changed. Expected $script:ReviewedSha; found $script:NextSha."
+            [IO.File]::Delete($env:NVT_GHAPP_INDEX)
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha)))
+            Get-Message { Set-GhAppPullRequestBase -Number 7 -NewBase main -ExpectedHeadSha $script:ReviewedSha -Worktree $script:ReviewGitRoot -LogPath $script:LogFile } |
+                Should Be '#7 is already based on main.'
+        }
+        It 'stops a merge when no review request is on file, even with a renamed base' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match 'no review ledger entry'
+            @(Get-Calls).Count | Should Be 1
+        }
+        It 'accepts a renamed base when the request has the same patch-id, without a new registration' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @(New-ReviewMergeSteps -Head $script:ReviewedSha -Base $script:BaseUpdateCommits[0] -BaseName release)
+            Invoke-ReviewMergeFixture
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+            # The proof runs before and after the checks, and each run fetches once.
+            Assert-MockCalled Sync-GhAppReviewCommits -Times 2 -Exactly -Scope It
+        }
+        It 'refuses a renamed base when the patch-id differs' {
+            Add-LedgerFixture -Head $script:BaseUpdateMerges[0] -PatchId $script:OtherPatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:BaseUpdateMerges[0] -BaseHead $script:BaseUpdateCommits[0] -BaseName release)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:BaseUpdateMerges[0]))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be '#7 stop: review request base changed and the patch-id differs; owner approval and a new review request required.'
+        }
+        It 'refuses a renamed base for a request without a patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match 'review request base changed'
+            Assert-MockCalled Sync-GhAppReviewCommits -Times 0 -Exactly -Scope It
+        }
+        It 'refuses a renamed base with the same patch-id when the head moved after the request' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:BaseUpdateMerges[0] -BaseHead $script:BaseUpdateCommits[0] -BaseName release)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match 'review request base changed'
+        }
+        It 'refuses an approval that is older than the request, also after a base change' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId -RequestedAt '2026-01-01T01:00:00Z' -Base release
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be "#7 stop: no owner approval after review request $script:ReviewedSha."
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'refuses an approval that is not on the current head, also after a base change' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:BaseUpdateCommits[0] -BaseName release)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:NextSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: owner approval is on $script:NextSha, not on review request $script:ReviewedSha or a clean base merge after it."
         }
     }
 }
