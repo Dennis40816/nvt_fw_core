@@ -342,6 +342,14 @@ function Get-GhAppLedgerPath {
 # The default review record: the first line names the head and the verdict. A repository with another format passes its own pattern.
 $script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
 
+# Tier B scope: the repositories where a pull request can merge without an owner approval, and the bases it may target.
+# Core is not listed, so a Core pull request always needs the owner. A repository that is not listed is refused.
+$script:TierBScopes = @(
+    @{ Repository = 'Dennis40816/nvt-freeform-helper'; BasePattern = '^.+$' },
+    @{ Repository = 'Dennis40816/nvt-event-buffer-replay'; BasePattern = '^.+$' },
+    @{ Repository = 'Dennis40816/nvt_fw_combiner'; BasePattern = '^\d+\.\d+\.x$' }
+)
+
 function New-GhAppCheckRow {
     param([string]$Name, [bool]$Pass, [string]$Detail)
     [pscustomobject]@{ Name = $Name; Result = $(if ($Pass) { 'PASS' } else { 'FAIL' }); Detail = $Detail }
@@ -1292,6 +1300,91 @@ function Merge-GhAppApprovedPullRequest {
     Write-GhAppMergeLog $LogPath "done: $($Numbers -join ',')"
 }
 
+function Get-GhAppUnresolvedThreadCount {
+    param([hashtable]$Context, [int]$Number)
+    # A thread count that cannot be read is an error, never zero: the caller must refuse to merge.
+    $query = 'query($owner:String!,$repo:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$cursor){nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}'
+    $cursor = $null
+    $unresolved = 0
+    for ($page = 0; $page -lt 100; $page++) {
+        $body = @{ query = $query; variables = @{ owner = $Context.owner; repo = $Context.repo; number = $Number; cursor = $cursor } }
+        $result = Invoke-GhAppGh -Context $Context -Read -Arguments @('api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '--input', '-') `
+            -ApiPath '/graphql' -InputText (ConvertTo-Json $body -Depth 10 -Compress)
+        try { $data = ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop }
+        catch { throw "The review threads of #$Number could not be read." }
+        if ($data.PSObject.Properties['errors'] -or $null -eq $data.data -or $null -eq $data.data.repository.pullRequest) {
+            throw "The review threads of #$Number could not be read."
+        }
+        $threads = $data.data.repository.pullRequest.reviewThreads
+        $unresolved += @($threads.nodes | Where-Object { $_.isResolved -ne $true }).Count
+        if (-not $threads.pageInfo.hasNextPage) { return $unresolved }
+        $cursor = $threads.pageInfo.endCursor
+    }
+    throw "The review threads of #$Number fill more than 100 pages."
+}
+
+# Merges a pull request of tier B. The owner does not approve a tier B pull request, so the tool proves each condition itself
+# and refuses when one fails. The conditions: the repository and base are in $script:TierBScopes, the PR is ready and written
+# by the App, the head is the expected head, a review record accepts that head, the latest run of every workflow succeeded,
+# no review thread is open, and the merge state is CLEAN. The merge names the head as its boundary, and each merge adds one
+# line to tier-b-merges.jsonl next to the review ledger.
+function Merge-GhAppTierBPullRequest {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
+        [Parameter(Mandatory)][string]$ExpectedHeadSha, [Parameter(Mandatory)][Alias('Log')][string]$LogPath,
+        [string]$LedgerPath, [string]$ReviewRecordPattern, [string]$DeleteBranchPrefix, [Alias('Repo')][string]$Repository)
+    $context = Get-GhAppContext $Repository
+    $head = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
+    Assert-GhAppReviewRecordPattern $ReviewRecordPattern
+    if ($PSBoundParameters.ContainsKey('DeleteBranchPrefix') -and [string]::IsNullOrWhiteSpace($DeleteBranchPrefix)) {
+        throw 'DeleteBranchPrefix must be nonempty when given.'
+    }
+    $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
+    $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
+    $name = "$($context.owner)/$($context.repo)"
+    $scope = @($script:TierBScopes | Where-Object { [string]::Equals($_.Repository, $name, [StringComparison]::OrdinalIgnoreCase) })
+    if ($scope.Count -eq 0) { throw "#$Number tier B merge refused: $name is not a tier B repository. Only the owner approves there." }
+    try {
+        Write-GhAppMergeLog $LogPath "#$Number tier B start"
+        $pr = Get-GhAppPullRequest $context $Number
+        $refusals = [Collections.Generic.List[string]]::new()
+        if (-not [regex]::IsMatch([string]$pr.baseRefName, $scope[0].BasePattern, [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))) {
+            $refusals.Add("Base: $($pr.baseRefName) is not a tier B base of $name")
+        }
+        $readiness = Get-GhAppReadiness $context $Number $pr $head $ReviewRecordPattern
+        foreach ($row in @($readiness.Checks | Where-Object { $_.Result -ceq 'FAIL' })) { $refusals.Add("$($row.Name): $($row.Detail)") }
+        # Readiness also accepts BLOCKED, the state before an owner approves. A tier B merge has no owner approval, so only CLEAN counts.
+        if ($pr.mergeStateStatus -cne 'CLEAN') { $refusals.Add("MergeState: must be CLEAN, is $($pr.mergeStateStatus)") }
+        $unresolved = Get-GhAppUnresolvedThreadCount $context $Number
+        if ($unresolved -gt 0) { $refusals.Add("Threads: $unresolved review thread(s) are not resolved") }
+        if ($refusals.Count -gt 0) { throw "#$Number tier B merge refused: $($refusals -join '; ')." }
+        # Check the pull request once more just before the merge: the head, the base and the state must not have moved.
+        $fresh = Get-GhAppPullRequest $context $Number
+        if ($fresh.state -cne 'OPEN' -or $fresh.isDraft -or $fresh.headRefOid -cne $head -or $fresh.baseRefOid -cne $pr.baseRefOid -or
+            $fresh.baseRefName -cne $pr.baseRefName -or $fresh.mergeStateStatus -cne 'CLEAN') {
+            throw "#$Number tier B merge refused: the pull request changed during the checks."
+        }
+        $merged = Invoke-GhAppApi $context PUT "pulls/$Number/merge" @{ merge_method = 'merge'; sha = $head } -AsApp
+        if (-not $merged.merged) { throw "#$Number stop: merge failed." }
+        $mergeSha = Assert-GhAppSha "merge commit of #$Number" $merged.sha
+        $after = Get-GhAppPullRequest $context $Number
+        if ($after.state -cne 'MERGED') { throw "#$Number stop: merge was not confirmed." }
+        Write-GhAppMergeLog $LogPath "#$Number tier B merged $head -> $mergeSha"
+    } catch {
+        Write-GhAppMergeLog $LogPath "#$Number tier B error: $($_.Exception.Message)"
+        throw
+    }
+    $runNames = @($readiness.Checks | Where-Object { $_.Name.StartsWith('Run: ', [StringComparison]::Ordinal) } | ForEach-Object { $_.Name.Substring(5) })
+    $entry = [ordered]@{ owner = $context.owner; repo = $context.repo; number = $Number; head = $head; base = [string]$pr.baseRefName
+        mergeSha = $mergeSha; mergedAt = (Get-GhAppUtcNow).ToString('o'); mergedBy = $context.botLogin; operator = [Environment]::UserName
+        basis = 'tier B: review record accepts this head; latest run of every workflow succeeded; no open review thread; merge state CLEAN'
+        workflows = $runNames }
+    $auditPath = Join-Path (Split-Path $LedgerPath) 'tier-b-merges.jsonl'
+    try { [IO.File]::AppendAllText($auditPath, (ConvertTo-Json $entry -Compress) + "`n", [Text.UTF8Encoding]::new($false)) }
+    catch { throw "#$Number was merged as $mergeSha, but the audit entry could not be written to $auditPath." }
+    $null = Remove-GhAppBranchAfterMerge $context $Number $after $head $LogPath $DeleteBranchPrefix
+}
+
 function Close-GhAppPullRequest {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
@@ -1384,5 +1477,5 @@ function Invoke-GhAppRead {
 
 Export-ModuleMember -Function Import-GhAppConfig, Push-GhAppBranch, New-GhAppPullRequest,
     Set-GhAppPullRequestBody, Update-GhAppPullRequestBranch, Add-GhAppComment, Sync-GhAppLabels, Add-GhAppReviewRecord,
-    Get-GhAppPullRequestReadiness, Request-GhAppOwnerReview, Merge-GhAppApprovedPullRequest, Remove-GhAppMergedBranch,
+    Get-GhAppPullRequestReadiness, Request-GhAppOwnerReview, Merge-GhAppApprovedPullRequest, Merge-GhAppTierBPullRequest, Remove-GhAppMergedBranch,
     Close-GhAppPullRequest, Invoke-GhAppRead, Set-GhAppPullRequestReady, Set-GhAppPullRequestBase
