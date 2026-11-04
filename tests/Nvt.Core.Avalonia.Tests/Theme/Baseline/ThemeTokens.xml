@@ -5,7 +5,10 @@
       <SolidColorBrush x:Key="NfcSurfaceBrush" Color="#FFFFFF" />
       <SolidColorBrush x:Key="NfcSurfaceSubtleBrush" Color="#F8FAFC" />
       <SolidColorBrush x:Key="NfcSelectionSurfaceBrush" Color="#DCE5EF" />
-      <SolidColorBrush x:Key="Nvt.Interaction.RestBrush" Color="#00DCE5EF" />
+      <SolidColorBrush x:Key="Nvt.Interaction.RestBrush" Color="#001E293B" />
+      <SolidColorBrush x:Key="Nvt.Interaction.HoverBrush" Color="#331E293B" />
+      <SolidColorBrush x:Key="Nvt.Interaction.HoverFillBrush" Color="#D2D4D8" />
+      <SolidColorBrush x:Key="Nvt.Interaction.PressedFillBrush" Color="#C9CCD0" />
       <SolidColorBrush x:Key="NfcBorderBrush" Color="#718096" />
       <SolidColorBrush x:Key="NfcBorderMutedBrush" Color="#CBD5E1" />
       <SolidColorBrush x:Key="NfcBorderSoftBrush" Color="#94A3B8" />
@@ -23,7 +26,7 @@
       <SolidColorBrush x:Key="NfcAccentBorderStrongBrush" Color="#1148BE" />
       <SolidColorBrush x:Key="NfcAccentBorderLightBrush" Color="#1557E9" />
       <SolidColorBrush x:Key="NfcSecondaryActionPressedBrush" Color="#E2E8F0" />
-      <SolidColorBrush x:Key="Nvt.Interaction.PressedBrush" Color="#D2DDEA" />
+      <SolidColorBrush x:Key="Nvt.Interaction.PressedBrush" Color="#3D1E293B" />
       <SolidColorBrush x:Key="NfcSuccessSurfaceBrush" Color="#ECFDF5" />
       <SolidColorBrush x:Key="NfcSuccessBorderBrush" Color="#4D8E68" />
       <SolidColorBrush x:Key="NfcSuccessAccentBrush" Color="#168043" />
@@ -63,7 +66,10 @@
       <SolidColorBrush x:Key="NfcSurfaceBrush" Color="#111827" />
       <SolidColorBrush x:Key="NfcSurfaceSubtleBrush" Color="#182337" />
       <SolidColorBrush x:Key="NfcSelectionSurfaceBrush" Color="#26364D" />
-      <SolidColorBrush x:Key="Nvt.Interaction.RestBrush" Color="#0026364D" />
+      <SolidColorBrush x:Key="Nvt.Interaction.RestBrush" Color="#00E2E8F0" />
+      <SolidColorBrush x:Key="Nvt.Interaction.HoverBrush" Color="#33E2E8F0" />
+      <SolidColorBrush x:Key="Nvt.Interaction.HoverFillBrush" Color="#3B424F" />
+      <SolidColorBrush x:Key="Nvt.Interaction.PressedFillBrush" Color="#434A57" />
       <SolidColorBrush x:Key="NfcBorderBrush" Color="#708198" />
       <SolidColorBrush x:Key="NfcBorderMutedBrush" Color="#334155" />
       <SolidColorBrush x:Key="NfcBorderSoftBrush" Color="#475569" />
@@ -81,7 +87,7 @@
       <SolidColorBrush x:Key="NfcAccentBorderStrongBrush" Color="#8FBFFB" />
       <SolidColorBrush x:Key="NfcAccentBorderLightBrush" Color="#5FA5FA" />
       <SolidColorBrush x:Key="NfcSecondaryActionPressedBrush" Color="#243247" />
-      <SolidColorBrush x:Key="Nvt.Interaction.PressedBrush" Color="#2C3E58" />
+      <SolidColorBrush x:Key="Nvt.Interaction.PressedBrush" Color="#3DE2E8F0" />
       <SolidColorBrush x:Key="NfcSuccessSurfaceBrush" Color="#123024" />
       <SolidColorBrush x:Key="NfcSuccessBorderBrush" Color="#4D9D75" />
       <SolidColorBrush x:Key="NfcSuccessAccentBrush" Color="#69CF99" />

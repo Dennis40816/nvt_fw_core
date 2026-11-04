@@ -159,10 +159,13 @@
     <Setter Property="OverlayInputPassThroughElement" Value="{Binding $parent[Menu]}" />
   </Style>
   <Style Selector="MenuItem:pointerover:not(:disabled), MenuItem:open:not(:disabled), MenuItem:focus-visible:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
   </Style>
   <Style Selector="MenuItem:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
+  </Style>
+  <Style Selector="MenuItem:pointerover:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:open:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:focus-visible:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:pressed:not(:disabled) /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
   </Style>
   <Style Selector="MenuItem:disabled">
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />

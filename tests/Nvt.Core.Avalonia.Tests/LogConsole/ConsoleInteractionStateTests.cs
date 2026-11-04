@@ -52,6 +52,11 @@ public sealed class ConsoleInteractionStateTests
         return Color.FromArgb(bytes[offset + 3], bytes[offset + 2], bytes[offset + 1], bytes[offset]);
     }
 
+    private static Color Over(Color layer, Color backdrop) => Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(layer, backdrop);
+
+    // The renderer blends in premultiplied integers, so allow a rounding step per channel.
+    private static bool Near(Color a, Color b) => Math.Abs(a.R - b.R) <= 2 && Math.Abs(a.G - b.G) <= 2 && Math.Abs(a.B - b.B) <= 2;
+
     private static Point Center(Window window, Control control) =>
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
 
@@ -72,18 +77,20 @@ public sealed class ConsoleInteractionStateTests
             // Reduced motion removes the background fade, so the painted pixel is the fill itself and not a frame of the fade.
             display.Classes.Add("reducedMotion");
             more.Classes.Add("reducedMotion");
-            Color active = ChoiceTestHost.ResourceColor(display, "NfcSelectionSurfaceBrush");
+            Color hoverLayer = ChoiceTestHost.ResourceColor(display, "Nvt.Interaction.HoverBrush");
             window.MouseMove(new Point(2, 2));
             Color displayRest = Painted(window, display);
             Color moreRest = Painted(window, more);
-            Assert.NotEqual(active, displayRest);
-            Assert.NotEqual(active, moreRest);
+            // The hover fill is a translucent layer, so the painted colour is the layer over what is behind the button.
+            Color displayActive = Over(hoverLayer, displayRest);
+            Color moreActive = Over(hoverLayer, moreRest);
+            Assert.False(Near(displayActive, displayRest), "The hover layer must change the painted colour.");
 
             // The neighbouring button paints the hover fill while the pointer is over it and the menu is closed.
             window.MouseMove(Center(window, more));
             Settle(window);
             Assert.Contains(":pointerover", more.Classes);
-            Assert.Equal(active, Painted(window, more));
+            Assert.True(Near(moreActive, Painted(window, more)), "More paints the hover layer while hovered.");
             Assert.Equal(displayRest, Painted(window, display));
 
             // Opening the menu moves the pointer to the flyout: Display is no longer hovered but keeps the one active fill.
@@ -95,14 +102,14 @@ public sealed class ConsoleInteractionStateTests
             Assert.Contains(":flyout-open", display.Classes);
             Assert.DoesNotContain(":flyout-open", more.Classes);
             Assert.DoesNotContain(":pointerover", display.Classes);
-            Assert.Equal(active, Painted(window, display));
+            Assert.True(Near(displayActive, Painted(window, display)), "Display keeps the active fill.");
             Assert.Equal(moreRest, Painted(window, more));
 
             // The open flyout takes the pointer, so moving over the neighbouring button neither hovers it nor changes Display.
             window.MouseMove(Center(window, more));
             Settle(window);
             Assert.DoesNotContain(":pointerover", more.Classes);
-            Assert.Equal(active, Painted(window, display));
+            Assert.True(Near(displayActive, Painted(window, display)), "Display keeps the active fill.");
             Assert.Equal(moreRest, Painted(window, more));
             menu.Hide();
             Settle(window);
@@ -230,7 +237,7 @@ public sealed class ConsoleInteractionStateTests
             flag.IsChecked = true;
             Settle(window);
             Color rest = Target(flag);
-            Color hover = ChoiceTestHost.ResourceColor(flag, "NfcSelectionSurfaceBrush");
+            Color hover = ChoiceTestHost.ResourceColor(flag, "Nvt.Interaction.HoverBrush");
             Assert.Equal(0, rest.A);
             Assert.Equal((hover.R, hover.G, hover.B), (rest.R, rest.G, rest.B));
             window.MouseMove(flag.TranslatePoint(new Point(flag.Bounds.Width / 2, flag.Bounds.Height / 2), window)!.Value);
