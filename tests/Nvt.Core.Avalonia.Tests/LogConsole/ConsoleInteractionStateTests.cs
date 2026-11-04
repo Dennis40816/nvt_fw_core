@@ -2,11 +2,14 @@
 
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.LogConsole;
+using Nvt.Core.Avalonia.Tests.Choice;
 using Nvt.Core.LogConsole;
 using Xunit;
 
@@ -26,6 +29,11 @@ public sealed class ConsoleInteractionStateTests
         return store;
     }
 
+    private static void Settle(Window window) => ConsoleTestView.Pump(window);
+
+    /// <summary>The fill the styles resolve to. A background fade animates above it, so this is the end of the fade.</summary>
+    private static Color Target(TemplatedControl control) => ChoiceTestHost.ColorOf(control.GetBaseValue(TemplatedControl.BackgroundProperty).Value);
+
     /// <summary>Opening the Display menu gives that button the active fill and leaves the neighbouring button idle.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
@@ -40,13 +48,23 @@ public sealed class ConsoleInteractionStateTests
         {
             var display = header.FindControl<Button>("Display")!;
             var more = header.FindControl<Button>("More")!;
+            Color restFill = ChoiceTestHost.ResourceColor(display, "Nvt.Interaction.RestBrush");
+            Color activeFill = ChoiceTestHost.ResourceColor(display, "NfcSelectionSurfaceBrush");
+            Assert.Equal(restFill, Target(display));
             ConsoleTestView.Click(window, display);
             var menu = Assert.IsType<MenuFlyout>(display.Flyout);
             Assert.True(menu.IsOpen);
             Assert.Contains(":flyout-open", display.Classes);
             Assert.DoesNotContain(":flyout-open", more.Classes);
-            Assert.False(more.IsPointerOver);
-            Assert.False(display.IsPointerOver);
+            Settle(window);
+            // The owner button paints the active fill; the neighbour keeps the rest fill.
+            Assert.True(activeFill == Target(display), $"display {Target(display)} classes {string.Join(" ", display.Classes)}");
+            Assert.Equal(restFill, Target(more));
+            // Moving over the neighbouring button while the menu is open must not paint it as active.
+            window.MouseMove(more.TranslatePoint(new Point(more.Bounds.Width / 2, more.Bounds.Height / 2), window)!.Value);
+            Settle(window);
+            Assert.Equal(activeFill, Target(display));
+            Assert.Equal(restFill, Target(more));
             menu.Hide();
         }
         finally { window.Close(); }
@@ -95,8 +113,9 @@ public sealed class ConsoleInteractionStateTests
             ConsoleTestView.Pump(window);
             var menu = Assert.IsType<MenuFlyout>(sources.Flyout);
             Assert.True(menu.IsOpen);
-            var focused = window.FocusManager?.GetFocusedElement();
-            Assert.IsNotType<RepeatButton>(focused);
+            var focused = Assert.IsAssignableFrom<MenuItem>(window.FocusManager?.GetFocusedElement());
+            Assert.True(focused.IsEnabled);
+            Assert.Contains(focused, menu.Items.Cast<MenuItem>());
             menu.Hide();
         }
         finally { window.Close(); }
@@ -147,9 +166,35 @@ public sealed class ConsoleInteractionStateTests
             {
                 Assert.True(item.IsChecked);
                 Border body = Assert.Single(item.GetVisualDescendants().OfType<Border>(), part => part.Name == "PART_LayoutRoot");
-                Assert.True(global::Nvt.Core.Avalonia.Tests.Choice.ChoiceTestHost.ColorOf(body.Background).A == 0, $"{item.Header}: {string.Join(' ', item.Classes)} {body.Background}");
+                Assert.True(ChoiceTestHost.ColorOf(body.Background).A == 0, $"{item.Header}: {string.Join(' ', item.Classes)} {body.Background}");
             }
             menu.Hide();
+        }
+        finally { window.Close(); }
+    }
+
+    /// <summary>The checked Only matches button rests on the zero-alpha hover colour, so its fade never passes through white.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CheckedOnlyMatchesRestsOnTheZeroAlphaHoverColour(bool dark)
+    {
+        using var fixture = StoreWithSources();
+        using var controller = fixture.Controller();
+        var toolbar = new ConsoleToolbar { Controller = controller };
+        Window window = ConsoleTestView.Create(toolbar, dark: dark, height: 400);
+        try
+        {
+            var flag = toolbar.FindControl<ToggleButton>("OnlyMatches")!;
+            flag.IsChecked = true;
+            Settle(window);
+            Color rest = Target(flag);
+            Color hover = ChoiceTestHost.ResourceColor(flag, "NfcSelectionSurfaceBrush");
+            Assert.Equal(0, rest.A);
+            Assert.Equal((hover.R, hover.G, hover.B), (rest.R, rest.G, rest.B));
+            window.MouseMove(flag.TranslatePoint(new Point(flag.Bounds.Width / 2, flag.Bounds.Height / 2), window)!.Value);
+            Settle(window);
+            Assert.Equal(hover, Target(flag));
         }
         finally { window.Close(); }
     }
