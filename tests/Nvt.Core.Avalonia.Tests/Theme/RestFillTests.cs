@@ -564,14 +564,14 @@ public sealed class RestFillTests(ITestOutputHelper output)
         bool disabled = state.Contains("Disabled", StringComparison.Ordinal);
         double documented = owner is Expander ? pair switch
         {
-            "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 11.866 : 12.525,
+            "Header text / header" or "Chevron / header" => disabled ? dark ? 4.65 : 3.93 : dark ? 9.91 : 11.49,
             _ => minimum,
         } : pair switch
         {
-            "Label / row" => disabled ? dark ? 3.783 : 3.698 : dark ? 11.215 : 14.328,
-            "Indicator border / row" => dark ? 3.256 : 3.257,
+            "Label / row" => disabled ? dark ? 3.57 : 3.58 : dark ? 11.215 : 13.5,
+            "Indicator border / row" => dark ? 3.07 : 3.15,
             "Glyph / indicator" => disabled ? dark ? 3.422 : 4.559 : dark ? 7.794 : 5.879,
-            "Focus / row" or "Focus / surrounding surface" => dark ? 6.194 : 5.340,
+            "Focus / row" or "Focus / surrounding surface" => dark ? 6.194 : 5.03,
             _ => minimum,
         };
         // Existing documents round their numeric minima to three decimal places.

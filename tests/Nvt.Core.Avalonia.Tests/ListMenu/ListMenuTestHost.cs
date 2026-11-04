@@ -128,8 +128,8 @@ internal static class ListMenuTestHost
         if (state.Disabled) return (state.Selected ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush", "NfcTextDisabledBrush");
         if (state.Selected) return (state.Pressed ? "Nvt.List.SelectedPressedBrush"
             : state.Hover ? "Nvt.List.SelectedPointerOverBrush" : "Nvt.List.SelectedBrush", "Nvt.List.SelectedLabelBrush");
-        return (state.Pressed ? "NfcSecondaryActionPressedBrush"
-            : state.Hover ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush", "NfcTextBrush");
+        return (state.Pressed ? "Nvt.Interaction.PressedBrush"
+            : state.Hover ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush", "NfcTextBrush");
     }
 
     internal static void Key(Window host, global::Avalonia.Input.Key key, RawInputModifiers modifiers = RawInputModifiers.None)

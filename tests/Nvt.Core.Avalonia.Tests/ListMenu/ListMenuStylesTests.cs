@@ -173,16 +173,16 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
         Flush(host);
         Border body = Part(item, "PART_LayoutRoot");
         Assert.Equal(32, body.Bounds.Height);
+        // A checked menu command carries no fill; only the check mark shows the state.
         string fill = state.Disabled ? "Nvt.List.TransparentBrush"
-            : state.Selected ? state.Pressed ? "Nvt.Controls.SelectedPressedBrush" : state.Hover || state.Focus ? "Nvt.Controls.SelectedPointerOverBrush" : "Nvt.Controls.SelectedBrush"
-            : state.Pressed ? "NfcSecondaryActionPressedBrush"
-            : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush";
+            : state.Pressed ? "Nvt.Interaction.PressedBrush"
+            : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
         Assert.Equal(ResourceColor(item, fill), ColorOf(body.Background));
         Color background = ColorOf(body.Background);
         if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
-        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
+        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
         Assert.True(Contrast(ColorOf(item.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : state.Selected ? "Nvt.Controls.SelectedForegroundBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
+        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
         Assert.True(Contrast(ColorOf(gesture.Foreground), background) >= (state.Disabled ? 3 : 4.5));
         Border ring = Part(item, "MenuFocusRing");
         Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
@@ -431,8 +431,8 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
             {
                 SetState(file, state);
                 Flush(host);
-                string fill = state.Disabled ? "Nvt.List.TransparentBrush" : state.Pressed ? "NfcSecondaryActionPressedBrush"
-                    : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.List.TransparentBrush";
+                string fill = state.Disabled ? "Nvt.List.TransparentBrush" : state.Pressed ? "Nvt.Interaction.PressedBrush"
+                    : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
                 Assert.Equal(ResourceColor(file, fill), ColorOf(Part(file, "PART_LayoutRoot").Background));
                 Assert.Equal(state.Focus && !state.Disabled, Part(file, "MenuFocusRing").IsVisible);
             }

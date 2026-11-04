@@ -6,7 +6,6 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
-using Avalonia.Input.Raw;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Markup.Xaml.Styling;
@@ -29,12 +28,13 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         ("SoftCheckedPressedBrush", "Nvt.Controls.SelectedPressedBrush"),
         ("SoftCheckedForegroundBrush", "Nvt.Controls.SelectedForegroundBrush"),
         ("SoftPointerOverBrush", "NfcSelectionSurfaceBrush"),
-        ("SoftPressedBrush", "NfcSecondaryActionPressedBrush"),
+        ("SoftPressedBrush", "Nvt.Interaction.PressedBrush"),
         ("SoftForegroundBrush", "NfcTextSecondaryBrush"),
         ("SoftPointerOverForegroundBrush", "NfcTextBrush"),
         ("SoftPressedForegroundBrush", "NfcTextStrongBrush"),
         ("SoftDisabledForegroundBrush", "NfcTextDisabledBrush"),
         ("SoftDisabledCheckedBrush", "NfcSelectionSurfaceBrush"),
+        ("RestBrush", "Nvt.Interaction.RestBrush"),
     ];
 
     /// <summary>Checks text and icon colors, state precedence, and contrast on both themes and shapes.</summary>
@@ -57,7 +57,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
                     Flush(host);
                     foreach ((string soft, string core) in Tokens)
                         Assert.Equal(ResourceColor(button, core), ResourceColor(button, "Nvt.Toggle." + soft));
-                    Color rest = ResourceColor(button, "Nvt.Toggle.TransparentBrush");
+                    Color rest = ResourceColor(button, "Nvt.Toggle.RestBrush");
                     Assert.Equal(0, rest.A);
                     Assert.NotEqual(rest, ResourceColor(button, "Nvt.Toggle.SoftCheckedBrush"));
                     foreach (ToggleState state in States.Concat(
@@ -291,7 +291,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
     {
         if (state.Disabled) return (state.Checked ? "Nvt.Toggle.SoftDisabledCheckedBrush" : "Nvt.Toggle.TransparentBrush", "Nvt.Toggle.SoftDisabledForegroundBrush");
         string background = state.Checked ? state.Pressed ? "SoftCheckedPressedBrush" : state.Hover ? "SoftCheckedPointerOverBrush" : "SoftCheckedBrush"
-            : state.Pressed ? "SoftPressedBrush" : state.Hover ? "SoftPointerOverBrush" : "TransparentBrush";
+            : state.Pressed ? "SoftPressedBrush" : state.Hover ? "SoftPointerOverBrush" : "RestBrush";
         string foreground = state.Checked ? "SoftCheckedForegroundBrush"
             : state.Pressed ? "SoftPressedForegroundBrush" : state.Hover ? "SoftPointerOverForegroundBrush" : "SoftForegroundBrush";
         return ("Nvt.Toggle." + background, "Nvt.Toggle." + foreground);

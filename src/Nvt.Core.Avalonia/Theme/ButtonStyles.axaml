@@ -118,7 +118,7 @@
   </Style>
 
   <Style Selector="Button.actionNeutral:pressed:not(:disabled), ToggleButton.actionNeutral:pressed:not(:disabled), Button.chipAction:pressed:not(:disabled), ToggleButton.chipAction:pressed:not(:disabled), Button.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost):pressed:not(:disabled), ToggleButton.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost):pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
@@ -160,7 +160,7 @@
   </Style>
 
   <Style Selector="Button.actionGhost, ToggleButton.actionGhost">
-    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/>
   </Style>
@@ -172,8 +172,14 @@
   </Style>
 
   <Style Selector="Button.actionGhost:pressed:not(:disabled), ToggleButton.actionGhost:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <!-- A button whose flyout is open shows one active state. The pointer is over the flyout, not the button, so hover does not paint. -->
+  <Style Selector="Button.actionGhost:flyout-open:not(:disabled), Button.actionNeutral:flyout-open:not(:disabled), Button.chipAction:flyout-open:not(:disabled), Button.actionIconButton:not(.actionPrimary):not(.actionDanger):flyout-open:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
 
@@ -190,7 +196,7 @@
   </Style>
 
   <Style Selector="ToggleButton.actionNeutral:checked:not(:disabled):pressed:not(:disabled), ToggleButton.chipAction:checked:not(:disabled):pressed:not(:disabled), ToggleButton.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost):checked:not(:disabled):pressed:not(:disabled), Button.chipAction.active:not(:disabled):pressed:not(:disabled), ToggleButton.chipAction.active:not(:disabled):pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>
@@ -208,7 +214,7 @@
   </Style>
 
   <Style Selector="ToggleButton.actionPrimary:checked:not(:disabled):pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>
@@ -244,7 +250,7 @@
   </Style>
 
   <Style Selector="ToggleButton.actionGhost:checked:not(:disabled):pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderStrongBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>
@@ -282,7 +288,7 @@
   </Style>
 
   <Style Selector="Button.actionGhost.flat.active:not(:disabled):pressed:not(:disabled), ToggleButton.actionGhost.flat.active:not(:disabled):pressed:not(:disabled), ToggleButton.actionGhost.flat:checked:not(:disabled):pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>

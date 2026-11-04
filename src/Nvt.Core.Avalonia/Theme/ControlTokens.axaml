@@ -3,9 +3,11 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
-      <StaticResource x:Key="Nvt.Controls.SelectedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" Color="#D3E1F8" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#E3ECFC" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#DCE7FA" />
+      <!-- The rest fill of a control that gains a hover fill. It has the hover colour at zero alpha, so a BrushTransition fades only alpha and never passes through white. -->
+      <StaticResource x:Key="Nvt.Console.LinkUnderlineBrush" ResourceKey="NfcBorderBrush" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#0E3C9E" />
       <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#1557C0" />
       <StaticResource x:Key="Nvt.Controls.ChoiceForegroundBrush" ResourceKey="NfcTextStrongBrush" />
@@ -14,9 +16,10 @@
       <SolidColorBrush x:Key="Nvt.Controls.ExpanderDisabledForegroundBrush" Color="#637085" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
-      <StaticResource x:Key="Nvt.Controls.SelectedBrush" ResourceKey="NfcAccentSurfaceBrush" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" Color="#1F3558" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#20334F" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#243C5B" />
+      <StaticResource x:Key="Nvt.Console.LinkUnderlineBrush" ResourceKey="NfcBorderBrush" />
       <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#BEDAFF" />
       <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#8FC5FF" />
       <SolidColorBrush x:Key="Nvt.Controls.ChoiceForegroundBrush" Color="#FFFFFF" />

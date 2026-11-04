@@ -68,7 +68,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     {
                         Assert.Equal(ColorOf(button.Foreground), ColorOf(label.Foreground));
                         if (state.Checked && !state.Disabled) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(label.Foreground));
-                        Color surface = background == "Nvt.Toggle.TransparentBrush" ? ResourceColor(button, role == "toggleTab" ? "NfcSurfaceBrush" : "NfcSelectionSurfaceBrush") : ColorOf(button.Background);
+                        Color surface = background is "Nvt.Toggle.TransparentBrush" or "Nvt.Toggle.RestBrush" ? ResourceColor(button, role == "toggleTab" ? "NfcSurfaceBrush" : "NfcSelectionSurfaceBrush") : ColorOf(button.Background);
                         double contrast = Contrast(ColorOf(label.Foreground), surface);
                         Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{role}/{state.Name}: text {contrast:F3}");
                         if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, contrast);
@@ -243,9 +243,9 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
         if (state.Disabled) return (state.Checked ? "NfcSelectionSurfaceBrush" : "NfcSurfaceSubtleBrush", "NfcTextDisabledBrush");
         if (state.Checked) return (state.Pressed ? "Nvt.Toggle.SelectedPressedBrush"
             : state.Hover ? "Nvt.Toggle.SelectedPointerOverBrush" : "Nvt.Toggle.SelectedBrush", "Nvt.Toggle.SelectedLabelBrush");
-        return (state.Pressed ? "NfcSecondaryActionPressedBrush"
+        return (state.Pressed ? "Nvt.Interaction.PressedBrush"
             : state.Hover ? role == "toggleSegment" ? "NfcSurfaceSubtleBrush" : "NfcSelectionSurfaceBrush"
-            : role is "toggleSegment" or "toggleTab" ? "Nvt.Toggle.TransparentBrush" : "NfcSurfaceSubtleBrush",
+            : role is "toggleSegment" or "toggleTab" ? "Nvt.Toggle.RestBrush" : "NfcSurfaceSubtleBrush",
             state.Pressed ? "NfcTextStrongBrush" : state.Hover ? "NfcTextBrush" : "NfcTextSecondaryBrush");
     }
 
