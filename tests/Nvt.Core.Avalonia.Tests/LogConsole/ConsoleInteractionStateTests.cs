@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -7,6 +8,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.LogConsole;
 using Nvt.Core.Avalonia.Tests.Choice;
@@ -34,7 +36,26 @@ public sealed class ConsoleInteractionStateTests
     /// <summary>The fill the styles resolve to. A background fade animates above it, so this is the end of the fade.</summary>
     private static Color Target(TemplatedControl control) => ChoiceTestHost.ColorOf(control.GetBaseValue(TemplatedControl.BackgroundProperty).Value);
 
-    /// <summary>Opening the Display menu gives that button the active fill and leaves the neighbouring button idle.</summary>
+    /// <summary>The colour the renderer paints just inside the left edge of a control, where the body fill shows and no content draws.</summary>
+    private static Color Painted(Window window, Control control)
+    {
+        Settle(window);
+        var size = new PixelSize((int)window.Bounds.Width, (int)window.Bounds.Height);
+        using var frame = new RenderTargetBitmap(size, new Vector(96, 96));
+        frame.Render(window);
+        var bytes = new byte[size.Width * size.Height * 4];
+        var pinned = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+        try { frame.CopyPixels(new PixelRect(size), pinned.AddrOfPinnedObject(), bytes.Length, size.Width * 4); }
+        finally { pinned.Free(); }
+        Point at = control.TranslatePoint(new Point(3, control.Bounds.Height / 2), window)!.Value;
+        int offset = ((int)at.Y * size.Width + (int)at.X) * 4;
+        return Color.FromArgb(bytes[offset + 3], bytes[offset + 2], bytes[offset + 1], bytes[offset]);
+    }
+
+    private static Point Center(Window window, Control control) =>
+        control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
+
+    /// <summary>Opening the Display menu keeps the active fill on that button after the pointer leaves it, and the neighbouring button follows its own state.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
@@ -48,24 +69,44 @@ public sealed class ConsoleInteractionStateTests
         {
             var display = header.FindControl<Button>("Display")!;
             var more = header.FindControl<Button>("More")!;
-            Color restFill = ChoiceTestHost.ResourceColor(display, "Nvt.Interaction.RestBrush");
-            Color activeFill = ChoiceTestHost.ResourceColor(display, "NfcSelectionSurfaceBrush");
-            Assert.Equal(restFill, Target(display));
+            // Reduced motion removes the background fade, so the painted pixel is the fill itself and not a frame of the fade.
+            display.Classes.Add("reducedMotion");
+            more.Classes.Add("reducedMotion");
+            Color active = ChoiceTestHost.ResourceColor(display, "NfcSelectionSurfaceBrush");
+            window.MouseMove(new Point(2, 2));
+            Color displayRest = Painted(window, display);
+            Color moreRest = Painted(window, more);
+            Assert.NotEqual(active, displayRest);
+            Assert.NotEqual(active, moreRest);
+
+            // The neighbouring button paints the hover fill while the pointer is over it and the menu is closed.
+            window.MouseMove(Center(window, more));
+            Settle(window);
+            Assert.Contains(":pointerover", more.Classes);
+            Assert.Equal(active, Painted(window, more));
+            Assert.Equal(displayRest, Painted(window, display));
+
+            // Opening the menu moves the pointer to the flyout: Display is no longer hovered but keeps the one active fill.
+            window.MouseMove(Center(window, display));
             ConsoleTestView.Click(window, display);
             var menu = Assert.IsType<MenuFlyout>(display.Flyout);
             Assert.True(menu.IsOpen);
+            Settle(window);
             Assert.Contains(":flyout-open", display.Classes);
             Assert.DoesNotContain(":flyout-open", more.Classes);
+            Assert.DoesNotContain(":pointerover", display.Classes);
+            Assert.Equal(active, Painted(window, display));
+            Assert.Equal(moreRest, Painted(window, more));
+
+            // The open flyout takes the pointer, so moving over the neighbouring button neither hovers it nor changes Display.
+            window.MouseMove(Center(window, more));
             Settle(window);
-            // The owner button paints the active fill; the neighbour keeps the rest fill.
-            Assert.True(activeFill == Target(display), $"display {Target(display)} classes {string.Join(" ", display.Classes)}");
-            Assert.Equal(restFill, Target(more));
-            // Moving over the neighbouring button while the menu is open must not paint it as active.
-            window.MouseMove(more.TranslatePoint(new Point(more.Bounds.Width / 2, more.Bounds.Height / 2), window)!.Value);
-            Settle(window);
-            Assert.Equal(activeFill, Target(display));
-            Assert.Equal(restFill, Target(more));
+            Assert.DoesNotContain(":pointerover", more.Classes);
+            Assert.Equal(active, Painted(window, display));
+            Assert.Equal(moreRest, Painted(window, more));
             menu.Hide();
+            Settle(window);
+            Assert.Equal(displayRest, Painted(window, display));
         }
         finally { window.Close(); }
     }

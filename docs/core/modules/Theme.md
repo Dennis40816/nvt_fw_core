@@ -143,14 +143,14 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 | `actionPrimary` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
 | `actionPrimary` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionPrimary` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
-| `actionPrimary` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionPrimary` | checked_pressed | `Nvt.Interaction.PressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
 | `actionNeutral` | rest | `NfcSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
 | `actionNeutral` | hover | `NfcSelectionSurfaceBrush` | `NfcBorderBrush` | `NfcTextBrush` |
-| `actionNeutral` | pressed | `NfcSecondaryActionPressedBrush` | `NfcBorderBrush` | `NfcTextBrush` |
+| `actionNeutral` | pressed | `Nvt.Interaction.PressedBrush` | `NfcBorderBrush` | `NfcTextBrush` |
 | `actionNeutral` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
 | `actionNeutral` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionNeutral` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
-| `actionNeutral` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionNeutral` | checked_pressed | `Nvt.Interaction.PressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
 | `actionDanger` | rest | `NfcDangerSurfaceBrush` | `NfcDangerBorderBrush` | `NfcDangerTextBrush` |
 | `actionDanger` | hover | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextBrush` |
 | `actionDanger` | pressed | `NfcCriticalSurfaceBrush` | `NfcCriticalBorderBrush` | `NfcDangerTextStrongBrush` |
@@ -158,18 +158,18 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 | `actionDanger` | checked | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextStrongBrush` |
 | `actionDanger` | checked_hover | `NfcDangerSurfaceMutedBrush` | `NfcDangerBorderStrongBrush` | `NfcDangerTextStrongBrush` |
 | `actionDanger` | checked_pressed | `NfcCriticalSurfaceBrush` | `NfcCriticalBorderBrush` | `NfcDangerTextStrongBrush` |
-| `actionGhost` | rest | `Transparent` | `Transparent` | `NfcTextSecondaryBrush` |
+| `actionGhost` | rest | `Nvt.Interaction.RestBrush` | `Transparent` | `NfcTextSecondaryBrush` |
 | `actionGhost` | hover | `NfcSelectionSurfaceBrush` | `Transparent` | `NfcTextBrush` |
-| `actionGhost` | pressed | `NfcSecondaryActionPressedBrush` | `Transparent` | `NfcTextBrush` |
+| `actionGhost` | pressed | `Nvt.Interaction.PressedBrush` | `Transparent` | `NfcTextBrush` |
 | `actionGhost` | disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextDisabledBrush` |
 | `actionGhost` | checked | `NfcAccentSurfaceBrush` | `NfcAccentBorderBrush` | `NfcAccentStrongBrush` |
 | `actionGhost` | checked_hover | `NfcAccentSurfaceSubtleBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
-| `actionGhost` | checked_pressed | `NfcSecondaryActionPressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
+| `actionGhost` | checked_pressed | `Nvt.Interaction.PressedBrush` | `NfcAccentBorderStrongBrush` | `NfcAccentStrongBrush` |
 | `actionGhost.flat` | rest / hover / pressed | same as `actionGhost` | `Transparent` | same as `actionGhost` |
 | `actionGhost.flat` | disabled | `Transparent` | `Transparent` | `NfcTextDisabledBrush` |
 | `actionGhost.flat` | active / checked | `NfcAccentSurfaceBrush` | `Transparent` | `NfcAccentStrongBrush` |
 | `actionGhost.flat` | active_hover / checked_hover | `NfcSelectionSurfaceBrush` | `Transparent` | `NfcAccentStrongBrush` |
-| `actionGhost.flat` | active_pressed / checked_pressed | `NfcSecondaryActionPressedBrush` | `Transparent` | `NfcAccentStrongBrush` |
+| `actionGhost.flat` | active_pressed / checked_pressed | `Nvt.Interaction.PressedBrush` | `Transparent` | `NfcAccentStrongBrush` |
 | `chipStatus` | rest / disabled | `NfcSurfaceSubtleBrush` | `NfcBorderMutedBrush` | `NfcTextSecondaryBrush` |
 | `chipStatus.warning` | rest / disabled | `NfcWarningSurfaceBrush` | `NfcWarningBorderBrush` | `NfcWarningTextBrush` |
 | `chipStatus.danger` | rest / disabled | `NfcDangerSurfaceBrush` | `NfcDangerBorderBrush` | `NfcDangerTextBrush` |
@@ -666,7 +666,7 @@ Indicator checks cover enabled progress bars. Focus checks cover the adjacent su
 | Header text across enabled states | 11.492:1 | 9.920:1 |
 | Disabled header text | 4.794:1 | 5.997:1 |
 | Progress indicator against track | 3.960:1 | 4.067:1 |
-| Focus ring against adjacent surfaces | 4.228:1 | 5.572:1 |
+| Focus ring against adjacent surfaces | 3.879:1 | 4.658:1 |
 
 ## Scroll styles
 
@@ -741,15 +741,15 @@ The ComboBox box keeps its existing theme and template.
 
 ### List states and tokens
 
-Rest is transparent. Pointer over uses `NfcSelectionSurfaceBrush`, and pressed uses `NfcSecondaryActionPressedBrush`.
-Selected rows use a soft accent surface, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
+Rest uses `Nvt.Interaction.RestBrush`, the hover colour at zero alpha. Pointer over uses `NfcSelectionSurfaceBrush`, and pressed uses `Nvt.Interaction.PressedBrush`.
+Selected rows use the fixed selected fill `Nvt.Controls.SelectedBrush`, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
 Multi-selection uses the same appearance.
 Disabled rows keep opacity 1 and use `NfcTextDisabledBrush`.
 Disabled selected rows use `NfcSelectionSurfaceBrush`.
 Keyboard focus shows one 2 DIP ring inset by 2 DIP, so scrolling does not clip it.
 Pointer focus shows no ring. Focus does not recolor a list row.
 
-List aliases share `Nvt.Controls.Selected*` resources with Choice rows, checked MenuItems, and `toggleSoft`.
+List aliases share `Nvt.Controls.Selected*` resources with Choice rows and `toggleSoft`. Checked MenuItems no longer read them.
 Override the `Nvt.List.Selected*` resources together to replace the selected palette at runtime.
 
 | Token | Light | Dark |
@@ -781,13 +781,13 @@ Transparent shadow space surrounds the surface. Popup offsets compensate for tha
 
 ### Menu states and tokens
 
-Pointer over, native menu selection, and keyboard focus use `NfcSelectionSurfaceBrush`.
-Pressed uses `NfcSecondaryActionPressedBrush`.
+Rest uses `Nvt.Interaction.RestBrush`. Pointer over, keyboard focus and an open submenu use `NfcSelectionSurfaceBrush`.
+Native menu selection (`:selected`) paints no fill. Pressed uses `Nvt.Interaction.PressedBrush`.
 Disabled content uses `NfcTextDisabledBrush` with opacity 1.
-Checked items use the shared selected fill, foreground, hover, and pressed tokens.
+Checked items carry no fill and keep the normal foreground. Only the check mark shows the state.
 The 12 DIP check sits in a fixed 20 DIP slot with an 8 DIP label gap. Icons retain their own 20 DIP slot.
 Ordinary menu-bar commands omit the check slot. Native navigation selection remains independent of checked state.
-Input gestures use `NfcTextMutedBrush`; checked items inherit the selected foreground. Submenus retain their chevron.
+Input gestures use `NfcTextMutedBrush`. Submenus retain their chevron.
 Menu bars use the same item states and height.
 
 Focus rings follow Avalonia's `:focus-visible` state.
@@ -932,9 +932,9 @@ Layout dimensions and hit targets stay unchanged.
 
 | State | Segment, tab, and icon fill | Content | Switch track |
 | --- | --- | --- | --- |
-| Rest | Segment and tab transparent; icon `NfcSurfaceSubtleBrush`. | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
+| Rest | Segment and tab `Nvt.Toggle.RestBrush` (the hover colour at zero alpha); icon `NfcSurfaceSubtleBrush`. | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
 | Pointer over | Segment `NfcSurfaceSubtleBrush`; tab and icon `NfcSelectionSurfaceBrush`. | `NfcTextBrush` | `NfcTextDisabledBrush` |
-| Pressed | `NfcSecondaryActionPressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
+| Pressed | `Nvt.Interaction.PressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
 | Checked | `Nvt.Toggle.SelectedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchOnBrush` |
 | Checked pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPointerOverBrush` |
 | Checked pressed | `Nvt.Toggle.SelectedPressedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPressedBrush` |
@@ -983,7 +983,7 @@ Checked fill checks cover enabled states. Disabled checked states use the neutra
 | White on checked segment, tab, and icon | 5.879:1 | 7.794:1 |
 | White on checked switch | 5.169:1 | 5.169:1 |
 | White on checked danger | 7.184:1 | 7.184:1 |
-| Standard focus ring against adjacent surfaces | 4.228:1 | 5.572:1 |
+| Standard focus ring against adjacent surfaces | 3.879:1 | 4.658:1 |
 | Disabled text | 3.582:1 | 3.574:1 |
 | Knob against track across all states | 4.015:1 | 3.422:1 |
 
@@ -1052,7 +1052,7 @@ The role uses `NfcControlHeight` at 32 DIP and horizontal padding of 12 DIP.
 
 | State | Fill | Text and icon |
 | --- | --- | --- |
-| Off | `Nvt.Toggle.TransparentBrush` | `Nvt.Toggle.SoftForegroundBrush` |
+| Off | `Nvt.Toggle.RestBrush` | `Nvt.Toggle.SoftForegroundBrush` |
 | Off pointer over | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Toggle.SoftPointerOverForegroundBrush` |
 | Off pressed | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Toggle.SoftPressedForegroundBrush` |
 | On | `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Toggle.SoftCheckedForegroundBrush` |
@@ -1275,7 +1275,7 @@ The redesign changes styles and resources only. No public C# API changes.
 Load the existing family styles after Fluent; `ThemeTokens.axaml` includes `ControlTokens.axaml` automatically.
 Remove competing local geometry, palette, row-fill, grip, and focus styles. Keep application logic and native keyboard behavior.
 
-Shared selected fills apply to ListBoxItem, ComboBoxItem, checked MenuItem, Choice rows, and `toggleSoft`.
+Shared selected fills apply to ListBoxItem, ComboBoxItem, Choice rows, and `toggleSoft`. A checked MenuItem carries no fill.
 List aliases and Toggle aliases remain available for dictionary replacement. Replace each family palette together.
 
 | Token | Light | Dark |
@@ -1736,6 +1736,8 @@ Hover, pressed and checked fills read these tokens. A control that fades in a fi
 
 Across both themes, the lowest text ratio on a state fill is 4.586:1 and the idle link underline keeps 3.076:1. The lowest fill separation from the surface is 1.217:1 in Light and 1.280:1 in Dark. These are practical floors for a hover, pressed or checked fill. Text keeps 4.5:1 and graphics 3:1.
 
+The standard focus ring (`Nvt.Focus.RingBrush`) measures 3.879:1 / 4.658:1 on `NfcSelectionSurfaceBrush`, 3.591:1 / 4.129:1 on `Nvt.Interaction.PressedBrush`, and 3.738:1 / 4.682:1 on `Nvt.Controls.SelectedBrush` (Light / Dark). It stays above 3:1 on every state fill.
+
 The darker hover fill lowers some earlier guarantees. The rows of the older tables that read the hover fill or the selected fill were recomputed with the values in this section. These pairs changed the most:
 
 | Pair | Before | After (Light / Dark) |
@@ -1753,7 +1755,7 @@ The darker hover fill lowers some earlier guarantees. The rows of the older tabl
 `ThemeRestFill.None` hides CheckBox and RadioButton row fills, including checked, indeterminate, and disabled rows.
 It also hides the Expander header rest and disabled fills.
 Hover and pressed fills, keyboard focus rings, indicator colors, and whole-row hit targets remain unchanged.
-Selected List rows, checked Menu items, input fields, toggles, switches, progress tracks, and Expander container surfaces remain unchanged.
+Selected List rows, input fields, toggles, switches, progress tracks, and Expander container surfaces remain unchanged.
 
 The additive API lives in `Nvt.Core.Avalonia.Theme`:
 
