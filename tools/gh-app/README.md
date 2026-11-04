@@ -362,6 +362,31 @@ That observation never allows a merge: commit times can predate pushes. An unava
 Merge-GhAppApprovedPullRequest -Numbers 7,8 -Worktree . -LogPath .\merge.log -DeleteBranchPrefix 'feature/'
 ```
 
+## Merge-GhAppTierBPullRequest
+
+This function merges one tier B pull request. The owner does not approve a tier B pull request, so the tool proves every condition itself and refuses when one fails.
+It needs no review request and no owner approval. It reads the PR, its reviews, its workflow runs, its files and its review threads.
+
+The tool refuses unless all of these hold:
+
+1. The repository is in the tier B list inside the module, and the base branch matches the list entry. The list holds the freeform helper, the replay tool, and the development branches `X.Y.x` of the combiner. Core is not in the list, so a Core PR is always refused. Any repository outside the list is refused before a call is made.
+2. The PR is open, ready (not a draft) and written by the App.
+3. The head is the head that `-ExpectedHeadSha` names.
+4. A review on that head has a first line `Review record: <head> accept` (the default pattern; `-ReviewRecordPattern` replaces it).
+5. The latest run of every workflow for the head completed with success. An older failed run does not count.
+6. No review thread is unresolved. A thread count that cannot be read refuses the merge.
+7. The merge state is `CLEAN`. This is stricter than `Get-GhAppPullRequestReadiness`, which also accepts `BLOCKED`.
+
+A refusal lists every failed condition in one message. Just before the merge the tool reads the PR once more. If the head, the base or the state moved, it refuses.
+The merge names the head as `sha`, so GitHub rejects the merge if the head changed. The tool does not delete the branch unless `-DeleteBranchPrefix` matches.
+
+Each merge appends one line to `tier-b-merges.jsonl`. The file sits in the same folder as the review ledger and holds the repository, PR number, head, base, merge commit, UTC time, the App login, the operator's account name, the basis, and the names of the workflows that passed.
+If the line cannot be written after the merge, the error names the merge commit. `-LogPath` receives the same kind of log lines as `Merge-GhAppApprovedPullRequest`.
+
+```powershell
+Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $head -LogPath .\merge.log
+```
+
 ## Remove-GhAppMergedBranch
 
 This function deletes the head branch of a merged PR. Use it when the merge ran without `-DeleteBranchPrefix`, or when the branch was kept on purpose until the owner agreed to delete it.

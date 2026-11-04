@@ -339,6 +339,31 @@ API input 與 field 選項可能選擇 POST，因此也會拒絕。PR 與 issue 
 Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 ```
 
+## Merge-GhAppTierBPullRequest
+
+這個函式合併一張 B 級 PR。B 級 PR 不經 owner 核准，所以工具自己證明每個條件，任一條件不成立就拒絕。
+它不需要送審登記，也不需要 owner 核准。它讀 PR、review、workflow run、檔案與 review 討論串。
+
+下列條件全部成立才合併：
+
+1. repo 在模組內的 B 級清單裡，且 base 分支符合清單項目。清單包含 freeform helper、replay 工具，以及 combiner 的開發分支 `X.Y.x`。Core 不在清單裡，所以 Core 的 PR 一律被拒。清單外的 repo 在發出任何呼叫之前就被拒。
+2. PR 是開啟的、已 Ready（不是 draft），而且作者是 App。
+3. head 等於 `-ExpectedHeadSha`。
+4. 該 head 上有一則 review，第一行是 `Review record: <head> accept`（預設格式，可用 `-ReviewRecordPattern` 取代）。
+5. 該 head 上每個 workflow 的最新一次 run 都成功完成。較舊的失敗 run 不算。
+6. 沒有未解決的 review 討論串。讀不到討論串數量時也拒絕。
+7. 合併狀態是 `CLEAN`。這比 `Get-GhAppPullRequestReadiness` 嚴，後者也接受 `BLOCKED`。
+
+拒絕時，訊息一次列出所有不成立的條件。合併前工具會再讀一次 PR，head、base 或狀態有變就拒絕。
+合併把 head 當作 `sha` 邊界，head 變了 GitHub 會拒絕合併。除非 `-DeleteBranchPrefix` 符合，工具不刪分支。
+
+每次合併在 `tier-b-merges.jsonl` 加一行。這個檔和送審 ledger 在同一個資料夾，記錄 repo、PR 編號、head、base、merge commit、UTC 時間、App 帳號、操作者的帳號名稱、依據，以及通過的 workflow 名稱。
+合併後若寫不進這一行，錯誤訊息會寫出 merge commit。`-LogPath` 收到的 log 行與 `Merge-GhAppApprovedPullRequest` 相同。
+
+```powershell
+Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $head -LogPath .\merge.log
+```
+
 ## App 沒有的權限
 
 安裝沒有 `actions: write` 權限。

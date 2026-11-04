@@ -2640,4 +2640,229 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Should Be "#7 stop: owner approval is on $script:NextSha, not on review request $script:ReviewedSha or a clean base merge after it."
         }
     }
+
+    Describe 'Tier B merge' {
+        $script:DefaultTierBScopes = $script:TierBScopes
+        $script:AuditFile = Join-Path $script:FixtureRoot 'tier-b-merges.jsonl'
+        BeforeEach {
+            Reset-Fixture; Import-Fixture
+            if ([IO.File]::Exists($script:AuditFile)) { [IO.File]::Delete($script:AuditFile) }
+            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$' })
+        }
+        AfterEach { $script:TierBScopes = $script:DefaultTierBScopes }
+        function New-ThreadsStep {
+            param([object[]]$Threads = @(), [bool]$HasNext = $false, [string]$RawOutput)
+            $data = @{ data = @{ repository = @{ pullRequest = @{ reviewThreads = @{ nodes = @($Threads);
+                pageInfo = @{ hasNextPage = $HasNext; endCursor = 'cursor-1' } } } } } }
+            $output = $(if ($PSBoundParameters.ContainsKey('RawOutput')) { $RawOutput } else { ConvertTo-Json -InputObject $data -Depth 10 -Compress })
+            @{ Arguments = @('api', 'graphql', '--hostname', 'github.com', '--method', 'POST', '--input', '-'); App = $false
+                Output = $output; Error = ''; ExitCode = 0 }
+        }
+        function New-TierBReadSteps {
+            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads)
+            New-PrStep 7 $Pr
+            New-ReviewStep 7 $Reviews
+            New-RunsStep $Runs $script:HeadSha
+            New-FilesStep 7
+            if ($null -eq $Threads) { New-ThreadsStep } else { New-ThreadsStep -Threads @($Threads) }
+        }
+        function New-TierBMergeSteps {
+            param($Fresh = (New-Pr))
+            New-PrStep 7 $Fresh
+            New-ApiStep 'pulls/7/merge' PUT -App -Value @{ merged = $true; sha = $script:MergeSha }
+            New-PrStep 7 (New-Pr -State MERGED)
+        }
+        function Invoke-TierB {
+            param([string]$Head = $script:HeadSha, [string]$DeleteBranchPrefix)
+            if ($DeleteBranchPrefix) {
+                Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $Head -LogPath $script:LogFile -DeleteBranchPrefix $DeleteBranchPrefix
+            } else {
+                Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $Head -LogPath $script:LogFile
+            }
+        }
+        It 'merges when every condition holds, with the head as the merge boundary, and writes one audit line' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-TierBMergeSteps))
+            $null = Invoke-TierB 3>$null
+            $calls = @(Get-Calls)
+            $calls.Count | Should Be 8
+            @($calls | Where-Object AppToken).Count | Should Be 1
+            $merge = $calls[6]
+            $merge.AppToken | Should Be $true
+            $merge.Arguments[1] | Should Be "/repos/$script:RepositoryName/pulls/7/merge"
+            $body = ConvertFrom-Json $merge.Input
+            $body.sha | Should Be $script:HeadSha
+            $body.merge_method | Should Be 'merge'
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 tier B merged $script:HeadSha -> $script:MergeSha"
+            $lines = @([IO.File]::ReadAllLines($script:AuditFile))
+            $lines.Count | Should Be 1
+            $entry = ConvertFrom-Json $lines[0]
+            $entry.number | Should Be 7
+            $entry.head | Should Be $script:HeadSha
+            $entry.mergeSha | Should Be $script:MergeSha
+            $entry.repo | Should Be $script:RepoName
+            $entry.base | Should Be 'main'
+            $entry.mergedBy | Should Be 'example-app[bot]'
+            $entry.basis | Should Match 'review record accepts this head'
+            @($entry.workflows) -join ',' | Should Be 'Core'
+            $lines[0] | Should Match '"mergedAt":"\d{4}-\d\d-\d\dT'
+            Assert-NoToken
+        }
+        It 'writes the audit file next to the ledger, outside every repository' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-TierBMergeSteps))
+            $null = Invoke-TierB 3>$null
+            [IO.Path]::GetDirectoryName($script:AuditFile) | Should Be ([IO.Path]::GetDirectoryName($script:LedgerFile))
+            Test-GhAppRepositoryPath $script:AuditFile | Should Be $false
+        }
+        It 'needs no review request and no owner approval' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-TierBMergeSteps))
+            $null = Invoke-TierB 3>$null
+            [IO.File]::Exists($script:LedgerFile) | Should Be $false
+        }
+        It 'merges when the review threads are all resolved' {
+            Set-Responses (@(New-TierBReadSteps -Threads @(@{ isResolved = $true })) + @(New-TierBMergeSteps))
+            $null = Invoke-TierB 3>$null
+            @(Get-Calls).Count | Should Be 8
+        }
+        It 'deletes the branch only when the prefix matches' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-TierBMergeSteps) + @(
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $script:HeadSha } }),
+                (New-ApiStep "compare/main...$script:HeadSha" -Value @{ status = 'behind'; ahead_by = 0 }),
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $script:HeadSha } }),
+                (New-ApiStep 'git/refs/heads/test%2Fmodule' DELETE -App -RawOutput '')))
+            $null = Invoke-TierB -DeleteBranchPrefix 'test/'
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 deleted branch test/module at $script:HeadSha"
+        }
+        It 'keeps the branch when no prefix is given' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-TierBMergeSteps))
+            $null = Invoke-TierB 3>$null
+            [IO.File]::ReadAllText($script:LogFile) | Should Match '#7 kept branch test/module; no matching delete prefix'
+        }
+        It 'refuses a repository that is not in the tier B list, before any call' {
+            $script:TierBScopes = $script:DefaultTierBScopes
+            Get-Message { Invoke-TierB } | Should Be "#7 tier B merge refused: $script:RepositoryName is not a tier B repository. Only the owner approves there."
+            @(Get-Calls).Count | Should Be 0
+            [IO.File]::Exists($script:AuditFile) | Should Be $false
+        }
+        It 'does not list Core in the default tier B scopes' {
+            $names = @($script:DefaultTierBScopes | ForEach-Object { $_.Repository })
+            @($names | Where-Object { $_ -match 'nvt_fw_core' }).Count | Should Be 0
+            $names.Count | Should Be 3
+            foreach ($expected in @('Dennis40816/nvt-event-buffer-replay', 'Dennis40816/nvt-freeform-helper', 'Dennis40816/nvt_fw_combiner')) {
+                ($names -ccontains $expected) | Should Be $true
+            }
+        }
+        It 'limits NFC to its development branches in the default list' {
+            $nfc = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_combiner' })[0]
+            foreach ($base in @('1.2.x', '1.3.x', '10.12.x')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $true }
+            foreach ($base in @('main', '1.2.0', '1.2.x-fix', 'release/1.2.x')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $false }
+        }
+        It 'refuses a base that is outside the allowed bases, and makes no merge call' {
+            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^\d+\.\d+\.x$' })
+            Set-Responses @((New-TierBReadSteps))
+            Get-Message { Invoke-TierB } | Should Match 'Base: main is not a tier B base of example-owner/example-repo'
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        It 'refuses a PR without a review record on the head, and makes no merge call' {
+            Set-Responses @(New-TierBReadSteps -Reviews @())
+            Get-Message { Invoke-TierB } | Should Match 'ReviewRecord: no review on this head matches'
+            @(Get-Calls).Count | Should Be 5
+            [IO.File]::Exists($script:AuditFile) | Should Be $false
+            [IO.File]::ReadAllText($script:LogFile) | Should Match '#7 tier B error: '
+        }
+        It 'refuses a review record that says changes' {
+            $review = New-RecordReview -Body "Review record: $script:HeadSha changes"
+            Set-Responses @(New-TierBReadSteps -Reviews @($review))
+            Get-Message { Invoke-TierB } | Should Match 'ReviewRecord'
+        }
+        It 'refuses a review record that names another head' {
+            $review = New-RecordReview -Body "Review record: $script:NextSha accept"
+            Set-Responses @(New-TierBReadSteps -Reviews @($review))
+            Get-Message { Invoke-TierB } | Should Match 'ReviewRecord'
+        }
+        It 'refuses when the latest run of a workflow did not succeed' {
+            Set-Responses @(New-TierBReadSteps -Runs @((New-Run -Conclusion failure)))
+            Get-Message { Invoke-TierB } | Should Match 'Run: Core: .*completed/failure'
+            @(Get-Calls).Count | Should Be 5
+        }
+        It 'refuses while the latest run is still in progress' {
+            Set-Responses @(New-TierBReadSteps -Runs @((New-Run -Status in_progress)))
+            Get-Message { Invoke-TierB } | Should Match 'Run: Core'
+        }
+        It 'refuses when no workflow run exists for the head' {
+            Set-Responses @(New-TierBReadSteps -Runs @())
+            Get-Message { Invoke-TierB } | Should Match 'Runs: no workflow run found for this head'
+        }
+        It 'refuses when the head is not the expected head' {
+            Set-Responses @(New-TierBReadSteps)
+            Get-Message { Invoke-TierB -Head $script:NextSha } | Should Match "Head: head is $script:HeadSha; expected $script:NextSha"
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        It 'refuses while a review thread is not resolved' {
+            Set-Responses @(New-TierBReadSteps -Threads @(@{ isResolved = $true }, @{ isResolved = $false }))
+            Get-Message { Invoke-TierB } | Should Match 'Threads: 1 review thread\(s\) are not resolved'
+            @(Get-Calls).Count | Should Be 5
+        }
+        It 'counts an unresolved thread on a later page' {
+            Set-Responses @((New-PrStep), (New-ReviewStep -Reviews @((New-RecordReview))), (New-RunsStep), (New-FilesStep),
+                (New-ThreadsStep -Threads @(@{ isResolved = $true }) -HasNext $true), (New-ThreadsStep -Threads @(@{ isResolved = $false })))
+            Get-Message { Invoke-TierB } | Should Match 'Threads: 1 review thread'
+        }
+        It 'refuses when the review threads cannot be read' {
+            Set-Responses @((New-PrStep), (New-ReviewStep -Reviews @((New-RecordReview))), (New-RunsStep), (New-FilesStep),
+                (New-ThreadsStep -RawOutput '{"errors":[{"message":"denied"}]}'))
+            Get-Message { Invoke-TierB } | Should Be 'The review threads of #7 could not be read.'
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        foreach ($state in @('BLOCKED', 'UNSTABLE', 'BEHIND', 'DIRTY', 'UNKNOWN')) {
+            It "refuses the $state merge state, because only CLEAN counts" {
+                Set-Responses @(New-TierBReadSteps -Pr (New-Pr -MergeState $state))
+                Get-Message { Invoke-TierB } | Should Match "MergeState: must be CLEAN, is $state"
+                @(Get-Calls).Count | Should Be 5
+            }
+        }
+        It 'refuses a draft PR' {
+            Set-Responses @(New-TierBReadSteps -Pr (New-Pr -Draft))
+            Get-Message { Invoke-TierB } | Should Match 'Draft: the PR is still a draft'
+        }
+        It 'refuses a PR by another author' {
+            Set-Responses @(New-TierBReadSteps -Pr (New-Pr -Author other-author))
+            Get-Message { Invoke-TierB } | Should Match 'Author: author is other-author'
+        }
+        It 'refuses a closed PR' {
+            Set-Responses @(New-TierBReadSteps -Pr (New-Pr -State CLOSED))
+            Get-Message { Invoke-TierB } | Should Match 'State: state is CLOSED'
+        }
+        It 'reports every failed condition in one message' {
+            Set-Responses @(New-TierBReadSteps -Pr (New-Pr -MergeState BLOCKED) -Reviews @() -Runs @((New-Run -Conclusion failure)) -Threads @(@{ isResolved = $false }))
+            $message = Get-Message { Invoke-TierB }
+            $message | Should Match 'ReviewRecord'
+            $message | Should Match 'Run: Core'
+            $message | Should Match 'MergeState: must be CLEAN, is BLOCKED'
+            $message | Should Match 'Threads: 1'
+        }
+        It 'refuses when the PR changed between the checks and the merge, and makes no merge call' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            Get-Message { Invoke-TierB } | Should Be '#7 tier B merge refused: the pull request changed during the checks.'
+            @(Get-Calls).Count | Should Be 6
+            [IO.File]::Exists($script:AuditFile) | Should Be $false
+        }
+        It 'refuses when the merge state turned from CLEAN just before the merge' {
+            Set-Responses (@(New-TierBReadSteps) + @(New-PrStep -Pr (New-Pr -MergeState BEHIND)))
+            Get-Message { Invoke-TierB } | Should Match 'changed during the checks'
+        }
+        It 'stops when the merge call does not report a merge' {
+            Set-Responses (@(New-TierBReadSteps) + @((New-PrStep), (New-ApiStep 'pulls/7/merge' PUT -App -Value @{ merged = $false; sha = $script:MergeSha })))
+            Get-Message { Invoke-TierB } | Should Be '#7 stop: merge failed.'
+            [IO.File]::Exists($script:AuditFile) | Should Be $false
+        }
+        It 'rejects an empty DeleteBranchPrefix before any call' {
+            Get-Message { Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $script:HeadSha -LogPath $script:LogFile -DeleteBranchPrefix ' ' } |
+                Should Be 'DeleteBranchPrefix must be nonempty when given.'
+            @(Get-Calls).Count | Should Be 0
+        }
+        It 'rejects a head that is not a full SHA before any call' {
+            Get-Message { Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha 'abc123' -LogPath $script:LogFile } | Should Match 'ExpectedHeadSha'
+            @(Get-Calls).Count | Should Be 0
+        }
+    }
 }
