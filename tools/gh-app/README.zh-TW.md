@@ -346,7 +346,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 
 下列條件全部成立才合併：
 
-1. repo 在模組內的 B 級清單裡，且 base 分支符合清單項目。清單包含 freeform helper、replay 工具，以及 combiner 的開發分支 `X.Y.x`。Core 不在清單裡，所以 Core 的 PR 一律被拒。清單外的 repo 在發出任何呼叫之前就被拒。
+1. repo 在模組內的 B 級清單裡，且 base 分支符合清單項目。清單包含 freeform helper、replay 工具、combiner 的開發分支 `X.Y.x`，以及 Core 的 `main`。清單外的 repo 在發出任何呼叫之前就被拒。Core 哪些變更算 B 由機械判級（commander 工具的 `pr-tier.ps1`）決定：tests、既有文件，以及只降不增的債務檔。`src`、`.axaml`、公開 API 清單、`tools`、`eng`、建置檔與 `.github` 判 A。因為判級工具在這個 repository 之外，Core 在模組裡另有一道路徑底線：PR 只要改到或改名離開 `src`、`tools`、`.github`、`.agents`、`.claude`、`.codex`、`scripts`、`eng`（`eng/code-health/*.json` 債務檔除外）、專案檔、props、targets、`.axaml`、`Directory.*`、`global.json`、`CODEOWNERS`、`CHANGELOG.md`、`PublicAPI*.txt`、`docs/governance` 或 `docs/adr`，不論判級結果，一律以 `Paths: <檔案> is a protected path of <repo>; only the owner approves a change there` 拒絕。其他 repository 沒有這道底線。
 2. PR 是開啟的、已 Ready（不是 draft），而且作者是 App。
 3. head 等於 `-ExpectedHeadSha`。
 4. 該 head 上有一則 review，第一行是 `Review record: <head> accept`（預設格式，可用 `-ReviewRecordPattern` 取代）。

@@ -1775,8 +1775,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
     }
     function New-FilesStep {
-        param([int]$Number = 7)
-        New-ApiStep "pulls/$Number/files?per_page=100&page=1" -Value @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 })
+        param([int]$Number = 7, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }))
+        New-ApiStep "pulls/$Number/files?per_page=100&page=1" -Value @($Files)
     }
     function New-RecordReview {
         param([string]$Head = $script:HeadSha, [string]$Body = "Review record: $script:HeadSha accept`n`nChecked.",
@@ -2659,11 +2659,11 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Output = $output; Error = ''; ExitCode = 0 }
         }
         function New-TierBReadSteps {
-            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads)
+            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }))
             New-PrStep 7 $Pr
             New-ReviewStep 7 $Reviews
             New-RunsStep $Runs $script:HeadSha
-            New-FilesStep 7
+            New-FilesStep 7 $Files
             if ($null -eq $Threads) { New-ThreadsStep } else { New-ThreadsStep -Threads @($Threads) }
         }
         function New-TierBMergeSteps {
@@ -2743,13 +2743,48 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             @(Get-Calls).Count | Should Be 0
             [IO.File]::Exists($script:AuditFile) | Should Be $false
         }
-        It 'does not list Core in the default tier B scopes' {
+        It 'lists the four repositories in the default tier B scopes' {
             $names = @($script:DefaultTierBScopes | ForEach-Object { $_.Repository })
-            @($names | Where-Object { $_ -match 'nvt_fw_core' }).Count | Should Be 0
-            $names.Count | Should Be 3
-            foreach ($expected in @('Dennis40816/nvt-event-buffer-replay', 'Dennis40816/nvt-freeform-helper', 'Dennis40816/nvt_fw_combiner')) {
+            $names.Count | Should Be 4
+            foreach ($expected in @('Dennis40816/nvt-event-buffer-replay', 'Dennis40816/nvt-freeform-helper', 'Dennis40816/nvt_fw_combiner', 'Dennis40816/nvt_fw_core')) {
                 ($names -ccontains $expected) | Should Be $true
             }
+        }
+        foreach ($case in @(
+                @('src/Nvt.Core/Foo.cs', 'src'), @('src/Nvt.Core.Avalonia/Theme/ToggleTokens.axaml', 'axaml'), @('tools/gh-app/NvtGhApp.psm1', 'tools'),
+                @('.github/workflows/core.yml', 'workflow'), @('eng/code-health/policy.ps1', 'eng'), @('Directory.Build.props', 'props'),
+                @('tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj', 'csproj'), @('src/Nvt.Core/PublicAPI.Shipped.txt', 'public api'), @('CHANGELOG.md', 'changelog'),
+                @('docs/governance/rules.md', 'governance'), @('SRC/Foo.cs', 'upper case'))) {
+            It "refuses a Core PR that changes a protected path ($($case[1])), and makes no merge call" {
+                $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
+                $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+                Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/a.md'; additions = 1; deletions = 0 }, @{ filename = $case[0]; additions = 1; deletions = 0 })))
+                Get-Message { Invoke-TierB } | Should Match "Paths: $([regex]::Escape($case[0])) is a protected path of $script:RepositoryName; only the owner approves a change there"
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+        }
+        It 'refuses a Core PR that renames a file away from a protected path' {
+            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
+            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/moved.md'; previous_filename = 'src/Nvt.Core/Old.cs'; additions = 0; deletions = 0 })))
+            Get-Message { Invoke-TierB } | Should Match 'Paths: src/Nvt.Core/Old.cs is a protected path'
+        }
+        It 'merges a Core PR that changes only tests, existing documents and a debt file' {
+            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
+            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'tests/Nvt.Core.Tests/Foo/BarTests.cs'; additions = 4; deletions = 1 }, @{ filename = 'docs/core/modules/Theme.md'; additions = 1; deletions = 1 },
+                        @{ filename = 'eng/code-health/baseline.json'; additions = 0; deletions = 9 }, @{ filename = 'README.md'; additions = 1; deletions = 0 })) + @(New-TierBMergeSteps))
+            Invoke-TierB
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 1
+        }
+        It 'keeps the other repositories free of a path floor' {
+            foreach ($scope in @($script:DefaultTierBScopes | Where-Object { $_.Repository -cne 'Dennis40816/nvt_fw_core' })) { $scope.ContainsKey('ProtectedPathPattern') | Should Be $false }
+        }
+        It 'limits Core to main in the default list' {
+            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })
+            $core.Count | Should Be 1
+            [regex]::IsMatch('main', $core[0].BasePattern) | Should Be $true
+            foreach ($base in @('release/core/1.0.0', 'feature/x', 'main2', '1.2.x', 'Main')) { [regex]::IsMatch($base, $core[0].BasePattern) | Should Be $false }
         }
         It 'limits NFC to its development branches in the default list' {
             $nfc = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_combiner' })[0]
