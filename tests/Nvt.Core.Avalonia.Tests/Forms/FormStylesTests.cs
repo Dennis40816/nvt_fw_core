@@ -11,7 +11,6 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.VisualTree;
-using Nvt.Core.Avalonia.Tests.Choice;
 using Nvt.Core.Avalonia.Tests.Theme;
 using Nvt.Core.Avalonia.Theme;
 using Xunit;
@@ -84,10 +83,11 @@ public sealed class FormStylesTests
             {
                 FormsTestHost.SetState(control, state);
                 Flush(host);
+                bool pressedPaint = state.Pressed && control is ComboBox;
                 string fill = state.Disabled ? "DisabledFillBrush" : state.ReadOnly ? "ReadOnlyFillBrush"
-                    : state.Pressed ? "PressedFillBrush" : state.Hover ? "HoverFillBrush" : "FillBrush";
+                    : pressedPaint ? "PressedFillBrush" : state.Hover ? "HoverFillBrush" : "FillBrush";
                 string border = state.Error ? "ErrorBorderBrush" : state.Disabled ? "DisabledTextBrush"
-                    : state.ReadOnly ? "BorderBrush" : state.Pressed ? "PressedBorderBrush" : state.Hover ? "HoverBorderBrush" : "BorderBrush";
+                    : state.ReadOnly ? "BorderBrush" : pressedPaint ? "PressedBorderBrush" : state.Hover ? "HoverBorderBrush" : "BorderBrush";
                 Border body = FormsTestHost.Body(control);
                 if (control is NumericUpDown)
                 {
