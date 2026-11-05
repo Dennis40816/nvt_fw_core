@@ -128,6 +128,8 @@ XAML 可以初始化有效的有限範圍：
 | `BrushAccent` | `NfcAccentBrush` |
 | `BrushBorderStrong` | `NfcBorderBrush` |
 
+`NumberScrubber` 的外框使用 `NfcBorderBrush`。它對頁面底色的對比在 Light 為 3.6:1 以上，在 Dark 為 3.9:1 以上，欄位邊界因此達到非文字 3:1 的下限。拖曳區前方的分隔線仍使用 `NfcBorderMutedBrush`。
+
 ## 驗證與 NFH 採用
 
 `tests/Nvt.Core.Avalonia.Tests/Inputs/` 的無視窗特徵測試重用既有 `ThemeTestApplication`，鎖定 `en-US`、`de-DE`、`zh-TW` 下的字面數值與顯示文字、正負號、指數、空白、拒絕的分隔符號、無效／超界輸入、中點吸附、有限上下限與 decimal 兩端點。亦涵蓋即時數值變更序列、Enter／Escape 的處理狀態、實際失焦、混合值焦點、滾輪修飾鍵／小數差值、拖曳像素步數、實際指標擷取／失去擷取、唯讀行為、獨立工具提示，以及編譯後的明暗基本樣式。

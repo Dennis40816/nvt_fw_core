@@ -963,12 +963,12 @@ Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持
 | `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
 | `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
 | `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
-| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#A82035` |
-| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
-| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
-| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2563EB` |
-| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#1D4ED8` |
-| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#1E40AF` |
+| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#CC3F54` |
+| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
+| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
+| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2F6BEE` |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#2C68E8` |
+| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#2965E2` |
 | `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 
@@ -982,8 +982,10 @@ Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持
 | 對比 | Light | Dark |
 | --- | --- | --- |
 | 白色對勾選的 segment、tab 與 icon | 5.879:1 | 7.794:1 |
-| 白色對勾選的開關 | 5.169:1 | 5.169:1 |
-| 白色對勾選的 danger | 7.184:1 | 7.184:1 |
+| 白色對勾選的開關 | 5.169:1 | 4.710:1 |
+| 白色對勾選的 danger | 7.184:1 | 4.766:1 |
+| 勾選的開關軌道對頁面表面 | 4.718:1 | 3.038:1 |
+| 勾選的 danger 填色對頁面表面 | 6.558:1 | 3.094:1 |
 | 標準焦點框對相鄰表面 | 3.879:1 | 4.658:1 |
 | 停用文字 | 3.582:1 | 3.574:1 |
 | 所有狀態的旋鈕對軌道 | 4.015:1 | 3.422:1 |
