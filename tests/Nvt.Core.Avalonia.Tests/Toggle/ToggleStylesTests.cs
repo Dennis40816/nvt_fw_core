@@ -243,9 +243,10 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
         if (state.Disabled) return (state.Checked ? "NfcSelectionSurfaceBrush" : "NfcSurfaceSubtleBrush", "NfcTextDisabledBrush");
         if (state.Checked) return (state.Pressed ? "Nvt.Toggle.SelectedPressedBrush"
             : state.Hover ? "Nvt.Toggle.SelectedPointerOverBrush" : "Nvt.Toggle.SelectedBrush", "Nvt.Toggle.SelectedLabelBrush");
-        return (state.Pressed ? "Nvt.Interaction.PressedBrush"
-            : state.Hover ? role == "toggleSegment" ? "NfcSurfaceSubtleBrush" : "Nvt.Interaction.HoverBrush"
-            : role is "toggleSegment" or "toggleTab" ? "Nvt.Toggle.RestBrush" : "NfcSurfaceSubtleBrush",
+        // Segments and icons fade between opaque fills. Tabs rest and fade on the translucent layers.
+        return (state.Pressed ? role == "toggleTab" ? "Nvt.Interaction.PressedBrush" : "Nvt.Interaction.PressedFillBrush"
+            : state.Hover ? role switch { "toggleSegment" => "NfcSurfaceSubtleBrush", "toggleIcon" => "Nvt.Interaction.HoverFillBrush", _ => "Nvt.Interaction.HoverBrush" }
+            : role == "toggleSegment" ? "Nvt.Toggle.SegmentRestBrush" : role == "toggleTab" ? "Nvt.Toggle.RestBrush" : "NfcSurfaceSubtleBrush",
             state.Pressed ? "NfcTextStrongBrush" : state.Hover ? "NfcTextBrush" : "NfcTextSecondaryBrush");
     }
 

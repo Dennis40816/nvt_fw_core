@@ -182,7 +182,7 @@
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
 
-  <Style Selector="Button.actionNeutral:flyout-open:not(:disabled), Button.chipAction:flyout-open:not(:disabled), Button.actionIconButton:not(.actionPrimary):not(.actionDanger):flyout-open:not(:disabled)">
+  <Style Selector="Button.actionNeutral:flyout-open:not(:disabled), Button.chipAction:flyout-open:not(:disabled), Button.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost):flyout-open:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverFillBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>

@@ -152,7 +152,7 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             Color hover = ChoiceTestHost.ResourceColor(host, "Nvt.Interaction.HoverBrush");
             foreach ((string name, Control control) in new (string, Control)[]
             {
-                ("actionGhost", ghost), ("toggleSoft", soft), ("toggleSegment", segment), ("toggleTab", tab),
+                ("actionGhost", ghost), ("toggleSoft", soft), ("toggleTab", tab),
                 ("MenuItem", menuItem), ("ListBoxItem", listItem), ("TabItem", tabItem),
             })
             {
@@ -160,6 +160,11 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
                 Assert.True(rest.A == 0, $"{name} rest alpha {rest.A}");
                 Assert.True((rest.R, rest.G, rest.B) == (hover.R, hover.G, hover.B), $"{name} rest colour {rest}");
             }
+            // A segment fades to the opaque subtle surface inside a group that paints the selection surface, so it rests on that surface at zero alpha.
+            Color segmentRest = ChoiceTestHost.ColorOf(segment.Background);
+            Color group = ChoiceTestHost.ResourceColor(host, "NfcSelectionSurfaceBrush");
+            Assert.Equal(0, segmentRest.A);
+            Assert.Equal((group.R, group.G, group.B), (segmentRest.R, segmentRest.G, segmentRest.B));
         }
         finally { host.Close(); }
     }

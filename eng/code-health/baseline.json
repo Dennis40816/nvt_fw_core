@@ -7595,16 +7595,6 @@
     },
     {
       "rule": "IDE1006",
-      "syntaxHash": "c943c5e7244b433f52a5a1b1c696d72593a8cc8795501a854ec9dbcb2c73109d",
-      "member": "Nvt.Core.Avalonia.Tests.Forms.FormsContrastTests.fields:Pairs",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Forms/FormsContrastTests.cs"
-    },
-    {
-      "rule": "IDE1006",
       "syntaxHash": "7a326790de741eefe1685e0c83e7b95adf9560f9327f2720aee43207accd0c35",
       "member": "Nvt.Core.Avalonia.Tests.Icons.IconSessionFixture.fields:session",
       "count": 1,

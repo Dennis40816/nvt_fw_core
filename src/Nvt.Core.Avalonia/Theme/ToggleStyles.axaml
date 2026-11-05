@@ -71,17 +71,27 @@
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SegmentRestBrush}"/>
   </Style>
-  <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled), ToggleButton.toggleTab:pointerover:not(:disabled), ToggleButton.toggleIcon:pointerover:not(:disabled)">
+  <!-- A fade passes through the interpolated colour of both ends, so a fill and the fill it fades to must match. Tabs rest and fade on the translucent layers. Segments and icons fade between opaque fills. -->
+  <Style Selector="ToggleButton.toggleTab:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleIcon:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverFillBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
-  <Style Selector="ToggleButton.toggleSegment:pressed:not(:disabled), ToggleButton.toggleTab:pressed:not(:disabled), ToggleButton.toggleIcon:pressed:not(:disabled)">
+  <Style Selector="ToggleButton.toggleTab:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSegment:pressed:not(:disabled), ToggleButton.toggleIcon:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedFillBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:checked:not(:disabled), ToggleButton.toggleTab:checked:not(:disabled), ToggleButton.toggleIcon:checked:not(:disabled)">

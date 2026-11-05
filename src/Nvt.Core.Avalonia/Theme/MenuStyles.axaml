@@ -104,7 +104,9 @@
                                 Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
               <TextBlock Name="PART_InputGestureText" Grid.Column="3" Margin="{DynamicResource Nvt.Menu.GestureMargin}" VerticalAlignment="Center"
                          Text="{TemplateBinding InputGesture, Converter={StaticResource Nvt.Menu.KeyGestureConverter}}"
-                         Foreground="{DynamicResource NfcTextMutedBrush}" />
+                         Foreground="{DynamicResource NfcTextMutedBrush}">
+                <TextBlock.Transitions><Transitions><BrushTransition Property="Foreground" Duration="0:0:0.15" /></Transitions></TextBlock.Transitions>
+              </TextBlock>
               <Path Name="PART_ChevronPath" Grid.Column="4" Width="{DynamicResource Nvt.Menu.ChevronWidth}" Height="{DynamicResource Nvt.Menu.ChevronHeight}" Margin="{DynamicResource Nvt.Menu.ChevronMargin}"
                     Data="{DynamicResource Nvt.Menu.ChevronGeometry}" Stroke="{TemplateBinding Foreground}"
                     StrokeThickness="{DynamicResource Nvt.Menu.ChevronStrokeThickness}" VerticalAlignment="Center" />

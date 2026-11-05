@@ -783,7 +783,7 @@ Transparent shadow space surrounds the surface. Popup offsets compensate for tha
 
 Rest uses `Nvt.Interaction.RestBrush`. Pointer over, keyboard focus and an open submenu use `Nvt.Interaction.HoverBrush`.
 Native menu selection (`:selected`) paints no fill. Pressed uses `Nvt.Interaction.PressedBrush`.
-While a state fill shows, the input gesture text takes `NfcTextBrush`.
+While a state fill shows, the input gesture text takes `NfcTextBrush`. It fades with the row background (150 ms), so no frame of the fade puts muted text on the hover fill.
 Disabled content uses `NfcTextDisabledBrush` with opacity 1.
 Checked items carry no fill and keep the normal foreground. Only the check mark shows the state.
 The 12 DIP check sits in a fixed 20 DIP slot with an 8 DIP label gap. Icons retain their own 20 DIP slot.
@@ -933,9 +933,9 @@ Layout dimensions and hit targets stay unchanged.
 
 | State | Segment, tab, and icon fill | Content | Switch track |
 | --- | --- | --- | --- |
-| Rest | Segment and tab `Nvt.Toggle.RestBrush` (the hover colour at zero alpha); icon `NfcSurfaceSubtleBrush`. | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
-| Pointer over | Segment `NfcSurfaceSubtleBrush`; tab and icon `Nvt.Interaction.HoverBrush`. | `NfcTextBrush` | `NfcTextDisabledBrush` |
-| Pressed | `Nvt.Interaction.PressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
+| Rest | Segment `Nvt.Toggle.SegmentRestBrush` (the group surface at zero alpha); tab `Nvt.Toggle.RestBrush` (the hover colour at zero alpha); icon `NfcSurfaceSubtleBrush`. | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
+| Pointer over | Segment `NfcSurfaceSubtleBrush`; tab `Nvt.Interaction.HoverBrush`; icon `Nvt.Interaction.HoverFillBrush`. | `NfcTextBrush` | `NfcTextDisabledBrush` |
+| Pressed | Tab `Nvt.Interaction.PressedBrush`; segment and icon `Nvt.Interaction.PressedFillBrush`. | `NfcTextStrongBrush` | `NfcBorderBrush` |
 | Checked | `Nvt.Toggle.SelectedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchOnBrush` |
 | Checked pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPointerOverBrush` |
 | Checked pressed | `Nvt.Toggle.SelectedPressedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPressedBrush` |
@@ -1485,7 +1485,7 @@ Fractional DPI can soften borders and text because their bounds are not rounded 
 
 TextBox and NumericUpDown retain native `IsReadOnly` behavior.
 Read-only suppresses hover fills and borders. Errors retain the read-only fill and use the error border.
-TextBox has no native `:pressed` state. Its state sheet forces that pseudo-class to preview the retained style rule.
+TextBox and the NumericUpDown text area never receive `:pressed` in Avalonia 12.1.1, so their `:pressed` rule is the retained original and only the state sheet previews it. ComboBox (pressed and open) and the NumericUpDown spinner buttons do press to `Nvt.Form.PressedFillBrush`.
 ComboBox has no native read-only property. Its `readOnly` class provides the read-only visual state only.
 The adopting application owns selection restrictions. The style preserves native keyboard behavior.
 
@@ -1719,8 +1719,9 @@ See [Post-adoption tuning](../post-adoption-tuning.md) for the token ownership a
 
 Hover, pressed and checked fills read these tokens. Two kinds of fill exist.
 
-- A translucent layer is a tint with an alpha. It follows the surface under it. Controls with no fill at rest use it: ghost buttons, toggles, tabs, list and menu items, and Console buttons.
-- An opaque composite is the same tint flattened over `NfcSurfaceBrush`. Controls with an opaque rest fill use it: neutral, chip and icon buttons, and checked buttons when pressed.
+- A translucent layer is a tint with an alpha. It follows the surface under it. Controls with no fill at rest use it: ghost buttons, toggle tabs and soft toggles, list and menu items, and Console buttons.
+- An opaque composite is the same tint flattened over `NfcSurfaceBrush`. Controls with an opaque rest fill use it: neutral, chip and icon buttons, toggle icons and segments, and checked buttons when pressed.
+- A fade needs the same RGB at both ends, or two opaque colours. A transparent rest colour carries the RGB of the fill it fades to, so no frame passes through white. `Nvt.Toggle.SegmentRestBrush` is the segment group surface at alpha 0. A test samples 14 controls at 25%, 50% and 75% of every fade and fails when a frame leaves the range between its two ends.
 
 A control that fades in a fill rests on `Nvt.Interaction.RestBrush`, the tint at alpha 0, so the fade changes only alpha and never passes through white.
 
@@ -1731,11 +1732,12 @@ A control that fades in a fill rests on `Nvt.Interaction.RestBrush`, the tint at
 | `Nvt.Interaction.PressedBrush` | `#3D1E293B` | `#3DE2E8F0` | Pressed layer (24%) of the same controls. |
 | `Nvt.Interaction.HoverFillBrush` | `#D2D4D8` | `#3B424F` | Hover fill of neutral, chip and icon buttons. The hover layer over `NfcSurfaceBrush`. |
 | `Nvt.Interaction.PressedFillBrush` | `#C9CCD0` | `#434A57` | Pressed fill of neutral, chip and icon buttons, checked buttons, Choice rows and Expander headers. The pressed layer over `NfcSurfaceBrush`. |
-| `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | Pressed fill of form fields. It keeps placeholder text at 4.5:1 and the error border at 3:1. |
+| `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | Pressed fill of ComboBox (pressed and open) and the NumericUpDown spinner buttons. It keeps placeholder text at 4.5:1 and the error border at 3:1. |
 | `NfcSelectionSurfaceBrush` | `#DCE5EF` | `#26364D` | Hover fill of Choice rows, Expander headers and form fields in the Soft mode, and of active flat ghost buttons. It was `#E8EEF5` / `#1E293B`. |
 | `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` | Checked and selected fill. It is a fixed value in every tool, no longer `NfcAccentSurfaceBrush`. |
 | `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` | Rest fill of a checked Choice row in rest-fill mode None. Same RGB as the selected hover fill at alpha 0. |
-| `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | Rest fill of toggles. |
+| `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | Rest fill of toggles and toggle tabs. |
+| `Nvt.Toggle.SegmentRestBrush` | `#00DCE5EF` | `#0026364D` | Rest fill of a segment. The segment group surface at alpha 0, so the fade to `NfcSurfaceSubtleBrush` stays in range. |
 | `Nvt.Tab.FillBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | Rest fill of a tab. It was `#00FFFFFF`, so its fade passed through white. |
 | `Nvt.Console.LinkUnderlineBrush` | `NfcBorderBrush` | `NfcBorderBrush` | Idle underline of a console link. |
 | `Nvt.Menu.PopupMaxHeight` | 368 | 368 | Height limit of a context menu and a menu flyout. A taller menu scrolls. |

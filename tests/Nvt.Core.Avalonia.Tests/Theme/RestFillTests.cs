@@ -449,6 +449,15 @@ public sealed class RestFillTests(ITestOutputHelper output)
                     host.MouseMove(new Point(host.Width - 1, host.Height - 1));
                     Flush(host);
                     Assert.Equal(0, ColorOf(Part<Border>(control, "ChoiceRow").Background).A);
+                    AssertRestIsHoverColour(control, ColorOf(Part<Border>(control, "ChoiceRow").Background), "Nvt.Controls.SelectedPointerOverBrush");
+                    if (control is CheckBox)
+                    {
+                        control.IsChecked = null;
+                        Flush(host);
+                        Assert.Contains(":indeterminate", control.Classes);
+                        Assert.Equal(0, ColorOf(Part<Border>(control, "ChoiceRow").Background).A);
+                        AssertRestIsHoverColour(control, ColorOf(Part<Border>(control, "ChoiceRow").Background), "Nvt.Controls.SelectedPointerOverBrush");
+                    }
                 }
             });
     }
@@ -562,9 +571,9 @@ public sealed class RestFillTests(ITestOutputHelper output)
     }
 
     /// <summary>A transparent rest fill carries the hover RGB, so a fade changes only alpha and never passes through white.</summary>
-    private static void AssertRestIsHoverColour(Control owner, Color rest)
+    private static void AssertRestIsHoverColour(Control owner, Color rest, string hoverKey = "Nvt.Interaction.HoverBrush")
     {
-        Color hover = ResourceColor(owner, "Nvt.Interaction.HoverBrush");
+        Color hover = ResourceColor(owner, hoverKey);
         Assert.Equal((hover.R, hover.G, hover.B), (rest.R, rest.G, rest.B));
     }
 

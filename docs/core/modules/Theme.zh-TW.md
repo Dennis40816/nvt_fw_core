@@ -783,7 +783,7 @@ Pill 表面圓角為 8 DIP，Square 為 6 DIP。
 
 靜止使用 `Nvt.Interaction.RestBrush`。滑鼠移入、鍵盤焦點與子選單展開使用 `Nvt.Interaction.HoverBrush`。
 原生選單選取（`:selected`）不填色。按下使用 `Nvt.Interaction.PressedBrush`。
-狀態底色出現時，快速鍵文字改用 `NfcTextBrush`。
+狀態底色出現時，快速鍵文字改用 `NfcTextBrush`。文字與列底色一起淡入淡出（150 ms），淡入過程中不會出現淡色文字落在滑入底色上的畫格。
 停用內容使用 `NfcTextDisabledBrush`，opacity 維持 1。
 勾選項目沒有底色，沿用一般前景，只用勾號表示狀態。
 12 DIP 勾號置於固定 20 DIP 欄位，與標籤留 8 DIP 間距；圖示保留自己的 20 DIP 欄。
@@ -933,9 +933,9 @@ Space 切換勾選狀態。
 
 | 狀態 | Segment、tab 與 icon 填色 | 內容 | 開關軌道 |
 | --- | --- | --- | --- |
-| Rest | Segment 與 tab 使用 `Nvt.Toggle.RestBrush`（alpha 為 0 的滑入色）；icon 使用 `NfcSurfaceSubtleBrush`。 | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
-| Pointer over | Segment 使用 `NfcSurfaceSubtleBrush`；tab 與 icon 使用 `Nvt.Interaction.HoverBrush`。 | `NfcTextBrush` | `NfcTextDisabledBrush` |
-| Pressed | `Nvt.Interaction.PressedBrush` | `NfcTextStrongBrush` | `NfcBorderBrush` |
+| Rest | Segment 使用 `Nvt.Toggle.SegmentRestBrush`（alpha 為 0 的群組表面色）；tab 使用 `Nvt.Toggle.RestBrush`（alpha 為 0 的滑入色）；icon 使用 `NfcSurfaceSubtleBrush`。 | `NfcTextSecondaryBrush` | `NfcBorderBrush` |
+| Pointer over | Segment 使用 `NfcSurfaceSubtleBrush`；tab 使用 `Nvt.Interaction.HoverBrush`；icon 使用 `Nvt.Interaction.HoverFillBrush`。 | `NfcTextBrush` | `NfcTextDisabledBrush` |
+| Pressed | Tab 使用 `Nvt.Interaction.PressedBrush`；segment 與 icon 使用 `Nvt.Interaction.PressedFillBrush`。 | `NfcTextStrongBrush` | `NfcBorderBrush` |
 | Checked | `Nvt.Toggle.SelectedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchOnBrush` |
 | Checked pointer over | `Nvt.Toggle.SelectedPointerOverBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPointerOverBrush` |
 | Checked pressed | `Nvt.Toggle.SelectedPressedBrush` | `Nvt.Toggle.SelectedLabelBrush` | `Nvt.Toggle.SwitchPressedBrush` |
@@ -1484,7 +1484,7 @@ TextBox、NumericUpDown、ComboBox 與 TabItem 使用 `UseLayoutRounding=False`�
 
 TextBox 與 NumericUpDown 保留原生 `IsReadOnly` 行為。
 唯讀會抑制滑入填色與邊框。錯誤狀態保留唯讀填色，並使用錯誤邊框。
-TextBox 沒有原生 `:pressed` 狀態。狀態圖表強制設定此偽類別，以預覽保留的樣式規則。
+Avalonia 12.1.1 中 TextBox 與 NumericUpDown 文字區不會收到 `:pressed`，所以它們的 `:pressed` 規則是保留的原樣式，只有狀態圖表會預覽它。ComboBox（按下與展開）與 NumericUpDown 的微調按鈕會按下成 `Nvt.Form.PressedFillBrush`。
 ComboBox 沒有原生唯讀屬性。`readOnly` 類別只提供唯讀視覺狀態。
 採用端負責限制選取。樣式保留原生鍵盤行為。
 
@@ -1718,8 +1718,9 @@ token 歸屬與驗證流程請參閱 [導入後微調指南](../post-adoption-tu
 
 滑入、按下與勾選的底色讀取下列 token。底色分兩種。
 
-- 半透明層是帶 alpha 的色調，會隨底下的表面改變。靜止時沒有底色的控制項使用它：ghost 按鈕、toggle、tab、清單與選單項目，以及 Console 按鈕。
-- 不透明合成色是同一色調疊在 `NfcSurfaceBrush` 上的結果。靜止時有不透明底色的控制項使用它：neutral、chip、icon 按鈕，以及按下中的勾選按鈕。
+- 半透明層是帶 alpha 的色調，會隨底下的表面改變。靜止時沒有底色的控制項使用它：ghost 按鈕、toggle tab 與 soft toggle、清單與選單項目，以及 Console 按鈕。
+- 不透明合成色是同一色調疊在 `NfcSurfaceBrush` 上的結果。靜止時有不透明底色的控制項使用它：neutral、chip、icon 按鈕，toggle 的 icon 與 segment，以及按下中的勾選按鈕。
+- 淡入淡出的兩端必須 RGB 相同，或兩端都是不透明色。透明的靜止色帶著它要淡入的底色的 RGB，所以不會經過白色。`Nvt.Toggle.SegmentRestBrush` 就是 alpha 為 0 的 segment 群組表面色。測試會在每段淡入的 25%、50%、75% 取樣 14 種控制項，任何一格超出兩端範圍就失敗。
 
 會淡入底色的控制項，靜止時使用 `Nvt.Interaction.RestBrush`（alpha 為 0 的同一色調），所以淡入只改變 alpha，不會經過白色。
 
@@ -1730,11 +1731,12 @@ token 歸屬與驗證流程請參閱 [導入後微調指南](../post-adoption-tu
 | `Nvt.Interaction.PressedBrush` | `#3D1E293B` | `#3DE2E8F0` | 同一批控制項的按下層（24%）。 |
 | `Nvt.Interaction.HoverFillBrush` | `#D2D4D8` | `#3B424F` | neutral、chip、icon 按鈕的滑入底色。為滑入層疊在 `NfcSurfaceBrush` 上的結果。 |
 | `Nvt.Interaction.PressedFillBrush` | `#C9CCD0` | `#434A57` | neutral、chip、icon 按鈕、勾選按鈕、選項列與 Expander 標頭的按下底色。為按下層疊在 `NfcSurfaceBrush` 上的結果。 |
-| `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | 表單欄位的按下底色。placeholder 文字維持 4.5:1，錯誤框線維持 3:1。 |
+| `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | ComboBox（按下與展開）與 NumericUpDown 微調按鈕的按下底色。placeholder 文字維持 4.5:1，錯誤框線維持 3:1。 |
 | `NfcSelectionSurfaceBrush` | `#DCE5EF` | `#26364D` | Soft 模式下選項列、Expander 標頭與表單欄位的滑入底色，以及作用中 flat ghost 按鈕的滑入底色。原為 `#E8EEF5` / `#1E293B`。 |
 | `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` | 勾選與選取底色。各工具使用同一固定值，不再是 `NfcAccentSurfaceBrush`。 |
 | `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` | 模式 None 下，已勾選選項列的靜止底色。RGB 與選取滑入底色相同，alpha 為 0。 |
-| `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | toggle 的靜止底色。 |
+| `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | toggle 與 toggle tab 的靜止底色。 |
+| `Nvt.Toggle.SegmentRestBrush` | `#00DCE5EF` | `#0026364D` | segment 的靜止底色。為 alpha 0 的 segment 群組表面色，淡入 `NfcSurfaceSubtleBrush` 時不會超出範圍。 |
 | `Nvt.Tab.FillBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | tab 的靜止底色。原為 `#00FFFFFF`，淡入時會經過白色。 |
 | `Nvt.Console.LinkUnderlineBrush` | `NfcBorderBrush` | `NfcBorderBrush` | Console 連結的閒置底線。 |
 | `Nvt.Menu.PopupMaxHeight` | 368 | 368 | 右鍵選單與選單 flyout 的高度上限。更高的選單改為捲動。 |

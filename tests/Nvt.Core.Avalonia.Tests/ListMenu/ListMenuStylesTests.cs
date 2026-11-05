@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -510,4 +511,37 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
         finally { host.Close(); }
     }
 
+    /// <summary>The shortcut text fades with the row background, so no frame of the fade puts muted text on the hover fill.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GestureTextFadesWithTheRowBackground(bool dark)
+    {
+        var item = new MenuItem { Header = "_Open sample", InputGesture = new KeyGesture(global::Avalonia.Input.Key.O, KeyModifiers.Control) };
+        var menu = new ContextMenu { Items = { item }, VerticalAlignment = VerticalAlignment.Top };
+        Window host = Create(menu, dark);
+        try
+        {
+            host.Show();
+            Flush(host);
+            var gesture = Assert.Single(item.GetVisualDescendants().OfType<TextBlock>(), child => child.Name == "PART_InputGestureText");
+            var fade = Assert.Single(gesture.Transitions!.OfType<BrushTransition>(), transition => transition.Property == TextBlock.ForegroundProperty);
+            Assert.Equal(TimeSpan.FromMilliseconds(150), fade.Duration);
+            Color text = ResourceColor(item, "NfcTextBrush"), muted = ResourceColor(item, "NfcTextMutedBrush"), tint = ResourceColor(item, "Nvt.Interaction.HoverBrush");
+            Color surface = ResourceColor(item, "NfcSurfaceBrush");
+            // Leaving the row: the text goes from the main colour to muted while the layer fades out. Entering runs the same frames backwards.
+            for (int step = 0; step <= 20; step++)
+            {
+                double t = step / 20d;
+                Color foreground = Color.FromRgb(Mix(text.R, muted.R, t), Mix(text.G, muted.G, t), Mix(text.B, muted.B, t));
+                double alpha = tint.A / 255d * (1 - t);
+                Color background = Color.FromRgb(Mix(surface.R, tint.R, alpha), Mix(surface.G, tint.G, alpha), Mix(surface.B, tint.B, alpha));
+                double ratio = Contrast(foreground, background);
+                Assert.True(ratio >= 4.5, $"{dark}: frame {t:F2} gesture text {ratio:F3}:1");
+            }
+        }
+        finally { host.Close(); }
+    }
+
+    private static byte Mix(byte from, byte to, double t) => (byte)Math.Round(from + (to - from) * t);
 }
