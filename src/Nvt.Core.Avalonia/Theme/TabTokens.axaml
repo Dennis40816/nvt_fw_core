@@ -4,9 +4,9 @@
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
       <StaticResource x:Key="Nvt.Tab.StripBrush" ResourceKey="NfcSurfaceSubtleBrush" />
-      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
-      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Interaction.RestBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="Nvt.Interaction.HoverBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="Nvt.Interaction.PressedBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedFillBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedHoverFillBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedPressedFillBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />
@@ -22,9 +22,9 @@
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <StaticResource x:Key="Nvt.Tab.StripBrush" ResourceKey="NfcSurfaceSubtleBrush" />
-      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
-      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <StaticResource x:Key="Nvt.Tab.FillBrush" ResourceKey="Nvt.Interaction.RestBrush" />
+      <StaticResource x:Key="Nvt.Tab.HoverFillBrush" ResourceKey="Nvt.Interaction.HoverBrush" />
+      <StaticResource x:Key="Nvt.Tab.PressedFillBrush" ResourceKey="Nvt.Interaction.PressedBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedFillBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedHoverFillBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
       <StaticResource x:Key="Nvt.Tab.SelectedPressedFillBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />

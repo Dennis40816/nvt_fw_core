@@ -89,7 +89,10 @@ public sealed class FormsContrastTests(ITestOutputHelper output)
                 ? global::Nvt.Core.Avalonia.Theme.ThemeShape.Square : global::Nvt.Core.Avalonia.Theme.ThemeShape.Pill);
             foreach (var pair in Pairs)
             {
-                double ratio = Contrast(ResourceColor(host, pair.Foreground), ResourceColor(host, pair.Background));
+                var background = ResourceColor(host, pair.Background);
+                // A translucent tab layer is measured over the strip it sits on.
+                if (background.A < 255) background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(background, ResourceColor(host, "Nvt.Tab.StripBrush"));
+                double ratio = Contrast(ResourceColor(host, pair.Foreground), background);
                 Assert.True(ratio >= pair.Minimum, $"{pair.Name}: {ratio:F3}:1 < {pair.Minimum}:1");
                 output.WriteLine($"{(dark ? "Dark" : "Light")} {(square ? "Square" : "Pill")} / {pair.Name}: {ratio:F3}:1");
             }

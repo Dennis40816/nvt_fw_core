@@ -140,18 +140,20 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
         var tab = new ToggleButton { Classes = { "toggleTab" }, Content = "Tab" };
         var menuItem = new MenuItem { Header = "Item" };
         var listItem = new ListBoxItem { Content = "Row" };
-        var panel = new StackPanel { Children = { ghost, soft, segment, tab, menuItem, listItem } };
+        var tabItem = new TabItem { Header = "Tab item" };
+        var panel = new StackPanel { Children = { ghost, soft, segment, tab, menuItem, listItem, tabItem } };
         Window host = Create(panel, dark);
         try
         {
             Include(host, "ButtonStyles");
             Include(host, "ToggleStyles");
+            Include(host, "TabStyles");
             Show(host);
             Color hover = ChoiceTestHost.ResourceColor(host, "Nvt.Interaction.HoverBrush");
             foreach ((string name, Control control) in new (string, Control)[]
             {
                 ("actionGhost", ghost), ("toggleSoft", soft), ("toggleSegment", segment), ("toggleTab", tab),
-                ("MenuItem", menuItem), ("ListBoxItem", listItem),
+                ("MenuItem", menuItem), ("ListBoxItem", listItem), ("TabItem", tabItem),
             })
             {
                 Color rest = ChoiceTestHost.ColorOf(((TemplatedControl)control).Background);
@@ -185,6 +187,35 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             ((IPseudoClasses)toggle.Classes).Set(":pointerover", false);
             Flush(host);
             Assert.True(ChoiceTestHost.Contrast(ChoiceTestHost.ColorOf(outline.BorderBrush), ChoiceTestHost.ResourceColor(toggle, "NfcSurfaceSubtleBrush")) >= GraphicFloor);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Pressed is stronger than hover on every role, so a press never looks weaker than the pointer resting on the control.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void PressedIsStrongerThanHoverOnEveryRole(bool dark)
+    {
+        Window host = FormsTestHost.Create(new TextBlock { Text = "Contrast" }, dark);
+        try
+        {
+            foreach ((string role, string hover, string pressed, string surface) in new[]
+            {
+                ("Button neutral", "Nvt.Interaction.HoverFillBrush", "Nvt.Interaction.PressedFillBrush", "NfcSurfaceBrush"),
+                ("Toggle, list, menu", "Nvt.Interaction.HoverBrush", "Nvt.Interaction.PressedBrush", "NfcSurfaceBrush"),
+                ("Tab", "Nvt.Tab.HoverFillBrush", "Nvt.Tab.PressedFillBrush", "Nvt.Tab.StripBrush"),
+                ("Form field", "Nvt.Form.HoverFillBrush", "Nvt.Form.PressedFillBrush", "NfcSurfaceBrush"),
+                ("Choice row", "NfcSelectionSurfaceBrush", "Nvt.Interaction.PressedFillBrush", "NfcSurfaceSubtleBrush"),
+                ("Expander header", "NfcSelectionSurfaceBrush", "Nvt.Controls.ExpanderPressedBrush", "NfcSurfaceSubtleBrush"),
+            })
+            {
+                Color under = ChoiceTestHost.ResourceColor(host, surface);
+                double hoverRatio = ChoiceTestHost.Contrast(Toggle.ToggleStylesTests.Flatten(ChoiceTestHost.ResourceColor(host, hover), under), under);
+                double pressedRatio = ChoiceTestHost.Contrast(Toggle.ToggleStylesTests.Flatten(ChoiceTestHost.ResourceColor(host, pressed), under), under);
+                output.WriteLine($"{(dark ? "Dark" : "Light")} {role}: hover {hoverRatio:F3}:1, pressed {pressedRatio:F3}:1");
+                Assert.True(pressedRatio > hoverRatio, $"{role}: pressed {pressedRatio:F3}:1 is not stronger than hover {hoverRatio:F3}:1");
+            }
         }
         finally { host.Close(); }
     }
