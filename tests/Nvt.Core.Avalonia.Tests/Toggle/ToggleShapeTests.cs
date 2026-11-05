@@ -156,7 +156,7 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                     {
                         string token = state.Pressed ? "Nvt.Toggle.DangerFillPressedBrush"
                             : state.Hover ? "Nvt.Toggle.DangerFillPointerOverBrush" : "Nvt.Toggle.DangerFillBrush";
-                        Color literalFill = Color.Parse(state.Hover || state.Pressed ? "#861B2C" : "#A82035");
+                        Color literalFill = Color.Parse(dark ? state.Hover || state.Pressed ? "#C8384D" : "#CC3F54" : state.Hover || state.Pressed ? "#861B2C" : "#A82035");
                         Color white = Color.Parse("#FFFFFF");
                         Assert.Equal(literalFill, ResourceColor(button, token));
                         Assert.Equal(literalFill, fill);

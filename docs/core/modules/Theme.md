@@ -963,12 +963,12 @@ Replace that dictionary in the application or window resources to update attache
 | `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
 | `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
 | `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
-| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#A82035` |
-| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
-| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#861B2C` |
-| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2563EB` |
-| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#1D4ED8` |
-| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#1E40AF` |
+| `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#CC3F54` |
+| `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
+| `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
+| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2F6BEE` |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#2C68E8` |
+| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#2965E2` |
 | `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 
@@ -982,8 +982,10 @@ Checked fill checks cover enabled states. Disabled checked states use the neutra
 | Contrast | Light | Dark |
 | --- | --- | --- |
 | White on checked segment, tab, and icon | 5.879:1 | 7.794:1 |
-| White on checked switch | 5.169:1 | 5.169:1 |
-| White on checked danger | 7.184:1 | 7.184:1 |
+| White on checked switch | 5.169:1 | 4.710:1 |
+| White on checked danger | 7.184:1 | 4.766:1 |
+| Checked switch track against the page surfaces | 4.718:1 | 3.038:1 |
+| Checked danger fill against the page surfaces | 6.558:1 | 3.094:1 |
 | Standard focus ring against adjacent surfaces | 3.879:1 | 4.658:1 |
 | Disabled text | 3.582:1 | 3.574:1 |
 | Knob against track across all states | 4.015:1 | 3.422:1 |

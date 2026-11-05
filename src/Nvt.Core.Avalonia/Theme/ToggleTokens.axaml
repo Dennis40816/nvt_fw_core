@@ -22,6 +22,9 @@
       <StaticResource x:Key="Nvt.Toggle.DangerFillBrush" ResourceKey="NfcDangerTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.DangerFillPointerOverBrush" ResourceKey="NfcDangerTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.DangerFillPressedBrush" ResourceKey="NfcDangerTextStrongBrush" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2563EB" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#1D4ED8" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" Color="#1E40AF" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedPointerOverBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
@@ -41,16 +44,17 @@
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" Color="#1148BE" />
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" Color="#0E3C9E" />
       <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" Color="#0B307E" />
-      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillBrush" Color="#A82035" />
-      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPointerOverBrush" Color="#861B2C" />
-      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPressedBrush" Color="#861B2C" />
+      <!-- A filled track or segment must keep 3:1 against the page and 4.5:1 against its white label or knob. In the dark theme that leaves a narrow window, so hover and pressed stay inside it. -->
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillBrush" Color="#CC3F54" />
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPointerOverBrush" Color="#C8384D" />
+      <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPressedBrush" Color="#C8384D" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2F6BEE" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#2C68E8" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" Color="#2965E2" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
   <SolidColorBrush x:Key="Nvt.Toggle.SelectedLabelBrush" Color="#FFFFFF" />
   <StaticResource x:Key="Nvt.Toggle.KnobBrush" ResourceKey="Nvt.Toggle.SelectedLabelBrush" />
-  <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2563EB" />
-  <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#1D4ED8" />
-  <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" Color="#1E40AF" />
   <SolidColorBrush x:Key="Nvt.Toggle.TransparentBrush" Color="#00FFFFFF" />
   <Thickness x:Key="Nvt.Toggle.SegmentGroupPadding">4</Thickness>
   <x:Double x:Key="Nvt.Toggle.SegmentSpacing">2</x:Double>

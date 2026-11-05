@@ -132,7 +132,7 @@ public sealed partial class NumberScrubberTests
             Assert.Equal(new CornerRadius(0), Input(control).CornerRadius);
             Root(control).Classes.Remove("focused");
             AssertBrush(Root(control).Background, "NfcSurfaceBrush", dark);
-            AssertBrush(Root(control).BorderBrush, "NfcBorderMutedBrush", dark);
+            AssertBrush(Root(control).BorderBrush, "NfcBorderBrush", dark);
             AssertBrush(Area(control).Background, "NfcBorderBrush", dark);
             AssertBrush(Area(control).BorderBrush, "NfcBorderMutedBrush", dark);
             Assert.True(Input(control).Focus());
