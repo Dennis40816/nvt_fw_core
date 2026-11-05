@@ -10,7 +10,7 @@ namespace Nvt.Core.Avalonia.Tests.Forms;
 /// <summary>Measures every documented form, tab, and text color pair from compiled resources.</summary>
 public sealed class FormsContrastTests(ITestOutputHelper output)
 {
-    private static readonly (string Name, string Foreground, string Background, double Minimum)[] Pairs =
+    private static readonly (string Name, string Foreground, string Background, double Minimum)[] _pairs =
     [
         ("Form text, caret and spinner glyph / rest / read-only", "Nvt.Form.TextBrush", "Nvt.Form.FillBrush", 4.5),
         ("Form placeholder / rest / read-only", "Nvt.Form.PlaceholderBrush", "Nvt.Form.FillBrush", 4.5),
@@ -64,8 +64,8 @@ public sealed class FormsContrastTests(ITestOutputHelper output)
         ("Muted class / subtle", "NfcTextMutedBrush", "NfcSurfaceSubtleBrush", 4.5),
         ("All text classes / hover", "NfcTextBrush", "NfcSelectionSurfaceBrush", 4.5),
         ("Muted class / hover", "NfcTextMutedBrush", "NfcSelectionSurfaceBrush", 4.5),
-        ("All text classes / pressed", "NfcTextBrush", "NfcSecondaryActionPressedBrush", 4.5),
-        ("Muted class / pressed", "NfcTextMutedBrush", "NfcSecondaryActionPressedBrush", 4.5),
+        ("All text classes / pressed", "NfcTextBrush", "Nvt.Form.PressedFillBrush", 4.5),
+        ("Muted class / pressed", "NfcTextMutedBrush", "Nvt.Form.PressedFillBrush", 4.5),
         ("All text classes / selected", "NfcTextBrush", "Nvt.Controls.SelectedBrush", 4.5),
         ("Muted class / selected", "NfcTextMutedBrush", "Nvt.Controls.SelectedBrush", 4.5),
         ("All text classes / selected hover", "NfcTextBrush", "Nvt.Controls.SelectedPointerOverBrush", 4.5),
@@ -87,9 +87,12 @@ public sealed class FormsContrastTests(ITestOutputHelper output)
         {
             global::Nvt.Core.Avalonia.Theme.ThemeShapes.SetShape(host.Resources, square
                 ? global::Nvt.Core.Avalonia.Theme.ThemeShape.Square : global::Nvt.Core.Avalonia.Theme.ThemeShape.Pill);
-            foreach (var pair in Pairs)
+            foreach (var pair in _pairs)
             {
-                double ratio = Contrast(ResourceColor(host, pair.Foreground), ResourceColor(host, pair.Background));
+                var background = ResourceColor(host, pair.Background);
+                // A translucent tab layer is measured over the strip it sits on.
+                if (background.A < 255) background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(background, ResourceColor(host, "Nvt.Tab.StripBrush"));
+                double ratio = Contrast(ResourceColor(host, pair.Foreground), background);
                 Assert.True(ratio >= pair.Minimum, $"{pair.Name}: {ratio:F3}:1 < {pair.Minimum}:1");
                 output.WriteLine($"{(dark ? "Dark" : "Light")} {(square ? "Square" : "Pill")} / {pair.Name}: {ratio:F3}:1");
             }

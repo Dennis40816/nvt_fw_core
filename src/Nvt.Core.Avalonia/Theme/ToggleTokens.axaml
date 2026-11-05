@@ -7,9 +7,10 @@
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedPressedBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedForegroundBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
-      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="Nvt.Interaction.HoverBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedBrush" ResourceKey="Nvt.Interaction.PressedBrush" />
       <StaticResource x:Key="Nvt.Toggle.RestBrush" ResourceKey="Nvt.Interaction.RestBrush" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SegmentRestBrush" Color="#00DCE5EF" />
       <StaticResource x:Key="Nvt.Toggle.SoftForegroundBrush" ResourceKey="NfcTextSecondaryBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
@@ -27,9 +28,10 @@
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedPressedBrush" ResourceKey="Nvt.Controls.SelectedPressedBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedBrush" ResourceKey="Nvt.Controls.SelectedBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedForegroundBrush" ResourceKey="Nvt.Controls.SelectedForegroundBrush" />
-      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="NfcSelectionSurfaceBrush" />
+      <StaticResource x:Key="Nvt.Toggle.SoftPointerOverBrush" ResourceKey="Nvt.Interaction.HoverBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedBrush" ResourceKey="Nvt.Interaction.PressedBrush" />
       <StaticResource x:Key="Nvt.Toggle.RestBrush" ResourceKey="Nvt.Interaction.RestBrush" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SegmentRestBrush" Color="#0026364D" />
       <StaticResource x:Key="Nvt.Toggle.SoftForegroundBrush" ResourceKey="NfcTextSecondaryBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPointerOverForegroundBrush" ResourceKey="NfcTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />

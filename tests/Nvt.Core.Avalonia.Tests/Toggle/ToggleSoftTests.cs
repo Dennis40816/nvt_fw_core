@@ -27,7 +27,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
         ("SoftCheckedPointerOverBrush", "Nvt.Controls.SelectedPointerOverBrush"),
         ("SoftCheckedPressedBrush", "Nvt.Controls.SelectedPressedBrush"),
         ("SoftCheckedForegroundBrush", "Nvt.Controls.SelectedForegroundBrush"),
-        ("SoftPointerOverBrush", "NfcSelectionSurfaceBrush"),
+        ("SoftPointerOverBrush", "Nvt.Interaction.HoverBrush"),
         ("SoftPressedBrush", "Nvt.Interaction.PressedBrush"),
         ("SoftForegroundBrush", "NfcTextSecondaryBrush"),
         ("SoftPointerOverForegroundBrush", "NfcTextBrush"),
@@ -94,7 +94,7 @@ public sealed class ToggleSoftTests(ITestOutputHelper output)
                             foreach (string surface in new[] { "NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush" })
                             {
                                 Color fill = ColorOf(button.Background);
-                                Color backdrop = fill.A == 0 ? ResourceColor(button, surface) : fill;
+                                Color backdrop = ToggleStylesTests.Flatten(fill, ResourceColor(button, surface));
                                 double ratio = ToggleStylesTests.Contrast(ColorOf(text.Foreground), backdrop);
                                 Assert.True(ratio >= 4.5, $"{dark}/{shape}/{state.Name}/{text.Text}: {ratio:F3}:1");
                                 if (shape == ThemeShape.Pill && surface == "NfcSurfaceSubtleBrush")

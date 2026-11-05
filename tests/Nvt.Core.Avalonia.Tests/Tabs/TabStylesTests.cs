@@ -2,7 +2,6 @@
 
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -75,7 +74,7 @@ public sealed class TabStylesTests
                         : state.Pressed ? "PressedTextBrush" : state.Hover ? "HoverTextBrush" : "TextBrush";
                     Assert.Equal(ResourceColor(tab, "Nvt.Tab." + fill), ColorOf(tab.Background));
                     Assert.Equal(ResourceColor(tab, "Nvt.Tab." + text), ColorOf(tab.Foreground));
-                    var background = fill == "FillBrush" ? ResourceColor(tab, "Nvt.Tab.StripBrush") : ColorOf(tab.Background);
+                    var background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(tab.Background), ResourceColor(tab, "Nvt.Tab.StripBrush"));
                     Assert.True(Contrast(ColorOf(tab.Foreground), background) >= (state.Disabled ? 3 : 4.5));
                     Assert.Equal(selected, Part<Border>(tab, "TabIndicator").IsVisible);
                     Assert.Equal(state.Focus && !state.Disabled, Part<Border>(tab, "TabFocusRing").IsVisible);

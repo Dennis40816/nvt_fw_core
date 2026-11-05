@@ -5,7 +5,7 @@
     <ResourceDictionary x:Key="Light">
       <StaticResource x:Key="Nvt.Form.FillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <StaticResource x:Key="Nvt.Form.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <SolidColorBrush x:Key="Nvt.Form.PressedFillBrush" Color="#D3DDE8" />
       <StaticResource x:Key="Nvt.Form.ReadOnlyFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.TextBrush" ResourceKey="NfcTextBrush" />
@@ -22,7 +22,7 @@
     <ResourceDictionary x:Key="Dark">
       <StaticResource x:Key="Nvt.Form.FillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.HoverFillBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <StaticResource x:Key="Nvt.Form.PressedFillBrush" ResourceKey="NfcSecondaryActionPressedBrush" />
+      <SolidColorBrush x:Key="Nvt.Form.PressedFillBrush" Color="#2A3B53" />
       <StaticResource x:Key="Nvt.Form.ReadOnlyFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.DisabledFillBrush" ResourceKey="NfcSurfaceSubtleBrush" />
       <StaticResource x:Key="Nvt.Form.TextBrush" ResourceKey="NfcTextBrush" />

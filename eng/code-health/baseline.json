@@ -5485,16 +5485,6 @@
     },
     {
       "rule": "FORMAT:IDE0005",
-      "syntaxHash": "52fc8421a3d7eecc6c88f6c12b06a91909209c62dba1976c77144ccb61e6a230",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Tabs/TabStylesTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
       "syntaxHash": "6ab430e97434e3f0749432a9203e630d89193c5ff9e794a47b8a8123420a373c",
       "member": "<global>",
       "count": 3,
@@ -5542,16 +5532,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE0005",
       "path": "tests/Nvt.Core.Avalonia.Tests/Dividers/DividerStylesTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
-      "syntaxHash": "87003afb15ff5329a09cc3cc8c10297f2efda8685f782b47465348121813bf7b",
-      "member": "<global>",
-      "count": 6,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Theme/ControlRedesignTests.cs"
     },
     {
       "rule": "FORMAT:IDE0005",
@@ -7612,16 +7592,6 @@
       "owner": "NVT CORE",
       "symbol": "IDE1006",
       "path": "tests/Nvt.Core.Avalonia.Tests/Focus/ToolTipStylesTests.cs"
-    },
-    {
-      "rule": "IDE1006",
-      "syntaxHash": "c943c5e7244b433f52a5a1b1c696d72593a8cc8795501a854ec9dbcb2c73109d",
-      "member": "Nvt.Core.Avalonia.Tests.Forms.FormsContrastTests.fields:Pairs",
-      "count": 1,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE1006",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Forms/FormsContrastTests.cs"
     },
     {
       "rule": "IDE1006",

@@ -5,6 +5,7 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.Tests.Theme;
 using Xunit;
 using static Nvt.Core.Avalonia.Tests.ListMenu.ListMenuTestHost;
@@ -60,17 +61,28 @@ public sealed class ListMenuContractTests
                     var body = Part(item, "PART_LayoutRoot");
                     Assert.NotNull(body.Transitions);
                     Assert.Equal(TimeSpan.FromMilliseconds(150), Assert.IsType<BrushTransition>(Assert.Single(body.Transitions)).Duration);
+                    // The gesture text fades with the row background, so it fades only when the background does.
+                    Assert.Equal(TimeSpan.FromMilliseconds(150), Assert.IsType<BrushTransition>(Assert.Single(GestureText(item).Transitions!)).Duration);
                 }
                 Assert.All(item.Transitions, transition => Assert.Equal(TimeSpan.FromMilliseconds(150), Assert.IsType<BrushTransition>(transition).Duration));
                 item.Classes.Add("reducedMotion");
                 Assert.Null(item.Transitions);
+                if (item is MenuItem)
+                {
+                    Assert.Null(Part(item, "PART_LayoutRoot").Transitions);
+                    Assert.Null(GestureText(item).Transitions);
+                }
                 item.Classes.Remove("reducedMotion");
             }
             root.Classes.Add("reducedMotion");
             Assert.Null(list.Transitions);
             Assert.Null(menu.Transitions);
             Assert.Null(Part(menu, "PART_LayoutRoot").Transitions);
+            Assert.Null(GestureText(menu).Transitions);
         }
         finally { host.Close(); }
     }
+
+    private static TextBlock GestureText(Control menu) =>
+        Assert.Single(menu.GetVisualDescendants().OfType<TextBlock>(), child => child.Name == "PART_InputGestureText");
 }

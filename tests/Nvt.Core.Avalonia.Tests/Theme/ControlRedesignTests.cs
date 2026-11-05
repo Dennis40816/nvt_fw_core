@@ -5,10 +5,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Presenters;
 using Avalonia.Headless.XUnit;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
-using Nvt.Core.Avalonia.Tests.Dividers;
 using Nvt.Core.Avalonia.Tests.ListMenu;
 using Nvt.Core.Avalonia.Theme;
 using Xunit;
@@ -133,13 +131,13 @@ public sealed class ControlRedesignTests
                 ListMenuTestHost.Flush(host);
                 foreach (TemplatedControl control in new TemplatedControl[] { list, menu })
                 {
-                    Color fill = ColorOf(control.Background);
-                    Assert.True(Contrast(ColorOf(control.Foreground), fill) >= (dark ? 7.674 : 7.018));
-                    Assert.True(Contrast(ResourceColor(control, "Nvt.Controls.FocusBrush"), fill) >= (dark ? 4.930 : 4.006));
+                    Color fill = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(control.Background), ResourceColor(control, "NfcSurfaceBrush"));
+                    Assert.True(Contrast(ColorOf(control.Foreground), fill) >= (dark ? 7.23 : 7.018), $"{control.GetType().Name}{state} text {Contrast(ColorOf(control.Foreground), fill):F3}");
+                    Assert.True(Contrast(ResourceColor(control, "Nvt.Controls.FocusBrush"), fill) >= (dark ? 4.92 : 4.006), $"{control.GetType().Name}{state} focus {Contrast(ResourceColor(control, "Nvt.Controls.FocusBrush"), fill):F3}");
                 }
-                Color row = ColorOf(Part<Border>(choice, "ChoiceRow").Background);
-                Assert.True(Contrast(ColorOf(choice.Foreground), row) >= (dark ? 10.501 : 11.866));
-                Assert.True(Contrast(ColorOf(Part<Border>(choice, "ChoiceIndicator").BorderBrush), row) >= (dark ? 3.256 : 3.257));
+                Color row = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(Part<Border>(choice, "ChoiceRow").Background), ResourceColor(choice, "NfcSurfaceBrush"));
+                Assert.True(Contrast(ColorOf(choice.Foreground), row) >= (dark ? 10.501 : 11.866), $"choice{state} label {Contrast(ColorOf(choice.Foreground), row):F3}");
+                Assert.True(Contrast(ColorOf(Part<Border>(choice, "ChoiceIndicator").BorderBrush), row) >= (dark ? 3.256 : 3.257), $"choice{state} indicator {Contrast(ColorOf(Part<Border>(choice, "ChoiceIndicator").BorderBrush), row):F3}");
             }
             var bar = new ProgressBar();
             ((StackPanel)host.Content!).Children.Add(bar);

@@ -68,7 +68,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     {
                         Assert.Equal(ColorOf(button.Foreground), ColorOf(label.Foreground));
                         if (state.Checked && !state.Disabled) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(label.Foreground));
-                        Color surface = background is "Nvt.Toggle.TransparentBrush" or "Nvt.Toggle.RestBrush" ? ResourceColor(button, role == "toggleTab" ? "NfcSurfaceBrush" : "NfcSelectionSurfaceBrush") : ColorOf(button.Background);
+                        Color surface = Flatten(ColorOf(button.Background), ResourceColor(button, role == "toggleTab" ? "NfcSurfaceBrush" : "NfcSelectionSurfaceBrush"));
                         double contrast = Contrast(ColorOf(label.Foreground), surface);
                         Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{role}/{state.Name}: text {contrast:F3}");
                         if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, contrast);
@@ -243,9 +243,10 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
         if (state.Disabled) return (state.Checked ? "NfcSelectionSurfaceBrush" : "NfcSurfaceSubtleBrush", "NfcTextDisabledBrush");
         if (state.Checked) return (state.Pressed ? "Nvt.Toggle.SelectedPressedBrush"
             : state.Hover ? "Nvt.Toggle.SelectedPointerOverBrush" : "Nvt.Toggle.SelectedBrush", "Nvt.Toggle.SelectedLabelBrush");
-        return (state.Pressed ? "Nvt.Interaction.PressedBrush"
-            : state.Hover ? role == "toggleSegment" ? "NfcSurfaceSubtleBrush" : "NfcSelectionSurfaceBrush"
-            : role is "toggleSegment" or "toggleTab" ? "Nvt.Toggle.RestBrush" : "NfcSurfaceSubtleBrush",
+        // Segments and icons fade between opaque fills. Tabs rest and fade on the translucent layers.
+        return (state.Pressed ? role == "toggleTab" ? "Nvt.Interaction.PressedBrush" : "Nvt.Interaction.PressedFillBrush"
+            : state.Hover ? role switch { "toggleSegment" => "NfcSurfaceSubtleBrush", "toggleIcon" => "Nvt.Interaction.HoverFillBrush", _ => "Nvt.Interaction.HoverBrush" }
+            : role == "toggleSegment" ? "Nvt.Toggle.SegmentRestBrush" : role == "toggleTab" ? "Nvt.Toggle.RestBrush" : "NfcSurfaceSubtleBrush",
             state.Pressed ? "NfcTextStrongBrush" : state.Hover ? "NfcTextBrush" : "NfcTextSecondaryBrush");
     }
 
@@ -268,6 +269,15 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
         Assert.Equal(new Size(22, 22), moving.Bounds.Size);
         Assert.Equal(selected ? 24 : 0, Canvas.GetLeft(moving));
         Assert.Equal(selected ? 27 : 3, point.X);
+    }
+
+    /// <summary>Composites a fill that may be translucent over the surface under it, as the renderer does.</summary>
+    internal static Color Flatten(Color fill, Color surface)
+    {
+        if (fill.A == 255) return fill;
+        double alpha = fill.A / 255d;
+        byte Mix(byte top, byte under) => (byte)Math.Round(top * alpha + under * (1 - alpha));
+        return Color.FromRgb(Mix(fill.R, surface.R), Mix(fill.G, surface.G), Mix(fill.B, surface.B));
     }
 
     internal static double Contrast(Color a, Color b)

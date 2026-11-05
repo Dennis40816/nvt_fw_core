@@ -59,7 +59,7 @@
     <Setter Property="Padding" Value="{DynamicResource Nvt.List.CompactPadding}" />
   </Style>
   <Style Selector="ListBoxItem:pointerover:not(:disabled), ComboBoxItem:pointerover:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
   </Style>
   <Style Selector="ListBoxItem:pressed:not(:disabled), ComboBoxItem:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />

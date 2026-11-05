@@ -104,7 +104,9 @@
                                 Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
               <TextBlock Name="PART_InputGestureText" Grid.Column="3" Margin="{DynamicResource Nvt.Menu.GestureMargin}" VerticalAlignment="Center"
                          Text="{TemplateBinding InputGesture, Converter={StaticResource Nvt.Menu.KeyGestureConverter}}"
-                         Foreground="{DynamicResource NfcTextMutedBrush}" />
+                         Foreground="{DynamicResource NfcTextMutedBrush}">
+                <TextBlock.Transitions><Transitions><BrushTransition Property="Foreground" Duration="0:0:0.15" /></Transitions></TextBlock.Transitions>
+              </TextBlock>
               <Path Name="PART_ChevronPath" Grid.Column="4" Width="{DynamicResource Nvt.Menu.ChevronWidth}" Height="{DynamicResource Nvt.Menu.ChevronHeight}" Margin="{DynamicResource Nvt.Menu.ChevronMargin}"
                     Data="{DynamicResource Nvt.Menu.ChevronGeometry}" Stroke="{TemplateBinding Foreground}"
                     StrokeThickness="{DynamicResource Nvt.Menu.ChevronStrokeThickness}" VerticalAlignment="Center" />
@@ -159,10 +161,13 @@
     <Setter Property="OverlayInputPassThroughElement" Value="{Binding $parent[Menu]}" />
   </Style>
   <Style Selector="MenuItem:pointerover:not(:disabled), MenuItem:open:not(:disabled), MenuItem:focus-visible:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
   </Style>
   <Style Selector="MenuItem:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
+  </Style>
+  <Style Selector="MenuItem:pointerover:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:open:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:focus-visible:not(:disabled) /template/ TextBlock#PART_InputGestureText, MenuItem:pressed:not(:disabled) /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
   </Style>
   <Style Selector="MenuItem:disabled">
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
@@ -184,7 +189,8 @@
       <ControlTemplate><Border Name="MenuSeparator" Background="{TemplateBinding Background}" /></ControlTemplate>
     </Setter>
   </Style>
-  <Style Selector="MenuItem.reducedMotion /template/ Border#PART_LayoutRoot, .reducedMotion MenuItem /template/ Border#PART_LayoutRoot">
+  <!-- The gesture text fades with the row background, so it stops fading when the row background does. -->
+  <Style Selector="MenuItem.reducedMotion /template/ Border#PART_LayoutRoot, .reducedMotion MenuItem /template/ Border#PART_LayoutRoot, MenuItem.reducedMotion /template/ TextBlock#PART_InputGestureText, .reducedMotion MenuItem /template/ TextBlock#PART_InputGestureText">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
   <Style Selector="MenuItem.reducedMotion, .reducedMotion MenuItem">

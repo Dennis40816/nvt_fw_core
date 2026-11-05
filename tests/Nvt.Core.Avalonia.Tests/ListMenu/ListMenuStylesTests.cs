@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Dennis Liu. All rights reserved.
 
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -58,8 +59,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
                     Assert.Equal(ResourceColor(item, text), ColorOf(label.Foreground));
                     var presenter = Assert.Single(item.GetVisualDescendants().OfType<ContentPresenter>(), child => child.Name == "PART_ContentPresenter");
                     Assert.Equal(ColorOf(item.Background), ColorOf(presenter.Background));
-                    Color background = ColorOf(item.Background);
-                    if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
+                    Color background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(item.Background), ResourceColor(item, "NfcSurfaceBrush"));
                     double contrast = Contrast(ColorOf(label.Foreground), background);
                     Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{square}/{dropdown}/{state.Name}: {contrast:F3}");
                     if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, contrast);
@@ -176,13 +176,14 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
         // A checked menu command carries no fill; only the check mark shows the state.
         string fill = state.Disabled ? "Nvt.List.TransparentBrush"
             : state.Pressed ? "Nvt.Interaction.PressedBrush"
-            : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
+            : state.Hover || state.Focus ? "Nvt.Interaction.HoverBrush" : "Nvt.Interaction.RestBrush";
         Assert.Equal(ResourceColor(item, fill), ColorOf(body.Background));
-        Color background = ColorOf(body.Background);
-        if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
+        Color background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(body.Background), ResourceColor(item, "NfcSurfaceBrush"));
         Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
         Assert.True(Contrast(ColorOf(item.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
+        // The gesture text leaves the muted colour while a state fill shows behind it.
+        string gestureText = state.Disabled ? "NfcTextDisabledBrush" : state.Hover || state.Focus || state.Pressed ? "NfcTextBrush" : "NfcTextMutedBrush";
+        Assert.Equal(ResourceColor(item, gestureText), ColorOf(gesture.Foreground));
         Assert.True(Contrast(ColorOf(gesture.Foreground), background) >= (state.Disabled ? 3 : 4.5));
         Border ring = Part(item, "MenuFocusRing");
         Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
@@ -432,7 +433,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
                 SetState(file, state);
                 Flush(host);
                 string fill = state.Disabled ? "Nvt.List.TransparentBrush" : state.Pressed ? "Nvt.Interaction.PressedBrush"
-                    : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
+                    : state.Hover || state.Focus ? "Nvt.Interaction.HoverBrush" : "Nvt.Interaction.RestBrush";
                 Assert.Equal(ResourceColor(file, fill), ColorOf(Part(file, "PART_LayoutRoot").Background));
                 Assert.Equal(state.Focus && !state.Disabled, Part(file, "MenuFocusRing").IsVisible);
             }
@@ -510,4 +511,37 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
         finally { host.Close(); }
     }
 
+    /// <summary>The shortcut text fades with the row background, so no frame of the fade puts muted text on the hover fill.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GestureTextFadesWithTheRowBackground(bool dark)
+    {
+        var item = new MenuItem { Header = "_Open sample", InputGesture = new KeyGesture(global::Avalonia.Input.Key.O, KeyModifiers.Control) };
+        var menu = new ContextMenu { Items = { item }, VerticalAlignment = VerticalAlignment.Top };
+        Window host = Create(menu, dark);
+        try
+        {
+            host.Show();
+            Flush(host);
+            var gesture = Assert.Single(item.GetVisualDescendants().OfType<TextBlock>(), child => child.Name == "PART_InputGestureText");
+            var fade = Assert.Single(gesture.Transitions!.OfType<BrushTransition>(), transition => transition.Property == TextBlock.ForegroundProperty);
+            Assert.Equal(TimeSpan.FromMilliseconds(150), fade.Duration);
+            Color text = ResourceColor(item, "NfcTextBrush"), muted = ResourceColor(item, "NfcTextMutedBrush"), tint = ResourceColor(item, "Nvt.Interaction.HoverBrush");
+            Color surface = ResourceColor(item, "NfcSurfaceBrush");
+            // Leaving the row: the text goes from the main colour to muted while the layer fades out. Entering runs the same frames backwards.
+            for (int step = 0; step <= 20; step++)
+            {
+                double t = step / 20d;
+                Color foreground = Color.FromRgb(Mix(text.R, muted.R, t), Mix(text.G, muted.G, t), Mix(text.B, muted.B, t));
+                double alpha = tint.A / 255d * (1 - t);
+                Color background = Color.FromRgb(Mix(surface.R, tint.R, alpha), Mix(surface.G, tint.G, alpha), Mix(surface.B, tint.B, alpha));
+                double ratio = Contrast(foreground, background);
+                Assert.True(ratio >= 4.5, $"{dark}: frame {t:F2} gesture text {ratio:F3}:1");
+            }
+        }
+        finally { host.Close(); }
+    }
+
+    private static byte Mix(byte from, byte to, double t) => (byte)Math.Round(from + (to - from) * t);
 }
