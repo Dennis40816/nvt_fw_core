@@ -128,6 +128,8 @@ Every NFH token mapped to an existing Core token is listed below. All Core resou
 | `BrushAccent` | `NfcAccentBrush` |
 | `BrushBorderStrong` | `NfcBorderBrush` |
 
+The outer border of `NumberScrubber` uses `NfcBorderBrush`, which measures 3.6:1 or more (Light) and 3.9:1 or more (Dark) against the page surfaces, so the field boundary meets the 3:1 non-text floor. The divider in front of the drag area keeps `NfcBorderMutedBrush`.
+
 ## Verification and NFH adoption
 
 Headless characterization tests in `tests/Nvt.Core.Avalonia.Tests/Inputs/` reuse the existing `ThemeTestApplication`. They pin literal values and display strings across `en-US`, `de-DE` and `zh-TW`, signs, exponents, whitespace, rejected separators, invalid/out-of-range input, midpoint snapping, finite bounds and both decimal endpoints. They cover live value-change sequences, Enter/Escape handling, real focus loss, mixed focus, wheel modifiers/fractional deltas, drag pixel steps, real pointer capture/loss, read-only behavior, separate tooltips, and compiled light/dark base styles.
