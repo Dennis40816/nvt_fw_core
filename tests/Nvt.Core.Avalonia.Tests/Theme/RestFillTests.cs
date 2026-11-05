@@ -217,7 +217,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
                     Flush(host);
                     string? key = state.Disabled || !state.Hover && !state.Pressed ? null : selected is not false
                         ? state.Pressed ? "Nvt.Controls.SelectedPressedBrush" : "Nvt.Controls.SelectedPointerOverBrush"
-                        : state.Pressed ? "NfcSecondaryActionPressedBrush" : "NfcSelectionSurfaceBrush";
+                        : state.Pressed ? "Nvt.Interaction.PressedBrush" : "Nvt.Interaction.HoverBrush";
                     Color color = ColorOf(Part<Border>(control, "ChoiceRow").Background);
                     if (key is null) Assert.Equal(0, color.A);
                     else Assert.Equal(ResourceColor(control, key), color);
@@ -322,8 +322,9 @@ public sealed class RestFillTests(ITestOutputHelper output)
                     expander.IsEnabled = !state.Disabled;
                     DividerTestHost.SetState(header, state);
                     Flush(host);
-                    string? key = !state.Disabled && state.Pressed ? "Nvt.Controls.ExpanderPressedBrush"
-                        : !state.Disabled && state.Over ? "NfcSelectionSurfaceBrush" : fill == ThemeRestFill.None ? null : "NfcSurfaceSubtleBrush";
+                    bool none = fill == ThemeRestFill.None;
+                    string? key = !state.Disabled && state.Pressed ? none ? "Nvt.Interaction.PressedBrush" : "Nvt.Controls.ExpanderPressedBrush"
+                        : !state.Disabled && state.Over ? none ? "Nvt.Interaction.HoverBrush" : "NfcSelectionSurfaceBrush" : none ? null : "NfcSurfaceSubtleBrush";
                     if (key is null) Assert.Equal(0, ColorOf(header.Background).A);
                     else Assert.Equal(ResourceColor(header, key), ColorOf(header.Background));
                     Assert.Equal(container, ColorOf(expander.Background));
@@ -435,11 +436,12 @@ public sealed class RestFillTests(ITestOutputHelper output)
                     control.IsChecked = false;
                     Flush(host);
                     Assert.Equal(0, ColorOf(Part<Border>(control, "ChoiceRow").Background).A);
+                    AssertRestIsHoverColour(control, ColorOf(Part<Border>(control, "ChoiceRow").Background));
                     Point location = control.TranslatePoint(point, host)!.Value;
                     host.MouseMove(location);
                     Flush(host);
                     Assert.Contains(":pointerover", control.Classes);
-                    Assert.Equal(ResourceColor(control, "NfcSelectionSurfaceBrush"), ColorOf(Part<Border>(control, "ChoiceRow").Background));
+                    Assert.Equal(ResourceColor(control, "Nvt.Interaction.HoverBrush"), ColorOf(Part<Border>(control, "ChoiceRow").Background));
                     host.MouseDown(location, MouseButton.Left);
                     host.MouseUp(location, MouseButton.Left);
                     Flush(host);
@@ -464,11 +466,12 @@ public sealed class RestFillTests(ITestOutputHelper output)
                 expander.IsExpanded = false;
                 Flush(host);
                 Assert.Equal(0, ColorOf(header.Background).A);
+                AssertRestIsHoverColour(header, ColorOf(header.Background));
                 Point location = header.TranslatePoint(point, host)!.Value;
                 host.MouseMove(location);
                 Flush(host);
                 Assert.Contains(":pointerover", header.Classes);
-                Assert.Equal(ResourceColor(header, "NfcSelectionSurfaceBrush"), ColorOf(header.Background));
+                Assert.Equal(ResourceColor(header, "Nvt.Interaction.HoverBrush"), ColorOf(header.Background));
                 host.MouseDown(location, MouseButton.Left);
                 host.MouseUp(location, MouseButton.Left);
                 Flush(host);
@@ -558,20 +561,28 @@ public sealed class RestFillTests(ITestOutputHelper output)
         });
     }
 
+    /// <summary>A transparent rest fill carries the hover RGB, so a fade changes only alpha and never passes through white.</summary>
+    private static void AssertRestIsHoverColour(Control owner, Color rest)
+    {
+        Color hover = ResourceColor(owner, "Nvt.Interaction.HoverBrush");
+        Assert.Equal((hover.R, hover.G, hover.B), (rest.R, rest.G, rest.B));
+    }
+
     private static void Measure(List<object> pairs, Control owner, ThemeRestFill fill, string state, string pair, Color foreground, Color background, double minimum, string surface)
     {
         bool dark = owner.ActualThemeVariant == ThemeVariant.Dark;
         bool disabled = state.Contains("Disabled", StringComparison.Ordinal);
         double documented = owner is Expander ? pair switch
         {
-            "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 9.92 : 11.492,
+            "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 8.197 : 9.856,
             _ => minimum,
         } : pair switch
         {
-            "Label / row" => disabled ? dark ? 3.574 : 3.582 : dark ? 11.215 : 13.513,
+            "Label / row" => disabled ? dark ? 3.574 : 3.582 : dark ? 6.307 : 8.906,
             "Indicator border / row" => dark ? 3.076 : 3.154,
             "Glyph / indicator" => disabled ? dark ? 3.422 : 4.559 : dark ? 7.794 : 5.879,
-            "Focus / row" or "Focus / surrounding surface" => dark ? 6.194 : 5.036,
+            "Focus / row" => disabled ? dark ? 6.754 : 5.227 : dark ? 3.483 : 3.319,
+            "Focus / surrounding surface" => dark ? 6.754 : 5.227,
             _ => minimum,
         };
         // Existing documents round their numeric minima to three decimal places.

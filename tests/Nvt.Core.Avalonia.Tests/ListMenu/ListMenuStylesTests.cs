@@ -58,8 +58,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
                     Assert.Equal(ResourceColor(item, text), ColorOf(label.Foreground));
                     var presenter = Assert.Single(item.GetVisualDescendants().OfType<ContentPresenter>(), child => child.Name == "PART_ContentPresenter");
                     Assert.Equal(ColorOf(item.Background), ColorOf(presenter.Background));
-                    Color background = ColorOf(item.Background);
-                    if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
+                    Color background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(item.Background), ResourceColor(item, "NfcSurfaceBrush"));
                     double contrast = Contrast(ColorOf(label.Foreground), background);
                     Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{square}/{dropdown}/{state.Name}: {contrast:F3}");
                     if (state.Disabled) disabledMinimum = Math.Min(disabledMinimum, contrast);
@@ -176,13 +175,14 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
         // A checked menu command carries no fill; only the check mark shows the state.
         string fill = state.Disabled ? "Nvt.List.TransparentBrush"
             : state.Pressed ? "Nvt.Interaction.PressedBrush"
-            : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
+            : state.Hover || state.Focus ? "Nvt.Interaction.HoverBrush" : "Nvt.Interaction.RestBrush";
         Assert.Equal(ResourceColor(item, fill), ColorOf(body.Background));
-        Color background = ColorOf(body.Background);
-        if (background.A == 0) background = ResourceColor(item, "NfcSurfaceBrush");
+        Color background = Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(ColorOf(body.Background), ResourceColor(item, "NfcSurfaceBrush"));
         Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextBrush"), ColorOf(item.Foreground));
         Assert.True(Contrast(ColorOf(item.Foreground), background) >= (state.Disabled ? 3 : 4.5));
-        Assert.Equal(ResourceColor(item, state.Disabled ? "NfcTextDisabledBrush" : "NfcTextMutedBrush"), ColorOf(gesture.Foreground));
+        // The gesture text leaves the muted colour while a state fill shows behind it.
+        string gestureText = state.Disabled ? "NfcTextDisabledBrush" : state.Hover || state.Focus || state.Pressed ? "NfcTextBrush" : "NfcTextMutedBrush";
+        Assert.Equal(ResourceColor(item, gestureText), ColorOf(gesture.Foreground));
         Assert.True(Contrast(ColorOf(gesture.Foreground), background) >= (state.Disabled ? 3 : 4.5));
         Border ring = Part(item, "MenuFocusRing");
         Assert.Equal(state.Focus && !state.Disabled, ring.IsVisible);
@@ -432,7 +432,7 @@ public sealed class ListMenuStylesTests(ITestOutputHelper output)
                 SetState(file, state);
                 Flush(host);
                 string fill = state.Disabled ? "Nvt.List.TransparentBrush" : state.Pressed ? "Nvt.Interaction.PressedBrush"
-                    : state.Hover || state.Focus ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush";
+                    : state.Hover || state.Focus ? "Nvt.Interaction.HoverBrush" : "Nvt.Interaction.RestBrush";
                 Assert.Equal(ResourceColor(file, fill), ColorOf(Part(file, "PART_LayoutRoot").Background));
                 Assert.Equal(state.Focus && !state.Disabled, Part(file, "MenuFocusRing").IsVisible);
             }

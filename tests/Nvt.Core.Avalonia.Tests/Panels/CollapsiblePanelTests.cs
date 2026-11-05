@@ -247,10 +247,10 @@ public sealed class CollapsiblePanelTests
             host.MouseMove(center);
             AssertBrush(presenter.Background, "NfcAccentSurfaceSubtleBrush", dark);
             host.MouseDown(center, MouseButton.Left);
-            AssertBrush(presenter.Background, "Nvt.Interaction.PressedBrush", dark);
+            AssertBrush(presenter.Background, "Nvt.Interaction.PressedFillBrush", dark);
             host.MouseUp(center, MouseButton.Left);
             Assert.False(panel.IsExpanded);
-            AssertBrush(presenter.Background, "NfcSelectionSurfaceBrush", dark);
+            AssertBrush(presenter.Background, "Nvt.Interaction.HoverBrush", dark);
             Assert.Equal(Colors.Transparent, Assert.IsAssignableFrom<ISolidColorBrush>(presenter.BorderBrush).Color);
         }
         finally { host.Close(); }

@@ -551,7 +551,7 @@ public sealed class ButtonThemeTests
                     Assert.Equal(filled, Assert.IsAssignableFrom<ISolidColorBrush>(primary.Background).Color);
                     Assert.Equal(filled, Assert.IsAssignableFrom<ISolidColorBrush>(primary.BorderBrush).Color);
                     Assert.Same(originalLabel, primary.Foreground);
-                    Color selectedBackground = state == "pressed" ? BrushColor(selected, "Nvt.Interaction.PressedBrush")
+                    Color selectedBackground = state == "pressed" ? BrushColor(selected, "Nvt.Interaction.PressedFillBrush")
                         : overrides[state == "rest" ? "NfcAccentSurfaceBrush" : "NfcAccentSurfaceSubtleBrush"];
                     Assert.Equal(selectedBackground, Assert.IsAssignableFrom<ISolidColorBrush>(selected.Background).Color);
                     Assert.Equal(overrides[state == "rest" ? "NfcAccentBorderBrush" : "NfcAccentBorderStrongBrush"],
@@ -640,7 +640,7 @@ public sealed class ButtonThemeTests
         bool flat = role.StartsWith("actionGhost flat", StringComparison.Ordinal);
         if (state.StartsWith("disabled", StringComparison.Ordinal))
             return flat ? ("Transparent", "Transparent", "NfcTextDisabledBrush") : ("NfcSurfaceSubtleBrush", "NfcBorderMutedBrush", "NfcTextDisabledBrush");
-        if (flat && selected) return (pressed ? "Nvt.Interaction.PressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "NfcAccentSurfaceBrush",
+        if (flat && selected) return (pressed ? "Nvt.Interaction.PressedFillBrush" : hover ? "NfcSelectionSurfaceBrush" : "NfcAccentSurfaceBrush",
             "Transparent", "NfcAccentStrongBrush");
         if (role == "actionDanger")
         {
@@ -649,13 +649,13 @@ public sealed class ButtonThemeTests
             if (hover) return ("NfcDangerSurfaceMutedBrush", "NfcDangerBorderStrongBrush", "NfcDangerTextBrush");
             return ("NfcDangerSurfaceBrush", "NfcDangerBorderBrush", "NfcDangerTextBrush");
         }
-        if (selected) return (pressed ? "Nvt.Interaction.PressedBrush" : hover ? "NfcAccentSurfaceSubtleBrush" : "NfcAccentSurfaceBrush",
+        if (selected) return (pressed ? "Nvt.Interaction.PressedFillBrush" : hover ? "NfcAccentSurfaceSubtleBrush" : "NfcAccentSurfaceBrush",
             hover || pressed ? "NfcAccentBorderStrongBrush" : "NfcAccentBorderBrush", "NfcAccentStrongBrush");
         if (role == "actionPrimary") return (hover || pressed ? "NfcAccentStrongBrush" : "NfcAccentBrush",
             hover || pressed ? "NfcAccentStrongBrush" : "NfcAccentBrush", dark ? "NfcAppBackgroundBrush" : "NfcSurfaceBrush");
-        if (role is "actionGhost" or "actionGhost flat") return (pressed ? "Nvt.Interaction.PressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "Nvt.Interaction.RestBrush",
+        if (role is "actionGhost" or "actionGhost flat") return (pressed ? "Nvt.Interaction.PressedBrush" : hover ? "Nvt.Interaction.HoverBrush" : "Nvt.Interaction.RestBrush",
             "Transparent", hover || pressed ? "NfcTextBrush" : "NfcTextSecondaryBrush");
-        return (pressed ? "Nvt.Interaction.PressedBrush" : hover ? "NfcSelectionSurfaceBrush" : "NfcSurfaceBrush",
+        return (pressed ? "Nvt.Interaction.PressedFillBrush" : hover ? "Nvt.Interaction.HoverFillBrush" : "NfcSurfaceBrush",
             "NfcBorderBrush", "NfcTextBrush");
     }
 

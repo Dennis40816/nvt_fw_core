@@ -74,7 +74,7 @@
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled), ToggleButton.toggleTab:pointerover:not(:disabled), ToggleButton.toggleIcon:pointerover:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled)">
