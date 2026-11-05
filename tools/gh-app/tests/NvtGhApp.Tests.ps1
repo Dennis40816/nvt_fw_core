@@ -2006,6 +2006,45 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 $row.Detail | Should Match 'the latest verdict on this head is review 6'
             }
         }
+        It 'reads the first non-empty line, so a record with leading blank lines counts' {
+            $body = "`n  `nReview record: $script:HeadSha accept`n`nChecked."
+            Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body $body)))
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'PASS'
+        }
+        It 'still ignores later lines when the first non-empty line is a rejection' {
+            $body = "`nReview record: $script:HeadSha changes`n`nReview record: $script:HeadSha accept"
+            Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body $body)))
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'FAIL'
+        }
+        It 'reads the first non-empty line with a custom pattern too' {
+            Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body "`nVerdict: accept`n`nChecked.")))
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7 -ReviewRecordPattern '^Verdict: accept$') 'ReviewRecord').Result | Should Be 'PASS'
+        }
+        It 'lets a later rejection, a later dismissed record or a later review with a body cancel an acceptance in a custom format' {
+            $custom = '^Verdict: accept$'
+            $later = @(
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -Body "Verdict: reject`n`nP1 found."),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -State DISMISSED -Body "Verdict: accept`n`nChecked."),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -State CHANGES_REQUESTED -Body 'Please fix'),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -Body 'Withdrawn.'))
+            foreach ($review in $later) {
+                foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX)) { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } }
+                Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body "Verdict: accept`n`nChecked."), $review))
+                $row = Get-Row (Get-GhAppPullRequestReadiness -Number 7 -ReviewRecordPattern $custom) 'ReviewRecord'
+                $row.Result | Should Be 'FAIL'
+                $row.Detail | Should Match 'the latest verdict on this head is review 6'
+            }
+        }
+        It 'counts a new acceptance after a rejection in a custom format' {
+            $reviews = @((New-RecordReview -Id 5 -Body "Verdict: reject"), (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -Body "Verdict: accept`n`nChecked."))
+            Set-Responses @(New-ReadinessSteps -Reviews $reviews)
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7 -ReviewRecordPattern '^Verdict: accept$') 'ReviewRecord').Result | Should Be 'PASS'
+        }
+        It 'does not treat a review without a body as a verdict in a custom format' {
+            $reviews = @((New-RecordReview -Body "Verdict: accept`n`nChecked."), (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -Body ''))
+            Set-Responses @(New-ReadinessSteps -Reviews $reviews)
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7 -ReviewRecordPattern '^Verdict: accept$') 'ReviewRecord').Result | Should Be 'PASS'
+        }
         It 'counts a new acceptance after a rejection' {
             $reviews = @((New-RecordReview -Id 5 -Body "Review record: $script:HeadSha changes"),
                 (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z'))
@@ -2804,6 +2843,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 @('tests/Nvt.Core.Avalonia.Tests/Theme/Baseline/ThemeTokens.xml', 'theme baseline xml'),
                 @('tests/Nvt.Core.Tests/Files/RootedPathGuardTests.cs', 'guard test'),
                 @('tests/Nvt.Core.Tests/Architecture/LayerTests.cs', 'architecture folder'),
+                @('tests/Nvt.Core.TestSupport.Tests/PublicApiTests.cs', 'public api test'),
+                @('tests/Nvt.Core.Tests/Launcher/LauncherPublicSurfaceTests.cs', 'public surface test'),
                 @('docs/core/adr/0001-record.md', 'nested adr'), @('docs/adr/0002-record.md', 'adr'))) {
             It "refuses a Core PR that changes a protected path ($($case[1])), and makes no merge call" {
                 Set-CoreScope

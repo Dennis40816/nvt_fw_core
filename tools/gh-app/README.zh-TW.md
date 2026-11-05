@@ -162,11 +162,12 @@ Sync-GhAppLabels -DefinitionPath .\tools\gh-app\labels.json -Apply -IssuesLogPat
 | `Author` | 作者是 `botLogin` |
 | `Head` | head 等於 `-ExpectedHeadSha`;沒有這個參數時，這一列只顯示 head |
 | `MergeState` | merge state 是 `CLEAN`、`BLOCKED`、`UNSTABLE` 或 `HAS_HOOKS`。Owner 核准前 `BLOCKED` 是正常的。`BEHIND` 不通過，因為合併時 head 會改變。`DIRTY` 與 `UNKNOWN` 不通過。 |
-| `ReviewRecord` | head 這個 commit 上最新的結論是接受：狀態為 `COMMENTED` 或 `APPROVED` 的 review，第一行符合 pattern |
+| `ReviewRecord` | head 這個 commit 上最新的結論是接受：狀態為 `COMMENTED` 或 `APPROVED` 的 review，第一個非空行符合 pattern |
 | `Run: <workflow>` | 該 workflow 在這個 head 上最新的一次 run 已完成，結論是 `success` |
 
 各 repository 的 review record 格式不同，所以模組不寫死格式。
-`-ReviewRecordPattern` 是正規表示式，只對 review 內容的第一行區分大小寫比對。第一行是拒絕、後面才引用接受的 review 不會通過。
+`-ReviewRecordPattern` 是正規表示式，只對 review 內容的第一個非空行區分大小寫比對。前面的空白行會略過，第一個非空行是拒絕、後面才引用接受的 review 不會通過。
+預設格式也讓模組知道拒絕長什麼樣子（`Review record: <head> <其他結論>`）。自訂 pattern 只描述接受，所以用自訂 pattern 時，該 head 上較晚的、有內文的 review，或被 dismissed、或是 `CHANGES_REQUESTED` 的 review，都算一次結論，會取消較早的接受。沒有內文的 review（例如 inline comment 的容器）不算。
 狀態為 `PENDING` 或 `DISMISSED` 的 review 永遠不算接受。同一個 head 上較晚的結論會取代較早的：`Review record: <head> <其他結論>`、`CHANGES_REQUESTED` review 或被撤銷的紀錄，都會取消它之前的接受；之後再出現新的接受就重新算。
 Pattern 裡的 `{HEAD}` 會換成 head SHA。
 預設是 `^Review record: {HEAD} accept\b`。
@@ -353,7 +354,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
    - 專案與建置檔：`.sln`、`.slnx`、`.csproj`、`.props`、`.targets`、`.ruleset`、`.globalconfig`、`.rsp`、`.slnf`、`.axaml`；
    - repository 檔案：`Directory.*`、`global.json`、`nuget.config`、`packages.lock.json`、`.editorconfig`、`.gitattributes`、`.gitignore`、`.gitmodules`、`CODEOWNERS`、`CHANGELOG.md`、`VERSION`、`AGENTS.md`、`CLAUDE.md`、`CONTRIBUTING.md`、`SECURITY.md`、`LICENSE*`、`PublicAPI*.txt`；
    - 測試基礎設施：`tests/approval-check/`（必要的自我測試）與 `tests/Nvt.Core.TestSupport/`（會被打包的函式庫）；
-   - `tests/` 底下路徑含 `guard`、`baseline`、`ratchet` 或 `contract` 的所有檔案（包含 Theme 契約測試與它的 baseline XML）；
+   - `tests/` 底下路徑含 `guard`、`baseline`、`ratchet`、`contract`、`publicapi` 或 `publicsurface` 的所有檔案（包含 Theme 契約測試與它的 baseline XML，以及釘住公開 API 的測試）；
    - 任何 `Architecture/` 資料夾；
    - `docs/governance/`，以及任何深度的 `adr` 資料夾。
    兩個債務帳本只能減少行數：帳本增加一行，或被新增、刪除、改名，以 `is a debt ledger and gains lines or is added, removed or renamed` 拒絕。
@@ -361,7 +362,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
    其他 repository 沒有這道底線。
 2. PR 是開啟的、已 Ready（不是 draft），而且作者是 App。
 3. head 等於 `-ExpectedHeadSha`。
-4. 該 head 上最新的結論是一則第一行為 `Review record: <head> accept`、狀態為 `COMMENTED` 或 `APPROVED` 的 review（預設格式，可用 `-ReviewRecordPattern` 取代）。較晚的拒絕或撤銷會取消它。
+4. 該 head 上最新的結論是一則第一個非空行為 `Review record: <head> accept`、狀態為 `COMMENTED` 或 `APPROVED` 的 review（預設格式，可用 `-ReviewRecordPattern` 取代）。較晚的拒絕或撤銷會取消它。
 5. 該 head 上每個 workflow 的最新一次 run 都成功完成。較舊的失敗 run 不算。
 6. 沒有未解決的 review 討論串。讀不到討論串數量時也拒絕。
 7. 合併狀態是 `CLEAN`。這比 `Get-GhAppPullRequestReadiness` 嚴，後者也接受 `BLOCKED`。

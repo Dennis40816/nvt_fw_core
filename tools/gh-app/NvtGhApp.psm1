@@ -350,7 +350,8 @@ $script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
 # whatever the tier check said, because the tier check is outside this repository. It mirrors the A paths of the tier check for Core.
 # The groups: code and tooling folders (actions holds the shared CI actions); eng except the named debt ledgers; project and build files;
 # repository configuration and release files; the test support library (it is packed) and the approval-check self-test; tests whose
-# path names a guard, a baseline, a ratchet or a contract (this holds the Theme contract tests and their baseline XML); Architecture folders;
+# path names a guard, a baseline, a ratchet, a contract, a public API or a public surface (this holds the Theme contract tests and their
+# baseline XML, and the tests that pin the exported API); Architecture folders;
 # governance and ADR documents at any depth.
 $script:CoreProtectedPathGroups = [ordered]@{
     Folders  = '^(src|tools|actions|\.github|\.agents|\.claude|\.codex|scripts|third-party|profiles)/'
@@ -358,7 +359,7 @@ $script:CoreProtectedPathGroups = [ordered]@{
     Build    = '\.(sln|slnx|csproj|props|targets|ruleset|globalconfig|rsp|slnf|axaml)$'
     Config   = '(^|/)(Directory\.[A-Za-z.]+|global\.json|nuget\.config|packages\.lock\.json|\.editorconfig|\.gitattributes|\.gitignore|\.gitmodules|CODEOWNERS|CHANGELOG\.md|VERSION|AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|LICENSE[^/]*|PublicAPI[^/]*\.txt)$'
     TestInfra = '^tests/approval-check/|^tests/Nvt\.Core\.TestSupport/'
-    Contracts = '^tests/.*(guard|baseline|ratchet|contract)'
+    Contracts = '^tests/.*(guard|baseline|ratchet|contract|publicapi|publicsurface)'
     Architecture = '(^|/)Architecture/'
     Documents = '^docs/governance/|^docs/(.+/)?adr/'
 }
@@ -418,7 +419,8 @@ function Get-GhAppLatestRuns {
 function Get-GhAppReadiness {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$ExpectedHeadSha, [string]$ReviewRecordPattern)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-    if ([string]::IsNullOrEmpty($ReviewRecordPattern)) { $ReviewRecordPattern = $script:DefaultReviewRecordPattern }
+    $custom = -not [string]::IsNullOrEmpty($ReviewRecordPattern)
+    if (-not $custom) { $ReviewRecordPattern = $script:DefaultReviewRecordPattern }
     $pattern = $ReviewRecordPattern.Replace('{HEAD}', [regex]::Escape($head))
     $checks = [Collections.Generic.List[object]]::new()
     $checks.Add((New-GhAppCheckRow 'State' ($Pr.state -ceq 'OPEN') "state is $($Pr.state)"))
@@ -438,15 +440,21 @@ function Get-GhAppReadiness {
     $checks.Add((New-GhAppCheckRow 'MergeState' ($Pr.mergeStateStatus -cin @('CLEAN', 'BLOCKED', 'UNSTABLE', 'HAS_HOOKS')) $stateDetail))
 
     $reviews = @(Get-GhAppItems $Context "pulls/$Number/reviews")
-    # Only the first line of a review counts, so a rejection that quotes an acceptance cannot pass. A review counts as an acceptance
-    # in state COMMENTED or APPROVED only. A later verdict on the same head replaces an earlier one: a rejection (the default format
-    # with another verdict, or CHANGES_REQUESTED) and a dismissed record both cancel the acceptance before them.
+    # Only the first non-empty line of a review counts (the NFU record rule), so a rejection that quotes an acceptance cannot pass.
+    # A review counts as an acceptance in state COMMENTED or APPROVED only. A later verdict on the same head replaces an earlier one:
+    # a rejection and a dismissed record both cancel the acceptance before them.
+    # What a rejection looks like is known for the default format only (`Review record: <head> <verdict>`). A custom pattern names
+    # the acceptance and nothing else, so with a custom pattern every review on the head that has a body, a dismissed or a
+    # CHANGES_REQUESTED state is a verdict, and the latest one decides. A review without a body (the container of inline comments)
+    # is not a verdict.
     $accept = [regex]::new($pattern, [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))
     $verdict = [regex]::new('^Review record: ' + [regex]::Escape($head) + ' \S+', [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))
     $verdicts = @(foreach ($review in @($reviews | Where-Object { $_.state -cne 'PENDING' -and [string]$_.commit_id -ceq $head })) {
-        $firstLine = ([string]$review.body -split "\r?\n")[0]
+        $lines = @([string]$review.body -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 })
+        $firstLine = $(if ($lines.Count -gt 0) { [string]$lines[0] } else { '' })
         $isAccept = ($review.state -cin @('COMMENTED', 'APPROVED')) -and $accept.IsMatch($firstLine)
-        if ($isAccept -or $review.state -ceq 'CHANGES_REQUESTED' -or $verdict.IsMatch($firstLine)) {
+        $isOther = $verdict.IsMatch($firstLine) -or ($custom -and ($firstLine.Length -gt 0 -or $review.state -ceq 'DISMISSED'))
+        if ($isAccept -or $review.state -ceq 'CHANGES_REQUESTED' -or $isOther) {
             $stamp = $(if ($null -ne $review.PSObject.Properties['submitted_at'] -and $review.submitted_at) { [DateTimeOffset]$review.submitted_at } else { [DateTimeOffset]::MinValue })
             [pscustomobject]@{ Review = $review; Accept = $isAccept; Time = $stamp; Id = [long]$review.id }
         }
