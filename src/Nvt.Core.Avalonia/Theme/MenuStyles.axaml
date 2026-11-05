@@ -189,7 +189,8 @@
       <ControlTemplate><Border Name="MenuSeparator" Background="{TemplateBinding Background}" /></ControlTemplate>
     </Setter>
   </Style>
-  <Style Selector="MenuItem.reducedMotion /template/ Border#PART_LayoutRoot, .reducedMotion MenuItem /template/ Border#PART_LayoutRoot">
+  <!-- The gesture text fades with the row background, so it stops fading when the row background does. -->
+  <Style Selector="MenuItem.reducedMotion /template/ Border#PART_LayoutRoot, .reducedMotion MenuItem /template/ Border#PART_LayoutRoot, MenuItem.reducedMotion /template/ TextBlock#PART_InputGestureText, .reducedMotion MenuItem /template/ TextBlock#PART_InputGestureText">
     <Setter Property="Transitions" Value="{x:Null}" />
   </Style>
   <Style Selector="MenuItem.reducedMotion, .reducedMotion MenuItem">

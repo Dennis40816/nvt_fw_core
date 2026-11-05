@@ -783,7 +783,7 @@ Pill 表面圓角為 8 DIP，Square 為 6 DIP。
 
 靜止使用 `Nvt.Interaction.RestBrush`。滑鼠移入、鍵盤焦點與子選單展開使用 `Nvt.Interaction.HoverBrush`。
 原生選單選取（`:selected`）不填色。按下使用 `Nvt.Interaction.PressedBrush`。
-狀態底色出現時，快速鍵文字改用 `NfcTextBrush`。文字與列底色一起淡入淡出（150 ms），淡入過程中不會出現淡色文字落在滑入底色上的畫格。
+狀態底色出現時，快速鍵文字改用 `NfcTextBrush`。文字與列底色一起淡入淡出（150 ms），淡入過程中不會出現淡色文字落在滑入底色上的畫格。項目或任一祖先加上 `.reducedMotion` 時，文字淡入與列底色淡入一起停止。
 停用內容使用 `NfcTextDisabledBrush`，opacity 維持 1。
 勾選項目沒有底色，沿用一般前景，只用勾號表示狀態。
 12 DIP 勾號置於固定 20 DIP 欄位，與標籤留 8 DIP 間距；圖示保留自己的 20 DIP 欄。

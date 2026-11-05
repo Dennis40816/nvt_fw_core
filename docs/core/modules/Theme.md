@@ -783,7 +783,7 @@ Transparent shadow space surrounds the surface. Popup offsets compensate for tha
 
 Rest uses `Nvt.Interaction.RestBrush`. Pointer over, keyboard focus and an open submenu use `Nvt.Interaction.HoverBrush`.
 Native menu selection (`:selected`) paints no fill. Pressed uses `Nvt.Interaction.PressedBrush`.
-While a state fill shows, the input gesture text takes `NfcTextBrush`. It fades with the row background (150 ms), so no frame of the fade puts muted text on the hover fill.
+While a state fill shows, the input gesture text takes `NfcTextBrush`. It fades with the row background (150 ms), so no frame of the fade puts muted text on the hover fill. `.reducedMotion` on the item or an ancestor stops this fade together with the row background fade.
 Disabled content uses `NfcTextDisabledBrush` with opacity 1.
 Checked items carry no fill and keep the normal foreground. Only the check mark shows the state.
 The 12 DIP check sits in a fixed 20 DIP slot with an 8 DIP label gap. Icons retain their own 20 DIP slot.
