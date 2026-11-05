@@ -357,6 +357,14 @@ The record goes below the request it belongs to:
 - One merge call per PR runs at a time. A lock file next to the ledger (`<ledger>.<owner>_<repo>_<number>.lock`) makes a second call stop with `another merge of this pull request is running`.
 
 The merge log adds `#N owner approval <id> reused from <S> (tree-equal); merged head <H>`.
+
+The proof holds for one base, and the GitHub merge API binds only the head. So a reuse merge narrows the window, and does not close it:
+
+- Right before it sends the merge, the function reads the pull request again. If the base is not the one that the proof used, it stops with `the base branch moved after the reuse proof`. The merge is not sent and nothing is spent. Make a new proof or ask for a new approval.
+- After the merge, it compares the tree of the merge commit with the tree of "proven base + merged head". A difference is logged as `TREE MISMATCH after reuse`, a warning is written, and the result has `TreeMismatch = $true`. The merge cannot be undone and the approval is spent, so tell PC-Commander.
+- The function returns one object per merged PR: `Number`, `Head`, `MergeCommit`, `Reused`, `TreeMismatch`.
+- Known limitation: the base can still move between the last read and the merge. No server-side precondition on the base exists.
+
 A ledger entry with an unknown `kind` for the PR stops the merge, because an older reader would not know what it means.
 
 `-Worktree` is mandatory and names a local clone with complete history.
@@ -371,10 +379,11 @@ Update failure or `DIRTY` stops with “manual resolution requires owner approva
 After an update, the module proves the new head and waits for its required checks.
 
 The function waits for required checks and a clean merge state.
-A repository can have no required checks. Then `gh pr checks --required` prints nothing, says `no required checks reported` and exits 1. The function treats exactly that answer as a state, not a failure: it reads all checks of the head instead.
+A repository can have no required checks. Then `gh pr checks --required` prints nothing, says `no checks reported on the '<branch>' branch` (gh 2.92.0; older wording: `no required checks reported on the '<branch>' branch`) and exits 1. The function treats exactly that answer as a state, not a failure: it reads all checks of the head instead.
+The match is the whole message, case-sensitive, with exit code 1. Text before or after it, a second line, another exit code or another case is a failure.
 Any other failure with no list (a failed login, a lost network, an unknown message) stops the merge with `HTTP unknown`, in both calls. It never counts as “no checks”.
 Failed or cancelled checks among them stop the merge (`checks failed`), and pending ones are waited for.
-When the head has no check at all (`no checks reported`), the ruleset decides, and the merge state `CLEAN` says it is met.
+When the head has no check at all (the same message in the second call), the ruleset decides, and the merge state `CLEAN` says it is met.
 It rechecks the ledger, approval, and history after checks before merging with `sha` equal to H.
 Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.

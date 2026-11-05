@@ -1301,7 +1301,7 @@ function Enter-GhAppPullRequestLock {
 }
 
 # The checks of a pull request as gh reports them. An empty list is "no check" only when gh says so (exit 0, or its
-# own "no checks reported" message). Any other failure with no list is an error: a failed login or a lost network
+# own "no checks reported on the '<branch>' branch" message, exit code 1). Any other failure with no list is an error: a failed login or a lost network
 # must never look like a repository without checks.
 function Read-GhAppChecks {
     param([hashtable]$Context, [int]$Number, [string]$ApiPath, [switch]$Required)
@@ -1316,8 +1316,10 @@ function Read-GhAppChecks {
     }
     $checks = @($checks | Where-Object { $null -ne $_ })
     if ($checks.Count -eq 0 -and $result.ExitCode -ne 0) {
-        $noChecks = $(if ($Required) { 'no required checks reported' } else { 'no checks reported' })
-        if ([string]$result.ErrorText -notmatch "(?i)\b$noChecks\b") { throw "HTTP unknown $ApiPath" }
+        # The whole message, case-sensitive, with exit code 1. gh 2.92.0 prints "no checks reported on the '<branch>' branch"
+        # for both calls; the "no required checks reported ..." wording is accepted too.
+        $noChecks = "^no (required )?checks reported on the '[^'\r\n]+' branch$"
+        if ($result.ExitCode -ne 1 -or ([string]$result.ErrorText).Trim() -cnotmatch $noChecks) { throw "HTTP unknown $ApiPath" }
     }
     [pscustomobject]@{ Checks = $checks; ExitCode = $result.ExitCode }
 }
@@ -1471,6 +1473,16 @@ function Merge-GhAppApprovedPullRequest {
             $evidence = Wait-GhAppApprovedHead $context $number $pr $Worktree $LedgerPath $TimeoutSeconds $PollSeconds
             $pr = $evidence.Pr
             $head = Assert-GhAppSha "head of #$number" $pr.headRefOid
+            $provenBase = $null
+            if ($null -ne $evidence.Reuse) {
+                # The reuse proof holds for the base it was made against. The merge API binds only the head, so read the base
+                # once more right before the merge and refuse when it moved. A smaller window than before, not a closed one.
+                $provenBase = Assert-GhAppSha "base of #$number" $pr.baseRefOid
+                $now = Get-GhAppPullRequest $context $number
+                if ($now.headRefOid -cne $head -or $now.baseRefOid -cne $provenBase) {
+                    throw "#$number stop: the base branch moved after the reuse proof ($provenBase -> $($now.baseRefOid)); a new owner approval or a new proof is required."
+                }
+            }
             $merged = Invoke-GhAppApi $context PUT "pulls/$number/merge" @{ merge_method = 'merge'; sha = $head } -AsApp
             if (-not $merged.merged) { throw "#$number stop: merge failed." }
             $mergeSha = Assert-GhAppSha "merge commit of #$number" $merged.sha
@@ -1479,13 +1491,28 @@ function Merge-GhAppApprovedPullRequest {
             Write-GhAppMergeLog $LogPath "#$number merged $head -> $mergeSha"
             $approvedAt = ([DateTimeOffset]$evidence.Approval.submitted_at).ToUniversalTime().ToString('o')
             Write-GhAppMergeLog $LogPath "#$number review requested at $($evidence.Request.Head); approved $approvedAt; merged head $head; differences only from $($evidence.Request.Base)"
+            $treeMismatch = $false
             if ($null -ne $evidence.Reuse) {
                 Write-GhAppMergeLog $LogPath "#$number owner approval $($evidence.Reuse.ApprovalId) reused from $($evidence.Reuse.From) ($($evidence.Reuse.Mode)); merged head $head"
+                # The merge is done and the approval is spent. Compare what GitHub merged with the tree that was proven, and
+                # flag a difference. It cannot be undone here, so the flag is for the people who read the log and the result.
+                $mergedTree = $null
+                $provenTree = $null
+                try {
+                    $mergedTree = Assert-GhAppSha 'merge commit tree' (Invoke-GhAppApi $context GET "git/commits/$mergeSha").tree.sha
+                    $provenTree = Get-GhAppIntegratedTree $Worktree $provenBase $head
+                } catch { Write-GhAppMergeLog $LogPath "#$number reuse tree check could not run: $($_.Exception.Message)" }
+                if ($mergedTree -cne $provenTree) {
+                    $treeMismatch = $true
+                    Write-GhAppMergeLog $LogPath "#$number TREE MISMATCH after reuse: merge commit $mergeSha has tree $mergedTree; proven base $provenBase + head $head gives $provenTree. Review this merge."
+                    Write-Warning "#$number tree mismatch after approval reuse: merge commit $mergeSha differs from the proven result. Tell PC-Commander."
+                }
                 Add-GhAppReuseRecord $context $LedgerPath $number $evidence.Reuse
             }
             $observation = Get-GhAppTimelineObservation $context $number $evidence.Approval
             Write-GhAppMergeLog $LogPath "#$number timeline observation only: last PullRequestCommit before approval $observation"
             $null = Remove-GhAppBranchAfterMerge $context $number $pr $head $LogPath $DeleteBranchPrefix
+            [pscustomobject]@{ Number = $number; Head = $head; MergeCommit = $mergeSha; Reused = ($null -ne $evidence.Reuse); TreeMismatch = $treeMismatch }
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
             throw

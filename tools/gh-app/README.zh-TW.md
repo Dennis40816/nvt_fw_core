@@ -305,6 +305,13 @@ GitHub 可能把 review 的 `commit_id` 移到新 head，因此不能用該欄�
 - 同一個 PR 同一時間只能有一個合併呼叫。ledger 旁的鎖檔（`<ledger>.<owner>_<repo>_<number>.lock`）讓第二個呼叫以 `another merge of this pull request is running` 停止。
 
 合併日誌多一行 `#N owner approval <id> reused from <S> (tree-equal); merged head <H>`。
+
+證明只對一個 base 成立，而 GitHub 的 merge API 只綁定 head。所以 reuse 合併是縮小風險視窗，不是關閉它：
+
+- 送出合併前一刻，函式再讀一次 PR。base 與證明時不同就以 `the base branch moved after the reuse proof` 停止。不送合併、不用掉核准。請重新證明或要求新的核准。
+- 合併後，比較 merge commit 的 tree 與「證明時的 base + 合併的 head」的 tree。不同時寫入日誌 `TREE MISMATCH after reuse`、發出警告，回傳值的 `TreeMismatch` 為 `$true`。合併無法撤回、核准已用掉，請通知 PC-Commander。
+- 函式對每個已合併的 PR 回傳一個物件：`Number`、`Head`、`MergeCommit`、`Reused`、`TreeMismatch`。
+- 已知限制：最後一次讀取到合併之間，base 仍可能移動。GitHub 沒有以 base 為條件的伺服器端機制。
 PR 的 ledger 出現未知 `kind` 時停止合併，因為舊版讀取器無法理解它。
 
 必要參數 `-Worktree` 指定具完整歷史的本機 clone。
@@ -316,10 +323,11 @@ S 之後出現非 merge commit、second parent 不在 base、merge tree 被修�
 每個 PR 最多更新三次。更新失敗或 `DIRTY` 會以「manual resolution requires owner approval」中止。
 更新後先證明新 head，再等待該 head 的必要 checks。
 模組等待必要 checks 通過及 merge state 為 clean，並在合併前重新核對 ledger、核准與歷史，再以 `sha` 等於 H 合併。
-repository 可能沒有設定必要 checks。這時 `gh pr checks --required` 沒有輸出、訊息為 `no required checks reported`、結束碼為 1。模組只把這個明確的回答當成一種狀態，不當成失敗，改讀該 head 的全部 checks。
+repository 可能沒有設定必要 checks。這時 `gh pr checks --required` 沒有輸出、訊息為 `no checks reported on the '<branch>' branch`（gh 2.92.0；舊寫法是 `no required checks reported on the '<branch>' branch`）、結束碼為 1。模組只把這個明確的回答當成一種狀態，不當成失敗，改讀該 head 的全部 checks。
+比對的是整句訊息，區分大小寫，且結束碼要是 1。前後多出文字、有第二行、結束碼不同或大小寫不同，都算失敗。
 其他沒有清單的失敗（登入失敗、斷線、不認得的訊息）在兩次呼叫中都以 `HTTP unknown` 停止合併，絕不當成「沒有 checks」。
 其中有失敗或取消就停止（`checks failed`），有進行中就等待。
-該 head 完全沒有 check（`no checks reported`）時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
+該 head 完全沒有 check（第二次呼叫也是同一句訊息）時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
 合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支，函式會對每個保留的分支印出警告。
