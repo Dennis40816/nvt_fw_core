@@ -64,7 +64,16 @@ Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
     -RemoteParent '<REMOTE_PARENT_SHA>' -Branch 'build/example' `
     -MessageFile .\message.txt -IncludeWorkflowsWrite -WorkflowsLogPath .\workflows-write.log
 ```
-已開啟 PR 需要 `-AllowOpenPr`。任何 owner review 都會禁止 push，即使有這個選項。
+已開啟 PR 需要 `-AllowOpenPr`。任何 owner review 都會禁止 push，即使有這個選項，只有兩個例外。
+兩個例外都保留 owner 看過的內容，也都仍需要 `-AllowOpenPr`：
+
+- `base-merge`：推出的 commit 是舊 head 加一個乾淨的 base merge。舊 head 是審核請求的 head，或從它出發的乾淨鏈。第二個 parent（`-ExtraParent`）已包含在 base 分支裡。推出的樹與重算的 merge 樹相同。這與合併證明的規則相同，不需要 patch-id。
+- `rebase`：推出的樹的 patch-id 等於審核請求記下的 patch-id。沒有 patch-id 的舊登記無法證明，所以會被拒絕。
+
+推出的 commit 還不存在，所以函式在本機建立一個樹與 parent 相同的探測 commit。探測 commit 不改任何 ref。`git patch-id` 與合併證明一樣忽略空白。
+函式從 ledger（`-LedgerPath`，預設值與其他函式相同）讀審核請求。
+符合例外時，函式在推送前往 push log 附加一行：`<時間> push after owner review kind=base-merge|rebase pr=#N branch=B parents=...`。檔案是 `-PushLogPath`，預設為 ledger 旁的 `push-after-review.log`。回傳物件的 `OwnerReviewPush` 帶有種類。
+其他在 owner review 之後的推送一律以 `#N has an owner review; push refused. Open a follow-up PR instead.` 拒絕，包括內容有改、ledger 沒有該 PR 的登記，以及任何無法證明內容的情況。
 
 ```powershell
 Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
@@ -303,6 +312,9 @@ S 之後出現非 merge commit、second parent 不在 base、merge tree 被修�
 每個 PR 最多更新三次。更新失敗或 `DIRTY` 會以「manual resolution requires owner approval」中止。
 更新後先證明新 head，再等待該 head 的必要 checks。
 模組等待必要 checks 通過及 merge state 為 clean，並在合併前重新核對 ledger、核准與歷史，再以 `sha` 等於 H 合併。
+repository 可能沒有設定必要 checks。這時 `gh pr checks --required` 沒有輸出且結束碼為 1。模組把它當成一種狀態，不當成失敗，改讀該 head 的全部 checks。
+其中有失敗或取消就停止（`checks failed`），有進行中就等待。
+該 head 完全沒有 check 時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
 合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支，函式會對每個保留的分支印出警告。

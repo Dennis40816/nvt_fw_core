@@ -70,8 +70,16 @@ An existing ref advances with `force=false`.
 Only an HTTP 404 permits creating a missing ref.
 
 An open PR blocks a push unless `-AllowOpenPr` is present.
-Any owner review blocks a push even with that switch.
-Use a follow-up PR after the owner has reviewed the original PR.
+Any owner review blocks a push even with that switch, with two exceptions.
+Both keep the content that the owner reviewed, and both still need `-AllowOpenPr`:
+
+- `base-merge`: the pushed commit is the old head plus one clean merge of the base branch. The old head is the review request head, or a clean chain from it. The second parent (`-ExtraParent`) is contained in the base branch. The pushed tree is the recomputed merge tree. This is the rule of the merge proof, and it needs no patch-id.
+- `rebase`: the pushed tree has the patch-id that the review request recorded. A request recorded without a patch-id cannot prove this, so a legacy registration is refused.
+
+The pushed commit does not exist yet, so the function builds a local probe commit with the same tree and parents. The probe changes no ref. `git patch-id` ignores white space, as in the merge proof.
+The function reads the review request from the ledger (`-LedgerPath`, default as for the other functions).
+When an exception applies, the function appends one line to the push log before it pushes: `<time> push after owner review kind=base-merge|rebase pr=#N branch=B parents=...`. The log is `-PushLogPath`, default `push-after-review.log` beside the ledger. The result has the kind in `OwnerReviewPush`.
+Every other push after an owner review is refused with `#N has an owner review; push refused. Open a follow-up PR instead.` That includes a push whose content changed, a PR with no ledger entry, and any failure to prove the content.
 `-ExtraParent` adds a second parent for a merge commit.
 
 ### Pushing a workflow file
@@ -359,6 +367,9 @@ Update failure or `DIRTY` stops with “manual resolution requires owner approva
 After an update, the module proves the new head and waits for its required checks.
 
 The function waits for required checks and a clean merge state.
+A repository can have no required checks. Then `gh pr checks --required` prints nothing and exits 1. The function treats this as a state, not a failure: it reads all checks of the head instead.
+Failed or cancelled checks among them stop the merge (`checks failed`), and pending ones are waited for.
+When the head has no check at all, the ruleset decides, and the merge state `CLEAN` says it is met.
 It rechecks the ledger, approval, and history after checks before merging with `sha` equal to H.
 Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.

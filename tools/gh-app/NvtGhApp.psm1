@@ -716,12 +716,52 @@ function Write-GhAppCommit {
     [pscustomobject]@{ Files = $changes.Count; Tree = $treeSha; Commit = $commitSha }
 }
 
+# An owner review closes the branch to pushes. Two pushes keep the content that the owner saw, so they stay allowed:
+#   base-merge  the pushed commit is the old head plus one clean merge of the base branch. This is the rule of
+#               Assert-GhAppReviewHistory: the old head is the review request head (or a clean chain from it), the second
+#               parent is contained in the base, and the pushed tree is the recomputed merge tree.
+#   rebase      the pushed commit has the patch-id that the review request recorded. A rebase leaves the patch-id alone.
+#               A request recorded without a patch-id cannot prove it.
+# The pushed commit does not exist yet, so a probe commit with the same tree and parents stands in for it. The probe is
+# a local object only. The function returns the kind, or $null for every other push and for any failure to prove one.
+function Get-GhAppReviewedPushKind {
+    param([hashtable]$Context, $Pr, [string]$Worktree, [string]$LedgerPath, [string[]]$Parents)
+    try {
+        $number = [int]$Pr.number
+        $request = Get-GhAppReviewRequest $Context $number $LedgerPath
+        $baseRef = [string]$Pr.base.ref
+        $baseSha = Assert-GhAppSha "base of #$number" $Pr.base.sha
+        if ($baseRef -cne $request.Base) { return $null }
+        Sync-GhAppReviewCommits $Context $Worktree (@($Parents) + $baseSha)
+        $tree = Assert-GhAppSha 'local tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', 'HEAD^{tree}')).Trim()
+        if ($Parents.Count -eq 2) {
+            try {
+                $old = [pscustomobject]@{ headRefOid = $Parents[0]; baseRefName = $baseRef; baseRefOid = $baseSha }
+                $null = Assert-GhAppReviewHistory $Context $number $Worktree $old $request
+                $contained = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $Parents[1], $baseSha) -AllowedExitCodes @(0, 1) -Result
+                if ($contained.ExitCode -eq 0) {
+                    $merge = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-tree', '--write-tree', $Parents[0], $Parents[1]) -AllowedExitCodes @(0, 1) -Result
+                    if ($merge.ExitCode -eq 0 -and (Assert-GhAppSha 'recomputed merge tree' ($merge.Output.Split("`n")[0].Trim())) -ceq $tree) { return 'base-merge' }
+                }
+            } catch { }
+        }
+        if ($request.PatchId) {
+            $probeArguments = @('-c', 'user.name=gh-app', '-c', 'user.email=gh-app@example.invalid', '-c', 'commit.gpgSign=false', 'commit-tree', $tree)
+            foreach ($parent in $Parents) { $probeArguments += @('-p', $parent) }
+            $probeArguments += @('-m', 'probe')
+            $probe = Assert-GhAppSha 'probe commit' (Invoke-GhAppGit $Worktree $probeArguments).Trim()
+            if ((Get-GhAppPatchId $Worktree $probe $baseSha) -ceq $request.PatchId) { return 'rebase' }
+        }
+        return $null
+    } catch { return $null }
+}
+
 function Push-GhAppBranch {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Worktree, [Parameter(Mandatory)][string]$LocalBase,
         [Parameter(Mandatory)][string]$RemoteParent, [Parameter(Mandatory)][string]$Branch,
         [Parameter(Mandatory)][string]$MessageFile, [string]$ExtraParent, [switch]$AllowOpenPr,
-        [switch]$IncludeWorkflowsWrite, [string]$WorkflowsLogPath,
+        [switch]$IncludeWorkflowsWrite, [string]$WorkflowsLogPath, [string]$LedgerPath, [string]$PushLogPath,
         [Alias('Repo')][string]$Repository)
     $context = Get-GhAppContext $Repository
     $parents = @(Assert-GhAppSha 'RemoteParent' $RemoteParent)
@@ -749,10 +789,28 @@ function Push-GhAppBranch {
     }
     $headFilter = [Uri]::EscapeDataString("$($context.owner):$Branch")
     $open = @(Get-GhAppItems $context "pulls?state=open&head=$headFilter")
+    $reviewedKind = $null
+    $reviewedLog = $null
     foreach ($pr in $open) {
         $reviews = @(Get-GhAppItems $context "pulls/$($pr.number)/reviews" | Where-Object { $_.user.login -ieq $context.owner })
-        if ($reviews.Count -gt 0) { throw "#$($pr.number) has an owner review; push refused. Open a follow-up PR instead." }
+        if ($reviews.Count -gt 0) {
+            # Only a push that keeps the reviewed content passes: a clean base merge or a rebase with the recorded patch-id.
+            $kind = $null
+            try {
+                $ledger = Get-GhAppLedgerPath $context $LedgerPath
+                $kind = Get-GhAppReviewedPushKind $context $pr $Worktree $ledger $parents
+                if ($PushLogPath) { $reviewedLog = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PushLogPath) }
+                else { $reviewedLog = Join-Path (Split-Path $ledger) 'push-after-review.log' }
+            } catch { $kind = $null }
+            if ($null -eq $kind) { throw "#$($pr.number) has an owner review; push refused. Open a follow-up PR instead." }
+            $reviewedKind = $kind
+        }
         if (-not $AllowOpenPr) { throw "#$($pr.number) is open; push refused. Pass -AllowOpenPr only if it has not been sent to the owner." }
+        if ($null -ne $reviewedKind) {
+            $line = "$([DateTimeOffset]::UtcNow.ToString('o')) push after owner review kind=$reviewedKind pr=#$($pr.number) branch=$Branch parents=$($parents -join ',')"
+            try { [IO.File]::AppendAllText($reviewedLog, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false)) }
+            catch { throw 'The push log could not be written.' }
+        }
     }
     $result = Write-GhAppCommit $context $Worktree $LocalBase $parents $message
     $encodedBranch = [Uri]::EscapeDataString($Branch)
@@ -763,7 +821,7 @@ function Push-GhAppBranch {
     } else {
         $null = Invoke-GhAppApi $context POST 'git/refs' @{ ref = "refs/heads/$Branch"; sha = $result.Commit } -AsApp
     }
-    [pscustomobject]@{ Files = $result.Files; Tree = $result.Tree; Commit = $result.Commit; Branch = $Branch }
+    [pscustomobject]@{ Files = $result.Files; Tree = $result.Tree; Commit = $result.Commit; Branch = $Branch; OwnerReviewPush = $reviewedKind }
 }
 
 function New-GhAppPullRequest {
@@ -1245,6 +1303,21 @@ function Add-GhAppReuseRecord {
     Add-GhAppLedgerEntry $LedgerPath ([pscustomobject]$entry)
 }
 
+# The checks of a pull request as gh reports them. Empty output means no check, not a parse failure.
+function Read-GhAppChecks {
+    param([hashtable]$Context, [int]$Number, [string]$ApiPath, [switch]$Required)
+    $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)")
+    if ($Required) { $arguments += '--required' }
+    $arguments += @('--json', 'name,bucket,state')
+    $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $ApiPath -AllowedExitCodes @(0, 1, 8) -Read
+    $checks = @()
+    if (-not [string]::IsNullOrWhiteSpace($result.Output)) {
+        try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
+        catch { throw "HTTP unknown $ApiPath" }
+    }
+    [pscustomobject]@{ Checks = @($checks | Where-Object { $null -ne $_ }); ExitCode = $result.ExitCode }
+}
+
 function Wait-GhAppApprovedHead {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$Worktree, [string]$LedgerPath, [int]$TimeoutSeconds, [int]$PollSeconds)
     $deadline = (Get-GhAppUtcNow).AddSeconds($TimeoutSeconds)
@@ -1277,13 +1350,21 @@ function Wait-GhAppApprovedHead {
             continue
         }
         $path = "/repos/$($Context.owner)/$($Context.repo)/pulls/$Number/checks"
-        $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)", '--required', '--json', 'name,bucket,state')
-        $result = Invoke-GhAppGh -Context $Context -Arguments $arguments -ApiPath $path -AllowedExitCodes @(0, 1, 8) -Read
-        try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
-        catch { throw "HTTP unknown $path" }
-        if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: required checks failed." }
+        $required = Read-GhAppChecks $Context $Number $path -Required
+        $checks = $required.Checks
+        $checksExit = $required.ExitCode
+        $checkLabel = 'required checks'
+        if ($checks.Count -eq 0) {
+            # A repository with no required checks makes gh print nothing and exit 1. That is a state, not a failure:
+            # judge the head by all of its checks. With no check at all, the ruleset decides, and CLEAN says it is met.
+            $all = Read-GhAppChecks $Context $Number $path
+            $checks = $all.Checks
+            $checksExit = $(if ($checks.Count -eq 0) { 0 } else { $all.ExitCode })
+            $checkLabel = 'checks'
+        }
+        if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: $checkLabel failed." }
         $pending = @($checks | Where-Object { $_.bucket -notin @('pass', 'skipping') }).Count -gt 0
-        if (-not $pending -and $result.ExitCode -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
+        if (-not $pending -and $checksExit -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
             # Recheck both the head and the latest owner review after checking CI.
             $fresh = Get-GhAppPullRequest $Context $Number
             if ($fresh.headRefOid -ceq $current -and $fresh.baseRefOid -ceq $Pr.baseRefOid -and
