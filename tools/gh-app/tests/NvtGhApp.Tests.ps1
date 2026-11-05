@@ -1200,9 +1200,10 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             @((New-Review), (New-Review -State DISMISSED -Id 2))
         )) {
             It "rejects an absent, stale, or superseded owner approval ($($reviews.Count) records)" {
-                Set-Responses @((New-PrStep), (New-ReviewStep -Reviews $reviews))
+                # A dismissed latest review makes the module read the timeline once for the ruleset's own dismissal text.
+                Set-Responses @((New-PrStep), (New-ReviewStep -Reviews $reviews), (New-ApiStep 'issues/7/timeline?per_page=100&page=1' -Value @()))
                 Get-Message { Invoke-MergeFixture -Numbers @(7, 8) } | Should Be "#7 stop: no owner approval after review request $script:HeadSha."
-                @(Get-Calls).Count | Should Be 2
+                @(Get-Calls).Count | Should Be $(if (@($reviews | Where-Object { $_.state -eq 'DISMISSED' }).Count -gt 0) { 3 } else { 2 })
             }
         }
         It 'stops when an App branch update fails' {
@@ -1431,6 +1432,16 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $headParent = New-ReviewCommit @($headParent, $baseParent) "clean base merge $round"
             $script:BaseUpdateMerges += $headParent
         }
+        # Rebased heads: one parent, the new base, and the tree of the branch on that base.
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:CleanMerge)^{tree}")
+        $script:Rebased = New-ReviewCommit @($script:ReviewBase) 'rebased onto base'
+        Set-ReviewBlob 'unreviewed.txt' 'new feature'
+        $script:RebasedChanged = New-ReviewCommit @($script:ReviewBase) 'rebased with an extra change'
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:BaseUpdateMerges[0])^{tree}")
+        $script:RebasedAgain = New-ReviewCommit @($script:BaseUpdateCommits[0]) 'rebased again onto a newer base'
+        $rebasedMergeTree = (Invoke-GhAppGit $script:ReviewGitRoot @('merge-tree', '--write-tree', $script:Rebased, $script:BaseUpdateCommits[0])).Trim()
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', $rebasedMergeTree)
+        $script:RebasedMerge = New-ReviewCommit @($script:Rebased, $script:BaseUpdateCommits[0]) 'clean base merge on a rebased head'
         $null = Invoke-GhAppGit $script:ReviewGitRoot @('update-ref', 'HEAD', $script:ReviewedSha)
     }
     New-ReviewGitFixture
@@ -1562,9 +1573,11 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Add-LedgerFixture -Head $script:ReviewedSha
                 $steps = @(New-ReviewMergeSteps -Head $script:CleanMerge)
                 $steps[4] = New-ReviewStep -Reviews @((New-Review), (New-Review -State $state -Id 2))
+                # A dismissed review makes the module read the timeline for the ruleset's own dismissal text.
+                if ($state -eq 'DISMISSED') { $steps = @($steps[0..4]) + @(New-ApiStep 'issues/7/timeline?per_page=100&page=1' -Value @()) + @($steps[5..($steps.Count - 1)]) }
                 Set-Responses $steps
                 Get-Message { Invoke-ReviewMergeFixture } | Should Match 'no owner approval after review request'
-                @(Get-Calls).Count | Should Be 5
+                @(Get-Calls).Count | Should Be $(if ($state -eq 'DISMISSED') { 6 } else { 5 })
             }
         }
         It 'stops waiting for a new head when the PR is no longer behind after an update' {
@@ -2638,6 +2651,133 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 (New-ReviewStep -Reviews @((New-Review -Head $script:NextSha))))
             Get-Message { Invoke-ReviewMergeFixture } |
                 Should Be "#7 stop: owner approval is on $script:NextSha, not on review request $script:ReviewedSha or a clean base merge after it."
+        }
+    }
+
+    Describe 'Owner approval reuse once' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            # The fixtures already contain every object. Only fetching is replaced; patch-ids and proof use real Git.
+            Mock Sync-GhAppReviewCommits {}
+            Mock Get-GhAppTimelineObservation { 'unavailable' }
+            $script:PatchId = Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:ReviewBase
+        }
+        function Add-ReuseFixture {
+            param([string]$OldHead = $script:ReviewedSha, [string]$NewHead, [long]$ApprovalId = 1)
+            $entry = [ordered]@{ kind = 'reuse'; owner = $script:Owner; repo = $script:RepoName; number = 7; mode = 'patch-id';
+                oldHead = $OldHead; newHead = $NewHead; approvalId = $ApprovalId; reusedAt = '2026-01-01T02:00:00.0000000+00:00' }
+            [IO.File]::AppendAllText($script:LedgerFile, (ConvertTo-Json $entry -Compress) + "`n", [Text.UTF8Encoding]::new($false))
+        }
+        function New-TimelineStep {
+            param([string]$Message = 'The merge-base changed after approval.', [int]$ReviewId = 1, [string]$State = 'approved', [switch]$Empty)
+            $items = $(if ($Empty) { @() } else { @(@{ event = 'commented' }, @{ event = 'review_dismissed'; dismissed_review = @{ review_id = $ReviewId; state = $State; dismissal_message = $Message } }) })
+            New-ApiStep 'issues/7/timeline?per_page=100&page=1' -Value @($items)
+        }
+        function Get-ReuseLines { @([IO.File]::ReadAllLines($script:LedgerFile) | Where-Object { $_ -match '"kind":"reuse"' } | ForEach-Object { ConvertFrom-Json $_ }) }
+
+        It 'reuses a live approval once after a rebase that keeps the patch-id, and records it' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @(New-ReviewMergeSteps -Head $script:Rebased -Base $script:ReviewBase)
+            Invoke-ReviewMergeFixture
+            $reuse = @(Get-ReuseLines)
+            $reuse.Count | Should Be 1
+            $reuse[0].mode | Should Be 'patch-id'
+            $reuse[0].oldHead | Should Be $script:ReviewedSha
+            $reuse[0].newHead | Should Be $script:Rebased
+            $reuse[0].approvalId | Should Be 1
+            $reuse[0].patchId | Should Be $script:PatchId
+            $log = [IO.File]::ReadAllText($script:LogFile)
+            $log | Should Match "#7 owner approval 1 reused from $script:ReviewedSha \(patch-id\); merged head $script:Rebased"
+            $log | Should Match "#7 merged $script:Rebased -> $script:MergeSha"
+        }
+        It 'refuses a second reuse of the same approval for another rebased head' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedAgain -BaseHead $script:BaseUpdateCommits[0])),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: owner approval 1 was already reused for $script:Rebased; a new owner approval is required."
+            @(Get-ReuseLines).Count | Should Be 1
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'refuses a rebase that changes the patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedChanged -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: head $script:RebasedChanged is not review request $script:ReviewedSha or a clean base merge after it, and its patch-id differs from the request; owner approval and a new review request required."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'still needs a new approval after a rebase when the request has no patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:Rebased -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: head $script:Rebased adds commits after review request $script:ReviewedSha; owner approval and a new review request required."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'accepts a clean base merge on top of a reused head without another record' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            Set-Responses @(New-ReviewMergeSteps -Head $script:RebasedMerge -Base $script:BaseUpdateCommits[0])
+            Invoke-ReviewMergeFixture
+            @(Get-ReuseLines).Count | Should Be 1
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:RebasedMerge -> $script:MergeSha"
+        }
+        It 'keeps the reuse record of a request that a base carry registers again' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            (Get-GhAppReviewRequest (Get-GhAppContext '') 7 $script:LedgerFile).Reuses.Count | Should Be 1
+        }
+        It 'drops the reuse records when a new head is registered' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            Add-LedgerFixture -Head $script:CleanMerge -RequestedAt '2026-01-02T00:00:00Z'
+            (Get-GhAppReviewRequest (Get-GhAppContext '') 7 $script:LedgerFile).Reuses.Count | Should Be 0
+        }
+        It 'fails closed on a ledger entry of an unknown kind for the pull request' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            [IO.File]::AppendAllText($script:LedgerFile, '{"kind":"other","owner":"' + $script:Owner + '","repo":"' + $script:RepoName + '","number":7}' + "`n")
+            Get-Message { Get-GhAppReviewRequest (Get-GhAppContext '') 7 $script:LedgerFile } |
+                Should Be 'The review ledger contains an invalid entry or could not be read.'
+        }
+        It 'counts an approval that the ruleset dismissed because the merge base moved, and records it' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            $dismissed = @((New-Review -State DISMISSED -Head $script:ReviewedSha))
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)), (New-ReviewStep -Reviews $dismissed), (New-TimelineStep),
+                (New-ChecksStep), (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)), (New-ReviewStep -Reviews $dismissed), (New-TimelineStep),
+                (New-ApiStep pulls/7/merge PUT @{ merged = $true; sha = $script:MergeSha } -App),
+                (New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase -State MERGED)))
+            Invoke-ReviewMergeFixture
+            $reuse = @(Get-ReuseLines)
+            $reuse.Count | Should Be 1
+            $reuse[0].mode | Should Be 'dismissed'
+            $reuse[0].newHead | Should Be $script:ReviewedSha
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 owner approval 1 reused from $script:ReviewedSha \(dismissed\); merged head $script:ReviewedSha"
+        }
+        It 'does not count a dismissal that has another text' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -State DISMISSED -Head $script:ReviewedSha))), (New-TimelineStep -Message 'Dismissed by the owner.'))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be "#7 stop: no owner approval after review request $script:ReviewedSha."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'does not count a dismissal of another review or of a review that was not an approval' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            foreach ($timeline in @((New-TimelineStep -ReviewId 99), (New-TimelineStep -State 'changes_requested'), (New-TimelineStep -Empty))) {
+                foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX)) { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } }
+                Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)),
+                    (New-ReviewStep -Reviews @((New-Review -State DISMISSED -Head $script:ReviewedSha))), $timeline)
+                Get-Message { Invoke-ReviewMergeFixture } | Should Be "#7 stop: no owner approval after review request $script:ReviewedSha."
+            }
+        }
+        It 'treats a failed timeline read as no approval' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:ReviewedSha -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -State DISMISSED -Head $script:ReviewedSha))),
+                (New-ApiStep 'issues/7/timeline?per_page=100&page=1' -ExitCode 1 -ErrorText 'HTTP 403'))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be "#7 stop: no owner approval after review request $script:ReviewedSha."
         }
     }
 
