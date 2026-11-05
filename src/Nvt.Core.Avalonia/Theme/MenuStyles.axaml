@@ -7,6 +7,23 @@
     <ControlTheme x:Key="Nvt.Menu.SeparatorTheme" TargetType="TemplatedControl" />
     <conv:PlatformKeyGestureConverter x:Key="Nvt.Menu.KeyGestureConverter" />
     <theme:MenuCornerRadiusConverter x:Key="Nvt.Menu.CornerConverter" />
+    <ControlTemplate x:Key="Nvt.Menu.PopupTemplate" TargetType="MenuBase">
+      <Border Name="MenuSurface" Margin="{DynamicResource Nvt.Menu.PopupShadowMargin}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
+              Tag="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}"
+              BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}">
+        <Border.CornerRadius>
+          <MultiBinding Converter="{StaticResource Nvt.Menu.CornerConverter}">
+            <Binding Path="CornerRadius" RelativeSource="{RelativeSource TemplatedParent}" />
+            <Binding Path="Tag" RelativeSource="{RelativeSource Self}" />
+          </MultiBinding>
+        </Border.CornerRadius>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                          KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+        </ScrollViewer>
+      </Border>
+    </ControlTemplate>
   </Styles.Resources>
   <Style Selector="Menu">
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
@@ -14,6 +31,7 @@
     <Setter Property="ItemContainerTheme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
   </Style>
   <Style Selector="ContextMenu">
+    <Setter Property="MaxHeight" Value="{DynamicResource Nvt.Menu.PopupMaxHeight}" />
     <Setter Property="HorizontalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
     <Setter Property="VerticalOffset" Value="{DynamicResource Nvt.Menu.PopupOffset}" />
     <Setter Property="ClipToBounds" Value="False" />
@@ -24,25 +42,19 @@
     <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.PopupPadding}" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="WindowManagerAddShadowHint" Value="False" />
-    <Setter Property="Template">
-      <ControlTemplate>
-        <Border Name="MenuSurface" Margin="{DynamicResource Nvt.Menu.PopupShadowMargin}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
-                Tag="{DynamicResource Nvt.Menu.PopupMaximumCornerRadius}"
-                BoxShadow="{DynamicResource Nvt.Menu.PopupShadow}">
-          <Border.CornerRadius>
-            <MultiBinding Converter="{StaticResource Nvt.Menu.CornerConverter}">
-              <Binding Path="CornerRadius" RelativeSource="{RelativeSource TemplatedParent}" />
-              <Binding Path="Tag" RelativeSource="{RelativeSource Self}" />
-            </MultiBinding>
-          </Border.CornerRadius>
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
-                            KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
-          </ScrollViewer>
-        </Border>
-      </ControlTemplate>
-    </Setter>
+    <Setter Property="Template" Value="{StaticResource Nvt.Menu.PopupTemplate}" />
+  </Style>
+  <!-- A flyout presenter has the same surface as a context menu and no scroll arrows, which the Fluent template would put in the tab order. -->
+  <Style Selector="MenuFlyoutPresenter">
+    <Setter Property="MaxHeight" Value="{DynamicResource Nvt.Menu.PopupMaxHeight}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Menu.PopupBorderThickness}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.PopupPadding}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template" Value="{StaticResource Nvt.Menu.PopupTemplate}" />
   </Style>
   <Style Selector="MenuItem">
     <Setter Property="Theme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
@@ -50,7 +62,7 @@
     <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.ItemPadding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
-    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.List.TransparentBrush}" />
     <Setter Property="BorderThickness" Value="0" />
@@ -146,11 +158,11 @@
     <Setter Property="IsLightDismissEnabled" Value="True" />
     <Setter Property="OverlayInputPassThroughElement" Value="{Binding $parent[Menu]}" />
   </Style>
-  <Style Selector="MenuItem:pointerover:not(:disabled), MenuItem:selected:not(:disabled), MenuItem:focus-visible:not(:disabled)">
+  <Style Selector="MenuItem:pointerover:not(:disabled), MenuItem:open:not(:disabled), MenuItem:focus-visible:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
   </Style>
   <Style Selector="MenuItem:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
   </Style>
   <Style Selector="MenuItem:disabled">
     <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
@@ -181,19 +193,7 @@
   <Style Selector="Menu > MenuItem /template/ Border#PART_LayoutRoot">
     <Setter Property="Padding" Value="{DynamicResource Nvt.Menu.ItemPadding}" />
   </Style>
-  <Style Selector="MenuItem:checked:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.SelectedForegroundBrush}" />
-  </Style>
-  <Style Selector="MenuItem:checked:pointerover:not(:disabled), MenuItem:checked:selected:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedPointerOverBrush}" />
-  </Style>
-  <Style Selector="MenuItem:checked:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Controls.SelectedPressedBrush}" />
-  </Style>
-  <Style Selector="MenuItem:checked:not(:disabled) /template/ TextBlock#PART_InputGestureText">
-    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.SelectedForegroundBrush}" />
-  </Style>
+  <!-- A checked menu command shows only its check mark. A fill would turn a menu with every item checked into a stack of filled pills. -->
   <Style Selector="Menu > MenuItem[ToggleType=None] /template/ Border#MenuCheckSlot">
     <Setter Property="IsVisible" Value="False" />
   </Style>

@@ -15,7 +15,7 @@
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
     <Setter Property="Padding" Value="{DynamicResource Nvt.List.RowPadding}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}" />
-    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.List.TransparentBrush}" />
     <Setter Property="BorderThickness" Value="0" />
@@ -62,7 +62,7 @@
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
   </Style>
   <Style Selector="ListBoxItem:pressed:not(:disabled), ComboBoxItem:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
   </Style>
   <Style Selector="ListBoxItem:selected:not(:disabled), ComboBoxItem:selected:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.List.SelectedBrush}" />

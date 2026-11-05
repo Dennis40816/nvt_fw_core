@@ -246,7 +246,7 @@ internal sealed class ConsoleTextPresenter(string role, string foregroundKey, Co
         {
             var start = Math.Max(0, link.Start - segment.Offset);
             var length = Math.Min(segment.Length, link.Start + link.Length - segment.Offset) - start;
-            var brush = Resource<IBrush>(_hoveredTarget == link.Target ? "NfcAccentBrush" : "NfcBorderSoftBrush");
+            var brush = Resource<IBrush>(_hoveredTarget == link.Target ? "NfcAccentBrush" : "Nvt.Console.LinkUnderlineBrush");
             foreach (var rect in layout.HitTestTextRange(start, length))
             {
                 var underline = rect.Translate(new(0, segment.Y));

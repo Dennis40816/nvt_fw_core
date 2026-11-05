@@ -18,6 +18,8 @@
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
   <StaticResource x:Key="Nvt.List.TransparentBrush" ResourceKey="Nvt.Toggle.TransparentBrush" />
+  <!-- Ten 32 DIP rows, the popup padding and border, and the 16 DIP shadow margin on both sides. Longer menus scroll. -->
+  <x:Double x:Key="Nvt.Menu.PopupMaxHeight">368</x:Double>
   <x:Double x:Key="Nvt.Menu.CheckSize">12</x:Double>
   <x:Double x:Key="Nvt.Menu.IconSlotSize">20</x:Double>
   <Thickness x:Key="Nvt.Menu.LabelGap">0,0,8,0</Thickness>

@@ -32,7 +32,7 @@ public sealed class ConsoleLinkPaintTests
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void RestingLinkUsesSoftBorderUnderline(bool dark)
+    public void RestingLinkUsesLinkUnderlineToken(bool dark)
     {
         using var scene = new ConsoleInteractionScene(count: 1);
         scene.Window.RequestedThemeVariant = dark ? ThemeVariant.Dark : ThemeVariant.Light;
@@ -40,7 +40,7 @@ public sealed class ConsoleLinkPaintTests
         var presenter = scene.Row(1).MessageText;
         presenter.SetHoveredTarget(null);
         var underline = Assert.Single(Render(presenter).OfType<GeometryDrawing>(), drawing => drawing.Pen is not null);
-        Assert.Equal(Brush(presenter, "NfcBorderSoftBrush"), underline.Pen!.Brush);
+        Assert.Equal(Brush(presenter, "Nvt.Console.LinkUnderlineBrush"), underline.Pen!.Brush);
     }
 
     private static IBrush Brush(Control control, string key)

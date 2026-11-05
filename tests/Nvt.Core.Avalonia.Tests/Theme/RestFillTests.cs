@@ -477,7 +477,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
         });
     }
 
-    /// <summary>Measures every affected painted pair in both shapes, themes, modes, selections, and interactions.</summary>
+    /// <summary>Measures every affected painted pair in both shapes, themes, modes, selections, and interactions against the minima in Theme.md.</summary>
     [AvaloniaFact]
     public void PaintedSurfaceContrastPreservesDocumentedLevels()
     {
@@ -564,14 +564,14 @@ public sealed class RestFillTests(ITestOutputHelper output)
         bool disabled = state.Contains("Disabled", StringComparison.Ordinal);
         double documented = owner is Expander ? pair switch
         {
-            "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 11.866 : 12.525,
+            "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 9.92 : 11.492,
             _ => minimum,
         } : pair switch
         {
-            "Label / row" => disabled ? dark ? 3.783 : 3.698 : dark ? 11.215 : 14.328,
-            "Indicator border / row" => dark ? 3.256 : 3.257,
+            "Label / row" => disabled ? dark ? 3.574 : 3.582 : dark ? 11.215 : 13.513,
+            "Indicator border / row" => dark ? 3.076 : 3.154,
             "Glyph / indicator" => disabled ? dark ? 3.422 : 4.559 : dark ? 7.794 : 5.879,
-            "Focus / row" or "Focus / surrounding surface" => dark ? 6.194 : 5.340,
+            "Focus / row" or "Focus / surrounding surface" => dark ? 6.194 : 5.036,
             _ => minimum,
         };
         // Existing documents round their numeric minima to three decimal places.

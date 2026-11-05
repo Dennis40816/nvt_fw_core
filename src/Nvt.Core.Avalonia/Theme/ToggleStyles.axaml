@@ -68,10 +68,10 @@
   </Style>
   <!-- Plain sibling labels and a separate navigation baseline distinguish tabs from grouped choices. -->
   <Style Selector="ToggleButton.toggleTab">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment">
-    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:pointerover:not(:disabled), ToggleButton.toggleTab:pointerover:not(:disabled), ToggleButton.toggleIcon:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}"/>
@@ -81,7 +81,7 @@
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceSubtleBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:pressed:not(:disabled), ToggleButton.toggleTab:pressed:not(:disabled), ToggleButton.toggleIcon:pressed:not(:disabled)">
-    <Setter Property="Background" Value="{DynamicResource NfcSecondaryActionPressedBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource NfcTextStrongBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment:checked:not(:disabled), ToggleButton.toggleTab:checked:not(:disabled), ToggleButton.toggleIcon:checked:not(:disabled)">
@@ -190,7 +190,7 @@
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
     <Setter Property="Padding" Value="{DynamicResource Nvt.Toggle.SoftPadding}"/>
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Shape.ControlCornerRadius}"/>
-    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.RestBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftForegroundBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>
     <Setter Property="BorderThickness" Value="0"/>
@@ -211,6 +211,9 @@
                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                               RecognizesAccessKey="True" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxLines="1"/>
           </Border>
+          <!-- The checked outline is a non-colour cue that separates a checked toggle from a hovered one. It is drawn over the body, so the layout does not change. -->
+          <Border x:Name="ToggleCheckedOutline" IsVisible="False" IsHitTestVisible="False"
+                  BorderBrush="{DynamicResource NfcAccentBorderBrush}" BorderThickness="1" CornerRadius="{TemplateBinding CornerRadius}"/>
           <Border x:Name="ToggleFocusRing" Margin="{DynamicResource Nvt.Controls.FocusRingMargin}" IsVisible="False" IsHitTestVisible="False"
                   BorderBrush="{DynamicResource Nvt.Controls.FocusBrush}" BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
                   CornerRadius="{DynamicResource Nvt.Shape.FocusCornerRadius}"/>
@@ -244,6 +247,13 @@
   <Style Selector="ToggleButton.toggleSoft:checked:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SoftCheckedPressedBrush}"/>
     <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SoftCheckedForegroundBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:checked:not(:disabled) /template/ Border#ToggleCheckedOutline">
+    <Setter Property="IsVisible" Value="True"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSoft:checked:pointerover:not(:disabled) /template/ Border#ToggleCheckedOutline">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentStrongBrush}"/>
+    <Setter Property="BorderThickness" Value="2"/>
   </Style>
   <Style Selector="ToggleButton.toggleSoft:disabled">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.TransparentBrush}"/>

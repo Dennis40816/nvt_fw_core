@@ -112,7 +112,7 @@ NFC adopts the font set in two steps:
 
 Core styles use the `Nfc*`, `Nvt.Focus.*` and `Nvt.Button.*` keys in `src/Nvt.Core.Avalonia/Theme/`. Pick each key by the role of its use, not by the source tool's token name.
 
-- Use Core's existing state pairs for hover and pressed. For example, `Button.actionNeutral` uses `NfcSelectionSurfaceBrush` for hover and `NfcSecondaryActionPressedBrush` for pressed.
+- Use Core's existing state pairs for hover and pressed. For example, `Button.actionNeutral` uses `NfcSelectionSurfaceBrush` for hover and `Nvt.Interaction.PressedBrush` for pressed.
 - Several source tokens may map to one Core key. One source token may map to different keys in different modules.
 - Tools adopt the shared palette in the two steps below. An accent is one color expressed as seven `NfcAccent*` keys; a tool sets all seven.
 - Each module document lists its source-to-Core mapping and every literal under "Known differences".

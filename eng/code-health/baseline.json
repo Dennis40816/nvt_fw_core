@@ -5565,16 +5565,6 @@
     },
     {
       "rule": "FORMAT:IDE0005",
-      "syntaxHash": "a726e0f4188c37af6a85388c55c4c783666a54f88a84c34698c74645460626c0",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Toggle/ToggleSoftTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
       "syntaxHash": "a73f101f0564c8a643aa6832fbedc47b846ce4c7df70d8e60c226cc6fccd1414",
       "member": "<global>",
       "count": 6,
