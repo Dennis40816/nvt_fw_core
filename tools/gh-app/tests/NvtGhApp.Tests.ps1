@@ -1780,8 +1780,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
     function New-RecordReview {
         param([string]$Head = $script:HeadSha, [string]$Body = "Review record: $script:HeadSha accept`n`nChecked.",
-            [int]$Id = 5, [string]$State = 'COMMENTED')
-        @{ id = $Id; state = $State; commit_id = $Head; body = $Body; submitted_at = '2026-01-01T00:00:00Z'; user = @{ login = 'example-app[bot]' } }
+            [int]$Id = 5, [string]$State = 'COMMENTED', [string]$SubmittedAt = '2026-01-01T00:00:00Z')
+        @{ id = $Id; state = $State; commit_id = $Head; body = $Body; submitted_at = $SubmittedAt; user = @{ login = 'example-app[bot]' } }
     }
     function New-ReadinessSteps {
         param([int]$Number = 7, $Pr = (New-Pr -MergeState BLOCKED), [object[]]$Reviews = @((New-RecordReview)),
@@ -1980,6 +1980,37 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 (New-RecordReview -State PENDING -Id 7))
             Set-Responses @(New-ReadinessSteps -Reviews $reviews)
             (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'FAIL'
+        }
+        It 'counts only the first line: a rejection that quotes an acceptance later does not pass' {
+            $body = "Review record: $script:HeadSha changes`n`nReview record: $script:HeadSha accept"
+            Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body $body)))
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'FAIL'
+        }
+        It 'does not count a dismissed acceptance, or a state that is not an acceptance' {
+            foreach ($state in @('DISMISSED', 'CHANGES_REQUESTED')) {
+                foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX)) { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } }
+                Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -State $state)))
+                (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'FAIL'
+            }
+        }
+        It 'lets a later rejection, or a later dismissed record, cancel an earlier acceptance' {
+            $later = @(
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -Body "Review record: $script:HeadSha changes"),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -State DISMISSED),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z' -State CHANGES_REQUESTED -Body 'Please fix'))
+            foreach ($review in $later) {
+                foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX)) { if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) } }
+                Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview), $review))
+                $row = Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord'
+                $row.Result | Should Be 'FAIL'
+                $row.Detail | Should Match 'the latest verdict on this head is review 6'
+            }
+        }
+        It 'counts a new acceptance after a rejection' {
+            $reviews = @((New-RecordReview -Id 5 -Body "Review record: $script:HeadSha changes"),
+                (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z'))
+            Set-Responses @(New-ReadinessSteps -Reviews $reviews)
+            (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'PASS'
         }
         It 'does not count another repository format under the default pattern' {
             Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body "Verdict: accept`n`nChecked.")))
@@ -2648,8 +2679,15 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Reset-Fixture; Import-Fixture
             if ([IO.File]::Exists($script:AuditFile)) { [IO.File]::Delete($script:AuditFile) }
             $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$' })
+            $script:CoreScope = $false
         }
-        AfterEach { $script:TierBScopes = $script:DefaultTierBScopes }
+        AfterEach { $script:TierBScopes = $script:DefaultTierBScopes; $script:CoreScope = $false }
+        # The Core entry of the default list, moved to the test repository. It keeps the path floor and the debt ledgers.
+        function Set-CoreScope {
+            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
+            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern; DebtLedgers = $core.DebtLedgers })
+            $script:CoreScope = $true
+        }
         function New-ThreadsStep {
             param([object[]]$Threads = @(), [bool]$HasNext = $false, [string]$RawOutput)
             $data = @{ data = @{ repository = @{ pullRequest = @{ reviewThreads = @{ nodes = @($Threads);
@@ -2659,12 +2697,15 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Output = $output; Error = ''; ExitCode = 0 }
         }
         function New-TierBReadSteps {
-            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }))
+            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }),
+                $ChangedFiles)
             New-PrStep 7 $Pr
             New-ReviewStep 7 $Reviews
             New-RunsStep $Runs $script:HeadSha
             New-FilesStep 7 $Files
             if ($null -eq $Threads) { New-ThreadsStep } else { New-ThreadsStep -Threads @($Threads) }
+            # A scope with a path floor reads the file count of the pull request to prove that the file list is complete.
+            if ($script:CoreScope) { New-ApiStep 'pulls/7' -Value $(if ($PSBoundParameters.ContainsKey('ChangedFiles')) { $ChangedFiles } else { @{ changed_files = @($Files).Count } }) }
         }
         function New-TierBMergeSteps {
             param($Fresh = (New-Pr))
@@ -2752,30 +2793,69 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
         foreach ($case in @(
                 @('src/Nvt.Core/Foo.cs', 'src'), @('src/Nvt.Core.Avalonia/Theme/ToggleTokens.axaml', 'axaml'), @('tools/gh-app/NvtGhApp.psm1', 'tools'),
-                @('.github/workflows/core.yml', 'workflow'), @('eng/code-health/policy.ps1', 'eng'), @('Directory.Build.props', 'props'),
+                @('.github/workflows/core.yml', 'workflow'), @('eng/code-health/policy.ps1', 'eng policy'), @('eng/code-health/seam-owners.json', 'eng seam owners'),
+                @('eng/code-health/schema/x.json', 'eng schema'), @('Directory.Build.props', 'props'),
                 @('tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj', 'csproj'), @('src/Nvt.Core/PublicAPI.Shipped.txt', 'public api'), @('CHANGELOG.md', 'changelog'),
-                @('docs/governance/rules.md', 'governance'), @('SRC/Foo.cs', 'upper case'))) {
+                @('docs/governance/rules.md', 'governance'), @('SRC/Foo.cs', 'upper case'),
+                @('actions/approval-check/approval_check.py', 'shared action'), @('actions/path-guard/check.ps1', 'shared action ps1'),
+                @('tests/approval-check/test_approval_check.py', 'approval-check self-test'),
+                @('tests/Nvt.Core.TestSupport/ManualTimeProvider.cs', 'packed test support'),
+                @('tests/Nvt.Core.Avalonia.Tests/Theme/ThemeContractTests.cs', 'theme contract test'),
+                @('tests/Nvt.Core.Avalonia.Tests/Theme/Baseline/ThemeTokens.xml', 'theme baseline xml'),
+                @('tests/Nvt.Core.Tests/Files/RootedPathGuardTests.cs', 'guard test'),
+                @('tests/Nvt.Core.Tests/Architecture/LayerTests.cs', 'architecture folder'),
+                @('docs/core/adr/0001-record.md', 'nested adr'), @('docs/adr/0002-record.md', 'adr'))) {
             It "refuses a Core PR that changes a protected path ($($case[1])), and makes no merge call" {
-                $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
-                $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+                Set-CoreScope
                 Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/a.md'; additions = 1; deletions = 0 }, @{ filename = $case[0]; additions = 1; deletions = 0 })))
                 Get-Message { Invoke-TierB } | Should Match "Paths: $([regex]::Escape($case[0])) is a protected path of $script:RepositoryName; only the owner approves a change there"
                 @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
             }
         }
         It 'refuses a Core PR that renames a file away from a protected path' {
-            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
-            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+            Set-CoreScope
             Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/moved.md'; previous_filename = 'src/Nvt.Core/Old.cs'; additions = 0; deletions = 0 })))
             Get-Message { Invoke-TierB } | Should Match 'Paths: src/Nvt.Core/Old.cs is a protected path'
         }
-        It 'merges a Core PR that changes only tests, existing documents and a debt file' {
-            $core = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_core' })[0]
-            $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^main$'; ProtectedPathPattern = $core.ProtectedPathPattern })
+        It 'merges a Core PR that changes only tests, existing documents and a debt ledger that loses lines' {
+            Set-CoreScope
             Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'tests/Nvt.Core.Tests/Foo/BarTests.cs'; additions = 4; deletions = 1 }, @{ filename = 'docs/core/modules/Theme.md'; additions = 1; deletions = 1 },
-                        @{ filename = 'eng/code-health/baseline.json'; additions = 0; deletions = 9 }, @{ filename = 'README.md'; additions = 1; deletions = 0 })) + @(New-TierBMergeSteps))
+                        @{ filename = 'eng/code-health/baseline.json'; additions = 0; deletions = 9; status = 'modified' }, @{ filename = 'eng/code-health/test-debt.json'; additions = 0; deletions = 2; status = 'modified' },
+                        @{ filename = 'README.md'; additions = 1; deletions = 0 })) + @(New-TierBMergeSteps))
             Invoke-TierB
             @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 1
+        }
+        foreach ($case in @(
+                @{ Name = 'gains a line'; File = @{ filename = 'eng/code-health/baseline.json'; additions = 1; deletions = 3; status = 'modified' } },
+                @{ Name = 'is added'; File = @{ filename = 'eng/code-health/test-debt.json'; additions = 0; deletions = 0; status = 'added' } },
+                @{ Name = 'is removed'; File = @{ filename = 'eng/code-health/baseline.json'; additions = 0; deletions = 40; status = 'removed' } },
+                @{ Name = 'is renamed in'; File = @{ filename = 'eng/code-health/baseline.json'; previous_filename = 'docs/core/old.json'; additions = 0; deletions = 0; status = 'renamed' } })) {
+            It "refuses a Core PR when a debt ledger $($case.Name)" {
+                Set-CoreScope
+                Set-Responses @((New-TierBReadSteps -Files @($case.File)))
+                Get-Message { Invoke-TierB } | Should Match 'is a debt ledger and gains lines or is added, removed or renamed'
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+        }
+        It 'refuses a Core PR whose file list is shorter than the files it changes' {
+            Set-CoreScope
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/a.md'; additions = 1; deletions = 0 }) -ChangedFiles @{ changed_files = 2 }))
+            Get-Message { Invoke-TierB } | Should Match 'Files: the pull request changes 2 file\(s\) and 1 were listed; the path floor cannot be proven'
+        }
+        It 'refuses a Core PR that changes more files than GitHub lists' {
+            Set-CoreScope
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/a.md'; additions = 1; deletions = 0 }) -ChangedFiles @{ changed_files = 3001 }))
+            Get-Message { Invoke-TierB } | Should Match 'Files: the pull request changes 3001 file\(s\)'
+        }
+        It 'refuses a Core PR when the file count cannot be read' {
+            Set-CoreScope
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/a.md'; additions = 1; deletions = 0 }) -ChangedFiles @{}))
+            Get-Message { Invoke-TierB } | Should Match 'Files: the pull request changes -1 file\(s\)'
+        }
+        It 'does not read the file count for a repository without a path floor' {
+            Set-Responses @((New-TierBReadSteps) + @(New-TierBMergeSteps))
+            Invoke-TierB
+            @(Get-Calls | Where-Object { $_.Arguments[1] -ceq '/repos/' + $script:RepositoryName + '/pulls/7' }).Count | Should Be 0
         }
         It 'keeps the other repositories free of a path floor' {
             foreach ($scope in @($script:DefaultTierBScopes | Where-Object { $_.Repository -cne 'Dennis40816/nvt_fw_core' })) { $scope.ContainsKey('ProtectedPathPattern') | Should Be $false }
