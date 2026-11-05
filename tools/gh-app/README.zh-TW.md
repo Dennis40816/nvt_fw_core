@@ -68,9 +68,11 @@ Push-GhAppBranch -Worktree . -LocalBase '<LOCAL_BASE_SHA>' `
 兩個例外都保留 owner 看過的內容，也都仍需要 `-AllowOpenPr`：
 
 - `base-merge`：推出的 commit 是舊 head 加一個乾淨的 base merge。舊 head 是審核請求的 head，或從它出發的乾淨鏈。第二個 parent（`-ExtraParent`）已包含在 base 分支裡。推出的樹與重算的 merge 樹相同。這與合併證明的規則相同，不需要 patch-id。
-- `rebase`：推出的樹的 patch-id 等於審核請求記下的 patch-id。沒有 patch-id 的舊登記無法證明，所以會被拒絕。
+- `rebase`：推出的 commit 的 patch-id 等於審核請求記下的 patch-id，而且與請求 head 各自合併進目前 base 後的 tree 相同。沒有 patch-id 的舊登記無法證明，所以會被拒絕。
 
-推出的 commit 還不存在，所以函式在本機建立一個樹與 parent 相同的探測 commit。探測 commit 不改任何 ref。`git patch-id` 與合併證明一樣忽略空白。
+推出的 commit 還不存在，所以函式在本機建立一個樹與 parent 相同的探測 commit。探測 commit 不改任何 ref。
+`rebase` 除了 patch-id 之外，還要求整合後的 tree 相同：請求的 head 與探測 commit 各自合併進目前 base，必須得到同一棵 tree。只比 patch-id 不夠，因為它忽略空白與行號。
+函式只讀一次 `HEAD`。檢查、diff 與發布的 commit 都用這一個 commit，即使 `HEAD` 在中途移動也一樣。
 函式從 ledger（`-LedgerPath`，預設值與其他函式相同）讀審核請求。
 符合例外時，函式在推送前往 push log 附加一行：`<時間> push after owner review kind=base-merge|rebase pr=#N branch=B parents=...`。檔案是 `-PushLogPath`，預設為 ledger 旁的 `push-after-review.log`。回傳物件的 `OwnerReviewPush` 帶有種類。
 其他在 owner review 之後的推送一律以 `#N has an owner review; push refused. Open a follow-up PR instead.` 拒絕，包括內容有改、ledger 沒有該 PR 的登記，以及任何無法證明內容的情況。
@@ -271,7 +273,7 @@ GitHub 可能把 review 的 `commit_id` 移到新 head，因此不能用該欄�
 以下三個條件必須同時成立：
 
 1. Ledger 內此 owner、repository 與 PR 最新附加的 entry 提供送審 head S 與時間 T。
-2. Owner 最新會改變狀態的 review 是 `APPROVED`，而且提交時間嚴格晚於 T。依提交時間排序，同時間以 review ID 排序。`COMMENTED` 不影響核准；`CHANGES_REQUESTED` 與 `PENDING` 禁止合併。`DISMISSED` 也禁止，只有「核准只沿用一次」一節的那一種情況除外。 核准的 `commit_id` 也必須是 S,或 S 之後經證明的 merge。T 取自本機時鐘，本機時鐘比 GitHub 慢時，這個綁定可以防止舊 head 的核准被算成 S 的核准。
+2. Owner 最新會改變狀態的 review 是 `APPROVED`，而且提交時間嚴格晚於 T。依提交時間排序，同時間以 review ID 排序。`COMMENTED` 不影響核准；`CHANGES_REQUESTED` 與 `PENDING` 禁止合併。`DISMISSED` 也禁止。核准的 `commit_id` 也必須是 S,或 S 之後經證明的 merge。T 取自本機時鐘，本機時鐘比 GitHub 慢時，這個綁定可以防止舊 head 的核准被算成 S 的核准。
 3. 從目前 head H 沿 first parent 回走，20 個 commit 內到達 S。S 之後每個 commit 都恰有兩個 parent，second parent 必須包含在目前 PR base 中。Base 分支名稱必須和送審紀錄相同。例外：送審紀錄有 `patchId`、H 就是 S，而且 H 相對目前 base 的 patch-id 相同時，接受改過的 base 名稱。
 
 送審 request 之後的每個 merge 都會使用 `git merge-tree --write-tree P1 P2` 重算。
@@ -282,25 +284,27 @@ GitHub 可能把 review 的 `commit_id` 移到新 head，因此不能用該欄�
 
 ### 核准只沿用一次
 
-歷史變了、內容沒變時，owner 的核准可以再算一次。符合條件的有兩種：
+歷史變了、內容沒變時，owner 的核准可以再算一次。情況是 **rebase**：H 不是 S，也不是從 S 出發的乾淨 merge 鏈。核准所在的 commit 稱為 A，就是 owner 核准的 `commit_id`。
+下面三點都要成立：
 
-- **Rebase。** H 不是 S，也不是從 S 出發的乾淨 merge 鏈，但送審紀錄有 `patchId`，而且 H 相對目前 base 的 patch-id 相同。Owner 看過的 diff 沒有變。
-- **被 ruleset 撤銷。** 會撤銷過期 review 的 ruleset，在 merge base 移動時把核准改成 `DISMISSED`。該 review 保留原本的時間與 `commit_id`。模組讀 PR 的 timeline，只有在 `review_dismissed` 事件指向這個 review、記錄它原本是 `approved`，而且訊息正好是 ruleset 自己寫的 `The merge-base changed after approval.` 時才算。人手撤銷的訊息不同，仍然禁止合併。讀 timeline 失敗視為沒有核准。
+1. 送審紀錄有 `patchId`，而且 H 相對目前 base 的 patch-id 相同。這只是初篩：`git patch-id` 忽略空白與行號。
+2. A 就是 S，或 A 通過從 S 出發的乾淨 merge 證明（也就是 owner 看過的歷史）。
+3. A 合併進目前 base 的 tree，與 H 合併進目前 base 的 tree 完全相同（`git merge-tree --write-tree`）。Tree id 涵蓋每個位元組、路徑與模式。任一邊有衝突就停止合併。
 
-第一次使用時，在 ledger 所屬請求的下方加一行：
-`{"kind":"reuse","owner":...,"repo":...,"number":...,"mode":"patch-id"|"dismissed","oldHead":S,"newHead":H,"approvalId":...,"patchId":...,"reusedAt":...}`。
-另一個 head 或另一個時間的新請求，從沒有紀錄開始。Base 沿用會保留紀錄。
+送審紀錄沒有 `patchId` 時維持舊規則：rebase 需要新的核准。
+被撤銷（`DISMISSED`）的核准一律不算，不論撤銷訊息寫什麼，都禁止合併。
 
-這筆紀錄把核准用在 H 上。
+合併會用掉這份核准。模組在合併確認之後才寫紀錄，所以停止的合併不會用掉核准。
+紀錄寫在它所屬的請求下方：
+`{"kind":"reuse","owner":...,"repo":...,"number":...,"mode":"tree-equal","requestedAt":T,"oldHead":S,"newHead":H,"approvalId":...,"approvalCommit":A,"patchId":...,"reusedAt":...}`。
 
-- 同一個核准 ID 已記在別的 head，又要 rebase 到另一個 head 時停止：`owner approval <id> was already reused for <head>; a new owner approval is required`。
-- Patch-id 不同時停止，訊息要求新的送審紀錄。
-- 送審紀錄沒有 `patchId` 時維持舊規則：rebase 需要新的核准。
-- 在紀錄涵蓋的 head 之上再乾淨合併 base，照舊接受，不用新紀錄。
+- 紀錄只用來限制，不會讓任何 head 通過。每個 head 都從送審紀錄、核准與內容重新證明。
+- 紀錄用 `oldHead` 與 `requestedAt` 綁定到請求。與最新請求不符的紀錄會被忽略。
+- 同一份核准已被紀錄用在別的 head，又要 rebase 到另一個 head 時停止：`owner approval <id> was already reused for <head>; a new owner approval is required`。
+- Patch-id 不同時停止，訊息要求新的送審紀錄。合併後的 tree 與核准 commit 不同（例如只改空白）也一樣停止。
+- 同一個 PR 同一時間只能有一個合併呼叫。ledger 旁的鎖檔（`<ledger>.<owner>_<repo>_<number>.lock`）讓第二個呼叫以 `another merge of this pull request is running` 停止。
 
-合併日誌多一行 `#N owner approval <id> reused from <S> (patch-id|dismissed); merged head <H>`。
-
-限制：`git patch-id` 忽略空白，只改空白的變更 patch-id 不變。
+合併日誌多一行 `#N owner approval <id> reused from <S> (tree-equal); merged head <H>`。
 PR 的 ledger 出現未知 `kind` 時停止合併，因為舊版讀取器無法理解它。
 
 必要參數 `-Worktree` 指定具完整歷史的本機 clone。
@@ -312,9 +316,10 @@ S 之後出現非 merge commit、second parent 不在 base、merge tree 被修�
 每個 PR 最多更新三次。更新失敗或 `DIRTY` 會以「manual resolution requires owner approval」中止。
 更新後先證明新 head，再等待該 head 的必要 checks。
 模組等待必要 checks 通過及 merge state 為 clean，並在合併前重新核對 ledger、核准與歷史，再以 `sha` 等於 H 合併。
-repository 可能沒有設定必要 checks。這時 `gh pr checks --required` 沒有輸出且結束碼為 1。模組把它當成一種狀態，不當成失敗，改讀該 head 的全部 checks。
+repository 可能沒有設定必要 checks。這時 `gh pr checks --required` 沒有輸出、訊息為 `no required checks reported`、結束碼為 1。模組只把這個明確的回答當成一種狀態，不當成失敗，改讀該 head 的全部 checks。
+其他沒有清單的失敗（登入失敗、斷線、不認得的訊息）在兩次呼叫中都以 `HTTP unknown` 停止合併，絕不當成「沒有 checks」。
 其中有失敗或取消就停止（`checks failed`），有進行中就等待。
-該 head 完全沒有 check 時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
+該 head 完全沒有 check（`no checks reported`）時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
 合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支，函式會對每個保留的分支印出警告。
@@ -434,7 +439,7 @@ Merge-GhAppTierBPullRequest -Number 7 -ExpectedHeadSha $head -LogPath .\merge.lo
 
 - `Invoke-GhAppRead` 回傳 UTF-8 文字，並去掉結尾換行。NFC 的版本回傳原始位元組。支援的讀取指令只輸出 JSON 或文字。
 - 合併依據最新的外部送審 request，以及嚴格晚於該 request 的 owner 核准。Review `commit_id` 與 GraphQL timeline 都不能授權合併。之後的 COMMENTED 不會取消核准。
-- Core 的合併腳本只要 head 上有任何一筆核准就合併。模組在最新狀態是 CHANGES_REQUESTED、DISMISSED 或 PENDING 時停止。唯一的例外是 ruleset 用自己的過期 review 訊息撤銷的核准，它算一次並留下紀錄。
+- Core 的合併腳本只要 head 上有任何一筆核准就合併。模組在最新狀態是 CHANGES_REQUESTED、DISMISSED 或 PENDING 時停止。
 - 10-05 規則只允許送審 head 之後合併經證明乾淨的 base。模組證明 first-parent 歷史，並使用 Git 2.38 以上的 `merge-tree` 重算每個 merge。
 - 模組最多更新落後分支三次，重新核對 checks 與核准，只有指定 prefix 時才刪除合併的分支。Core 舊腳本一律刪除合併後分支。
 - Session 用 `Request-GhAppOwnerReview` 記錄送審 head，再依賴 owner 核准。

@@ -235,7 +235,7 @@ function Invoke-GhAppGhOnce {
             $failure = "HTTP $status $ApiPath"
             throw 'Child failed.'
         }
-        [pscustomobject]@{ Output = $output; ExitCode = $process.ExitCode }
+        [pscustomobject]@{ Output = $output; ExitCode = $process.ExitCode; ErrorText = $errorText }
     } catch { throw $failure }
     finally {
         if ($null -ne $process) { $process.Dispose() }
@@ -554,10 +554,15 @@ function Get-GhAppReviewRequest {
                         if ($property.Name -ceq 'kind') { $kind = $property.Value.GetString() }
                     }
                     if ($kind -ceq 'reuse') {
-                        # A reuse record belongs to the request above it. It spends one owner approval for one new head.
+                        # A reuse record says that a merge spent one owner approval. It only restricts: it never lets a head pass.
+                        # It binds to one request by the request head and time, so a record cannot move to a newer request.
+                        $recordStamp = $entry.GetProperty('requestedAt').GetString()
+                        if ($recordStamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|\+00:00)$') { throw 'Expected UTC ISO 8601.' }
                         $reuses.Add([pscustomobject]@{ ApprovalId = [string]$entry.GetProperty('approvalId').GetInt64(); Mode = $entry.GetProperty('mode').GetString();
+                            ApprovalCommit = Assert-GhAppSha 'reuse approval commit' $entry.GetProperty('approvalCommit').GetString();
                             OldHead = Assert-GhAppSha 'reuse old head' $entry.GetProperty('oldHead').GetString();
-                            NewHead = Assert-GhAppSha 'reuse new head' $entry.GetProperty('newHead').GetString() })
+                            NewHead = Assert-GhAppSha 'reuse new head' $entry.GetProperty('newHead').GetString();
+                            RequestedAt = [DateTimeOffset]::Parse($recordStamp, [Globalization.CultureInfo]::InvariantCulture) })
                         continue
                     }
                     if ($null -ne $kind) { throw 'Unknown ledger entry kind.' }
@@ -571,8 +576,6 @@ function Get-GhAppReviewRequest {
                     foreach ($property in $entry.EnumerateObject()) {
                         if ($property.Name -ceq 'patchId') { $patchId = Assert-GhAppSha 'review request patch-id' $property.Value.GetString() }
                     }
-                    # A base carry registers the same head with the same time again. Its reuse records stay; any other request starts clean.
-                    if ($null -eq $latest -or $latest.Head -cne $head -or $latest.RequestedAt -ne $time) { $reuses.Clear() }
                     $latest = [pscustomobject]@{ Head = $head; RequestedAt = $time; Base = $base; PatchId = $patchId; Reuses = $null }
                 } finally { $document.Dispose() }
             }
@@ -580,7 +583,7 @@ function Get-GhAppReviewRequest {
     } catch { throw 'The review ledger contains an invalid entry or could not be read.' }
     finally { if ($null -ne $reader) { $reader.Dispose() } }
     if ($null -eq $latest) { throw "#$Number stop: no review ledger entry; send the head to the owner and record a review request." }
-    $latest.Reuses = $reuses.ToArray()
+    $latest.Reuses = @($reuses | Where-Object { $_.OldHead -ceq $latest.Head -and $_.RequestedAt -eq $latest.RequestedAt })
     $latest
 }
 
@@ -601,31 +604,8 @@ function Get-GhAppOwnerApproval {
     }
     # A draft can receive its ID before a later review, then be submitted last.
     $latest = $ranked | Sort-Object -Property Time, Id | Select-Object -Last 1
-    if ($latest.Time -le $RequestedAt) { return $null }
-    if ($latest.Review.state -ceq 'APPROVED') { return Add-Member -InputObject $latest.Review -NotePropertyName StaleDismissed -NotePropertyValue $false -PassThru -Force }
-    # A ruleset that dismisses stale reviews turns the approval into DISMISSED when the merge base moves.
-    # The review keeps its commit and its time, so the approval can still count once. See Get-GhAppApprovedReviewRequest.
-    if ($latest.Review.state -ceq 'DISMISSED' -and (Test-GhAppStaleDismissal $Context $Number $latest.Review)) {
-        return Add-Member -InputObject $latest.Review -NotePropertyName StaleDismissed -NotePropertyValue $true -PassThru -Force
-    }
+    if ($latest.Review.state -ceq 'APPROVED' -and $latest.Time -gt $RequestedAt) { return $latest.Review }
     return $null
-}
-
-# The dismissal texts that the ruleset writes by itself. A review that a person dismissed carries another text and never counts.
-$script:StaleDismissalMessages = @('The merge-base changed after approval.')
-
-function Test-GhAppStaleDismissal {
-    param([hashtable]$Context, [int]$Number, $Review)
-    try {
-        foreach ($item in @(Get-GhAppItems $Context "issues/$Number/timeline")) {
-            if ($null -ne $item -and $item.PSObject.Properties['event'] -and $item.event -ceq 'review_dismissed' -and $item.PSObject.Properties['dismissed_review']) {
-                $dismissed = $item.dismissed_review
-                if ([string]$dismissed.review_id -ceq [string]$Review.id -and $dismissed.state -ceq 'approved' -and
-                    [string]$dismissed.dismissal_message -cin $script:StaleDismissalMessages) { return $true }
-            }
-        }
-    } catch { return $false }
-    return $false
 }
 
 function Invoke-GhAppGit {
@@ -672,8 +652,8 @@ function Invoke-GhAppGit {
 }
 
 function Get-GhAppTreeChanges {
-    param([string]$Worktree, [string]$LocalBase)
-    $raw = Invoke-GhAppGit $Worktree @('diff', '--raw', '-z', '--no-renames', '--no-abbrev', $LocalBase, 'HEAD', '--')
+    param([string]$Worktree, [string]$LocalBase, [string]$Head = 'HEAD')
+    $raw = Invoke-GhAppGit $Worktree @('diff', '--raw', '-z', '--no-renames', '--no-abbrev', $LocalBase, $Head, '--')
     if (-not $raw) { return }
     $parts = $raw.Split([char]0)
     for ($index = 0; $index -lt $parts.Length - 1; $index += 2) {
@@ -693,10 +673,10 @@ function Get-GhAppTreeChanges {
 }
 
 function Write-GhAppCommit {
-    param([hashtable]$Context, [string]$Worktree, [string]$LocalBase, [string[]]$Parents, [string]$Message)
-    $expectedTree = Assert-GhAppSha 'local tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', 'HEAD^{tree}')).Trim()
+    param([hashtable]$Context, [string]$Worktree, [string]$LocalBase, [string[]]$Parents, [string]$Message, [string]$Candidate = 'HEAD')
+    $expectedTree = Assert-GhAppSha 'local tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', "$Candidate^{tree}")).Trim()
     $localBaseTree = Assert-GhAppSha 'local base tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', "$LocalBase^{tree}")).Trim()
-    $changes = @(Get-GhAppTreeChanges $Worktree $LocalBase)
+    $changes = @(Get-GhAppTreeChanges $Worktree $LocalBase $Candidate)
     $parentCommit = Invoke-GhAppApi $Context GET "git/commits/$($Parents[0])"
     $baseTree = Assert-GhAppSha 'remote base tree' $parentCommit.tree.sha
     if ($baseTree -cne $localBaseTree) { throw "base tree mismatch: remote $baseTree local $localBaseTree" }
@@ -720,20 +700,22 @@ function Write-GhAppCommit {
 #   base-merge  the pushed commit is the old head plus one clean merge of the base branch. This is the rule of
 #               Assert-GhAppReviewHistory: the old head is the review request head (or a clean chain from it), the second
 #               parent is contained in the base, and the pushed tree is the recomputed merge tree.
-#   rebase      the pushed commit has the patch-id that the review request recorded. A rebase leaves the patch-id alone.
-#               A request recorded without a patch-id cannot prove it.
+#   rebase      the pushed commit has the patch-id that the review request recorded, and it gives the same tree as the
+#               request head once both are merged into the current base. The patch-id is only a screen, because it ignores
+#               white space and line numbers. A request recorded without a patch-id cannot prove this.
 # The pushed commit does not exist yet, so a probe commit with the same tree and parents stands in for it. The probe is
-# a local object only. The function returns the kind, or $null for every other push and for any failure to prove one.
+# a local object only. $Candidate is the one local commit that the caller verifies and publishes. The function returns
+# the kind, or $null for every other push and for any failure to prove one.
 function Get-GhAppReviewedPushKind {
-    param([hashtable]$Context, $Pr, [string]$Worktree, [string]$LedgerPath, [string[]]$Parents)
+    param([hashtable]$Context, $Pr, [string]$Worktree, [string]$LedgerPath, [string[]]$Parents, [string]$Candidate)
     try {
         $number = [int]$Pr.number
         $request = Get-GhAppReviewRequest $Context $number $LedgerPath
         $baseRef = [string]$Pr.base.ref
         $baseSha = Assert-GhAppSha "base of #$number" $Pr.base.sha
         if ($baseRef -cne $request.Base) { return $null }
-        Sync-GhAppReviewCommits $Context $Worktree (@($Parents) + $baseSha)
-        $tree = Assert-GhAppSha 'local tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', 'HEAD^{tree}')).Trim()
+        Sync-GhAppReviewCommits $Context $Worktree (@($Parents) + $baseSha + $request.Head)
+        $tree = Assert-GhAppSha 'local tree' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', "$Candidate^{tree}")).Trim()
         if ($Parents.Count -eq 2) {
             try {
                 $old = [pscustomobject]@{ headRefOid = $Parents[0]; baseRefName = $baseRef; baseRefOid = $baseSha }
@@ -750,7 +732,8 @@ function Get-GhAppReviewedPushKind {
             foreach ($parent in $Parents) { $probeArguments += @('-p', $parent) }
             $probeArguments += @('-m', 'probe')
             $probe = Assert-GhAppSha 'probe commit' (Invoke-GhAppGit $Worktree $probeArguments).Trim()
-            if ((Get-GhAppPatchId $Worktree $probe $baseSha) -ceq $request.PatchId) { return 'rebase' }
+            if ((Get-GhAppPatchId $Worktree $probe $baseSha) -ceq $request.PatchId -and
+                (Get-GhAppIntegratedTree $Worktree $baseSha $probe) -ceq (Get-GhAppIntegratedTree $Worktree $baseSha $request.Head)) { return 'rebase' }
         }
         return $null
     } catch { return $null }
@@ -769,14 +752,16 @@ function Push-GhAppBranch {
     if ($ExtraParent) { $parents += Assert-GhAppSha 'ExtraParent' $ExtraParent }
     Assert-GhAppBranch $Branch
     $message = Read-GhAppBody $MessageFile
-    # The diff from LocalBase to HEAD becomes the remote commit. A LocalBase that HEAD does not contain would turn
-    # every newer base file into a deletion, so require HEAD to be built on it.
-    $ancestor = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $LocalBase, 'HEAD') -AllowedExitCodes @(0, 1) -Result
+    # HEAD is read once. The guard, the diff and the published commit all use this commit, even if HEAD moves meanwhile.
+    $candidate = Assert-GhAppSha 'HEAD' (Invoke-GhAppGit $Worktree @('rev-parse', '--verify', 'HEAD^{commit}')).Trim()
+    # The diff from LocalBase to the candidate becomes the remote commit. A LocalBase that the candidate does not contain would turn
+    # every newer base file into a deletion, so require the candidate to be built on it.
+    $ancestor = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-base', '--is-ancestor', $LocalBase, $candidate) -AllowedExitCodes @(0, 1) -Result
     if ($ancestor.ExitCode -ne 0) { throw "LocalBase $LocalBase is not an ancestor of HEAD; rebase onto the remote base first." }
     if ($IncludeWorkflowsWrite) {
         # The switch is off by default. It is allowed only for a push whose tree changes a workflow file.
         if ([string]::IsNullOrWhiteSpace($WorkflowsLogPath)) { throw 'IncludeWorkflowsWrite requires WorkflowsLogPath.' }
-        $changes = @(Get-GhAppTreeChanges $Worktree $LocalBase)
+        $changes = @(Get-GhAppTreeChanges $Worktree $LocalBase $candidate)
         $workflowFiles = @($changes | Where-Object { $_.Path.StartsWith('.github/workflows/', [StringComparison]::Ordinal) })
         if ($workflowFiles.Count -eq 0) { throw 'IncludeWorkflowsWrite refused: the push changes no file under .github/workflows/.' }
         $logPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkflowsLogPath)
@@ -798,7 +783,7 @@ function Push-GhAppBranch {
             $kind = $null
             try {
                 $ledger = Get-GhAppLedgerPath $context $LedgerPath
-                $kind = Get-GhAppReviewedPushKind $context $pr $Worktree $ledger $parents
+                $kind = Get-GhAppReviewedPushKind $context $pr $Worktree $ledger $parents $candidate
                 if ($PushLogPath) { $reviewedLog = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PushLogPath) }
                 else { $reviewedLog = Join-Path (Split-Path $ledger) 'push-after-review.log' }
             } catch { $kind = $null }
@@ -812,7 +797,7 @@ function Push-GhAppBranch {
             catch { throw 'The push log could not be written.' }
         }
     }
-    $result = Write-GhAppCommit $context $Worktree $LocalBase $parents $message
+    $result = Write-GhAppCommit $context $Worktree $LocalBase $parents $message $candidate
     $encodedBranch = [Uri]::EscapeDataString($Branch)
     $ref = Invoke-GhAppApi $context GET "git/ref/heads/$encodedBranch" -AllowNotFound
     if ($null -ne $ref) {
@@ -1159,9 +1144,18 @@ function Get-GhAppProperty {
     if ($null -ne $property) { $property.Value }
 }
 
+# The tree that a merge of $Head into $BaseSha gives. A conflict is an error. The tree id covers every byte, path and mode.
+function Get-GhAppIntegratedTree {
+    param([string]$Worktree, [string]$BaseSha, [string]$Head)
+    $result = Invoke-GhAppGit -Worktree $Worktree -Arguments @('merge-tree', '--write-tree', $BaseSha, $Head) -AllowedExitCodes @(0, 1) -Result
+    if ($result.ExitCode -ne 0) { throw "$Head does not merge cleanly into $BaseSha." }
+    Assert-GhAppSha 'integrated tree' ($result.Output.Split("`n")[0].Trim())
+}
+
 function Assert-GhAppReviewHistory {
-    # Outcome is optional. Given, it tells the caller what the proof used: PatchReuse when only the patch-id matched,
-    # Covered when the head is, or descends from, a head that an earlier reuse already accepted.
+    # Outcome is optional. Given with an Approval, it lets a rebased head stand in for the approved commit, and it tells the
+    # caller so: PatchReuse is set when only the exact content proof held. The patch-id is a screen. The decision is the
+    # integrated tree: the approved commit and the head must give the same tree once each is merged into the current base.
     param([hashtable]$Context, [int]$Number, [string]$Worktree, $Pr, $Request, [hashtable]$Outcome)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
     if ($Pr.baseRefName -cne $Request.Base) {
@@ -1176,13 +1170,6 @@ function Assert-GhAppReviewHistory {
     }
     # Returns the proven chain from the current head back to the review request head, both included.
     if ($head -ceq $Request.Head) { return ,@($head) }
-    # A head that an earlier reuse accepted stands in for the request head. The chain still names the request head,
-    # because the owner approval sits on it.
-    $reusedHeads = @(@(Get-GhAppProperty $Request 'Reuses') | Where-Object { $null -ne $_ } | ForEach-Object { $_.NewHead })
-    if ($head -cin $reusedHeads) {
-        if ($null -ne $Outcome) { $Outcome.Covered = $true }
-        return ,@($head, $Request.Head)
-    }
     $base = Assert-GhAppSha "base of #$Number" $Pr.baseRefOid
     $failure = $null
     try {
@@ -1193,7 +1180,7 @@ function Assert-GhAppReviewHistory {
         }
         $chain = [Collections.Generic.List[string]]::new()
         $current = $head
-        for ($count = 0; $current -cne $Request.Head -and $current -cnotin $reusedHeads; $count++) {
+        for ($count = 0; $current -cne $Request.Head; $count++) {
             $chain.Add($current)
             if ($count -ge 20) { throw "#$Number stop: review request $($Request.Head) was not reached within 20 first-parent commits from $head." }
             $parents = (Invoke-GhAppGit $Worktree @('rev-list', '--parents', '-n', '1', $current)).Trim().Split(' ')
@@ -1214,24 +1201,31 @@ function Assert-GhAppReviewHistory {
             if ($tree -cne $actual) { throw "#$Number stop: merge tree differs from the clean automatic merge; manual resolution requires owner approval." }
             $current = $first
         }
-        if ($current -cin $reusedHeads) {
-            $chain.Add($current)
-            if ($null -ne $Outcome) { $Outcome.Covered = $true }
-        }
         $chain.Add($Request.Head)
         return ,$chain.ToArray()
     } catch { $failure = $_.Exception.Message }
     # The head is not a clean merge chain from the request. A rebase gives the same content a new history.
-    # The patch-id proves the content: the diff from the merge base to the head is the one that was sent for review.
-    # The caller spends the owner approval once for it.
     $patchId = Get-GhAppProperty $Request 'PatchId'
-    if (-not $patchId -or $null -eq $Outcome) { throw $failure }
-    Sync-GhAppReviewCommits $Context $Worktree @($head, $base)
+    $approval = $(if ($null -ne $Outcome -and $Outcome.ContainsKey('Approval')) { $Outcome.Approval } else { $null })
+    if (-not $patchId -or $null -eq $approval) { throw $failure }
+    $approved = Assert-GhAppSha 'approval commit' $approval.commit_id
+    Sync-GhAppReviewCommits $Context $Worktree @($head, $base, $approved)
     if ((Get-GhAppPatchId $Worktree $head $base) -cne $patchId) {
         throw "#$Number stop: head $head is not review request $($Request.Head) or a clean base merge after it, and its patch-id differs from the request; owner approval and a new review request required."
     }
+    # The approval must sit on the request head or on a clean base merge after it. That is the history the owner saw.
+    if ($approved -cne $Request.Head) {
+        $onApproved = [pscustomobject]@{ headRefOid = $approved; baseRefName = $Pr.baseRefName; baseRefOid = $base }
+        try { $null = Assert-GhAppReviewHistory $Context $Number $Worktree $onApproved $Request }
+        catch { throw "#$Number stop: owner approval is on $approved, not on review request $($Request.Head) or a clean base merge after it." }
+    }
+    try { $same = (Get-GhAppIntegratedTree $Worktree $base $approved) -ceq (Get-GhAppIntegratedTree $Worktree $base $head) }
+    catch { throw "#$Number stop: head $head or approved commit $approved does not merge cleanly into $($Pr.baseRefName); owner approval and a new review request required." }
+    if (-not $same) {
+        throw "#$Number stop: head $head does not have the content of approved commit $approved once both are merged into $($Pr.baseRefName); owner approval and a new review request required."
+    }
     $Outcome.PatchReuse = $true
-    return ,@($head, $Request.Head)
+    return ,@($head, $Request.Head, $approved)
 }
 
 function Get-GhAppTimelineObservation {
@@ -1264,46 +1258,51 @@ function Get-GhAppApprovedReviewRequest {
     $request = Get-GhAppReviewRequest $Context $Number $LedgerPath
     $approval = Get-GhAppOwnerApproval $Context $Number $request.RequestedAt
     if ($null -eq $approval) { throw "#$Number stop: no owner approval after review request $($request.Head)." }
-    $outcome = @{}
+    $outcome = @{ Approval = $approval }
     $chain = Assert-GhAppReviewHistory $Context $Number $Worktree $Pr $request $outcome
     # The ledger time comes from this machine's clock. Binding the approval to the proven chain means a
     # skewed clock can never let an approval of an older head count for the request.
     if ([string]$approval.commit_id -cnotin $chain) {
         throw "#$Number stop: owner approval is on $($approval.commit_id), not on review request $($request.Head) or a clean base merge after it."
     }
-    # An approval counts once without being live: after a rebase that keeps the patch-id, or after the ruleset
-    # dismissed it because the merge base moved. The ledger records the head that spent it. The same approval
-    # is refused for any other head that is not a clean merge chain from a head it already covers.
+    # After a rebase the approval counts for a head that the exact content proof accepted. It counts once: a merge spends it,
+    # and the caller writes the record only after the merge is confirmed. A record of the same approval for another head
+    # means that it was spent already. This function writes nothing.
     $reuse = $null
-    $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-    $spent = @(@(Get-GhAppProperty $request 'Reuses') | Where-Object { $null -ne $_ -and $_.ApprovalId -ceq [string]$approval.id })
-    $mode = $null
-    if ($outcome.ContainsKey('PatchReuse')) { $mode = 'patch-id' }
-    elseif ($approval.StaleDismissed) { $mode = 'dismissed' }
-    if ($outcome.ContainsKey('PatchReuse') -and $spent.Count -gt 0 -and $head -cnotin @($spent | ForEach-Object { $_.NewHead })) {
-        throw "#$Number stop: owner approval $($approval.id) was already reused for $($spent[0].NewHead); a new owner approval is required."
-    }
-    if ($null -ne $mode -and $spent.Count -eq 0) {
-        Add-GhAppReuseRecord $Context $LedgerPath $Number $request.Head $head $approval.id $mode (Get-GhAppProperty $request 'PatchId')
-    }
-    if ($null -ne $mode -or $outcome.ContainsKey('Covered')) {
-        # A head that an earlier record covers reports the mode of that record.
-        $shown = $(if ($null -ne $mode) { $mode } elseif ($spent.Count -gt 0) { $spent[0].Mode } else { 'covered' })
-        $reuse = [pscustomobject]@{ Mode = $shown; From = $request.Head; ApprovalId = [string]$approval.id }
+    if ($outcome.ContainsKey('PatchReuse')) {
+        $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
+        $spent = @(@(Get-GhAppProperty $request 'Reuses') | Where-Object { $null -ne $_ -and $_.ApprovalId -ceq [string]$approval.id -and $_.ApprovalCommit -ceq [string]$approval.commit_id })
+        if ($spent.Count -gt 0 -and $head -cnotin @($spent | ForEach-Object { $_.NewHead })) {
+            throw "#$Number stop: owner approval $($approval.id) was already reused for $($spent[0].NewHead); a new owner approval is required."
+        }
+        $reuse = [pscustomobject]@{ Mode = 'tree-equal'; From = $request.Head; ApprovalId = [string]$approval.id; ApprovalCommit = [string]$approval.commit_id
+            NewHead = $head; RequestedAt = $request.RequestedAt; PatchId = (Get-GhAppProperty $request 'PatchId') }
     }
     [pscustomobject]@{ Request = $request; Approval = $approval; Reuse = $reuse }
 }
 
+# Appends the record of a spent approval. The caller calls it after the merge is confirmed.
 function Add-GhAppReuseRecord {
-    param([hashtable]$Context, [string]$LedgerPath, [int]$Number, [string]$OldHead, [string]$NewHead, $ApprovalId, [string]$Mode, [string]$PatchId)
-    $entry = [ordered]@{ kind = 'reuse'; owner = $Context.owner; repo = $Context.repo; number = $Number; mode = $Mode;
-        oldHead = $OldHead; newHead = $NewHead; approvalId = [long]$ApprovalId }
-    if ($PatchId) { $entry.patchId = $PatchId }
+    param([hashtable]$Context, [string]$LedgerPath, [int]$Number, $Reuse)
+    $entry = [ordered]@{ kind = 'reuse'; owner = $Context.owner; repo = $Context.repo; number = $Number; mode = $Reuse.Mode;
+        requestedAt = $Reuse.RequestedAt.ToUniversalTime().ToString('o'); oldHead = $Reuse.From; newHead = $Reuse.NewHead;
+        approvalId = [long]$Reuse.ApprovalId; approvalCommit = $Reuse.ApprovalCommit }
+    if ($Reuse.PatchId) { $entry.patchId = $Reuse.PatchId }
     $entry.reusedAt = (Get-GhAppUtcNow).ToUniversalTime().ToString('o')
     Add-GhAppLedgerEntry $LedgerPath ([pscustomobject]$entry)
 }
 
-# The checks of a pull request as gh reports them. Empty output means no check, not a parse failure.
+# One merge of a pull request at a time. The lock file lives next to the ledger and goes away with the handle.
+function Enter-GhAppPullRequestLock {
+    param([hashtable]$Context, [string]$LedgerPath, [int]$Number)
+    $path = "$LedgerPath.$($Context.owner)_$($Context.repo)_$Number.lock"
+    try { [IO.FileStream]::new($path, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None, 1, [IO.FileOptions]::DeleteOnClose) }
+    catch { throw "#$Number stop: another merge of this pull request is running." }
+}
+
+# The checks of a pull request as gh reports them. An empty list is "no check" only when gh says so (exit 0, or its
+# own "no checks reported" message). Any other failure with no list is an error: a failed login or a lost network
+# must never look like a repository without checks.
 function Read-GhAppChecks {
     param([hashtable]$Context, [int]$Number, [string]$ApiPath, [switch]$Required)
     $arguments = @('pr', 'checks', [string]$Number, '--repo', "$($Context.owner)/$($Context.repo)")
@@ -1315,7 +1314,12 @@ function Read-GhAppChecks {
         try { $checks = @(ConvertFrom-Json -InputObject $result.Output -ErrorAction Stop) }
         catch { throw "HTTP unknown $ApiPath" }
     }
-    [pscustomobject]@{ Checks = @($checks | Where-Object { $null -ne $_ }); ExitCode = $result.ExitCode }
+    $checks = @($checks | Where-Object { $null -ne $_ })
+    if ($checks.Count -eq 0 -and $result.ExitCode -ne 0) {
+        $noChecks = $(if ($Required) { 'no required checks reported' } else { 'no checks reported' })
+        if ([string]$result.ErrorText -notmatch "(?i)\b$noChecks\b") { throw "HTTP unknown $ApiPath" }
+    }
+    [pscustomobject]@{ Checks = $checks; ExitCode = $result.ExitCode }
 }
 
 function Wait-GhAppApprovedHead {
@@ -1458,8 +1462,10 @@ function Merge-GhAppApprovedPullRequest {
     $LedgerPath = Get-GhAppLedgerPath $context $LedgerPath
     $LogPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LogPath)
     foreach ($number in $Numbers) {
+        $lock = $null
         try {
             Write-GhAppMergeLog $LogPath "#$number start"
+            $lock = Enter-GhAppPullRequestLock $context $LedgerPath $number
             $pr = Get-GhAppPullRequest $context $number
             if ($pr.state -cne 'OPEN') { Write-GhAppMergeLog $LogPath "#$number skip: state $($pr.state)"; continue }
             $evidence = Wait-GhAppApprovedHead $context $number $pr $Worktree $LedgerPath $TimeoutSeconds $PollSeconds
@@ -1475,6 +1481,7 @@ function Merge-GhAppApprovedPullRequest {
             Write-GhAppMergeLog $LogPath "#$number review requested at $($evidence.Request.Head); approved $approvedAt; merged head $head; differences only from $($evidence.Request.Base)"
             if ($null -ne $evidence.Reuse) {
                 Write-GhAppMergeLog $LogPath "#$number owner approval $($evidence.Reuse.ApprovalId) reused from $($evidence.Reuse.From) ($($evidence.Reuse.Mode)); merged head $head"
+                Add-GhAppReuseRecord $context $LedgerPath $number $evidence.Reuse
             }
             $observation = Get-GhAppTimelineObservation $context $number $evidence.Approval
             Write-GhAppMergeLog $LogPath "#$number timeline observation only: last PullRequestCommit before approval $observation"
@@ -1482,7 +1489,7 @@ function Merge-GhAppApprovedPullRequest {
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
             throw
-        }
+        } finally { if ($null -ne $lock) { $lock.Dispose() } }
     }
     Write-GhAppMergeLog $LogPath "done: $($Numbers -join ',')"
 }
