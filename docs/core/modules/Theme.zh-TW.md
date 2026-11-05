@@ -1482,7 +1482,7 @@ TextBox、NumericUpDown、ComboBox 與 TabItem 使用 `UseLayoutRounding=False`�
 
 TextBox 與 NumericUpDown 保留原生 `IsReadOnly` 行為。
 唯讀會抑制滑入填色與邊框。錯誤狀態保留唯讀填色，並使用錯誤邊框。
-TextBox 沒有原生 `:pressed` 狀態。狀態圖表強制設定此偽類別，以預覽保留的樣式規則。
+TextBox 與 NumericUpDown 的可編輯區域不會取得 `:pressed`，因此沒有按下填色。只有 ComboBox 與微調按鈕使用按下填色。
 ComboBox 沒有原生唯讀屬性。`readOnly` 類別只提供唯讀視覺狀態。
 採用端負責限制選取。樣式保留原生鍵盤行為。
 

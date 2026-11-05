@@ -224,7 +224,7 @@
     <Setter Property="Background" Value="{DynamicResource Nvt.Form.HoverFillBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.HoverBorderBrush}" />
   </Style>
-  <Style Selector="TextBox:pressed:not(:disabled), NumericUpDown:pressed:not(:disabled), ComboBox:pressed:not(:disabled)">
+  <Style Selector="ComboBox:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Form.PressedFillBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Form.PressedBorderBrush}" />
   </Style>
