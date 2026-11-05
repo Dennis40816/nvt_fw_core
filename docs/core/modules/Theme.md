@@ -1485,7 +1485,7 @@ Fractional DPI can soften borders and text because their bounds are not rounded 
 
 TextBox and NumericUpDown retain native `IsReadOnly` behavior.
 Read-only suppresses hover fills and borders. Errors retain the read-only fill and use the error border.
-TextBox and the NumericUpDown text area never receive `:pressed` in Avalonia 12.1.1, so their `:pressed` rule is the retained original and only the state sheet previews it. ComboBox (pressed and open) and the NumericUpDown spinner buttons do press to `Nvt.Form.PressedFillBrush`.
+TextBox and NumericUpDown never receive `:pressed` on the editable area, so they have no pressed fill. Only ComboBox and the spinner buttons use the pressed fill.
 ComboBox has no native read-only property. Its `readOnly` class provides the read-only visual state only.
 The adopting application owns selection restrictions. The style preserves native keyboard behavior.
 
