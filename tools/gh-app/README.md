@@ -218,11 +218,13 @@ A failed check does not stop the others, so one call lists every problem.
 | `Author` | the author is `botLogin` |
 | `Head` | the head equals `-ExpectedHeadSha`; without that parameter the row only shows the head |
 | `MergeState` | the merge state is `CLEAN`, `BLOCKED`, `UNSTABLE` or `HAS_HOOKS`. `BLOCKED` is normal before the owner approves. `BEHIND` fails, because the head would change at merge time. `DIRTY` and `UNKNOWN` fail. |
-| `ReviewRecord` | a submitted review sits on the head commit and its body matches the pattern |
+| `ReviewRecord` | the latest verdict on the head commit is an acceptance: a review in state `COMMENTED` or `APPROVED` whose first non-empty line matches the pattern |
 | `Run: <workflow>` | the latest run of that workflow on the head is completed with the conclusion `success` |
 
 The review record format differs between repositories, so the module does not fix it.
-`-ReviewRecordPattern` is a regular expression, matched case-sensitively against the review body. `^` and `$` match at every line.
+`-ReviewRecordPattern` is a regular expression, matched case-sensitively against the first non-empty line of the review body only. Blank lines before it are skipped, and a rejection that quotes an acceptance on a later line does not pass.
+The default format also tells the module what a rejection looks like (`Review record: <head> <other verdict>`). A custom pattern names the acceptance only, so with a custom pattern every later review on the head that has a body, is dismissed or is `CHANGES_REQUESTED` counts as a verdict and cancels an earlier acceptance. A review without a body, such as the container of inline comments, does not.
+A review in state `PENDING` or `DISMISSED` is never an acceptance. A later verdict on the same head replaces an earlier one: a review `Review record: <head> <other verdict>`, a `CHANGES_REQUESTED` review, or a dismissed record cancels the acceptance before it, and a new acceptance after them counts again.
 `{HEAD}` in the pattern becomes the head SHA.
 The default is `^Review record: {HEAD} accept\b`.
 A repository whose record reads `Verdict: accept` passes `-ReviewRecordPattern '^Verdict: accept$'`.
@@ -418,10 +420,23 @@ It needs no review request and no owner approval. It reads the PR, its reviews, 
 
 The tool refuses unless all of these hold:
 
-1. The repository is in the tier B list inside the module, and the base branch matches the list entry. The list holds the freeform helper, the replay tool, and the development branches `X.Y.x` of the combiner. Core is not in the list, so a Core PR is always refused. Any repository outside the list is refused before a call is made.
+1. The repository is in the tier B list inside the module, and the base branch matches the list entry. The list holds the freeform helper, the replay tool, the development branches `X.Y.x` of the combiner, and `main` of Core. Any repository outside the list is refused before a call is made. For Core the tier check (`pr-tier.ps1` in the commander tools) decides what counts as B. Since the owner's decision of 2026-11-06 08:24 ("anything that is not UI or a new feature does not need my approval"), B is bug fixes and refactors in `src`, tests, documents, other tools and debt files that only decrease. A is UI, new features, the approval mechanism itself, a looser guard, ratchet or baseline, and version or release files. For Core the module also keeps a path floor of its own, because the tier check is outside this repository. A PR that changes, or renames away from, a path of these groups is refused with `Paths: <file> is a protected path of <repo>; only the owner approves a change there`, whatever the tier check said (`$script:CoreProtectedPathGroups` names them):
+   - UI files: `.axaml`, `.xaml` and `.axaml.cs`; under `src` and `examples`, any `Views`, `Theme` or `Icons` folder, image files (`.png`, `.jpg`, `.gif`, `.svg`, `.ico`, `.icns`, `.webp`, `.bmp`) and font files (`.ttf`, `.otf`, `.woff`); and `src/Nvt.Core.Fonts/`;
+   - the public API lists `PublicAPI*.txt` (a new feature adds to them);
+   - the approval mechanism and the guard code: `tools/gh-app/`, `tools/repo-checks/`, `actions/` (the shared CI actions), `.github`, `.agents`, `.claude`, `.codex`, `scripts/` (the pack script);
+   - `eng`, except the two named debt ledgers `eng/code-health/baseline.json` and `eng/code-health/test-debt.json`. `seam-owners.json`, policy files, schemas and any other file are A;
+   - project and build files: `.sln`, `.slnx`, `.csproj`, `.props`, `.targets`, `.ruleset`, `.globalconfig`, `.rsp`, `.slnf`;
+   - repository files: `Directory.*`, `global.json`, `nuget.config`, `packages.lock.json`, `.editorconfig`, `.gitattributes`, `.gitignore`, `.gitmodules`, `CODEOWNERS`, `VERSION`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE*`;
+   - test infrastructure: `tests/approval-check/` (the required self-test) and `tests/Nvt.Core.TestSupport/` (a packed library);
+   - every path under `tests/` whose name has `guard`, `baseline`, `ratchet`, `contract`, `publicapi` or `publicsurface` (this holds the Theme contract tests and their baseline XML, and the tests that pin the exported API);
+   - any `Architecture/` folder outside `docs/`;
+   - `docs/governance/` and `adr` folders at any depth.
+   The two debt ledgers may only lose lines: a ledger that gains a line, or is added, removed or renamed, is refused with `is a debt ledger and gains lines or is added, removed or renamed`.
+   The module also proves that the file list is complete. It reads the file count of the PR and refuses (`Files: ...`) when the count is more than 3,000 or differs from the number of files listed, because GitHub lists at most 3,000 files.
+   Ordinary `src` code, the other tools, tests, documents and `CHANGELOG.md` are not in the floor. The tier check judges a release by its title (`release:` or `type(release):`). The other repositories have no floor.
 2. The PR is open, ready (not a draft) and written by the App.
 3. The head is the head that `-ExpectedHeadSha` names.
-4. A review on that head has a first line `Review record: <head> accept` (the default pattern; `-ReviewRecordPattern` replaces it).
+4. The latest verdict on that head is a review with the first non-empty line `Review record: <head> accept` in state `COMMENTED` or `APPROVED` (the default pattern; `-ReviewRecordPattern` replaces it). A later rejection or dismissal cancels it.
 5. The latest run of every workflow for the head completed with success. An older failed run does not count.
 6. No review thread is unresolved. A thread count that cannot be read refuses the merge.
 7. The merge state is `CLEAN`. This is stricter than `Get-GhAppPullRequestReadiness`, which also accepts `BLOCKED`.

@@ -343,8 +343,35 @@ function Get-GhAppLedgerPath {
 $script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
 
 # Tier B scope: the repositories where a pull request can merge without an owner approval, and the bases it may target.
-# Core is not listed, so a Core pull request always needs the owner. A repository that is not listed is refused.
+# Core is listed for main only (owner 2026-11-05 22:19, tiered approval for Core; narrowed by the owner on 2026-11-06 08:24: "anything that is not UI
+# or a new feature does not need my approval"). The tier check decides what counts as B: for Core that is bug fixes and refactors in src, tests,
+# documents and debt files that only decrease. A is UI, new features, the approval mechanism, and a looser guard, ratchet or baseline.
+# A repository that is not listed is refused.
+# ProtectedPathPattern is a floor that the tier check cannot lower: a pull request that changes (or renames away from) a matching path is refused here
+# whatever the tier check said, because the tier check is outside this repository. It mirrors the A paths of the tier check for Core.
+# The groups: UI files (axaml, views, themes, icons, images and fonts); the public API lists (a new feature adds to them); the approval mechanism and
+# the guard code (gh-app, repo-checks, the shared CI actions, workflows, agent configuration, the pack script); eng except the named debt ledgers;
+# project and build files; repository configuration, version and release files; the test support library (it is packed) and the approval-check
+# self-test; tests whose path names a guard, a baseline, a ratchet, a contract, a public API or a public surface (this holds the Theme contract
+# tests and their baseline XML, and the tests that pin the exported API); Architecture folders; governance and ADR documents at any depth.
+# Ordinary src code, other tools, tests, documents (also a docs/**/Architecture folder) and CHANGELOG.md are not in the floor. The tier check judges a release by its title.
+$script:CoreProtectedPathGroups = [ordered]@{
+    Ui       = '\.(axaml|xaml)(\.cs)?$|^(src|examples)/.*\.(png|jpe?g|gif|svg|ico|icns|webp|bmp|ttf|otf|woff2?)$|^(src|examples)/(.+/)?(Views?|Themes?|Icons?)/|^src/Nvt\.Core\.Fonts/'
+    PublicApi = '(^|/)PublicAPI[^/]*\.txt$'
+    Mechanism = '^(tools/(gh-app|repo-checks)|actions|\.github|\.agents|\.claude|\.codex|scripts)/'
+    Eng      = '^eng/(?!code-health/(baseline|test-debt)\.json$)'
+    Build    = '\.(sln|slnx|csproj|props|targets|ruleset|globalconfig|rsp|slnf)$'
+    Config   = '(^|/)(Directory\.[A-Za-z.]+|global\.json|nuget\.config|packages\.lock\.json|\.editorconfig|\.gitattributes|\.gitignore|\.gitmodules|CODEOWNERS|VERSION|AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|LICENSE[^/]*)$'
+    TestInfra = '^tests/approval-check/|^tests/Nvt\.Core\.TestSupport/'
+    Contracts = '^tests/.*(guard|baseline|ratchet|contract|publicapi|publicsurface)'
+    Architecture = '^(?!docs/)(.+/)?Architecture/'
+    Documents = '^docs/governance/|^docs/(.+/)?adr/'
+}
+$script:CoreProtectedPaths = '(?i)' + (($script:CoreProtectedPathGroups.Values | ForEach-Object { "(?:$_)" }) -join '|')
+# The debt ledgers: a change may only remove lines from them.
+$script:CoreDebtLedgers = @('eng/code-health/baseline.json', 'eng/code-health/test-debt.json')
 $script:TierBScopes = @(
+    @{ Repository = 'Dennis40816/nvt_fw_core'; BasePattern = '^main$'; ProtectedPathPattern = $script:CoreProtectedPaths; DebtLedgers = $script:CoreDebtLedgers },
     @{ Repository = 'Dennis40816/nvt-freeform-helper'; BasePattern = '^.+$' },
     @{ Repository = 'Dennis40816/nvt-event-buffer-replay'; BasePattern = '^.+$' },
     @{ Repository = 'Dennis40816/nvt_fw_combiner'; BasePattern = '^\d+\.\d+\.x$' }
@@ -396,7 +423,8 @@ function Get-GhAppLatestRuns {
 function Get-GhAppReadiness {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$ExpectedHeadSha, [string]$ReviewRecordPattern)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
-    if ([string]::IsNullOrEmpty($ReviewRecordPattern)) { $ReviewRecordPattern = $script:DefaultReviewRecordPattern }
+    $custom = -not [string]::IsNullOrEmpty($ReviewRecordPattern)
+    if (-not $custom) { $ReviewRecordPattern = $script:DefaultReviewRecordPattern }
     $pattern = $ReviewRecordPattern.Replace('{HEAD}', [regex]::Escape($head))
     $checks = [Collections.Generic.List[object]]::new()
     $checks.Add((New-GhAppCheckRow 'State' ($Pr.state -ceq 'OPEN') "state is $($Pr.state)"))
@@ -416,11 +444,30 @@ function Get-GhAppReadiness {
     $checks.Add((New-GhAppCheckRow 'MergeState' ($Pr.mergeStateStatus -cin @('CLEAN', 'BLOCKED', 'UNSTABLE', 'HAS_HOOKS')) $stateDetail))
 
     $reviews = @(Get-GhAppItems $Context "pulls/$Number/reviews")
-    $records = @($reviews | Where-Object {
-        $_.state -cne 'PENDING' -and [string]$_.commit_id -ceq $head -and
-        [regex]::IsMatch([string]$_.body, $pattern, [Text.RegularExpressions.RegexOptions]::Multiline, [TimeSpan]::FromSeconds(2)) })
-    if ($records.Count -gt 0) {
-        $checks.Add((New-GhAppCheckRow 'ReviewRecord' $true "$($records.Count) review(s) on this head match; the latest is by $($records[-1].user.login)"))
+    # Only the first non-empty line of a review counts (the NFU record rule), so a rejection that quotes an acceptance cannot pass.
+    # A review counts as an acceptance in state COMMENTED or APPROVED only. A later verdict on the same head replaces an earlier one:
+    # a rejection and a dismissed record both cancel the acceptance before them.
+    # What a rejection looks like is known for the default format only (`Review record: <head> <verdict>`). A custom pattern names
+    # the acceptance and nothing else, so with a custom pattern every review on the head that has a body, a dismissed or a
+    # CHANGES_REQUESTED state is a verdict, and the latest one decides. A review without a body (the container of inline comments)
+    # is not a verdict.
+    $accept = [regex]::new($pattern, [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))
+    $verdict = [regex]::new('^Review record: ' + [regex]::Escape($head) + ' \S+', [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))
+    $verdicts = @(foreach ($review in @($reviews | Where-Object { $_.state -cne 'PENDING' -and [string]$_.commit_id -ceq $head })) {
+        $lines = @([string]$review.body -split "\r?\n" | Where-Object { $_.Trim().Length -gt 0 })
+        $firstLine = $(if ($lines.Count -gt 0) { [string]$lines[0] } else { '' })
+        $isAccept = ($review.state -cin @('COMMENTED', 'APPROVED')) -and $accept.IsMatch($firstLine)
+        $isOther = $verdict.IsMatch($firstLine) -or ($custom -and ($firstLine.Length -gt 0 -or $review.state -ceq 'DISMISSED'))
+        if ($isAccept -or $review.state -ceq 'CHANGES_REQUESTED' -or $isOther) {
+            $stamp = $(if ($null -ne $review.PSObject.Properties['submitted_at'] -and $review.submitted_at) { [DateTimeOffset]$review.submitted_at } else { [DateTimeOffset]::MinValue })
+            [pscustomobject]@{ Review = $review; Accept = $isAccept; Time = $stamp; Id = [long]$review.id }
+        }
+    })
+    $latestVerdict = $(if ($verdicts.Count -gt 0) { @($verdicts | Sort-Object -Property Time, Id)[-1] } else { $null })
+    if ($null -ne $latestVerdict -and $latestVerdict.Accept) {
+        $checks.Add((New-GhAppCheckRow 'ReviewRecord' $true "the latest verdict on this head accepts it; review $($latestVerdict.Review.id) by $($latestVerdict.Review.user.login)"))
+    } elseif ($null -ne $latestVerdict) {
+        $checks.Add((New-GhAppCheckRow 'ReviewRecord' $false "the latest verdict on this head is review $($latestVerdict.Review.id), which does not accept it (state $($latestVerdict.Review.state))"))
     } else {
         $checks.Add((New-GhAppCheckRow 'ReviewRecord' $false "no review on this head matches the pattern $pattern"))
     }
@@ -445,7 +492,9 @@ function Get-GhAppReadiness {
     }
 
     $files = @(Get-GhAppItems $Context "pulls/$Number/files" | ForEach-Object {
-        [pscustomobject]@{ Path = [string]$_.filename; Added = [int]$_.additions; Deleted = [int]$_.deletions } })
+        [pscustomobject]@{ Path = [string]$_.filename; Added = [int]$_.additions; Deleted = [int]$_.deletions
+            Previous = $(if ($null -ne $_.PSObject.Properties['previous_filename']) { [string]$_.previous_filename } else { '' })
+            Status = $(if ($null -ne $_.PSObject.Properties['status']) { [string]$_.status } else { '' }) } })
     [pscustomobject]@{ Number = $Number; Head = $head; Ready = (@($checks | Where-Object { $_.Result -ceq 'FAIL' }).Count -eq 0);
         Checks = $checks.ToArray(); Files = $files }
 }
@@ -1578,6 +1627,33 @@ function Merge-GhAppTierBPullRequest {
         if ($pr.mergeStateStatus -cne 'CLEAN') { $refusals.Add("MergeState: must be CLEAN, is $($pr.mergeStateStatus)") }
         $unresolved = Get-GhAppUnresolvedThreadCount $context $Number
         if ($unresolved -gt 0) { $refusals.Add("Threads: $unresolved review thread(s) are not resolved") }
+        if ($scope[0].ContainsKey('ProtectedPathPattern')) {
+            # The file list must be complete, or a protected file could sit outside it. GitHub returns at most 3,000 files.
+            $meta = Invoke-GhAppApi $context GET "pulls/$Number"
+            $changed = $(if ($null -ne $meta -and $null -ne $meta.PSObject.Properties['changed_files']) { [int]$meta.changed_files } else { -1 })
+            $listedCount = @($readiness.Files).Count
+            if ($changed -lt 0 -or $changed -gt 3000 -or $changed -ne $listedCount) {
+                $refusals.Add("Files: the pull request changes $changed file(s) and $listedCount were listed; the path floor cannot be proven")
+            }
+            $protected = @(foreach ($file in $readiness.Files) {
+                foreach ($path in @($file.Path, $file.Previous)) {
+                    if ($path -and [regex]::IsMatch($path, $scope[0].ProtectedPathPattern, [Text.RegularExpressions.RegexOptions]::None, [TimeSpan]::FromSeconds(2))) { $path }
+                }
+            })
+            if ($protected.Count -gt 0) {
+                $listed = @($protected | Select-Object -Unique -First 3) -join ', '
+                $refusals.Add("Paths: $listed is a protected path of $name; only the owner approves a change there")
+            }
+            # A debt ledger may only lose lines. A new, removed or renamed ledger, or a ledger that gains a line, is an increase or a policy change.
+            $ledgers = @($scope[0].DebtLedgers)
+            $grown = @(foreach ($file in $readiness.Files) {
+                $touchesLedger = ($file.Path -iin $ledgers) -or ($file.Previous -and $file.Previous -iin $ledgers)
+                if ($touchesLedger -and ($file.Added -gt 0 -or $file.Previous -or $file.Status -cin @('added', 'removed', 'renamed'))) { $file.Path }
+            })
+            if ($grown.Count -gt 0) {
+                $refusals.Add("Paths: $(@($grown | Select-Object -Unique -First 3) -join ', ') is a debt ledger and gains lines or is added, removed or renamed; only the owner approves that")
+            }
+        }
         if ($refusals.Count -gt 0) { throw "#$Number tier B merge refused: $($refusals -join '; ')." }
         # Check the pull request once more just before the merge: the head, the base and the state must not have moved.
         $fresh = Get-GhAppPullRequest $context $Number
