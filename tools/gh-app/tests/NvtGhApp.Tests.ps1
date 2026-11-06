@@ -1431,6 +1431,20 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $headParent = New-ReviewCommit @($headParent, $baseParent) "clean base merge $round"
             $script:BaseUpdateMerges += $headParent
         }
+        # Rebased heads: one parent, the new base, and the tree of the branch on that base.
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:CleanMerge)^{tree}")
+        $script:Rebased = New-ReviewCommit @($script:ReviewBase) 'rebased onto base'
+        Set-ReviewBlob 'unreviewed.txt' 'new feature'
+        $script:RebasedChanged = New-ReviewCommit @($script:ReviewBase) 'rebased with an extra change'
+        # Only white space differs from the rebased head: patch-id ignores it, the tree id does not.
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:CleanMerge)^{tree}")
+        $cleanContent = $branch.Replace('line 12' + "`n", 'base line 12' + "`n")
+        Set-ReviewBlob 'shared 中文.txt' $cleanContent.Replace('branch line 1' + "`n", 'branch  line 1' + "`n")
+        $script:RebasedWhitespace = New-ReviewCommit @($script:ReviewBase) 'rebased with a white space change'
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:BaseUpdateMerges[0])^{tree}")
+        $script:RebasedAgain = New-ReviewCommit @($script:BaseUpdateCommits[0]) 'rebased again onto a newer base'
+        $null = Invoke-GhAppGit $script:ReviewGitRoot @('read-tree', "$($script:BaseUpdateMerges[1])^{tree}")
+        $script:RebasedAgainMerge = New-ReviewCommit @($script:RebasedAgain, $script:BaseUpdateCommits[1]) 'clean base merge on a rebased head'
         $null = Invoke-GhAppGit $script:ReviewGitRoot @('update-ref', 'HEAD', $script:ReviewedSha)
     }
     New-ReviewGitFixture
@@ -2711,6 +2725,403 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
     }
 
+    Describe 'Owner approval reuse once' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            # The fixtures already contain every object. Only fetching is replaced; patch-ids and proof use real Git.
+            Mock Sync-GhAppReviewCommits {}
+            Mock Get-GhAppTimelineObservation { 'unavailable' }
+            $script:PatchId = Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:ReviewBase
+        }
+        function Add-ReuseFixture {
+            param([string]$OldHead = $script:ReviewedSha, [string]$NewHead, [long]$ApprovalId = 1, [string]$ApprovalCommit = $script:ReviewedSha,
+                [string]$RequestedAt = '2025-12-31T23:00:00Z')
+            $entry = [ordered]@{ kind = 'reuse'; owner = $script:Owner; repo = $script:RepoName; number = 7; mode = 'tree-equal'; requestedAt = $RequestedAt;
+                oldHead = $OldHead; newHead = $NewHead; approvalId = $ApprovalId; approvalCommit = $ApprovalCommit; reusedAt = '2026-01-01T02:00:00.0000000+00:00' }
+            [IO.File]::AppendAllText($script:LedgerFile, (ConvertTo-Json $entry -Compress) + "`n", [Text.UTF8Encoding]::new($false))
+        }
+        function Get-ReuseLines { @([IO.File]::ReadAllLines($script:LedgerFile) | Where-Object { $_ -match '"kind":"reuse"' } | ForEach-Object { ConvertFrom-Json $_ }) }
+        function Get-LedgerRequest { Get-GhAppReviewRequest (Get-GhAppContext '') 7 $script:LedgerFile }
+        # A reuse merge reads the pull request once more right before the merge, and the merge commit after it.
+        function New-ReuseMergeSteps {
+            param([string]$Head = $script:ReviewedSha, [string]$Base = $script:ReviewBase, [object[]]$Reviews = @((New-Review -Head $script:ReviewedSha)),
+                [string]$NowBase = $Base, [string]$MergedTree = (Get-GhAppIntegratedTree $script:ReviewGitRoot $Base $Head))
+            $steps = @(New-ReviewMergeSteps -Head $Head -Base $Base -Reviews $Reviews)
+            @($steps[0..4]) + @((New-PrStep -Pr (New-Pr -Head $Head -BaseHead $NowBase)), $steps[5], $steps[6],
+                (New-ApiStep "git/commits/$script:MergeSha" -Value @{ tree = @{ sha = $MergedTree } }))
+        }
+
+        It 'reuses a live approval after a rebase with the same content, and records it only after the merge' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @(New-ReuseMergeSteps -Head $script:Rebased -Base $script:ReviewBase)
+            $result = Invoke-ReviewMergeFixture
+            $result.TreeMismatch | Should Be $false
+            $result.Reused | Should Be $true
+            $reuse = @(Get-ReuseLines)
+            $reuse.Count | Should Be 1
+            $reuse[0].mode | Should Be 'tree-equal'
+            $reuse[0].oldHead | Should Be $script:ReviewedSha
+            $reuse[0].newHead | Should Be $script:Rebased
+            $reuse[0].approvalId | Should Be 1
+            $reuse[0].approvalCommit | Should Be $script:ReviewedSha
+            $reuse[0].patchId | Should Be $script:PatchId
+            ([DateTimeOffset]$reuse[0].requestedAt) -eq [DateTimeOffset]'2025-12-31T23:00:00Z' | Should Be $true
+            $log = [IO.File]::ReadAllText($script:LogFile)
+            $log | Should Match "#7 owner approval 1 reused from $script:ReviewedSha \(tree-equal\); merged head $script:Rebased"
+            $log | Should Match "#7 merged $script:Rebased -> $script:MergeSha"
+        }
+        It 'refuses the reuse when the base moved after the proof, sends no merge and spends nothing' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            $steps = @(New-ReuseMergeSteps -Head $script:Rebased -Base $script:ReviewBase -NowBase $script:BaseUpdateCommits[0])
+            Set-Responses @($steps[0..5])
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match '^#7 stop: the base branch moved after the reuse proof \('
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            @(Get-ReuseLines).Count | Should Be 0
+            [IO.File]::ReadAllText($script:LogFile) | Should Not Match ' merged '
+        }
+        It 'flags a merge commit whose tree differs from the proven base plus head, and still spends the approval' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            $other = Get-GhAppIntegratedTree $script:ReviewGitRoot $script:ReviewBase $script:RebasedChanged
+            Set-Responses @(New-ReuseMergeSteps -Head $script:Rebased -Base $script:ReviewBase -MergedTree $other)
+            $result = Invoke-ReviewMergeFixture 3>$null
+            $result.TreeMismatch | Should Be $true
+            $result.MergeCommit | Should Be $script:MergeSha
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 TREE MISMATCH after reuse: merge commit $script:MergeSha"
+            @(Get-ReuseLines).Count | Should Be 1
+        }
+        It 'does not re-read the base or the merge commit when no approval is reused' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @(New-ReviewMergeSteps)
+            $result = Invoke-ReviewMergeFixture
+            $result.Reused | Should Be $false
+            $result.TreeMismatch | Should Be $false
+            @(Get-Calls).Count | Should Be 7
+        }
+        It 'does not spend the approval when the merge does not happen' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            $steps = @(New-ReviewMergeSteps -Head $script:Rebased -Base $script:ReviewBase)
+            Set-Responses @($steps[0], $steps[1], (New-ChecksStep -Bucket fail -ExitCode 1))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be '#7 stop: required checks failed.'
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'refuses a second use of the same approval for another head' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedAgain -BaseHead $script:BaseUpdateCommits[0])),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: owner approval 1 was already reused for $script:Rebased; a new owner approval is required."
+            @(Get-ReuseLines).Count | Should Be 1
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'refuses a rebase that changes the patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedChanged -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: head $script:RebasedChanged is not review request $script:ReviewedSha or a clean base merge after it, and its patch-id differs from the request; owner approval and a new review request required."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'refuses a rebase whose patch-id matches but whose content differs only in white space' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            (Get-GhAppPatchId $script:ReviewGitRoot $script:RebasedWhitespace $script:ReviewBase) | Should Be $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedWhitespace -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: head $script:RebasedWhitespace does not have the content of approved commit $script:ReviewedSha once both are merged into main; owner approval and a new review request required."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'still needs a new approval after a rebase when the request has no patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:Rebased -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: head $script:Rebased adds commits after review request $script:ReviewedSha; owner approval and a new review request required."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'accepts a clean base merge on top of a rebased head, because the content matches' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @(New-ReuseMergeSteps -Head $script:RebasedAgainMerge -Base $script:BaseUpdateCommits[1])
+            Invoke-ReviewMergeFixture
+            @(Get-ReuseLines).Count | Should Be 1
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:RebasedAgainMerge -> $script:MergeSha"
+        }
+        It 'accepts the owner approval that sits on a clean base merge after the request head, after a rebase' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @(New-ReuseMergeSteps -Head $script:Rebased -Base $script:ReviewBase -Reviews @((New-Review -Head $script:CleanMerge)))
+            Invoke-ReviewMergeFixture
+            $reuse = @(Get-ReuseLines)
+            $reuse.Count | Should Be 1
+            $reuse[0].approvalCommit | Should Be $script:CleanMerge
+            $reuse[0].oldHead | Should Be $script:ReviewedSha
+        }
+        It 'refuses a rebase when the owner approval sits on a commit outside the reviewed history' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:Rebased -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:NonMerge))))
+            Get-Message { Invoke-ReviewMergeFixture } |
+                Should Be "#7 stop: owner approval is on $script:NonMerge, not on review request $script:ReviewedSha or a clean base merge after it."
+            @(Get-ReuseLines).Count | Should Be 0
+        }
+        It 'does not let a reuse record authorize a head: a forged record for a changed head changes nothing' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:RebasedChanged
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:RebasedChanged -BaseHead $script:ReviewBase)),
+                (New-ReviewStep -Reviews @((New-Review -Head $script:ReviewedSha))))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match 'patch-id differs from the request'
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'binds a reuse record to its request by head and time' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Add-ReuseFixture -NewHead $script:Rebased
+            (Get-LedgerRequest).Reuses.Count | Should Be 1
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            (Get-LedgerRequest).Reuses.Count | Should Be 1
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId -RequestedAt '2026-01-02T00:00:00Z'
+            (Get-LedgerRequest).Reuses.Count | Should Be 0
+            Add-ReuseFixture -NewHead $script:Rebased -RequestedAt '2025-12-31T23:00:00Z'
+            (Get-LedgerRequest).Reuses.Count | Should Be 0
+            Add-LedgerFixture -Head $script:CleanMerge -RequestedAt '2026-01-03T00:00:00Z'
+            Add-ReuseFixture -OldHead $script:ReviewedSha -NewHead $script:Rebased -RequestedAt '2026-01-03T00:00:00Z'
+            (Get-LedgerRequest).Reuses.Count | Should Be 0
+        }
+        It 'fails closed on a ledger entry of an unknown kind for the pull request' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            [IO.File]::AppendAllText($script:LedgerFile, '{"kind":"other","owner":"' + $script:Owner + '","repo":"' + $script:RepoName + '","number":7}' + "`n")
+            Get-Message { Get-LedgerRequest } | Should Be 'The review ledger contains an invalid entry or could not be read.'
+        }
+        It 'fails closed on a reuse record without its approval commit' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            [IO.File]::AppendAllText($script:LedgerFile, '{"kind":"reuse","owner":"' + $script:Owner + '","repo":"' + $script:RepoName + '","number":7,"mode":"tree-equal","oldHead":"' + $script:ReviewedSha + '","newHead":"' + $script:Rebased + '","approvalId":1}' + "`n")
+            Get-Message { Get-LedgerRequest } | Should Be 'The review ledger contains an invalid entry or could not be read.'
+        }
+        It 'refuses a second merge call of the same pull request while one is running' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $lock = [IO.FileStream]::new("$script:LedgerFile.$($script:Owner)_$($script:RepoName)_7.lock", [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            try {
+                Set-Responses @()
+                Get-Message { Invoke-ReviewMergeFixture } | Should Be '#7 stop: another merge of this pull request is running.'
+                @(Get-Calls).Count | Should Be 0
+            } finally { $lock.Dispose() }
+        }
+        It 'releases the lock after a merge' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @(New-ReviewMergeSteps)
+            Invoke-ReviewMergeFixture
+            @(Get-ChildItem -LiteralPath (Split-Path $script:LedgerFile) -Filter '*.lock').Count | Should Be 0
+        }
+    }
+
+    Describe 'Push after an owner review' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture
+            # The fixtures already contain every object. Only fetching is replaced; the probe commit and patch-ids use real Git.
+            Mock Sync-GhAppReviewCommits {}
+            $script:PushLogFile = Join-Path $script:FixtureRoot 'push-after-review.log'
+            if ([IO.File]::Exists($script:PushLogFile)) { [IO.File]::Delete($script:PushLogFile) }
+            $script:PatchId = Get-GhAppPatchId $script:ReviewGitRoot $script:ReviewedSha $script:ReviewBase
+        }
+        AfterEach { $null = Invoke-GhAppGit $script:ReviewGitRoot @('update-ref', 'HEAD', $script:ReviewedSha) }
+        function Set-ReviewHead { param([string]$Sha) $null = Invoke-GhAppGit $script:ReviewGitRoot @('update-ref', 'HEAD', $Sha) }
+        function New-GuardReadSteps {
+            $item = @{ number = 7; base = @{ ref = 'main'; sha = $script:ReviewBase } }
+            New-ApiStep 'pulls?state=open&head=example-owner%3Atest%2Fmodule&per_page=100&page=1' -Value @($item)
+            New-ReviewStep -Reviews @((New-Review))
+        }
+        function New-GuardWriteSteps {
+            param([string]$LocalBase, [string]$Head, [string]$Remote)
+            $baseTree = (Invoke-GhAppGit $script:ReviewGitRoot @('rev-parse', "$LocalBase^{tree}")).Trim()
+            $headTree = (Invoke-GhAppGit $script:ReviewGitRoot @('rev-parse', "$Head^{tree}")).Trim()
+            $blob = (Invoke-GhAppGit $script:ReviewGitRoot @('rev-parse', "${Head}:shared 中文.txt")).Trim()
+            New-ApiStep "git/commits/$Remote" -Value @{ tree = @{ sha = $baseTree } }
+            New-ApiStep git/blobs POST @{ sha = $blob } -App
+            New-ApiStep git/trees POST @{ sha = $headTree } -App
+            New-ApiStep git/commits POST @{ sha = $script:MergeSha } -App
+            New-ApiStep 'git/ref/heads/test%2Fmodule' -Value @{ object = @{ sha = $Remote } }
+            New-ApiStep 'git/refs/heads/test%2Fmodule' PATCH @{} -App
+        }
+        function Invoke-GuardPush {
+            param([string]$LocalBase, [string]$Remote, [string]$Extra, [switch]$NoAllow)
+            Push-GhAppBranch -Worktree $script:ReviewGitRoot -LocalBase $LocalBase -RemoteParent $Remote -ExtraParent $Extra `
+                -Branch test/module -MessageFile $script:BodyFile -AllowOpenPr:(-not $NoAllow) -LedgerPath $script:LedgerFile -PushLogPath $script:PushLogFile
+        }
+
+        It 'allows the old head plus one clean base merge, without a patch-id, and logs base-merge' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-ReviewHead $script:CleanMerge
+            Set-Responses @((New-GuardReadSteps) + (New-GuardWriteSteps -LocalBase $script:ReviewedSha -Head $script:CleanMerge -Remote $script:ReviewedSha))
+            $result = Invoke-GuardPush -LocalBase $script:ReviewedSha -Remote $script:ReviewedSha -Extra $script:ReviewBase
+            $result.OwnerReviewPush | Should Be 'base-merge'
+            $result.Commit | Should Be $script:MergeSha
+            $log = [IO.File]::ReadAllText($script:PushLogFile)
+            $log | Should Match "push after owner review kind=base-merge pr=#7 branch=test/module parents=$script:ReviewedSha,$script:ReviewBase"
+        }
+        It 'allows a rebase that keeps the recorded patch-id and logs rebase' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-ReviewHead $script:Rebased
+            # The remote head is not a clean chain from the request, so only the patch-id can prove the content.
+            Set-Responses @((New-GuardReadSteps) + (New-GuardWriteSteps -LocalBase $script:ReviewBase -Head $script:Rebased -Remote $script:NonMerge))
+            $result = Invoke-GuardPush -LocalBase $script:ReviewBase -Remote $script:NonMerge -Extra $script:ReviewBase
+            $result.OwnerReviewPush | Should Be 'rebase'
+            [IO.File]::ReadAllText($script:PushLogFile) | Should Match 'kind=rebase pr=#7 branch=test/module'
+        }
+        It 'refuses a push whose content changed, and writes no log' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-ReviewHead $script:RebasedChanged
+            Set-Responses @(New-GuardReadSteps)
+            Get-Message { Invoke-GuardPush -LocalBase $script:ReviewBase -Remote $script:ReviewedSha -Extra $script:ReviewBase } |
+                Should Be '#7 has an owner review; push refused. Open a follow-up PR instead.'
+            @(Get-Calls).Count | Should Be 2
+            [IO.File]::Exists($script:PushLogFile) | Should Be $false
+        }
+        It 'refuses a rebase whose patch-id matches but whose content differs only in white space' {
+            Add-LedgerFixture -Head $script:ReviewedSha -PatchId $script:PatchId
+            Set-ReviewHead $script:RebasedWhitespace
+            Set-Responses @(New-GuardReadSteps)
+            Get-Message { Invoke-GuardPush -LocalBase $script:ReviewBase -Remote $script:NonMerge -Extra $script:ReviewBase } |
+                Should Be '#7 has an owner review; push refused. Open a follow-up PR instead.'
+            @(Get-Calls).Count | Should Be 2
+            [IO.File]::Exists($script:PushLogFile) | Should Be $false
+        }
+        It 'verifies and publishes the one commit that HEAD named when the push began' {
+            Set-ReviewHead $script:CleanMerge
+            Mock Write-GhAppCommit { $script:SeenCandidate = $Candidate; [pscustomobject]@{ Files = 0; Tree = $script:BaseTree; Commit = $script:MergeSha } }
+            Set-Responses @((New-ApiStep 'pulls?state=open&head=example-owner%3Atest%2Fmodule&per_page=100&page=1' -Value @()),
+                (New-ApiStep 'git/ref/heads/test%2Fmodule' -ExitCode 1 -ErrorText 'HTTP 404'), (New-ApiStep git/refs POST @{} -App))
+            $null = Invoke-GuardPush -LocalBase $script:ReviewedSha -Remote $script:ReviewedSha
+            $script:SeenCandidate | Should Be $script:CleanMerge
+        }
+        It 'refuses a rebase when the request was recorded without a patch-id' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-ReviewHead $script:Rebased
+            Set-Responses @(New-GuardReadSteps)
+            Get-Message { Invoke-GuardPush -LocalBase $script:ReviewBase -Remote $script:NonMerge -Extra $script:ReviewBase } |
+                Should Be '#7 has an owner review; push refused. Open a follow-up PR instead.'
+            @(Get-Calls).Count | Should Be 2
+        }
+        It 'refuses when the pull request has no review request in the ledger' {
+            Set-ReviewHead $script:CleanMerge
+            Set-Responses @(New-GuardReadSteps)
+            Get-Message { Invoke-GuardPush -LocalBase $script:ReviewedSha -Remote $script:ReviewedSha -Extra $script:ReviewBase } |
+                Should Be '#7 has an owner review; push refused. Open a follow-up PR instead.'
+        }
+        It 'still needs AllowOpenPr for a push that is allowed after a review' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-ReviewHead $script:CleanMerge
+            Set-Responses @(New-GuardReadSteps)
+            Get-Message { Invoke-GuardPush -LocalBase $script:ReviewedSha -Remote $script:ReviewedSha -Extra $script:ReviewBase -NoAllow } |
+                Should Be '#7 is open; push refused. Pass -AllowOpenPr only if it has not been sent to the owner.'
+            [IO.File]::Exists($script:PushLogFile) | Should Be $false
+        }
+    }
+
+    Describe 'Repositories without required checks' {
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            Mock Sync-GhAppReviewCommits {}
+            Mock Get-GhAppTimelineObservation { 'unavailable' }
+        }
+        # gh 2.92.0 prints this for both calls when the head has no check (cli/cli v2.92.0, pkg/cmd/pr/checks/checks.go).
+        $script:GhNoChecks = "no checks reported on the 'test/module' branch"
+        function New-NoRequiredStep {
+            param([string]$ErrorText = $script:GhNoChecks, [int]$ExitCode = 1)
+            @{ Arguments = @('pr', 'checks', '7', '--repo', $script:RepositoryName, '--required', '--json', 'name,bucket,state'); App = $false
+                Output = ''; Error = $ErrorText; ExitCode = $ExitCode }
+        }
+        function New-AllChecksStep {
+            param([string]$Output, [int]$ExitCode, [string]$ErrorText = '')
+            @{ Arguments = @('pr', 'checks', '7', '--repo', $script:RepositoryName, '--json', 'name,bucket,state'); App = $false
+                Output = $Output; Error = $ErrorText; ExitCode = $ExitCode }
+        }
+        function New-NoRequiredMergeSteps {
+            param($AllChecks)
+            $steps = @(New-ReviewMergeSteps)
+            @($steps[0], $steps[1], (New-NoRequiredStep), $AllChecks) + @($steps[3..6])
+        }
+        foreach ($case in @(@{ Name = 'prints nothing'; Output = '' }, @{ Name = 'prints an empty list'; Output = '[]' })) {
+            It "merges when there are no required checks and the head has no check at all (gh $($case.Name))" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                Set-Responses @(New-NoRequiredMergeSteps (New-AllChecksStep -Output $case.Output -ExitCode 1 -ErrorText $script:GhNoChecks))
+                Invoke-ReviewMergeFixture
+                [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+                @(Get-Calls | Where-Object { $_.Arguments[0] -ceq 'pr' -and $_.Arguments[1] -ceq 'checks' }).Count | Should Be 2
+            }
+        }
+        It 'merges when there are no required checks and every check of the head passed' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @(New-NoRequiredMergeSteps (New-AllChecksStep -Output '[{"name":"lint","bucket":"pass","state":"SUCCESS"}]' -ExitCode 0))
+            Invoke-ReviewMergeFixture
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+        }
+        It 'stops when there are no required checks and a check of the head failed' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $steps = @(New-ReviewMergeSteps)
+            Set-Responses @($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output '[{"name":"lint","bucket":"fail","state":"FAILURE"}]' -ExitCode 1))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be '#7 stop: checks failed.'
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        foreach ($failure in @('authentication failed: HTTP 401', 'error connecting to api.github.com', '')) {
+            It "stops when the required-checks command fails and prints nothing ($failure)" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                $steps = @(New-ReviewMergeSteps)
+                $broken = New-NoRequiredStep
+                $broken.Error = $failure
+                Set-Responses @($steps[0], $steps[1], $broken)
+                Get-Message { Invoke-ReviewMergeFixture } | Should Match '^HTTP unknown '
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+            It "stops when the all-checks command fails and prints nothing ($failure)" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                $steps = @(New-ReviewMergeSteps)
+                Set-Responses @($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output '' -ExitCode 1 -ErrorText $failure))
+                Get-Message { Invoke-ReviewMergeFixture } | Should Match '^HTTP unknown '
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+        }
+        It "reads all checks when the required call says the older 'no required checks reported' wording" {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $older = New-NoRequiredStep -ErrorText "no required checks reported on the 'test/module' branch"
+            $steps = @(New-ReviewMergeSteps)
+            Set-Responses @(@($steps[0], $steps[1], $older, (New-AllChecksStep -Output '[]' -ExitCode 1 -ErrorText $script:GhNoChecks)) + @($steps[3..6]))
+            Invoke-ReviewMergeFixture
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+        }
+        foreach ($near in @(
+                @{ Name = 'a different case'; Text = "No checks reported on the 'test/module' branch"; Exit = 1 },
+                @{ Name = 'text before the message'; Text = "error: no checks reported on the 'test/module' branch"; Exit = 1 },
+                @{ Name = 'a second line'; Text = "no checks reported on the 'test/module' branch`nauthentication failed: HTTP 401"; Exit = 1 },
+                @{ Name = 'text after the message'; Text = "no checks reported on the 'test/module' branch: HTTP 401"; Exit = 1 },
+                @{ Name = 'no branch name'; Text = 'no checks reported'; Exit = 1 },
+                @{ Name = 'an exit code other than 1'; Text = $script:GhNoChecks; Exit = 8 })) {
+            It "does not take $($near.Name) for a repository without checks, in the required call" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                $steps = @(New-ReviewMergeSteps)
+                Set-Responses @($steps[0], $steps[1], (New-NoRequiredStep -ErrorText $near.Text -ExitCode $near.Exit))
+                Get-Message { Invoke-ReviewMergeFixture } | Should Match '^HTTP unknown '
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+            It "does not take $($near.Name) for a repository without checks, in the all-checks call" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                $steps = @(New-ReviewMergeSteps)
+                Set-Responses @($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output '' -ExitCode $near.Exit -ErrorText $near.Text))
+                Get-Message { Invoke-ReviewMergeFixture } | Should Match '^HTTP unknown '
+                @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+            }
+        }
+        It 'keeps the old message when a required check failed' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $steps = @(New-ReviewMergeSteps)
+            Set-Responses @($steps[0], $steps[1], (New-ChecksStep -Bucket fail -ExitCode 1))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Be '#7 stop: required checks failed.'
+        }
+        It 'does not read all checks when a required check exists' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @(New-ReviewMergeSteps)
+            Invoke-ReviewMergeFixture
+            @(Get-Calls | Where-Object { $_.Arguments[0] -ceq 'pr' -and $_.Arguments[1] -ceq 'checks' }).Count | Should Be 1
+        }
+    }
+
     Describe 'Tier B merge' {
         $script:DefaultTierBScopes = $script:TierBScopes
         $script:AuditFile = Join-Path $script:FixtureRoot 'tier-b-merges.jsonl'
@@ -2831,11 +3242,15 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             }
         }
         foreach ($case in @(
-                @('src/Nvt.Core/Foo.cs', 'src'), @('src/Nvt.Core.Avalonia/Theme/ToggleTokens.axaml', 'axaml'), @('tools/gh-app/NvtGhApp.psm1', 'tools'),
+                @('src/Nvt.Core.Avalonia/Theme/ToggleTokens.axaml', 'axaml'), @('src/Nvt.Core.Avalonia/Views/MainView.axaml.cs', 'axaml code-behind'),
+                @('src/Nvt.Core.Avalonia/Theme/Tokens.cs', 'theme code'), @('src/Nvt.Core.Avalonia/Icons/IconCatalog.cs', 'icon code'),
+                @('src/Nvt.Core.Avalonia/Assets/logo.png', 'image'), @('src/Nvt.Core.Fonts/Assets/NotoSansTC/Regular.ttf', 'font'),
+                @('src/Nvt.Core.Avalonia/Views/Panel.cs', 'view code'), @('tools/gh-app/NvtGhApp.psm1', 'approval mechanism'), @('tools/repo-checks/repo-health.ps1', 'guard code'),
+                @('scripts/pack.ps1', 'pack script'),
                 @('.github/workflows/core.yml', 'workflow'), @('eng/code-health/policy.ps1', 'eng policy'), @('eng/code-health/seam-owners.json', 'eng seam owners'),
                 @('eng/code-health/schema/x.json', 'eng schema'), @('Directory.Build.props', 'props'),
                 @('tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj', 'csproj'), @('src/Nvt.Core/PublicAPI.Shipped.txt', 'public api'), @('CHANGELOG.md', 'changelog'),
-                @('docs/governance/rules.md', 'governance'), @('SRC/Foo.cs', 'upper case'),
+                @('docs/governance/rules.md', 'governance'), @('TOOLS/GH-APP/x.psm1', 'upper case'),
                 @('actions/approval-check/approval_check.py', 'shared action'), @('actions/path-guard/check.ps1', 'shared action ps1'),
                 @('tests/approval-check/test_approval_check.py', 'approval-check self-test'),
                 @('tests/Nvt.Core.TestSupport/ManualTimeProvider.cs', 'packed test support'),
@@ -2855,8 +3270,18 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
         It 'refuses a Core PR that renames a file away from a protected path' {
             Set-CoreScope
-            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/moved.md'; previous_filename = 'src/Nvt.Core/Old.cs'; additions = 0; deletions = 0 })))
-            Get-Message { Invoke-TierB } | Should Match 'Paths: src/Nvt.Core/Old.cs is a protected path'
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'docs/core/moved.md'; previous_filename = 'src/Nvt.Core.Avalonia/Theme/Old.axaml'; additions = 0; deletions = 0 })))
+            Get-Message { Invoke-TierB } | Should Match 'Paths: src/Nvt.Core.Avalonia/Theme/Old.axaml is a protected path'
+        }
+        It 'merges a Core PR that fixes or refactors ordinary src code, other tools and tests (owner 2026-11-06 08:24)' {
+            Set-CoreScope
+            Set-Responses @((New-TierBReadSteps -Files @(@{ filename = 'src/Nvt.Core/Files/RootedPath.cs'; additions = 6; deletions = 3 },
+                        @{ filename = 'src/Nvt.Core.Avalonia/ViewModels/MainViewModel.cs'; additions = 2; deletions = 2 },
+                        @{ filename = 'tools/theme-export/export.py'; additions = 1; deletions = 1 },
+                        @{ filename = 'tests/Nvt.Core.Tests/Files/RootedPathTests.cs'; additions = 8; deletions = 0 },
+                        @{ filename = 'docs/core/modules/Files.md'; additions = 1; deletions = 0 })) + @(New-TierBMergeSteps))
+            Invoke-TierB
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 1
         }
         It 'merges a Core PR that changes only tests, existing documents and a debt ledger that loses lines' {
             Set-CoreScope
