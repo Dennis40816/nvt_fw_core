@@ -70,8 +70,18 @@ An existing ref advances with `force=false`.
 Only an HTTP 404 permits creating a missing ref.
 
 An open PR blocks a push unless `-AllowOpenPr` is present.
-Any owner review blocks a push even with that switch.
-Use a follow-up PR after the owner has reviewed the original PR.
+Any owner review blocks a push even with that switch, with two exceptions.
+Both keep the content that the owner reviewed, and both still need `-AllowOpenPr`:
+
+- `base-merge`: the pushed commit is the old head plus one clean merge of the base branch. The old head is the review request head, or a clean chain from it. The second parent (`-ExtraParent`) is contained in the base branch. The pushed tree is the recomputed merge tree. This is the rule of the merge proof, and it needs no patch-id.
+- `rebase`: the pushed commit has the patch-id that the review request recorded and the tree of the request head once both are merged into the current base. A request recorded without a patch-id cannot prove this, so a legacy registration is refused.
+
+The pushed commit does not exist yet, so the function builds a local probe commit with the same tree and parents. The probe changes no ref.
+`rebase` needs the patch-id and also the same integrated tree: the request head and the probe, each merged into the current base, must give one tree. The patch-id alone is not enough, because it ignores white space and line numbers.
+The function reads `HEAD` once. The guard, the diff and the published commit all use that one commit, even if `HEAD` moves meanwhile.
+The function reads the review request from the ledger (`-LedgerPath`, default as for the other functions).
+When an exception applies, the function appends one line to the push log before it pushes: `<time> push after owner review kind=base-merge|rebase pr=#N branch=B parents=...`. The log is `-PushLogPath`, default `push-after-review.log` beside the ledger. The result has the kind in `OwnerReviewPush`.
+Every other push after an owner review is refused with `#N has an owner review; push refused. Open a follow-up PR instead.` That includes a push whose content changed, a PR with no ledger entry, and any failure to prove the content.
 `-ExtraParent` adds a second parent for a merge commit.
 
 ### Pushing a workflow file
@@ -314,14 +324,48 @@ The module trusts the head recorded when the session sent the PR to the owner.
 All three approval conditions must hold:
 
 1. The latest appended ledger entry for this owner, repository, and PR supplies requested head S and request time T.
-2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED`, `DISMISSED`, and `PENDING` block merging. The approval's `commit_id` must also be S or a proven merge after S. T comes from this machine's clock, so this binding stops an approval of an older head from counting when the clock runs behind GitHub.
-3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request. One exception: when the request holds a `patchId`, H is S, and the patch-id of H against the current base is the same, a changed base name is accepted.
+2. The owner's latest state-changing review is `APPROVED` and was submitted strictly after T. Submission time orders reviews; review IDs break ties. `COMMENTED` reviews do not change approval. `CHANGES_REQUESTED` and `PENDING` block merging. So does `DISMISSED`. The approval's `commit_id` must also be S or a proven merge after S. T comes from this machine's clock, so this binding stops an approval of an older head from counting when the clock runs behind GitHub.
+3. Walking the current head H along first parents reaches S within 20 commits. Every later commit has exactly two parents, and its second parent is contained in the current PR base. The base branch name must still match the request. One exception: when the request holds a `patchId`, H is S, and the patch-id of H against the current base is the same, a changed base name is accepted. A rebase has its own proof, under “Reusing an owner approval once”.
 
 Every merge after the review request is recomputed with `git merge-tree --write-tree P1 P2`.
 It must report no conflicts and produce exactly the merge commit's tree.
 This proof requires Git 2.38 or later; older Git stops with a clear message.
 A blob comparison is not enough: a conflict resolved wholly to the base's file can match its blob and mode, while a conflict resolved wholly to the first parent can leave an empty diff.
 Both resolutions still require owner approval.
+
+### Reusing an owner approval once
+
+An owner approval counts once more when the history changed and the content did not.
+The case is a **rebase**: H is not S and is not a clean merge chain from S. The approved commit A is the `commit_id` of the owner's approval.
+All of these must hold:
+
+1. The request holds a `patchId`, and the patch-id of H against the current base is the same. This is only a screen: `git patch-id` ignores white space and line numbers.
+2. A is S, or A passes the clean merge proof from S (the history the owner saw).
+3. The tree of A merged into the current base is exactly the tree of H merged into the current base (`git merge-tree --write-tree`). The tree id covers every byte, path and mode. A conflict on either side stops the merge.
+
+A request without `patchId` keeps the old rule: a rebase needs a new approval.
+A dismissed approval never counts. `DISMISSED` blocks the merge, whatever the dismissal text says.
+
+The merge spends the approval. The module writes the record only after the merge is confirmed, so a stopped merge spends nothing.
+The record goes below the request it belongs to:
+`{"kind":"reuse","owner":...,"repo":...,"number":...,"mode":"tree-equal","requestedAt":T,"oldHead":S,"newHead":H,"approvalId":...,"approvalCommit":A,"patchId":...,"reusedAt":...}`.
+
+- A record only restricts. It never lets a head pass. Every head is proven again from the request, the approval and the content.
+- A record binds to the request by `oldHead` and `requestedAt`. A record that does not match the latest request is ignored.
+- A rebase to another head with an approval that a record already spent stops: `owner approval <id> was already reused for <head>; a new owner approval is required`.
+- A different patch-id stops with a message that asks for a new review request. So does a head whose merged tree differs from the approved commit's, for example a change of white space only.
+- One merge call per PR runs at a time. A lock file next to the ledger (`<ledger>.<owner>_<repo>_<number>.lock`) makes a second call stop with `another merge of this pull request is running`.
+
+The merge log adds `#N owner approval <id> reused from <S> (tree-equal); merged head <H>`.
+
+The proof holds for one base, and the GitHub merge API binds only the head. So a reuse merge narrows the window, and does not close it:
+
+- Right before it sends the merge, the function reads the pull request again. If the base is not the one that the proof used, it stops with `the base branch moved after the reuse proof`. The merge is not sent and nothing is spent. Make a new proof or ask for a new approval.
+- After the merge, it compares the tree of the merge commit with the tree of "proven base + merged head". A difference is logged as `TREE MISMATCH after reuse`, a warning is written, and the result has `TreeMismatch = $true`. The merge cannot be undone and the approval is spent, so tell PC-Commander.
+- The function returns one object per merged PR: `Number`, `Head`, `MergeCommit`, `Reused`, `TreeMismatch`.
+- Known limitation: the base can still move between the last read and the merge. No server-side precondition on the base exists.
+
+A ledger entry with an unknown `kind` for the PR stops the merge, because an older reader would not know what it means.
 
 `-Worktree` is mandatory and names a local clone with complete history.
 The module fetches the needed commit objects from the configured repository using the owner's normal Git credentials.
@@ -335,6 +379,11 @@ Update failure or `DIRTY` stops with “manual resolution requires owner approva
 After an update, the module proves the new head and waits for its required checks.
 
 The function waits for required checks and a clean merge state.
+A repository can have no required checks. Then `gh pr checks --required` prints nothing, says `no checks reported on the '<branch>' branch` (gh 2.92.0; older wording: `no required checks reported on the '<branch>' branch`) and exits 1. The function treats exactly that answer as a state, not a failure: it reads all checks of the head instead.
+The match is the whole message, case-sensitive, with exit code 1. Text before or after it, a second line, another exit code or another case is a failure.
+Any other failure with no list (a failed login, a lost network, an unknown message) stops the merge with `HTTP unknown`, in both calls. It never counts as “no checks”.
+Failed or cancelled checks among them stop the merge (`checks failed`), and pending ones are waited for.
+When the head has no check at all (the same message in the second call), the ruleset decides, and the merge state `CLEAN` says it is met.
 It rechecks the ledger, approval, and history after checks before merging with `sha` equal to H.
 Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.
@@ -476,7 +525,7 @@ These differences are intentional:
 
 - `Invoke-GhAppRead` returns UTF-8 text without trailing line breaks. The NFC runner returned raw bytes. The supported reads return JSON or text only.
 - A merge uses the latest external review request and an owner approval submitted after it. Review `commit_id` and the GraphQL timeline cannot authorize a merge. A later COMMENTED review does not cancel approval.
-- The Core merge script accepted any approval on the head. The module stops when the latest state-changing owner review is CHANGES_REQUESTED, DISMISSED, or PENDING.
+- The Core merge script accepted any approval on the head. The module stops when the latest state-changing owner review is CHANGES_REQUESTED, DISMISSED, or PENDING. 
 - The 10-05 rule allows only proven clean base merges after the recorded head. The module proves first-parent history and recomputes every merge with Git 2.38 or later using `merge-tree`.
 - The module updates a behind branch at most three times, rechecks required checks and approval, and deletes a merged branch only with a prefix. The Core script always deleted the merged branch.
 - Sessions record review requests with `Request-GhAppOwnerReview` before relying on an owner approval.
