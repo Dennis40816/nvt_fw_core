@@ -3249,7 +3249,7 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 @('scripts/pack.ps1', 'pack script'),
                 @('.github/workflows/core.yml', 'workflow'), @('eng/code-health/policy.ps1', 'eng policy'), @('eng/code-health/seam-owners.json', 'eng seam owners'),
                 @('eng/code-health/schema/x.json', 'eng schema'), @('Directory.Build.props', 'props'),
-                @('tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj', 'csproj'), @('src/Nvt.Core/PublicAPI.Shipped.txt', 'public api'), @('CHANGELOG.md', 'changelog'),
+                @('tests/Nvt.Core.Tests/Nvt.Core.Tests.csproj', 'csproj'), @('src/Nvt.Core/PublicAPI.Shipped.txt', 'public api'),
                 @('docs/governance/rules.md', 'governance'), @('TOOLS/GH-APP/x.psm1', 'upper case'),
                 @('actions/approval-check/approval_check.py', 'shared action'), @('actions/path-guard/check.ps1', 'shared action ps1'),
                 @('tests/approval-check/test_approval_check.py', 'approval-check self-test'),
@@ -3279,7 +3279,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                         @{ filename = 'src/Nvt.Core.Avalonia/ViewModels/MainViewModel.cs'; additions = 2; deletions = 2 },
                         @{ filename = 'tools/theme-export/export.py'; additions = 1; deletions = 1 },
                         @{ filename = 'tests/Nvt.Core.Tests/Files/RootedPathTests.cs'; additions = 8; deletions = 0 },
-                        @{ filename = 'docs/core/modules/Files.md'; additions = 1; deletions = 0 })) + @(New-TierBMergeSteps))
+                        @{ filename = 'docs/core/modules/Files.md'; additions = 1; deletions = 0 },
+                        @{ filename = 'CHANGELOG.md'; additions = 2; deletions = 0 }, @{ filename = 'docs/core/Architecture/overview.md'; additions = 1; deletions = 1 })) + @(New-TierBMergeSteps))
             Invoke-TierB
             @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 1
         }

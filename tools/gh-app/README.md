@@ -426,14 +426,14 @@ The tool refuses unless all of these hold:
    - the approval mechanism and the guard code: `tools/gh-app/`, `tools/repo-checks/`, `actions/` (the shared CI actions), `.github`, `.agents`, `.claude`, `.codex`, `scripts/` (the pack script);
    - `eng`, except the two named debt ledgers `eng/code-health/baseline.json` and `eng/code-health/test-debt.json`. `seam-owners.json`, policy files, schemas and any other file are A;
    - project and build files: `.sln`, `.slnx`, `.csproj`, `.props`, `.targets`, `.ruleset`, `.globalconfig`, `.rsp`, `.slnf`;
-   - repository files: `Directory.*`, `global.json`, `nuget.config`, `packages.lock.json`, `.editorconfig`, `.gitattributes`, `.gitignore`, `.gitmodules`, `CODEOWNERS`, `CHANGELOG.md`, `VERSION`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE*`;
+   - repository files: `Directory.*`, `global.json`, `nuget.config`, `packages.lock.json`, `.editorconfig`, `.gitattributes`, `.gitignore`, `.gitmodules`, `CODEOWNERS`, `VERSION`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE*`;
    - test infrastructure: `tests/approval-check/` (the required self-test) and `tests/Nvt.Core.TestSupport/` (a packed library);
    - every path under `tests/` whose name has `guard`, `baseline`, `ratchet`, `contract`, `publicapi` or `publicsurface` (this holds the Theme contract tests and their baseline XML, and the tests that pin the exported API);
-   - any `Architecture/` folder;
+   - any `Architecture/` folder outside `docs/`;
    - `docs/governance/` and `adr` folders at any depth.
    The two debt ledgers may only lose lines: a ledger that gains a line, or is added, removed or renamed, is refused with `is a debt ledger and gains lines or is added, removed or renamed`.
    The module also proves that the file list is complete. It reads the file count of the PR and refuses (`Files: ...`) when the count is more than 3,000 or differs from the number of files listed, because GitHub lists at most 3,000 files.
-   Ordinary `src` code, the other tools, tests and documents are not in the floor. The other repositories have no floor.
+   Ordinary `src` code, the other tools, tests, documents and `CHANGELOG.md` are not in the floor. The tier check judges a release by its title (`release:` or `type(release):`). The other repositories have no floor.
 2. The PR is open, ready (not a draft) and written by the App.
 3. The head is the head that `-ExpectedHeadSha` names.
 4. The latest verdict on that head is a review with the first non-empty line `Review record: <head> accept` in state `COMMENTED` or `APPROVED` (the default pattern; `-ReviewRecordPattern` replaces it). A later rejection or dismissal cancels it.

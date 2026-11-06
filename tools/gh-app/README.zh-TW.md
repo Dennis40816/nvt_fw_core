@@ -402,14 +402,14 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
    - 核准機制與 guard 程式：`tools/gh-app/`、`tools/repo-checks/`、`actions/`（共用 CI action）、`.github`、`.agents`、`.claude`、`.codex`、`scripts/`（打包腳本）；
    - `eng`，但兩個明確列名的債務帳本 `eng/code-health/baseline.json` 與 `eng/code-health/test-debt.json` 除外。`seam-owners.json`、policy 檔、schema 與其他檔案都是 A；
    - 專案與建置檔：`.sln`、`.slnx`、`.csproj`、`.props`、`.targets`、`.ruleset`、`.globalconfig`、`.rsp`、`.slnf`；
-   - repository 檔案：`Directory.*`、`global.json`、`nuget.config`、`packages.lock.json`、`.editorconfig`、`.gitattributes`、`.gitignore`、`.gitmodules`、`CODEOWNERS`、`CHANGELOG.md`、`VERSION`、`AGENTS.md`、`CLAUDE.md`、`CONTRIBUTING.md`、`SECURITY.md`、`LICENSE*`；
+   - repository 檔案：`Directory.*`、`global.json`、`nuget.config`、`packages.lock.json`、`.editorconfig`、`.gitattributes`、`.gitignore`、`.gitmodules`、`CODEOWNERS`、`VERSION`、`AGENTS.md`、`CLAUDE.md`、`CONTRIBUTING.md`、`SECURITY.md`、`LICENSE*`；
    - 測試基礎設施：`tests/approval-check/`（必要的自我測試）與 `tests/Nvt.Core.TestSupport/`（會被打包的函式庫）；
    - `tests/` 底下路徑含 `guard`、`baseline`、`ratchet`、`contract`、`publicapi` 或 `publicsurface` 的所有檔案（包含 Theme 契約測試與它的 baseline XML，以及釘住公開 API 的測試）；
-   - 任何 `Architecture/` 資料夾；
+   - `docs/` 以外的任何 `Architecture/` 資料夾；
    - `docs/governance/`，以及任何深度的 `adr` 資料夾。
    兩個債務帳本只能減少行數：帳本增加一行，或被新增、刪除、改名，以 `is a debt ledger and gains lines or is added, removed or renamed` 拒絕。
    模組也證明檔案清單是完整的。它讀 PR 的檔案數，數量超過 3,000 或與列出的檔案數不同就拒絕（`Files: ...`），因為 GitHub 最多只列出 3,000 個檔案。
-   一般 `src` 程式、其他 tools、tests 與文件不在底線內。其他 repository 沒有這道底線。
+   一般 `src` 程式、其他 tools、tests、文件與 `CHANGELOG.md` 不在底線內。判級工具靠標題（`release:` 或 `type(release):`）判 release。其他 repository 沒有這道底線。
 2. PR 是開啟的、已 Ready（不是 draft），而且作者是 App。
 3. head 等於 `-ExpectedHeadSha`。
 4. 該 head 上最新的結論是一則第一個非空行為 `Review record: <head> accept`、狀態為 `COMMENTED` 或 `APPROVED` 的 review（預設格式，可用 `-ReviewRecordPattern` 取代）。較晚的拒絕或撤銷會取消它。

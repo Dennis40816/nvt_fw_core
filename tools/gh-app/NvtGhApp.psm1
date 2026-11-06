@@ -354,17 +354,17 @@ $script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
 # project and build files; repository configuration, version and release files; the test support library (it is packed) and the approval-check
 # self-test; tests whose path names a guard, a baseline, a ratchet, a contract, a public API or a public surface (this holds the Theme contract
 # tests and their baseline XML, and the tests that pin the exported API); Architecture folders; governance and ADR documents at any depth.
-# Ordinary src code, other tools, tests and documents are not in the floor.
+# Ordinary src code, other tools, tests, documents (also a docs/**/Architecture folder) and CHANGELOG.md are not in the floor. The tier check judges a release by its title.
 $script:CoreProtectedPathGroups = [ordered]@{
     Ui       = '\.(axaml|xaml)(\.cs)?$|^(src|examples)/.*\.(png|jpe?g|gif|svg|ico|icns|webp|bmp|ttf|otf|woff2?)$|^(src|examples)/(.+/)?(Views?|Themes?|Icons?)/|^src/Nvt\.Core\.Fonts/'
     PublicApi = '(^|/)PublicAPI[^/]*\.txt$'
     Mechanism = '^(tools/(gh-app|repo-checks)|actions|\.github|\.agents|\.claude|\.codex|scripts)/'
     Eng      = '^eng/(?!code-health/(baseline|test-debt)\.json$)'
     Build    = '\.(sln|slnx|csproj|props|targets|ruleset|globalconfig|rsp|slnf)$'
-    Config   = '(^|/)(Directory\.[A-Za-z.]+|global\.json|nuget\.config|packages\.lock\.json|\.editorconfig|\.gitattributes|\.gitignore|\.gitmodules|CODEOWNERS|CHANGELOG\.md|VERSION|AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|LICENSE[^/]*)$'
+    Config   = '(^|/)(Directory\.[A-Za-z.]+|global\.json|nuget\.config|packages\.lock\.json|\.editorconfig|\.gitattributes|\.gitignore|\.gitmodules|CODEOWNERS|VERSION|AGENTS\.md|CLAUDE\.md|CONTRIBUTING\.md|SECURITY\.md|LICENSE[^/]*)$'
     TestInfra = '^tests/approval-check/|^tests/Nvt\.Core\.TestSupport/'
     Contracts = '^tests/.*(guard|baseline|ratchet|contract|publicapi|publicsurface)'
-    Architecture = '(^|/)Architecture/'
+    Architecture = '^(?!docs/)(.+/)?Architecture/'
     Documents = '^docs/governance/|^docs/(.+/)?adr/'
 }
 $script:CoreProtectedPaths = '(?i)' + (($script:CoreProtectedPathGroups.Values | ForEach-Object { "(?:$_)" }) -join '|')
