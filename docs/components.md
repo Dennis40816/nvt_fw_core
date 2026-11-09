@@ -84,6 +84,7 @@ For shared-CI progress, use the [single status table](shared-ci/README.md#curren
 |---|---|---|---|---|---|---|
 | JSON/settings codec and latest-save coordinator | NFC | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Persistence/` | 1 → 2 | Merged into `main`; NFC adopts first. |
 | Atomic stream output | NFU | NVT CORE | `Nvt.Core` | `src/Nvt.Core/IO/` | 1 → 2 | Merged into `main`; NFU adopts in its next 0.2.x patch. |
+| Known folders and host environment readers | NFH | NVT CORE | `Nvt.Core` | `src/Nvt.Core/Hosting/` | 1 → 2 | New for the NFH rewrite; the readers are permanent seams. NFH replaces its direct calls. |
 | File path guard, bounded reads, and hashing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Files/` | 1 → 2 | Bounded read in an open pull request; path guard and hashing planned. |
 | Process execution and containment | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Processes/` | 1 → 2 | Bounded output reader merged into `main`; execution, containment, and executable trust policy stay in each tool. |
 | UTC clock and startup tracing | NFC | NFC | `Nvt.Core` | `src/Nvt.Core/Startup/`; `src/Nvt.Core/Time/` | 1 → 2 | Startup trace merged into `main`; clock in an open pull request. |

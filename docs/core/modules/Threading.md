@@ -58,13 +58,15 @@ Core tests now dispatch background work through the real headless dispatcher.
 
 ## Public API
 
-The static class exposes three dispatcher methods:
+The static class exposes these dispatcher methods:
 
 ```csharp
 public static void RegisterRunningDispatcher(Dispatcher dispatcher);
 public static bool TryGetRunningDispatcher(out Dispatcher? dispatcher);
 public static bool IsCurrent(out Dispatcher? dispatcher, out Avalonia.Application? application);
 ```
+
+`RegisterCurrentDispatcher` is a fourth method: `public static Dispatcher RegisterCurrentDispatcher();`. It reads `Dispatcher.UIThread`, registers it as the running dispatcher (only when it supports run loops) and returns it. A host calls it from its start-up code and from a test host, so that the host never reads the static member itself. It is a permanent seam in `eng/code-health/seam-owners.json`.
 
 - `RegisterRunningDispatcher` throws `ArgumentNullException` with parameter name `dispatcher` for null. It stores only dispatchers with `SupportsRunLoops`; other registrations leave the existing value unchanged.
 - `TryGetRunningDispatcher` returns false and a null out value when there is no current application, no registration, or the registered dispatcher does not support run loops. Otherwise it returns the registered dispatcher, including from a background thread.

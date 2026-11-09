@@ -38,6 +38,17 @@ public sealed class UiThreadTests
         }
     }
 
+    /// <summary>RegisterCurrentDispatcher registers and returns the UI dispatcher.</summary>
+    [AvaloniaFact]
+    public void RegisterCurrentDispatcherRegistersAndReturnsTheUiDispatcher()
+    {
+        var dispatcher = UiThread.RegisterCurrentDispatcher();
+
+        Assert.Same(Dispatcher.UIThread, dispatcher);
+        Assert.True(UiThread.TryGetRunningDispatcher(out var registered));
+        Assert.Same(dispatcher, registered);
+    }
+
     /// <summary>The running dispatcher accepts background work and executes it on the UI thread.</summary>
     [AvaloniaFact]
     public async Task RunningDispatcherSchedulesWorkFromBackgroundThread()

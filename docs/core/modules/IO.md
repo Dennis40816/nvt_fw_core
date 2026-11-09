@@ -31,6 +31,23 @@ dotnet test tests/Nvt.Replay.Tests/Nvt.Replay.Tests.csproj --no-build --filter "
 
 Use the same frozen synthetic documents, reports and render inputs, including fixed serialized metadata. Preserve the baseline outputs, regenerate at the same destinations with Core, and compare final file sets and every JSON/CSV/JSONL/PNG byte or SHA-256. Retain NFU's deterministic heatmap golden hash, cancellation assertions, prior-output preservation and temporary-file cleanup checks. Do not refresh a baseline to accept differences. NFU adoption and its packaging acceptance remain pending.
 
+## WriteAsync replaces an existing file
+
+`AtomicOutput.WriteAsync` publishes with `File.Move(..., overwrite: true)`, so a file that already exists at the path is replaced as a whole. [`AtomicOutputMoveTests`](../../../tests/Nvt.Core.Tests/IO/AtomicOutputMoveTests.cs) pins this.
+
+## MoveAsync
+
+```csharp
+public static Task MoveAsync(string source, string target, CancellationToken cancellationToken = default)
+```
+
+[`AtomicOutput.MoveAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) moves a file and replaces any file that is already at the target. It is for a host that keeps a draft in one place and publishes it to a path the user chose (the NFH unsaved-project copy).
+
+- Same volume: one replacing move. Parent folders of the target are created.
+- Different volumes: the source is copied to a sibling temporary file of the target, flushed, published over the target as `WriteAsync` does, and then deleted. A failure or cancellation before the publish leaves the source and an earlier target unchanged. If deleting the source fails after the publish, the exception reaches the caller and the target is complete.
+- A missing source throws `FileNotFoundException`. A move onto the same path does nothing. Blank paths throw `ArgumentException`.
+- Two paths are on the same volume when their path roots are equal (ignoring case on Windows). A mount point under the same root is treated as the same volume.
+
 ## WriteBytesAsync
 
 ```csharp

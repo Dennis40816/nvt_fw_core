@@ -1,4 +1,41 @@
 {
   "schemaVersion": 1,
-  "entries": []
+  "entries": [
+    {
+      "path": "src/Nvt.Core.Avalonia/Threading/UiThread.cs",
+      "member": "Nvt.Core.Avalonia.Threading.UiThread.RegisterCurrentDispatcher()",
+      "symbol": "P:Avalonia.Threading.Dispatcher.UIThread",
+      "owner": "NVT CORE",
+      "reason": "Hosts register the UI dispatcher through this one method instead of reading Dispatcher.UIThread themselves (NFH start-up, headless test host).",
+      "kind": "permanent-seam",
+      "review": "Core PR feature/core/nfh-host-apis; owner approval of the PR"
+    },
+    {
+      "path": "src/Nvt.Core/Hosting/HostEnvironment.cs",
+      "member": "Nvt.Core.Hosting.HostEnvironment.GetVariable(string)",
+      "symbol": "M:System.Environment.GetEnvironmentVariable(System.String)",
+      "owner": "NVT CORE",
+      "reason": "Hosts read a process environment variable through this one method instead of calling Environment.GetEnvironmentVariable.",
+      "kind": "permanent-seam",
+      "review": "Core PR feature/core/nfh-host-apis; owner approval of the PR"
+    },
+    {
+      "path": "src/Nvt.Core/Hosting/KnownFolders.cs",
+      "member": "Nvt.Core.Hosting.KnownFolders.GetLocalApplicationData()",
+      "symbol": "M:System.Environment.GetFolderPath(System.Environment.SpecialFolder)",
+      "owner": "NVT CORE",
+      "reason": "Hosts resolve the per-user local application data folder through this one method instead of calling Environment.GetFolderPath.",
+      "kind": "permanent-seam",
+      "review": "Core PR feature/core/nfh-host-apis; owner approval of the PR"
+    },
+    {
+      "path": "src/Nvt.Core/IO/AtomicOutput.cs",
+      "member": "Nvt.Core.IO.AtomicOutput.MoveAsync(string,string,Func<string, string, bool>,CancellationToken)",
+      "symbol": "M:System.IO.File.Move(System.String,System.String,System.Boolean)",
+      "owner": "NVT CORE",
+      "reason": "A same-volume move replaces the target in one step. The protected writer owns this rename like the one in PublishAsync.",
+      "kind": "permanent-seam",
+      "review": "Core PR feature/core/nfh-host-apis; owner approval of the PR"
+    }
+  ]
 }

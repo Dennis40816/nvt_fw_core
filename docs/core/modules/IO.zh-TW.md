@@ -31,6 +31,23 @@ dotnet test tests/Nvt.Replay.Tests/Nvt.Replay.Tests.csproj --no-build --filter "
 
 使用同一組凍結的合成文件、報表與繪圖輸入，包含固定的序列化中繼資料。保留基準輸出，改用 Core 後在相同目的地重新產生，比較最終檔案集合及每個 JSON／CSV／JSONL／PNG 的位元組或 SHA-256。保留 NFU 的確定性 heatmap golden hash、取消斷言、原有輸出保護與暫存檔清理檢查；不得更新基準來接受差異。NFU 採用與封裝驗收仍待後續工作。
 
+## WriteAsync 會取代已存在的檔案
+
+`AtomicOutput.WriteAsync` 以 `File.Move(..., overwrite: true)` 發布，路徑上已有的檔案會整份被取代。[`AtomicOutputMoveTests`](../../../tests/Nvt.Core.Tests/IO/AtomicOutputMoveTests.cs) 鎖定這個行為。
+
+## MoveAsync
+
+```csharp
+public static Task MoveAsync(string source, string target, CancellationToken cancellationToken = default)
+```
+
+[`AtomicOutput.MoveAsync`](../../../src/Nvt.Core/IO/AtomicOutput.cs) 搬移檔案，並取代目標位置上已有的檔案。用於應用程式把草稿存在固定位置，再發布到使用者指定路徑的情況（NFH 的未存專案暫存檔）。
+
+- 同一磁碟：一次取代式搬移，會建立目標的上層資料夾。
+- 不同磁碟：先把來源複製到目標旁的暫存檔，flush 後以 `WriteAsync` 的方式發布到目標，再刪除來源。發布前失敗或取消時，來源與原有的目標都不變。發布後刪除來源失敗時，例外會傳給呼叫端，目標已完整。
+- 來源不存在時擲出 `FileNotFoundException`。來源與目標相同時什麼都不做。路徑為空白時擲出 `ArgumentException`。
+- 兩個路徑的根相同（Windows 不分大小寫）時視為同一磁碟。同一個根底下的掛載點也視為同一磁碟。
+
 ## WriteBytesAsync
 
 ```csharp

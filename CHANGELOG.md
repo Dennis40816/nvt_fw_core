@@ -6,6 +6,12 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Added
+
+- `Nvt.Core.Hosting`: new `KnownFolders.GetLocalApplicationData()` and `HostEnvironment.GetVariable(string)`. A host reads the per-user local application data folder and a process environment variable through them, so that its own code never calls `Environment.GetFolderPath` or `Environment.GetEnvironmentVariable`. `GetVariable` returns null for an unset variable and throws for a null or empty name. Both readers are permanent seams in `eng/code-health/seam-owners.json`.
+- `Nvt.Core.Avalonia`: new `UiThread.RegisterCurrentDispatcher()` reads `Dispatcher.UIThread`, registers it as the running dispatcher and returns it. It is a permanent seam.
+- `Nvt.Core`: new `AtomicOutput.MoveAsync(source, target, cancellationToken)` moves a file over an existing target. On one volume it is a replacing move. Across volumes it copies to a sibling temporary file, publishes it and deletes the source. `AtomicOutput.WriteAsync` already replaced an existing file; a test now pins this.
+
 ### Changed
 
 - `Nvt.Core.Avalonia`: three non-text contrast gaps are closed. The `NumberScrubber` outer border uses `NfcBorderBrush` (was `NfcBorderMutedBrush`, 1.36:1 in Light), so the field boundary is 3:1 or more on every page surface. In the dark theme the switch track `Nvt.Toggle.SwitchOnBrush` / `SwitchPointerOverBrush` / `SwitchPressedBrush` is `#2F6BEE` / `#2C68E8` / `#2965E2` (was `#2563EB` / `#1D4ED8` / `#1E40AF`, down to 1.80:1 when pressed), and the danger fill `Nvt.Toggle.DangerFillBrush` / `DangerFillPointerOverBrush` / `DangerFillPressedBrush` is `#CC3F54` / `#C8384D` / `#C8384D` (was `#A82035` / `#861B2C`, down to 1.65:1). Every one of these fills keeps 3:1 against the page and 4.5:1 against its white knob or label. The light theme values do not change. The switch tokens now live in the Light and Dark theme dictionaries, so a host override of either theme still works.

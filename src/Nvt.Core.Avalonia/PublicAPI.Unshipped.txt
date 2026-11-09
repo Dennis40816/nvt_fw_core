@@ -1,1 +1,2 @@
 #nullable enable
+static Nvt.Core.Avalonia.Threading.UiThread.RegisterCurrentDispatcher() -> Avalonia.Threading.Dispatcher!

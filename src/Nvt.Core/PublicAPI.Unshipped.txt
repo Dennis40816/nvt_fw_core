@@ -673,3 +673,8 @@ Nvt.Core.Launcher.Integration.VersionManagementSnapshot.StateIssue.init -> void
 Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.get -> Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate?
 Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VerifiedCandidate.init -> void
 Nvt.Core.Launcher.Integration.VersionManagementSnapshot.VersionManagementSnapshot(Nvt.Core.Launcher.Activation.VersionManagerState? State, Nvt.Core.Launcher.Activation.ManagedVersionInventory! Inventory, Nvt.Core.Launcher.Integration.UpdateCatalogSnapshot? Catalog, Nvt.Core.Launcher.Contracts.VerifiedUpdateCandidate? VerifiedCandidate, Nvt.Core.Launcher.Integration.VersionSourceStatus SourceStatus, Nvt.Core.Launcher.Integration.UpdateCatalogLoadIssue? CatalogIssue, long Generation, bool ShouldPromptForUpdate, Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue StateIssue, Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue InventoryIssue = Nvt.Core.Launcher.Activation.ManagedVersionInventoryReadIssue.None, Nvt.Core.Launcher.Integration.VersionRegistryStatus RegistryStatus = Nvt.Core.Launcher.Integration.VersionRegistryStatus.NotConfigured, Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue RegistryIssue = Nvt.Core.Launcher.Integration.UpdateSourceRegistryIssue.None) -> void
+Nvt.Core.Hosting.HostEnvironment
+Nvt.Core.Hosting.KnownFolders
+static Nvt.Core.Hosting.HostEnvironment.GetVariable(string! name) -> string?
+static Nvt.Core.Hosting.KnownFolders.GetLocalApplicationData() -> string!
+static Nvt.Core.IO.AtomicOutput.MoveAsync(string! source, string! target, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
