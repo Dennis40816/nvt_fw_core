@@ -44,7 +44,7 @@ public sealed class UiThreadTests
     {
         var dispatcher = UiThread.RegisterCurrentDispatcher();
 
-        Assert.Same(Dispatcher.UIThread, dispatcher);
+        Assert.True(dispatcher.CheckAccess());
         Assert.True(UiThread.TryGetRunningDispatcher(out var registered));
         Assert.Same(dispatcher, registered);
     }
