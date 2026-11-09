@@ -279,6 +279,29 @@ if ($a -ceq $b) { Write-Output 'outside text must differ'; exit 9 }
         self.write('evaluated.json',json.dumps({'Properties':props,'Items':items}))
         self.assertNotEqual(0,self.run_ps("$e=ConvertFrom-Json -AsHashtable (Get-Content evaluated.json -Raw); Test-ProjectProperties $e 'Fixture.csproj' $null").returncode)
 
+    def test_seam_file_keeps_rs0030_in_the_generated_warning_ids_without_debt(self):
+        # A project whose only RS0030 sites are authorized seams has no RS0030 debt in the ledger.
+        # LowerBaseline must still list RS0030, or the seam files fail the build as errors.
+        self.write('eng/code-health/projects.props', '<Project>\n  <!-- BEGIN GENERATED HEALTH WARNING IDS -->\n  <!-- END GENERATED HEALTH WARNING IDS -->\n</Project>\n')
+        r = self.run_ps(r"""
+$seam = @{ path = 'src/Fixture/One.cs'; member = '*'; symbol = 'M:System.IO.File.WriteAllText(System.String,System.String)'; owner = 'NVT CORE'; reason = 'protected writer'; kind = 'permanent-seam'; review = 'owner-approved PR' }
+$mine = @{ Properties = @{}; Items = @{ Compile = @(@{ FullPath = (Join-Path $Root 'src/Fixture/One.cs') }) } }
+$other = @{ Properties = @{}; Items = @{ Compile = @(@{ FullPath = (Join-Path $Root 'src/Other/Two.cs') }) } }
+$noItems = @{ Properties = @{}; Items = @{ Compile = @() } }
+$empty = @{ findings = @() }
+$debt = @{ findings = @(@{ project = 'Fixture'; rule = 'CA1031' }) }
+$script:Seams = @{ entries = @($seam) }
+if ((Get-LedgerWarningIds $empty 'Fixture' $mine) -cne 'RS0030') { Write-Output 'seam file must list RS0030'; exit 7 }
+if ((Get-LedgerWarningIds $empty 'Fixture' $other) -cne '') { Write-Output 'a seam of another project must not list RS0030'; exit 8 }
+if ((Get-LedgerWarningIds $empty 'Fixture' $noItems) -cne '') { Write-Output 'no Compile items must not list RS0030'; exit 9 }
+if ((Get-LedgerWarningIds $debt 'Fixture' $mine) -cne 'CA1031;RS0030') { Write-Output 'debt ids and seam id must merge'; exit 10 }
+Write-LedgerWarningIds $empty
+if (-not (Get-Content eng/code-health/projects.props -Raw).Contains('<HealthBaselineWarningIds>RS0030</HealthBaselineWarningIds>')) { Write-Output 'generated block lacks RS0030'; exit 11 }
+$script:Seams = @{ entries = @() }
+if ((Get-LedgerWarningIds $empty 'Fixture' $mine) -cne '') { Write-Output 'no seam entry must not list RS0030'; exit 12 }
+""")
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+
     def test_format_warning_with_prospective_coordinates_reuses_sarif(self):
         self.sarif()
         self.write('format.json',json.dumps([{'FilePath':'src/Fixture/One.cs','FileChanges':[{'LineNumber':100,'CharNumber':100,'DiagnosticId':'RS0030','FormatDescription':"warning RS0030: banned symbol"}]}]))
