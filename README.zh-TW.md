@@ -73,6 +73,7 @@ Task 0 沒有行為測試或工具採用，因此尚不適用執行階段零差�
 - `Nvt.Core.Avalonia.Focus`：[Focus](docs/core/modules/Focus.zh-TW.md)
 - `Nvt.Core.Avalonia.Testing`：[Testing](docs/core/modules/Testing.zh-TW.md)
 - `Nvt.Core.IO`：[IO](docs/core/modules/IO.zh-TW.md)
+- `Nvt.Core.Hosting`：[Hosting](docs/core/modules/Hosting.zh-TW.md)
 - `Nvt.Core.Persistence`：[Persistence](docs/core/modules/Persistence.zh-TW.md)
 - `Nvt.Core.Startup`：[Startup](docs/core/modules/Startup.zh-TW.md)
 - `Nvt.Core.RuntimeQuery`：[RuntimeQuery](docs/core/modules/RuntimeQuery.zh-TW.md)

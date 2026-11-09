@@ -36,6 +36,81 @@ public static class AtomicOutput
         return WriteBytesAsync(path, bytes, CreateTemporaryStream, cancellationToken);
     }
 
+    /// <summary>Moves a file to a path, replacing any file that is already there.</summary>
+    /// <param name="source">The file to move. It must exist.</param>
+    /// <param name="target">The destination path. Its parent directory is created if needed.</param>
+    /// <param name="cancellationToken">The token checked before the move and passed to a cross-volume copy.</param>
+    /// <returns>A task that completes when the target holds the content of the source and the source is gone.</returns>
+    /// <exception cref="FileNotFoundException"><paramref name="source"/> does not exist.</exception>
+    /// <remarks>
+    /// On the same volume the move replaces the target in one step. Across volumes the source is copied to a sibling temporary file
+    /// of the target, flushed, published over the target as <see cref="WriteAsync(string, Func{Stream, CancellationToken, Task}, CancellationToken)"/> does, and then deleted.
+    /// A cross-volume copy that fails or is cancelled leaves the source and a previous target unchanged.
+    /// If deleting the source fails after the target was published, the exception reaches the caller and the target is complete.
+    /// A move onto the same path does nothing.
+    /// </remarks>
+    public static Task MoveAsync(
+        string source,
+        string target,
+        CancellationToken cancellationToken = default)
+    {
+        return MoveAsync(source, target, IsSameVolume, cancellationToken);
+    }
+
+    // The volume test is a per-call delegate so tests can drive the cross-volume branch on one disk.
+    internal static async Task MoveAsync(
+        string source,
+        string target,
+        Func<string, string, bool> isSameVolume,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(target);
+        var fullSource = Path.GetFullPath(source);
+        var fullTarget = Path.GetFullPath(target);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(fullSource))
+        {
+            throw new FileNotFoundException("The file to move does not exist.", fullSource);
+        }
+
+        if (string.Equals(fullSource, fullTarget, PathComparison))
+        {
+            return;
+        }
+
+        if (isSameVolume(fullSource, fullTarget))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(fullTarget) ?? throw new InvalidOperationException("Output path has no parent directory."));
+            File.Move(fullSource, fullTarget, overwrite: true);
+            return;
+        }
+
+        await PublishAsync(fullTarget, (stream, token) => CopySourceAsync(fullSource, stream, token),
+            byteContract: false, CreateTemporaryStream, cancellationToken);
+        File.Delete(fullSource);
+    }
+
+    private static bool IsSameVolume(string fullSource, string fullTarget)
+    {
+        return string.Equals(Path.GetPathRoot(fullSource), Path.GetPathRoot(fullTarget), PathComparison);
+    }
+
+    private static StringComparison PathComparison =>
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    private static async Task CopySourceAsync(string source, Stream destination, CancellationToken cancellationToken)
+    {
+        await using var input = new FileStream(
+            source,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            64 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await input.CopyToAsync(destination, cancellationToken);
+    }
+
     // Per-call factories let tests inject stream faults without changing global state.
     internal static Task WriteBytesAsync(
         string path,

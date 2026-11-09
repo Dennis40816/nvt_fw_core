@@ -73,6 +73,7 @@ Each module document records its frozen source baseline and how a tool verifies 
 - `Nvt.Core.Avalonia.Focus`: [Focus](docs/core/modules/Focus.md)
 - `Nvt.Core.Avalonia.Testing`: [Testing](docs/core/modules/Testing.md)
 - `Nvt.Core.IO`: [IO](docs/core/modules/IO.md)
+- `Nvt.Core.Hosting`: [Hosting](docs/core/modules/Hosting.md)
 - `Nvt.Core.Persistence`: [Persistence](docs/core/modules/Persistence.md)
 - `Nvt.Core.Startup`: [Startup](docs/core/modules/Startup.md)
 - `Nvt.Core.RuntimeQuery`: [RuntimeQuery](docs/core/modules/RuntimeQuery.md)

@@ -58,13 +58,15 @@ Core 測試現在透過實際 headless dispatcher 執行背景工作。
 
 ## 公開 API
 
-靜態類別公開三個 dispatcher 方法：
+靜態類別公開下列 dispatcher 方法：
 
 ```csharp
 public static void RegisterRunningDispatcher(Dispatcher dispatcher);
 public static bool TryGetRunningDispatcher(out Dispatcher? dispatcher);
 public static bool IsCurrent(out Dispatcher? dispatcher, out Avalonia.Application? application);
 ```
+
+第四個方法是 `RegisterCurrentDispatcher`：`public static Dispatcher RegisterCurrentDispatcher();`。它讀取 `Dispatcher.UIThread`，登錄為執行中的 dispatcher（僅在支援執行迴圈時），並回傳該 dispatcher。應用程式的啟動程式碼與測試主機呼叫它，自己不再直接讀取靜態成員。它列在 `eng/code-health/seam-owners.json` 的永久 seam。
 
 - `RegisterRunningDispatcher` 遇到 null 時擲出 `ArgumentNullException`，參數名稱為 `dispatcher`。僅保存 `SupportsRunLoops` 為 true 的 dispatcher；其他登錄不改變既有值。
 - `TryGetRunningDispatcher` 在沒有目前應用程式、沒有登錄或已登錄 dispatcher 不支援執行迴圈時，回傳 false 並將 out 值設為 null。其他情況回傳已登錄的 dispatcher，背景執行緒也可查詢。

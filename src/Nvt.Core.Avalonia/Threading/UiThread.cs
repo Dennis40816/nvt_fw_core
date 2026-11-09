@@ -21,6 +21,16 @@ public static class UiThread
         }
     }
 
+    /// <summary>Registers Avalonia's UI dispatcher as the running dispatcher.</summary>
+    /// <returns>The UI dispatcher. It is registered only when it supports run loops.</returns>
+    /// <remarks>This is the one place in Core that reads <c>Dispatcher.UIThread</c> for a host. Hosts call it from their start-up code instead of reading the static member.</remarks>
+    public static Dispatcher RegisterCurrentDispatcher()
+    {
+        var dispatcher = Dispatcher.UIThread;
+        RegisterRunningDispatcher(dispatcher);
+        return dispatcher;
+    }
+
     /// <summary>Gets the registered dispatcher when it supports run loops and an application is current.</summary>
     /// <param name="dispatcher">The registered dispatcher on success; otherwise null.</param>
     /// <returns>Whether a running dispatcher and current application are available.</returns>
