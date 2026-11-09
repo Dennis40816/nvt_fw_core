@@ -3,7 +3,7 @@
 namespace Nvt.Core.Hosting;
 
 /// <summary>Reads the environment variables of the host process.</summary>
-/// <remarks>This type is the one place in Core that reads a variable by a caller-supplied name. Hosts call it instead of calling <see cref="Environment.GetEnvironmentVariable(string)"/>.</remarks>
+/// <remarks>This type is the one place in Core that reads a variable by a caller-supplied name. Hosts call it instead of calling <c>Environment.GetEnvironmentVariable</c>.</remarks>
 public static class HostEnvironment
 {
     /// <summary>Gets the value of a process environment variable.</summary>

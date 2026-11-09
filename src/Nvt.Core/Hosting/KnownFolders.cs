@@ -3,7 +3,7 @@
 namespace Nvt.Core.Hosting;
 
 /// <summary>Resolves the operating-system folders that tools use for local state.</summary>
-/// <remarks>This type is the one place in Core that reads the operating-system folder table. Hosts call it instead of calling <see cref="Environment.GetFolderPath(Environment.SpecialFolder)"/>.</remarks>
+/// <remarks>This type is the one place in Core that reads the operating-system folder table. Hosts call it instead of calling <c>Environment.GetFolderPath</c>.</remarks>
 public static class KnownFolders
 {
     /// <summary>Gets the per-user folder for application data that does not roam.</summary>
