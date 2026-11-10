@@ -155,8 +155,10 @@ The versioned seam wrapper is `{ "schemaVersion": 1, "entries": [] }`. Entries u
 the plan's path/member/symbol/owner/reason/kind/review fields. Match exact path and
 symbol plus exact member; member `*` grants that symbol to a reviewed file owner.
 Directories and symbol globs never match. kind is permanent-seam. Authorized
-RS0030 counts remain separate from debt; Core starts with zero entries. Adding
-existing debt as a permanent seam requires owner review, not mechanical migration.
+RS0030 counts remain separate from debt. A project that compiles an authorized seam file
+keeps RS0030 in its generated HealthBaselineWarningIds even when the ledger holds no RS0030 debt;
+otherwise LowerBaseline would drop the ID and the seam files would fail the build as errors.
+Adding existing debt as a permanent seam requires owner review, not mechanical migration.
 
 The lock records `schemaVersion=1`, `coreCommit` and a `files` map.
 The commit uses 40 lowercase hex digits.
