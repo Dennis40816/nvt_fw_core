@@ -12,7 +12,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.6 - 2026-11-09
 
-Tag `core-v0.9.6` on the merge commit of the version pull request.
+Tag `core-v0.9.6` on commit `7e049ff4fca2be44516ef9a702a16923e3117322` (#276).
 
 Four small host APIs for the NFH rewrite (#275): `UiThread.RegisterCurrentDispatcher()`, `KnownFolders.GetLocalApplicationData()`, `HostEnvironment.GetVariable(string)` and `AtomicOutput.MoveAsync(...)`. The release also carries the interaction state layers and the three contrast fixes of the theme (#271). NFH moves from 0.9.5 to this version to use the new API. It comes before the 1.0.0 API freeze, which still waits for the owner to confirm the screens of all three tools.
 As in 0.9.5, the new public API stays in `PublicAPI.Unshipped.txt` of `Nvt.Core` and `Nvt.Core.Avalonia`, so a later 0.9.x version can still change its shape. `PublicAPI.Shipped.txt` of every published project is unchanged. The four additions are source and binary compatible with 0.9.5.
