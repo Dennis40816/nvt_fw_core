@@ -548,9 +548,23 @@ function Get-SdkDefaultIds {
     return $sdkDefaults
 }
 function Health-Ids([string]$Value) { return (@($Value -split '[;,\s]+' | Where-Object { $_ } | Sort-Object -Unique) -join ';') }
-function Get-LedgerWarningIds($Baseline, [string]$Project) {
+# RS0030 stays a warning in a project that holds an authorized seam file, even when the ledger has no RS0030 debt.
+# Without it the seam files fail the build as errors after LowerBaseline removes the last debt entry.
+function Test-ProjectHoldsSeam($Evaluation) {
+    if ($null -eq $script:Seams -or $null -eq $Evaluation) { return $false }
+    $seamPaths = @($script:Seams.entries | ForEach-Object { $_.path })
+    if (-not $seamPaths.Count -or $null -eq $Evaluation.Items -or $null -eq $Evaluation.Items.Compile) { return $false }
+    foreach ($item in @($Evaluation.Items.Compile)) {
+        $relative = [IO.Path]::GetRelativePath($Root, [string]$item.FullPath).Replace('\', '/')
+        if ($relative -cin $seamPaths) { return $true }
+    }
+    return $false
+}
+function Get-LedgerWarningIds($Baseline, [string]$Project, $Evaluation = $null) {
     if ($null -eq $Baseline) { return '' }
-    return (@($Baseline.findings | Where-Object { $_.project -ceq $Project -and $_.rule -notin $script:SyntaxRules -and -not $_.rule.StartsWith('FORMAT:') } | ForEach-Object { $_.rule } | Sort-Object -Unique) -join ';')
+    $ids = @($Baseline.findings | Where-Object { $_.project -ceq $Project -and $_.rule -notin $script:SyntaxRules -and -not $_.rule.StartsWith('FORMAT:') } | ForEach-Object { $_.rule })
+    if (Test-ProjectHoldsSeam $Evaluation) { $ids += 'RS0030' }
+    return (@($ids | Sort-Object -Unique) -join ';')
 }
 function Test-ProjectProperties($Evaluation, [string]$Path, $Baseline) {
     $p = $Evaluation.Properties
@@ -564,7 +578,7 @@ function Test-ProjectProperties($Evaluation, [string]$Path, $Baseline) {
     $ids = Health-Ids $p.HealthBaselineWarningIds
     if ($ids -match '(^|;)(VSTHRD100|CS4014|RS0016|RS0017|RS0024|RS0025|RS0036|RS0037)(;|$)') { throw "HC_CONFIGURATION ${Path}:1 error rule cannot use a warning debt exemption" }
     if ((Health-Ids $p.WarningsNotAsErrors) -cne $ids) { throw "HC_CONFIGURATION ${Path}:1 WarningsNotAsErrors exceeds ledger warning IDs" }
-    if ($Baseline -and $ids -cne (Get-LedgerWarningIds $Baseline $p.MSBuildProjectName)) { throw "HC_CONFIGURATION ${Path}:1 HealthBaselineWarningIds differs from ledger" }
+    if ($Baseline -and $ids -cne (Get-LedgerWarningIds $Baseline $p.MSBuildProjectName $Evaluation)) { throw "HC_CONFIGURATION ${Path}:1 HealthBaselineWarningIds differs from ledger" }
     if ($Baseline) {
         $allowedNoWarn = @($Baseline.findings | Where-Object { $_.project -ceq $p.MSBuildProjectName -and $_.rule -eq 'suppressions' -and $_.symbol.StartsWith('NoWarn:') } | ForEach-Object { $_.symbol.Substring(7) }) -join ';'
         $sdkNoWarn = (Get-SdkDefaultIds).NoWarn
@@ -749,7 +763,7 @@ function Write-LedgerWarningIds($Baseline) {
     $end = '  <!-- END GENERATED HEALTH WARNING IDS -->'
     $lines = @($marker)
     foreach ($project in @($script:HealthProjects | Sort-Object name)) {
-        $ids = Get-LedgerWarningIds $Baseline $project.name
+        $ids = Get-LedgerWarningIds $Baseline $project.name $project.evaluation
         if ($ids) { $lines += "  <PropertyGroup Condition=`"'`$(MSBuildProjectName)' == '$($project.name)'`">", "    <HealthBaselineWarningIds>$ids</HealthBaselineWarningIds>", '  </PropertyGroup>' }
     }
     $lines += $end
