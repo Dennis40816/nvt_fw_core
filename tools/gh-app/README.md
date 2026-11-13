@@ -225,6 +225,7 @@ This function checks whether a PR can go to the owner. It reads only and never w
 It returns `Number`, `Head`, `Ready`, `Checks` and `Files`.
 `Ready` is true when no check failed. Each row of `Checks` has `Name`, `Result` (`PASS` or `FAIL`) and `Detail` with the reason.
 A failed check does not stop the others, so one call lists every problem.
+The `Runs` row fails when the head has no workflow run, unless the repository has no CI at all (no workflow, and no commit status or check run on the head). Then the row passes with `no CI in repository`.
 `Files` lists the changed files with their added and deleted line counts.
 
 | Check | Passes when |
@@ -401,7 +402,14 @@ A repository can have no required checks. Then `gh pr checks --required` prints 
 The match is the whole message, case-sensitive, with exit code 1. Text before or after it, a second line, another exit code or another case is a failure.
 Any other failure with no list (a failed login, a lost network, an unknown message) stops the merge with `HTTP unknown`, in both calls. It never counts as “no checks”.
 Failed or cancelled checks among them stop the merge (`checks failed`), and pending ones are waited for.
-When the head has no check at all (the same message in the second call), the ruleset decides, and the merge state `CLEAN` says it is met.
+When the head has no check at all (the same message in the second call), the function does not release it on `CLEAN` alone.
+A head with no check yet can belong to a repository whose workflow has not started.
+So the function releases it only for a repository with no CI: `GET actions/workflows` reports `total_count` 0, and the head has no commit status and no check run (both `total_count` 0).
+If any of these is not 0, or a call does not report a count, the function waits and reads again, until the timeout.
+A call that fails stops the merge with `HTTP unknown`. It never counts as “no CI”.
+The release does not weaken any other check: the owner approval, the registered head, the ledger time, the head, conflicts and review threads all still apply.
+A release for no CI writes `no CI in repository` to the merge log, and the result object has `NoCi` set to `True`.
+The review ledger is not changed. It holds the approval proof, and its reader rejects an unknown entry kind.
 It rechecks the ledger, approval, and history after checks before merging with `sha` equal to H.
 Failed or cancelled checks stop the batch.
 The default timeout is 1,200 seconds, and the default poll interval is 15 seconds.
