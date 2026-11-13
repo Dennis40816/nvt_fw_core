@@ -32,6 +32,22 @@ The helper must be an installed `.ps1` file.
 Missing fields stop the import.
 A failed import clears the active configuration.
 
+## A new repository needs no config file
+
+The owner can create one owner default, `~/.nvt/gh-app/<owner>.owner-default.json`, outside every repository.
+It has the same fields as the repository config, without `repo`.
+`Import-GhAppConfig` reads `<owner>-<repo>.json` first.
+Only when that file does not exist does it read the owner default and use the requested repository name.
+A repository that has its own file never uses the owner default.
+If neither file exists, the error names both expected paths.
+
+The owner default follows the same checks as a repository config.
+Its `owner` must equal the requested owner.
+It must not contain a `repo` field.
+The file, the helper and the DPAPI file must be outside every repository.
+The token helper still limits each token to the one repository named in the call.
+The review ledger and the issues write log cannot name the owner default.
+
 Importing a config binds every function to that repository until another import succeeds.
 Each function also accepts `-Repository OWNER/REPO`, with `-Repo` as an alias.
 A different repository argument or `GH_REPO` value stops execution before `gh` runs.

@@ -9,6 +9,12 @@ function Get-GhAppConfigPath {
     Join-Path $HOME ".nvt/gh-app/$Owner-$Repo.json"
 }
 
+# The owner default is the per-repository config without its repo field. A repository with no file of its own uses it, so a new repository needs no hand-made file.
+function Get-GhAppOwnerConfigPath {
+    param([string]$Owner)
+    Join-Path $HOME ".nvt/gh-app/$Owner.owner-default.json"
+}
+
 function Test-GhAppRepositoryPath {
     param([string]$Path, [Collections.Generic.HashSet[string]]$Visited)
     if ($null -eq $Visited) { $Visited = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase) }
@@ -44,10 +50,23 @@ function Import-GhAppConfig {
     }
     $path = Get-GhAppConfigPath $Owner $Repo
     if (Test-GhAppRepositoryPath $path) { throw 'The config file must be outside every repository.' }
-    if (-not [IO.File]::Exists($path)) { throw 'The repository config file is missing.' }
+    # The repository file wins. Only a repository with no file of its own falls back to the owner default, under the same checks.
+    $usesOwnerDefault = $false
+    if (-not [IO.File]::Exists($path)) {
+        $ownerPath = Get-GhAppOwnerConfigPath $Owner
+        if (Test-GhAppRepositoryPath $ownerPath) { throw 'The config file must be outside every repository.' }
+        if (-not [IO.File]::Exists($ownerPath)) { throw "The repository config file is missing. Expected $path or the owner default $ownerPath." }
+        $path = $ownerPath
+        $usesOwnerDefault = $true
+    }
     try { $config = [IO.File]::ReadAllText($path) | ConvertFrom-Json -AsHashtable -ErrorAction Stop }
     catch { throw 'The repository config file must contain a JSON object.' }
     if ($config -isnot [System.Collections.IDictionary]) { throw 'The repository config file must contain a JSON object.' }
+    if ($usesOwnerDefault) {
+        # The token helper still narrows each token to the one repository named here, so the default never widens access.
+        if ($config.Contains('repo')) { throw "The owner default config file must not contain a 'repo' field." }
+        $config['repo'] = $Repo
+    }
     $fields = @('owner', 'repo', 'clientId', 'installationId', 'tokenHelperPath', 'dpapiPath', 'botLogin')
     foreach ($field in $fields) {
         if (-not $config.Contains($field) -or [string]::IsNullOrWhiteSpace([string]$config[$field])) {
@@ -331,8 +350,8 @@ function Get-GhAppLedgerPath {
     }
     $LedgerPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($LedgerPath)
     if (Test-GhAppRepositoryPath $LedgerPath) { throw 'The review ledger must be outside every repository.' }
-    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), $Context.tokenHelperPath, $Context.dpapiPath)) {
-        if ([string]::Equals($LedgerPath, [IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
+    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), (Get-GhAppOwnerConfigPath $Context.owner), $Context.tokenHelperPath, $Context.dpapiPath)) {
+        if ([string]::Equals($LedgerPath,[IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
             throw 'The review ledger must not name a config, helper, or DPAPI file.'
         }
     }
@@ -1089,8 +1108,8 @@ function Get-GhAppIssuesLogPath {
     param([hashtable]$Context, [string]$IssuesLogPath)
     $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($IssuesLogPath)
     if (Test-GhAppRepositoryPath $path) { throw 'The issues write log must be outside every repository.' }
-    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), $Context.tokenHelperPath, $Context.dpapiPath)) {
-        if ([string]::Equals($path, [IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
+    foreach ($protected in @((Get-GhAppConfigPath $Context.owner $Context.repo), (Get-GhAppOwnerConfigPath $Context.owner), $Context.tokenHelperPath, $Context.dpapiPath)) {
+        if ([string]::Equals($path,[IO.Path]::GetFullPath($protected), [StringComparison]::OrdinalIgnoreCase)) {
             throw 'The issues write log must not name a config, helper, or DPAPI file.'
         }
     }

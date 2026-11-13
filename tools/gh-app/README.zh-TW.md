@@ -26,6 +26,22 @@ Owner 在所有儲存庫之外建立 `~/.nvt/gh-app/<owner>-<repo>.json`。
 路徑必須是絕對路徑。Installation ID 必須是正整數，或其十進位字串。
 Helper 必須是已安裝的 `.ps1`。缺少欄位會中止載入。
 載入失敗會清除目前設定。傳回的設定物件無法修改模組目前使用的設定。
+
+### 新儲存庫不需要手建設定檔
+
+Owner 可以在所有儲存庫之外建立一個 owner 預設檔：`~/.nvt/gh-app/<owner>.owner-default.json`。
+欄位與儲存庫設定檔相同，但沒有 `repo`。
+`Import-GhAppConfig` 先讀 `<owner>-<repo>.json`。
+只有該檔不存在時，才讀 owner 預設檔，並代入要求的儲存庫名稱。
+有自己設定檔的儲存庫不會用到預設檔。
+兩個檔都不存在時，錯誤訊息會列出兩個預期路徑。
+
+Owner 預設檔的檢查與儲存庫設定檔完全相同。
+它的 `owner` 必須等於要求的 owner，且不得含 `repo` 欄位。
+檔案、helper 與 DPAPI 檔都必須在所有儲存庫之外。
+Token helper 仍把每個 token 限縮在呼叫中指定的單一儲存庫。
+Review ledger 與 issues 寫入記錄不能指向 owner 預設檔。
+
 每個函式都接受選用的 `-Repository OWNER/REPO`，別名是 `-Repo`。
 不同的儲存庫參數或 `GH_REPO` 會在執行 `gh` 前中止。
 
