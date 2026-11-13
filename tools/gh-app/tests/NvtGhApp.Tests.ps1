@@ -16,6 +16,7 @@ InModuleScope NvtGhApp {
     $script:FixtureRoot = Join-Path $env:NVT_GHAPP_TEST_ROOT 'fixtures'
     $null = New-Item -ItemType Directory -Force -Path $script:FixtureRoot
     $script:FixtureConfig = Join-Path $script:FixtureRoot 'example-owner-example-repo.json'
+    $script:FixtureOwnerConfig = Join-Path $script:FixtureRoot 'example-owner.owner-default.json'
     $script:BodyFile = Join-Path $script:FixtureRoot 'body.txt'
     $script:LogFile = Join-Path $script:FixtureRoot 'merge.log'
     $script:LedgerFile = Join-Path $script:FixtureRoot 'review-ledger.jsonl'
@@ -87,7 +88,8 @@ InModuleScope NvtGhApp {
             Error = ''; ExitCode = $ExitCode }
     }
     function Reset-Fixture {
-        foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX, $env:NVT_GHAPP_HELPER_CALLS, $script:LogFile, $script:LedgerFile)) {
+        foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX, $env:NVT_GHAPP_HELPER_CALLS, $script:LogFile, $script:LedgerFile,
+            $script:FixtureOwnerConfig)) {
             if ([IO.File]::Exists($path)) { [IO.File]::Delete($path) }
         }
         foreach ($name in @('GH_TOKEN', 'GITHUB_TOKEN', 'GH_REPO', 'GH_HOST', 'GH_DEBUG', 'NVT_GHAPP_HELPER_FAIL', 'NVT_GHAPP_HELPER_MESSAGE')) {
@@ -140,7 +142,17 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
 
     Describe 'Configuration and repository scope' {
-        BeforeEach { Reset-Fixture; Mock Get-GhAppConfigPath { $script:FixtureConfig } }
+        BeforeEach {
+            Reset-Fixture
+            Mock Get-GhAppConfigPath { $script:FixtureConfig }
+            Mock Get-GhAppOwnerConfigPath { $script:FixtureOwnerConfig }
+        }
+        # The owner default is the repository config without its repo field. Only a repository with no config of its own uses it.
+        function Write-OwnerDefault {
+            param([hashtable]$Values = $script:ConfigValues.Clone(), [switch]$KeepRepo)
+            if (-not $KeepRepo) { $Values.Remove('repo') }
+            [IO.File]::WriteAllText($script:FixtureOwnerConfig, (ConvertTo-Json $Values))
+        }
         It 'imports all fields without reading the DPAPI file or invoking gh' {
             $config = Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName
             $config.botLogin | Should Be 'example-app[bot]'
@@ -156,10 +168,92 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { Add-GhAppComment -Number 7 -BodyFile $script:BodyFile } | Should Be 'Import-GhAppConfig must succeed before using this module.'
             @(Get-Calls).Count | Should Be 0
         }
-        It 'rejects a missing config file' {
+        It 'rejects a missing config file and names both expected paths' {
             [IO.File]::Delete($script:FixtureConfig)
-            Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be 'The repository config file is missing.'
+            Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } |
+                Should Be "The repository config file is missing. Expected $script:FixtureConfig or the owner default $script:FixtureOwnerConfig."
             @(Get-Calls).Count | Should Be 0
+        }
+        It 'imports the owner default for a repository with no config file of its own' {
+            [IO.File]::Delete($script:FixtureConfig)
+            Write-OwnerDefault
+            $config = Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName
+            $config.owner | Should Be $script:Owner
+            $config.repo | Should Be $script:RepoName
+            $config.botLogin | Should Be 'example-app[bot]'
+            (Get-GhAppContext '').repo | Should Be $script:RepoName
+            @(Get-Calls).Count | Should Be 0
+        }
+        It 'prefers the repository config file over the owner default' {
+            $other = $script:ConfigValues.Clone()
+            $other.botLogin = 'owner-default[bot]'
+            Write-OwnerDefault $other
+            (Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName).botLogin | Should Be 'example-app[bot]'
+        }
+        It 'still rejects a repository config mismatch when an owner default exists' {
+            Write-OwnerDefault
+            $script:ConfigValues.repo = 'other-repo'
+            [IO.File]::WriteAllText($script:FixtureConfig, (ConvertTo-Json $script:ConfigValues))
+            Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be "Repository mismatch. Expected $script:RepositoryName."
+        }
+        It 'rejects an owner default for another owner' {
+            [IO.File]::Delete($script:FixtureConfig)
+            $other = $script:ConfigValues.Clone()
+            $other.owner = 'other-owner'
+            Write-OwnerDefault $other
+            Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be "Repository mismatch. Expected $script:RepositoryName."
+            Get-Message { Get-GhAppContext '' } | Should Be 'Import-GhAppConfig must succeed before using this module.'
+        }
+        It 'rejects an owner default that names a repository' {
+            [IO.File]::Delete($script:FixtureConfig)
+            Write-OwnerDefault -KeepRepo
+            Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } |
+                Should Be "The owner default config file must not contain a 'repo' field."
+        }
+        It 'rejects an owner default stored inside a worktree' {
+            [IO.File]::Delete($script:FixtureConfig)
+            $repository = Join-Path $script:FixtureRoot 'repo-owner-default'
+            [void][IO.Directory]::CreateDirectory((Join-Path $repository '.git'))
+            $inside = Join-Path $repository 'example-owner.owner-default.json'
+            Mock Get-GhAppOwnerConfigPath { $inside }
+            $values = $script:ConfigValues.Clone()
+            $values.Remove('repo')
+            [IO.File]::WriteAllText($inside, (ConvertTo-Json $values))
+            try {
+                Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be 'The config file must be outside every repository.'
+            } finally { [IO.Directory]::Delete($repository, $true) }
+        }
+        foreach ($fieldName in @('clientId', 'installationId', 'tokenHelperPath', 'dpapiPath', 'botLogin')) {
+            It "applies the repository checks to the owner default: missing $fieldName" {
+                [IO.File]::Delete($script:FixtureConfig)
+                $values = $script:ConfigValues.Clone()
+                $values.Remove($fieldName)
+                Write-OwnerDefault $values
+                Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } | Should Be "Config field '$fieldName' is required."
+            }
+        }
+        It 'rejects an owner default helper inside a repository' {
+            [IO.File]::Delete($script:FixtureConfig)
+            $repository = Join-Path $script:FixtureRoot 'repo-owner-default-helper'
+            [void][IO.Directory]::CreateDirectory((Join-Path $repository '.git'))
+            $inside = Join-Path $repository 'file.ps1'
+            [IO.File]::Copy($script:ConfigValues.tokenHelperPath, $inside, $true)
+            $values = $script:ConfigValues.Clone()
+            $values.tokenHelperPath = $inside
+            Write-OwnerDefault $values
+            try {
+                Get-Message { Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName } |
+                    Should Be "Config field 'tokenHelperPath' must be outside every repository."
+            } finally { [IO.Directory]::Delete($repository, $true) }
+        }
+        It 'does not let a review ledger or an issues log overwrite the owner default' {
+            [IO.File]::Delete($script:FixtureConfig)
+            Write-OwnerDefault
+            $null = Import-GhAppConfig -Owner $script:Owner -Repo $script:RepoName
+            Get-Message { Get-GhAppLedgerPath (Get-GhAppContext '') $script:FixtureOwnerConfig } |
+                Should Be 'The review ledger must not name a config, helper, or DPAPI file.'
+            Get-Message { Get-GhAppIssuesLogPath (Get-GhAppContext '') $script:FixtureOwnerConfig } |
+                Should Be 'The issues write log must not name a config, helper, or DPAPI file.'
         }
         foreach ($fieldName in @('owner', 'repo', 'clientId', 'installationId', 'tokenHelperPath', 'dpapiPath', 'botLogin')) {
             It "rejects the missing $fieldName field before gh" {
