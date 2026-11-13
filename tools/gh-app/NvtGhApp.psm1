@@ -439,6 +439,22 @@ function Get-GhAppLatestRuns {
     [pscustomobject]@{ Latest = $latest; Read = $runs.Count; Total = $total; Complete = ($runs.Count -ge $total) }
 }
 
+# A repository has no CI only when it has no workflow at all, and the head has no commit status and no check run.
+# A head with no check yet is not enough: a repository with a workflow may not have started the check. Each call must read a total_count of 0.
+# Any other answer, including a missing count, means CI may exist. A call that fails stops the caller, never counts as "no CI".
+function Test-GhAppNoCiRepository {
+    param([hashtable]$Context, [string]$Head)
+    $null = Assert-GhAppSha 'head for the CI proof' $Head
+    foreach ($suffix in @('actions/workflows?per_page=1', "commits/$Head/status?per_page=1", "commits/$Head/check-runs?per_page=1")) {
+        $response = Invoke-GhAppApi $Context GET $suffix
+        $count = $null
+        if ($null -ne $response -and $null -ne $response.PSObject.Properties['total_count']) { $count = $response.total_count }
+        if ($count -isnot [int] -and $count -isnot [long]) { return $false }
+        if ($count -ne 0) { return $false }
+    }
+    return $true
+}
+
 function Get-GhAppReadiness {
     param([hashtable]$Context, [int]$Number, $Pr, [string]$ExpectedHeadSha, [string]$ReviewRecordPattern)
     $head = Assert-GhAppSha "head of #$Number" $Pr.headRefOid
@@ -498,7 +514,12 @@ function Get-GhAppReadiness {
         $checks.Add((New-GhAppCheckRow 'Runs' $false "only $($runs.Read) of $($runs.Total) runs of this head were read"))
     }
     elseif ($runs.Latest.Count -eq 0) {
-        $checks.Add((New-GhAppCheckRow 'Runs' $false 'no workflow run found for this head'))
+        # No run is a failure when CI may exist. A repository with no workflow, status or check run has no CI to wait for.
+        if (Test-GhAppNoCiRepository $Context $head) {
+            $checks.Add((New-GhAppCheckRow 'Runs' $true 'no CI in repository: no workflow, no commit status and no check run on this head'))
+        } else {
+            $checks.Add((New-GhAppCheckRow 'Runs' $false 'no workflow run found for this head'))
+        }
     }
     foreach ($item in @($runs.Latest | Sort-Object -Property { [string]$_.Run.name })) {
         $run = $item.Run
@@ -1428,16 +1449,20 @@ function Wait-GhAppApprovedHead {
         $checks = $required.Checks
         $checksExit = $required.ExitCode
         $checkLabel = 'required checks'
+        $noCi = $false
         if ($checks.Count -eq 0) {
             # A repository with no required checks makes gh print nothing and exit 1. That is a state, not a failure:
-            # judge the head by all of its checks. With no check at all, the ruleset decides, and CLEAN says it is met.
+            # judge the head by all of its checks.
             $all = Read-GhAppChecks $Context $Number $path
             $checks = $all.Checks
             $checksExit = $(if ($checks.Count -eq 0) { 0 } else { $all.ExitCode })
             $checkLabel = 'checks'
+            # With no check at all, the head is released only for a repository with no CI. A repository with a workflow may not have
+            # started its check yet, so the loop waits and reads again. The ruleset and CLEAN still have to agree.
+            if ($checks.Count -eq 0) { $noCi = Test-GhAppNoCiRepository $Context $current }
         }
         if (@($checks | Where-Object { $_.bucket -in @('fail', 'cancel') }).Count -gt 0) { throw "#$Number stop: $checkLabel failed." }
-        $pending = @($checks | Where-Object { $_.bucket -notin @('pass', 'skipping') }).Count -gt 0
+        $pending = (@($checks | Where-Object { $_.bucket -notin @('pass', 'skipping') }).Count -gt 0) -or ($checks.Count -eq 0 -and -not $noCi)
         if (-not $pending -and $checksExit -eq 0 -and $Pr.mergeStateStatus -ceq 'CLEAN') {
             # Recheck both the head and the latest owner review after checking CI.
             $fresh = Get-GhAppPullRequest $Context $Number
@@ -1445,7 +1470,7 @@ function Wait-GhAppApprovedHead {
                 $fresh.baseRefName -ceq $Pr.baseRefName -and $fresh.state -ceq 'OPEN' -and $fresh.mergeStateStatus -ceq 'CLEAN') {
                 if ($fresh.isDraft -or -not (Test-GhAppBotAuthor $Context $fresh.author)) { throw "#$Number stop: PR must be a non-draft authored by botLogin." }
                 $evidence = Get-GhAppApprovedReviewRequest $Context $Number $Worktree $fresh $LedgerPath
-                return [pscustomobject]@{ Pr = $fresh; Request = $evidence.Request; Approval = $evidence.Approval; Reuse = $evidence.Reuse }
+                return [pscustomobject]@{ Pr = $fresh; Request = $evidence.Request; Approval = $evidence.Approval; Reuse = $evidence.Reuse; NoCi = $noCi }
             }
             $Pr = $fresh
             continue
@@ -1541,6 +1566,7 @@ function Merge-GhAppApprovedPullRequest {
             $evidence = Wait-GhAppApprovedHead $context $number $pr $Worktree $LedgerPath $TimeoutSeconds $PollSeconds
             $pr = $evidence.Pr
             $head = Assert-GhAppSha "head of #$number" $pr.headRefOid
+            if ($evidence.NoCi) { Write-GhAppMergeLog $LogPath "#$number no CI in repository: no workflow, no commit status and no check run on $head" }
             $provenBase = $null
             if ($null -ne $evidence.Reuse) {
                 # The reuse proof holds for the base it was made against. The merge API binds only the head, so read the base
@@ -1580,7 +1606,7 @@ function Merge-GhAppApprovedPullRequest {
             $observation = Get-GhAppTimelineObservation $context $number $evidence.Approval
             Write-GhAppMergeLog $LogPath "#$number timeline observation only: last PullRequestCommit before approval $observation"
             $null = Remove-GhAppBranchAfterMerge $context $number $pr $head $LogPath $DeleteBranchPrefix
-            [pscustomobject]@{ Number = $number; Head = $head; MergeCommit = $mergeSha; Reused = ($null -ne $evidence.Reuse); TreeMismatch = $treeMismatch }
+            [pscustomobject]@{ Number = $number; Head = $head; MergeCommit = $mergeSha; Reused = ($null -ne $evidence.Reuse); TreeMismatch = $treeMismatch; NoCi = [bool]$evidence.NoCi }
         } catch {
             Write-GhAppMergeLog $LogPath "#$number error: $($_.Exception.Message)"
             throw

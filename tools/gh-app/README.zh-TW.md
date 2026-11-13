@@ -205,6 +205,7 @@ Review record 貼在 CI 之後時，PR 的 rollup 可能永遠留著一個較舊
 函式讀取這個 head 的每一頁 run，最多 1,000 次。它依 workflow 分組，取每組最新的一次，並說明略過了幾次較舊的 run。
 分組的鍵是 workflow ID，不是名稱，因為兩個 workflow 可以同名。每一列顯示名稱，所以兩列可能看起來一樣。
 讀到的 run 比 GitHub 回報的少時，`Runs` 這一列判 FAIL：沒讀到最新 run 的 workflow 可能藏著失敗。
+head 沒有任何 workflow run 時，`Runs` 也判 FAIL，除非這個 repository 完全沒有 CI（沒有 workflow，且該 head 沒有 commit status 與 check run）。這時該列判 PASS，說明為 `no CI in repository`。
 
 ```powershell
 $readiness = Get-GhAppPullRequestReadiness -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>'
@@ -345,7 +346,14 @@ repository 可能沒有設定必要 checks。這時 `gh pr checks --required` �
 比對的是整句訊息，區分大小寫，且結束碼要是 1。前後多出文字、有第二行、結束碼不同或大小寫不同，都算失敗。
 其他沒有清單的失敗（登入失敗、斷線、不認得的訊息）在兩次呼叫中都以 `HTTP unknown` 停止合併，絕不當成「沒有 checks」。
 其中有失敗或取消就停止（`checks failed`），有進行中就等待。
-該 head 完全沒有 check（第二次呼叫也是同一句訊息）時，由現行 ruleset 判斷，merge state 為 `CLEAN` 代表條件已滿足。
+該 head 完全沒有 check（第二次呼叫也是同一句訊息）時，函式不再只靠 `CLEAN` 就放行。
+還沒有 check 的 head，可能屬於 workflow 尚未啟動的 repository。
+所以只有「repository 沒有 CI」才放行：`GET actions/workflows` 的 `total_count` 為 0，且該 head 沒有任何 commit status 與 check run（兩者的 `total_count` 都是 0）。
+任何一項不是 0、或回應沒有數量，函式就繼續等待並重讀，直到逾時。
+呼叫失敗時以 `HTTP unknown` 停止合併，絕不當成「沒有 CI」。
+這個放行不放寬其他檢查：owner 核准、登記的 head、ledger 時間、head 相符、衝突與未解決的討論串全部照舊。
+因為沒有 CI 而放行時，合併 log 會寫 `no CI in repository`，回傳物件的 `NoCi` 為 `True`。
+Review ledger 不變。它是核准證明，讀取程式遇到不認得的項目種類會拒絕。
 失敗或取消的 checks 會停止。預設逾時為 1,200 秒，輪詢間隔為 15 秒。
 可使用 `-TimeoutSeconds` 和 `-PollSeconds` 修改這些限制。
 合併後是否刪除分支，要用 `-DeleteBranchPrefix` 明確指定。沒有指定時，所有分支都保留，包括 release 分支，函式會對每個保留的分支印出警告。

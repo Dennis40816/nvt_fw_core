@@ -1875,6 +1875,16 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         if ($Total -lt 0) { $Total = @($Runs).Count }
         New-ApiStep "actions/runs?head_sha=$Head&per_page=100&page=$Page" -Value @{ total_count = $Total; workflow_runs = @($Runs) }
     }
+    # The proof that a repository has no CI: no workflow, then no commit status on the head, then no check run on the head.
+    # Each later call is made only when the earlier ones found nothing, so a case lists only the calls that are made.
+    function New-NoCiProofSteps {
+        param([int]$Workflows = 0, [int]$Statuses = 0, [int]$CheckRuns = 0, [string]$Head = $script:HeadSha)
+        New-ApiStep 'actions/workflows?per_page=1' -Value @{ total_count = $Workflows; workflows = @() }
+        if ($Workflows -eq 0) {
+            New-ApiStep "commits/$Head/status?per_page=1" -Value @{ state = 'pending'; total_count = $Statuses; statuses = @() }
+            if ($Statuses -eq 0) { New-ApiStep "commits/$Head/check-runs?per_page=1" -Value @{ total_count = $CheckRuns; check_runs = @() } }
+        }
+    }
     function New-RunPages {
         param([int]$Pages, [int]$Total)
         foreach ($page in 1..$Pages) {
@@ -1893,10 +1903,12 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
     function New-ReadinessSteps {
         param([int]$Number = 7, $Pr = (New-Pr -MergeState BLOCKED), [object[]]$Reviews = @((New-RecordReview)),
-            [object[]]$Runs = @((New-Run)), [string]$Head = $script:HeadSha)
+            [object[]]$Runs = @((New-Run)), [string]$Head = $script:HeadSha, [object[]]$Proof)
         New-PrStep $Number $Pr
         New-ReviewStep $Number $Reviews
         New-RunsStep $Runs $Head
+        # A head with no run makes the module look for CI. By default the repository has a workflow, so the row still fails.
+        if ($PSBoundParameters.ContainsKey('Proof')) { $Proof } elseif (@($Runs).Count -eq 0) { New-NoCiProofSteps -Workflows 1 -Head $Head }
         New-FilesStep $Number
     }
     function Get-Row {
@@ -2071,11 +2083,34 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             @($result.Checks | Where-Object { $_.Name -ceq 'Run: Core' }).Count | Should Be 1
             (Get-Row $result 'Run: Core').Detail | Should Match 'run 2 is completed/failure'
         }
-        It 'fails when the head has no workflow run' {
+        It 'fails when the head has no workflow run and the repository has a workflow' {
             Set-Responses @(New-ReadinessSteps -Runs @())
             $result = Get-GhAppPullRequestReadiness -Number 7
             $result.Ready | Should Be $false
             (Get-Row $result 'Runs').Detail | Should Be 'no workflow run found for this head'
+        }
+        It 'passes the Runs row when the repository has no CI at all' {
+            Set-Responses @(New-ReadinessSteps -Runs @() -Proof @(New-NoCiProofSteps))
+            $result = Get-GhAppPullRequestReadiness -Number 7
+            $result.Ready | Should Be $true
+            (Get-Row $result 'Runs').Result | Should Be 'PASS'
+            (Get-Row $result 'Runs').Detail | Should Match '^no CI in repository'
+        }
+        foreach ($case in @(
+            @{ Name = 'the head has a commit status'; Proof = @(New-NoCiProofSteps -Statuses 1) },
+            @{ Name = 'the head has a check run'; Proof = @(New-NoCiProofSteps -CheckRuns 1) })) {
+            It "fails the Runs row when there is no workflow but $($case.Name)" {
+                Set-Responses @(New-ReadinessSteps -Runs @() -Proof $case.Proof)
+                $result = Get-GhAppPullRequestReadiness -Number 7
+                $result.Ready | Should Be $false
+                (Get-Row $result 'Runs').Detail | Should Be 'no workflow run found for this head'
+            }
+        }
+        It 'stops when the CI proof cannot be read' {
+            $broken = New-ApiStep 'actions/workflows?per_page=1' -ExitCode 1 -ErrorText 'error connecting to api.github.com'
+            Mock Start-Sleep {}
+            Set-Responses @(New-ReadinessSteps -Runs @() -Proof @($broken))
+            Get-Message { Get-GhAppPullRequestReadiness -Number 7 } | Should Match '^HTTP '
         }
         It 'fails without a review record on the head' {
             Set-Responses @(New-ReadinessSteps -Reviews @())
@@ -3132,14 +3167,67 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             $steps = @(New-ReviewMergeSteps)
             @($steps[0], $steps[1], (New-NoRequiredStep), $AllChecks) + @($steps[3..6])
         }
+        # A head with no check at all: the CI proof comes next. The default is a repository with a workflow, which waits.
+        # The proof comes after the all-checks call and before the second read of the pull request.
+        function New-NoCiMergeSteps {
+            param([object[]]$Proof)
+            $steps = @(New-ReviewMergeSteps)
+            @($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output '' -ExitCode 1 -ErrorText $script:GhNoChecks)) + @($Proof) + @($steps[3..6])
+        }
         foreach ($case in @(@{ Name = 'prints nothing'; Output = '' }, @{ Name = 'prints an empty list'; Output = '[]' })) {
-            It "merges when there are no required checks and the head has no check at all (gh $($case.Name))" {
+            It "merges when there are no required checks and the repository has no CI at all (gh $($case.Name))" {
                 Add-LedgerFixture -Head $script:ReviewedSha
-                Set-Responses @(New-NoRequiredMergeSteps (New-AllChecksStep -Output $case.Output -ExitCode 1 -ErrorText $script:GhNoChecks))
-                Invoke-ReviewMergeFixture
+                $steps = @(New-ReviewMergeSteps)
+                Set-Responses (@($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output $case.Output -ExitCode 1 -ErrorText $script:GhNoChecks)) +
+                    @(New-NoCiProofSteps -Head $script:ReviewedSha) + @($steps[3..6]))
+                $result = Invoke-ReviewMergeFixture
                 [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
+                [IO.File]::ReadAllText($script:LogFile) | Should Match '#7 no CI in repository'
+                $result.NoCi | Should Be $true
                 @(Get-Calls | Where-Object { $_.Arguments[0] -ceq 'pr' -and $_.Arguments[1] -ceq 'checks' }).Count | Should Be 2
             }
+        }
+        # A head with no check is not a repository with no CI when a workflow exists, or when the head already has a status or a check run.
+        # The module waits. The next round of the loop sees the required check, and only then does the merge call happen.
+        foreach ($case in @(
+            @{ Name = 'a workflow exists'; Proof = @(New-NoCiProofSteps -Workflows 1 -Head $script:ReviewedSha) },
+            @{ Name = 'the head has a commit status'; Proof = @(New-NoCiProofSteps -Statuses 1 -Head $script:ReviewedSha) },
+            @{ Name = 'the head has a check run'; Proof = @(New-NoCiProofSteps -CheckRuns 1 -Head $script:ReviewedSha) })) {
+            It "does not merge while no check has appeared and $($case.Name)" {
+                Add-LedgerFixture -Head $script:ReviewedSha
+                $steps = @(New-ReviewMergeSteps)
+                $first = @($steps[0], $steps[1], (New-NoRequiredStep), (New-AllChecksStep -Output '' -ExitCode 1 -ErrorText $script:GhNoChecks)) + @($case.Proof)
+                Set-Responses ($first + @($steps[0], $steps[1], $steps[2]) + @($steps[3..6]))
+                $result = Invoke-ReviewMergeFixture
+                $result.NoCi | Should Be $false
+                [IO.File]::ReadAllText($script:LogFile) | Should Not Match 'no CI in repository'
+                $calls = @(Get-Calls)
+                $mergeIndex = [array]::FindIndex($calls, [Predicate[object]]{ param($c) $c.Arguments[1] -match '/merge$' })
+                $lastChecks = [array]::FindLastIndex($calls, [Predicate[object]]{ param($c) $c.Arguments[0] -ceq 'pr' -and $c.Arguments[1] -ceq 'checks' })
+                ($mergeIndex -gt $lastChecks) | Should Be $true
+                @($calls | Where-Object { $_.Arguments[0] -ceq 'pr' -and $_.Arguments[1] -ceq 'checks' }).Count | Should Be 3
+            }
+        }
+        It 'does not release on a CI proof that cannot be read' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $broken = New-ApiStep 'actions/workflows?per_page=1' -ExitCode 1 -ErrorText 'error connecting to api.github.com'
+            Set-Responses (@(New-NoCiMergeSteps @($broken))[0..4])
+            Get-Message { Invoke-ReviewMergeFixture } | Should Match '^HTTP '
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        It 'refuses a head that was not approved, in a repository with no CI, before it reads any check' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:NextSha)), (New-ReviewStep -Reviews @((New-Review -Head $script:NextSha))))
+            Get-Message { Invoke-ReviewMergeFixture } | Should Not Be 'NO ERROR'
+            @(Get-Calls | Where-Object { $_.Arguments[0] -ceq 'pr' -and $_.Arguments[1] -ceq 'checks' }).Count | Should Be 0
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
+        }
+        It 'refuses an approval that is not the registered head, in a repository with no CI' {
+            Add-LedgerFixture -Head $script:ReviewedSha
+            $steps = @(New-ReviewMergeSteps -Reviews @((New-Review -Head $script:NextSha)))
+            Set-Responses @($steps[0], $steps[1])
+            Get-Message { Invoke-ReviewMergeFixture } | Should Not Be 'NO ERROR'
+            @(Get-Calls | Where-Object { $_.Arguments[1] -match '/merge$' }).Count | Should Be 0
         }
         It 'merges when there are no required checks and every check of the head passed' {
             Add-LedgerFixture -Head $script:ReviewedSha
@@ -3176,7 +3264,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Add-LedgerFixture -Head $script:ReviewedSha
             $older = New-NoRequiredStep -ErrorText "no required checks reported on the 'test/module' branch"
             $steps = @(New-ReviewMergeSteps)
-            Set-Responses @(@($steps[0], $steps[1], $older, (New-AllChecksStep -Output '[]' -ExitCode 1 -ErrorText $script:GhNoChecks)) + @($steps[3..6]))
+            Set-Responses @(@($steps[0], $steps[1], $older, (New-AllChecksStep -Output '[]' -ExitCode 1 -ErrorText $script:GhNoChecks)) +
+                @(New-NoCiProofSteps -Head $script:ReviewedSha) + @($steps[3..6]))
             Invoke-ReviewMergeFixture
             [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 merged $script:ReviewedSha -> $script:MergeSha"
         }
@@ -3241,11 +3330,12 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 Output = $output; Error = ''; ExitCode = 0 }
         }
         function New-TierBReadSteps {
-            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }),
+            param($Pr = (New-Pr), [object[]]$Reviews = @((New-RecordReview)), [object[]]$Runs = @((New-Run)), $Threads, [object[]]$Proof, [object[]]$Files = @(@{ filename = 'tools/example.ps1'; additions = 3; deletions = 1 }),
                 $ChangedFiles)
             New-PrStep 7 $Pr
             New-ReviewStep 7 $Reviews
             New-RunsStep $Runs $script:HeadSha
+            if ($PSBoundParameters.ContainsKey('Proof')) { $Proof } elseif (@($Runs).Count -eq 0) { New-NoCiProofSteps -Workflows 1 }
             New-FilesStep 7 $Files
             if ($null -eq $Threads) { New-ThreadsStep } else { New-ThreadsStep -Threads @($Threads) }
             # A scope with a path floor reads the file count of the pull request to prove that the file list is complete.
@@ -3464,9 +3554,14 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Set-Responses @(New-TierBReadSteps -Runs @((New-Run -Status in_progress)))
             Get-Message { Invoke-TierB } | Should Match 'Run: Core'
         }
-        It 'refuses when no workflow run exists for the head' {
+        It 'refuses when no workflow run exists for the head and the repository has a workflow' {
             Set-Responses @(New-TierBReadSteps -Runs @())
             Get-Message { Invoke-TierB } | Should Match 'Runs: no workflow run found for this head'
+        }
+        It 'merges in a repository that has no CI at all' {
+            Set-Responses (@(New-TierBReadSteps -Runs @() -Proof @(New-NoCiProofSteps)) + @(New-TierBMergeSteps))
+            Invoke-TierB
+            [IO.File]::ReadAllText($script:LogFile) | Should Match "#7 tier B merged $script:HeadSha"
         }
         It 'refuses when the head is not the expected head' {
             Set-Responses @(New-TierBReadSteps)
