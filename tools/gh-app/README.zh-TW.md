@@ -420,7 +420,7 @@ Invoke-GhAppRead -Arguments @('pr', 'view', '7', '--json', 'state,headRefOid')
 
 下列條件全部成立才合併：
 
-1. repo 在模組內的 B 級清單裡，且 base 分支符合清單項目。清單包含 freeform helper、replay 工具、combiner 的開發分支 `X.Y.x`，以及 Core 的 `main`。清單外的 repo 在發出任何呼叫之前就被拒。Core 哪些變更算 B 由機械判級（commander 工具的 `pr-tier.ps1`）決定。依 owner 2026-11-06 08:24 的決定（「不涉及 UI 或新功能就不需要我核准」），B 是 `src` 的 bug 修正與重構、tests、文件、其他 tools，以及只降不增的債務檔。A 是 UI、新功能、核准機制本身、放寬 guard／ratchet／baseline，以及版本與 release 檔。因為判級工具在這個 repository 之外，Core 在模組裡另有一道路徑底線：PR 只要改到或改名離開下列群組的路徑，不論判級結果，一律以 `Paths: <檔案> is a protected path of <repo>; only the owner approves a change there` 拒絕（`$script:CoreProtectedPathGroups` 命名了這些群組）：
+1. repo 在模組內的 B 級清單裡，且 base 分支符合清單項目。清單包含 freeform helper、replay 工具、combiner 的開發分支 `X.Y.x` 與目前的開發基底 `1.3.0`，以及 Core 的 `main`。清單外的 repo 在發出任何呼叫之前就被拒。Core 哪些變更算 B 由機械判級（commander 工具的 `pr-tier.ps1`）決定。依 owner 2026-11-06 08:24 的決定（「不涉及 UI 或新功能就不需要我核准」），B 是 `src` 的 bug 修正與重構、tests、文件、其他 tools，以及只降不增的債務檔。A 是 UI、新功能、核准機制本身、放寬 guard／ratchet／baseline，以及版本與 release 檔。因為判級工具在這個 repository 之外，Core 在模組裡另有一道路徑底線：PR 只要改到或改名離開下列群組的路徑，不論判級結果，一律以 `Paths: <檔案> is a protected path of <repo>; only the owner approves a change there` 拒絕（`$script:CoreProtectedPathGroups` 命名了這些群組）：
    - UI 檔案：`.axaml`、`.xaml`、`.axaml.cs`；`src` 與 `examples` 底下任何 `Views`、`Theme`、`Icons` 資料夾、圖片檔（`.png`、`.jpg`、`.gif`、`.svg`、`.ico`、`.icns`、`.webp`、`.bmp`）與字型檔（`.ttf`、`.otf`、`.woff`）；以及 `src/Nvt.Core.Fonts/`；
    - 公開 API 清單 `PublicAPI*.txt`（新功能會往裡面加）；
    - 核准機制與 guard 程式：`tools/gh-app/`、`tools/repo-checks/`、`actions/`（共用 CI action）、`.github`、`.agents`、`.claude`、`.codex`、`scripts/`（打包腳本）；
