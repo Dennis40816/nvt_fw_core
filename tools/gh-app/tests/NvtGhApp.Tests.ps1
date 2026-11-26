@@ -3519,8 +3519,8 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
         }
         It 'limits NFC to its development branches in the default list' {
             $nfc = @($script:DefaultTierBScopes | Where-Object { $_.Repository -ceq 'Dennis40816/nvt_fw_combiner' })[0]
-            foreach ($base in @('1.2.x', '1.3.x', '10.12.x')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $true }
-            foreach ($base in @('main', '1.2.0', '1.2.x-fix', 'release/1.2.x')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $false }
+            foreach ($base in @('1.2.x', '1.3.x', '10.12.x', '1.3.0')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $true }
+            foreach ($base in @('main', '1.2.0', '1.3.1', '1.3.0-fix', '11.3.0', '1.2.x-fix', 'release/1.2.x')) { [regex]::IsMatch($base, $nfc.BasePattern) | Should Be $false }
         }
         It 'refuses a base that is outside the allowed bases, and makes no merge call' {
             $script:TierBScopes = @(@{ Repository = $script:RepositoryName; BasePattern = '^\d+\.\d+\.x$' })

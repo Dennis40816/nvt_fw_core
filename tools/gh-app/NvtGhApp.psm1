@@ -389,11 +389,13 @@ $script:CoreProtectedPathGroups = [ordered]@{
 $script:CoreProtectedPaths = '(?i)' + (($script:CoreProtectedPathGroups.Values | ForEach-Object { "(?:$_)" }) -join '|')
 # The debt ledgers: a change may only remove lines from them.
 $script:CoreDebtLedgers = @('eng/code-health/baseline.json', 'eng/code-health/test-debt.json')
+# NFC also lists its current development base 1.3.0 (NFC roadmap P-2, owner 2026-11-17). Owner 2026-11-26 21:14: only screen changes and
+# changes to output bytes need the owner; NFC CODEOWNERS and its rulesets still hold those back from a tier B merge.
 $script:TierBScopes = @(
     @{ Repository = 'Dennis40816/nvt_fw_core'; BasePattern = '^main$'; ProtectedPathPattern = $script:CoreProtectedPaths; DebtLedgers = $script:CoreDebtLedgers },
     @{ Repository = 'Dennis40816/nvt-freeform-helper'; BasePattern = '^.+$' },
     @{ Repository = 'Dennis40816/nvt-event-buffer-replay'; BasePattern = '^.+$' },
-    @{ Repository = 'Dennis40816/nvt_fw_combiner'; BasePattern = '^\d+\.\d+\.x$' }
+    @{ Repository = 'Dennis40816/nvt_fw_combiner'; BasePattern = '^\d+\.\d+\.x$|^1\.3\.0$' }
 )
 
 function New-GhAppCheckRow {
