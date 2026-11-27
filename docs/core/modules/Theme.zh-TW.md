@@ -210,11 +210,39 @@ Choice 標籤保留原有文字色。文字 class 保留中性角色，僅啟用
 
 `actionIconButton` 預設採 `actionNeutral`；可與四種色彩角色組合，採其所有狀態。`chipAction` 採中性色角色；`chipAction.active` 與 ToggleButton 的 checked 使用相同選取規則。active／checked 滑入採淡主色底色，按下採中性按下底色，保留強主色文字與強邊界。一般 Button 沒有 checked。`chipStatus` 的 warning／danger／success 使用上表語意底色、文字與邊界；無互動、選取或焦點狀態，停用仍保留資訊顏色與 opacity 1。
 
-`actionGhost.flat` 是 `actionGhost` 的修飾 class。它是矩形（圓角 0），任何狀態都沒有邊框（`BorderThickness` 0，所以自動寬度的 flat 比膠囊窄 2 DIP），選取時只顯示主色底色與文字。使用 `Button.actionGhost.flat.active` 或 `ToggleButton.actionGhost.flat:checked`。鍵盤焦點框保留，圓角為控制項圓角加 4（圓角 0 時為 4 DIP）。並排的 flat 項目請留至少 4 DIP 間距，焦點框才不會重疊。停用時不畫底色，與其他角色不同。有邊框的 `actionGhost:checked` 膠囊不變。
+未加 `marked` 時，`actionGhost.flat` 是矩形（圓角 0），任何狀態都沒有邊框（`BorderThickness` 0，所以自動寬度的 flat 比膠囊窄 2 DIP），選取時只顯示主色底色與文字。使用 `Button.actionGhost.flat.active` 或 `ToggleButton.actionGhost.flat:checked`。鍵盤焦點框保留，圓角為控制項圓角加 4（圓角 0 時為 4 DIP）。並排的 flat 項目請留至少 4 DIP 間距，焦點框才不會重疊。停用時不畫底色，與其他角色不同。有邊框的 `actionGhost:checked` 膠囊不變。
 
 停用最優先：所有互動角色採 `NfcSurfaceSubtleBrush`、`NfcBorderMutedBrush`、`NfcTextDisabledBrush`、opacity 1，覆蓋滑入、按下、checked 與 active。ghost 停用也採相同次表面，唯一例外是 `actionGhost.flat`，停用時維持 `Transparent` 且無邊框。沒有雙重淡化。
 
 背景、邊界、文字轉場為 120 ms。按下時關閉轉場；primary 按下的內側 2 px 邊線由不占版面的覆蓋層繪製。焦點立即顯示。控制項或任何祖先加 `.reducedMotion` 會關閉轉場。
+
+### 標記式選取
+
+`marked` 是選擇性啟用的修飾 class，供導覽與快速切換使用，目標版本為 `core-v0.9.7`。預設行為不變。
+按鈕使用 `Button.actionGhost.flat.marked.active` 或 `ToggleButton.actionGhost.flat.marked:checked`。
+清單使用 `ListBox.marked > ListBoxItem`（只含自己的列，不含巢狀清單的列）、`ListBoxItem.marked` 或 `ComboBoxItem.marked`。
+頁籤使用 `TabControl.marked > TabItem`（只含自己的分頁，不含巢狀控制項的分頁） 或 `TabItem.marked`。
+
+按鈕顯示 2 px 的 `NfcAccentBrush` 邊框。未選取時以透明邊框預留相同的 2 px，選取不會移動內容。
+清單沿用既有指示條，顏色為 `NfcAccentStrongBrush`。頁籤沿用既有指示條，顏色為 `NfcAccentBrush`。
+選取文字使用 `NfcAccentStrongBrush`。主色均直接以 `DynamicResource` 參照，應用程式覆寫七個主色鍵時，既有控制項會隨之更新。
+可見標記讓灰階下的選取與滑入仍可區分。鍵盤焦點保留既有焦點框。
+
+| 狀態 | 背景 | 文字與標記 |
+| --- | --- | --- |
+| 靜止 | 透明。 | 使用既有靜止文字色。隱藏標記。 |
+| 滑入 | 顯示中性的 `Nvt.Interaction.HoverBrush` 疊色。 | 使用既有滑入文字色。隱藏標記。 |
+| 按下 | 顯示較強的中性 `Nvt.Interaction.PressedBrush` 疊色。 | 使用既有按下文字色。隱藏標記。 |
+| 選取 | 透明。 | 使用強主色文字。顯示標記。 |
+| 選取且滑入 | 只顯示中性滑入疊色。 | 保留選取文字與標記。 |
+| 選取且按下 | 只顯示中性按下疊色。 | 保留選取文字與標記。 |
+| 停用 | 透明。 | 使用 `NfcTextDisabledBrush`。隱藏標記。 |
+| 選取且停用 | 透明。 | 文字與標記均使用 `NfcTextDisabledBrush`。 |
+
+按下優先於滑入。停用優先於兩者，選取時亦同。
+按鈕的 flyout 開啟時保留 hover 淡疊色；已選取的按鈕同時保留記號。
+`MarkedSelectionTests` 涵蓋兩個主題的七種 selector 入口與狀態表、按鈕版面穩定性、外側鍵盤焦點框、應用程式執行期主色覆寫，以及 NFC、NFH、NFU 在合成靜止、滑入與按下表面後的標記對比。
+按鈕 XML 契約 baseline 只新增 `marked` 規則。既有規則、範本、token 鍵與 C# API 均不變。
 
 ### 焦點框
 
@@ -772,6 +800,10 @@ ListBox 容器沒有背景、框線與 padding，由應用程式提供周圍表�
 項目最小高度為 32 DIP，padding 為 10,5。
 在 ListBox 或個別項目加上 `compact`，即可使用高度 24 DIP、padding 10,0 的密集項目。
 ComboBox 本體保留原有主題與範本。
+
+在 ListBox 或個別 ListBoxItem、ComboBoxItem 加上 `marked`，即可啟用[標記式選取](#標記式選取)。
+選取項目不填色。滑入與按下只加上中性疊色。既有指示條與選取文字使用 `NfcAccentStrongBrush`。
+停用時背景透明。停用且選取時，指示條保留並使用 `NfcTextDisabledBrush`。
 
 ### 清單狀態與 token
 
@@ -1515,6 +1547,10 @@ TextBox、NumericUpDown、ComboBox 與 TabItem 使用 `UseLayoutRounding=False`�
 - ComboBox 的關閉欄位採用相同外觀，展開時使用按下填色。彈出項目保留 List 外觀。
 - TabControl 新增柔和頁籤列。TabItem 採用柔和選取填色，並在內容方向顯示選取指示線。
 - 控制項支援一般、滑入、按下或展開、鍵盤焦點、停用，以及執行期 Pill／Square 切換。
+
+在 TabControl 或個別 TabItem 加上 `marked`，即可啟用[標記式選取](#標記式選取)。
+選取頁籤不填色。滑入與按下只加上中性疊色。既有指示條使用 `NfcAccentBrush`，選取文字使用 `NfcAccentStrongBrush`。
+停用時背景透明。停用且選取時，指示條保留並使用 `NfcTextDisabledBrush`。
 
 TextBox 與 NumericUpDown 保留原生 `IsReadOnly` 行為。
 唯讀會抑制滑入填色與邊框。錯誤狀態保留唯讀填色，並使用錯誤邊框。

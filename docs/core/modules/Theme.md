@@ -210,11 +210,39 @@ Public classes are `actionPrimary`, `actionNeutral`, `actionDanger`, `actionGhos
 
 `actionIconButton` defaults to `actionNeutral` and composes with any of the four color roles, inheriting every state. `chipAction` follows neutral colors; `chipAction.active` and a ToggleButton's checked state follow the same selected rules. Selected hover uses the subtle accent surface; selected press uses the neutral pressed surface, retaining strong accent text and border. Ordinary Button has no checked state. Status warning/danger/success modifiers use the semantic surfaces, text and borders above. Statuses have no interactive, selected or focus state and retain informative colors and opacity 1 when disabled.
 
-`actionGhost.flat` is a modifier class for `actionGhost`. It is rectangular (corner radius 0) and has no border in any state (`BorderThickness` 0, so an auto-sized flat ghost is 2 DIP narrower than the pill), so a selected control shows only the accent surface and text. Use `Button.actionGhost.flat.active` or `ToggleButton.actionGhost.flat:checked`. The keyboard ring stays. Its corners follow the control radius plus 4, so it is 4 DIP at radius 0. Stack flat items with a gap of at least 4 DIP so the rings do not overlap. Disabled keeps no surface, unlike the other roles. The bordered `actionGhost:checked` pill is unchanged.
+Without `marked`, `actionGhost.flat` is rectangular (corner radius 0) and has no border in any state (`BorderThickness` 0, so an auto-sized flat ghost is 2 DIP narrower than the pill), so a selected control shows only the accent surface and text. Use `Button.actionGhost.flat.active` or `ToggleButton.actionGhost.flat:checked`. The keyboard ring stays. Its corners follow the control radius plus 4, so it is 4 DIP at radius 0. Stack flat items with a gap of at least 4 DIP so the rings do not overlap. Disabled keeps no surface, unlike the other roles. The bordered `actionGhost:checked` pill is unchanged.
 
 Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrush`, `NfcBorderMutedBrush`, `NfcTextDisabledBrush` and opacity 1 over hover, press, checked and active. Disabled ghost buttons use the same subtle surface. The one exception is `actionGhost.flat`, which stays `Transparent` with no border. No double dimming remains.
 
 Background, border and foreground transitions last 120 ms. Pressing disables transitions; the primary pressed inner 2 px edge is an overlay that does not move content. Focus appears immediately. `.reducedMotion` on the control or any ancestor disables transitions.
+
+### Marked selection
+
+Targeted for `core-v0.9.7`, the opt-in `marked` modifier supports navigation and quick toggles. Defaults do not change.
+Use `Button.actionGhost.flat.marked.active` or `ToggleButton.actionGhost.flat.marked:checked`.
+Use `ListBox.marked > ListBoxItem` (its own rows, not rows of a nested list), `ListBoxItem.marked`, or `ComboBoxItem.marked` for list rows.
+Use `TabControl.marked > TabItem` (its own tabs, not tabs of a nested control) or `TabItem.marked` for tabs.
+
+Buttons show a 2 px frame in `NfcAccentBrush`. They reserve the same 2 px with a transparent border when unselected, so selection does not move content.
+Lists keep their existing indicator in `NfcAccentStrongBrush`. Tabs keep their existing indicator in `NfcAccentBrush`.
+Selected text uses `NfcAccentStrongBrush`. Every accent reference uses `DynamicResource` directly, so application overrides of the seven accent keys update attached controls.
+The visible mark distinguishes selection from hover in grey scale. Keyboard focus retains the existing ring.
+
+| State | Background | Text and mark |
+| --- | --- | --- |
+| Rest | Transparent. | Use existing rest text. Hide the mark. |
+| Hover | Show the neutral `Nvt.Interaction.HoverBrush` overlay. | Use existing hover text. Hide the mark. |
+| Pressed | Show the stronger neutral `Nvt.Interaction.PressedBrush` overlay. | Use existing pressed text. Hide the mark. |
+| Selected | Transparent. | Use strong accent text. Show the mark. |
+| Selected + hover | Show only the neutral hover overlay. | Keep selected text and mark. |
+| Selected + pressed | Show only the neutral pressed overlay. | Keep selected text and mark. |
+| Disabled | Transparent. | Use `NfcTextDisabledBrush`. Hide the mark. |
+| Selected + disabled | Transparent. | Use `NfcTextDisabledBrush` for text and mark. |
+
+Pressed wins over hover. Disabled wins over both, including when selected.
+A button whose flyout is open keeps the hover overlay; a selected one also keeps its mark.
+`MarkedSelectionTests` covers the state table through all seven selector entry points in both themes, stable button layout, the exterior button ring, live application accent overrides, and mark contrast on composed rest, hover, and pressed surfaces for NFC, NFH, and NFU.
+The button XML contract baseline includes only the new `marked` rules. Existing rules, templates, token keys, and C# APIs stay unchanged.
 
 ### Focus ring
 
@@ -772,6 +800,10 @@ The ListBox host has no background, border, or padding. The app supplies its sur
 Rows have a 32 DIP minimum height and padding 10,5.
 Add `compact` to a ListBox or individual item for a 24 DIP row with padding 10,0.
 The ComboBox box keeps its existing theme and template.
+
+Add `marked` to the ListBox or an individual ListBoxItem or ComboBoxItem for [marked selection](#marked-selection).
+Selected rows have no fill. Hover and pressed add only the neutral overlay. The existing bar and selected text use `NfcAccentStrongBrush`.
+Disabled rows stay transparent. Disabled selected rows keep the bar in `NfcTextDisabledBrush`.
 
 ### List states and tokens
 
@@ -1516,6 +1548,10 @@ Fractional DPI can soften borders and text because their bounds are not rounded 
 - ComboBox uses the same closed field. Open state uses the pressed fill. Popup rows retain the List look.
 - TabControl adds a soft strip. TabItem adds soft selected fills and a selected indicator toward the content edge.
 - Controls support rest, hover, pressed or open, keyboard focus, disabled, and runtime Pill or Square shapes.
+
+Add `marked` to the TabControl or an individual TabItem for [marked selection](#marked-selection).
+Selected tabs have no fill. Hover and pressed add only the neutral overlay. The existing indicator uses `NfcAccentBrush`, and selected text uses `NfcAccentStrongBrush`.
+Disabled tabs stay transparent. Disabled selected tabs keep the indicator in `NfcTextDisabledBrush`.
 
 TextBox and NumericUpDown retain native `IsReadOnly` behavior.
 Read-only suppresses hover fills and borders. Errors retain the read-only fill and use the error border.
