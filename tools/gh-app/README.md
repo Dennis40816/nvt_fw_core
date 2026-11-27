@@ -196,6 +196,26 @@ The event always equals `COMMENT`.
 `APPROVE`, `REQUEST_CHANGES`, and other events stop before any network call.
 Only the owner approves.
 
+After the review is posted, the function writes the PR description once.
+A description check, such as NFC's `authority` workflow, also runs on `pull_request: edited`.
+A run that started before the record was posted fails, and a new review does not start that workflow again.
+An edited description does start it, and the new run replaces the old failure.
+Wait for that new run before merging.
+
+GitHub may send no event when the text does not change, so the function changes one hidden line:
+`<!-- review-record: <first 12 characters of the head> <UTC time> -->`.
+It replaces the last such line, or adds one at the end.
+It keeps every other character, including the line endings.
+
+It reads the description twice just before the write.
+It writes nothing and warns when the two reads differ, or when the description is not read as text.
+This is a check before the write, not a lock.
+It also warns when GitHub returns text that differs from what it sent.
+A failed refresh is a warning, not an error: the record is already posted, so do not post it again.
+
+The refresh is on by default.
+A repository with no check on `edited` can pass `-SkipBodyRefresh` to leave the description alone.
+
 ```powershell
 Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt

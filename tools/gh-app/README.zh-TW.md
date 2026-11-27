@@ -151,6 +151,26 @@ Add-GhAppComment -Number 7 -BodyFile .\comment.txt
 `commit_id` 必須等於核對的 head。Event 永遠是 `COMMENT`。
 `APPROVE`、`REQUEST_CHANGES` 與其他 event 都會在任何網路呼叫前被拒絕。只有 owner 可以批准。
 
+review 發出後，函式會把 PR 說明寫一次。
+檢查說明的 workflow（例如 NFC 的 `authority`）也會在 `pull_request: edited` 時執行。
+紀錄貼出前就開始的那次 run 會失敗，而新的 review 不會讓該 workflow 重跑。
+編輯說明會讓它重跑，新的 run 取代舊的失敗。
+合併前要等這次新的 run。
+
+文字沒有變化時，GitHub 可能不發事件，所以函式只改一行隱藏註解：
+`<!-- review-record: <head 的前 12 碼> <UTC 時間> -->`。
+已有這種行就替換最後一行，沒有就加在最後。
+其他字元一律不動，包含換行字元。
+
+函式在寫入前連續讀兩次說明。
+兩次不同，或說明讀不成文字時，不寫入並發出警告。
+這是寫入前的檢查，不是鎖。
+GitHub 回傳的文字和送出的不同時，也會警告。
+更新說明失敗只發警告，不算錯誤：紀錄已經貼出，不要再貼一次。
+
+這個步驟預設開啟。
+沒有任何檢查監聽 `edited` 的 repo，可以加 `-SkipBodyRefresh`，讓說明保持原樣。
+
 ```powershell
 Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
