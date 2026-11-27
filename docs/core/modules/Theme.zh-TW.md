@@ -483,6 +483,7 @@ NFC 也須保留：
 
 - `ButtonThemeTests`：僅載入 ThemeTokens／ButtonStyles；Light／Dark、兩種控制項、每個角色與狀態、幾何、單行／省略／裁切、未指定角色、真實 Tab 與指標焦點、焦點 brush／幾何／命中測試、四種狀態焦點不改色、停用優先、減少動態、應用程式範圍採用覆寫，以及全部七鍵的主色覆寫。
 - `PaletteContrastTests`：編譯後 token，三工具主色同一資料驅動測試；內文、提示、語意文字、主色文字與填色標籤 4.5:1；停用文字、輸入邊界、焦點、捲軸拇指 3:1。檢查全部不透明中性／語意／主色底色，無例外測試。裝飾邊界與半透明 scrim 不承載文字。
+- 畫面實際顏色（`ShownColor`）：兩個對比守門量的是畫面上看到的顏色。半透明色依圖層順序疊到下層，直到不透明的底色。顏色的 alpha、brush 的 opacity、元素與所有上層元素的 opacity 相乘。Avalonia 把元素的 opacity 套在每一個圖形上，不是整個元素當成一層，所以淡化底色上的圖示會和已淡化的底色混色。`ShownColorTests` 用渲染像素固定這個算法。工具若淡化控制項，用同樣方式量測。守門不量 50% 透明的 `Nvt.GridSplitter.PreviewBrush` 拖曳預覽。
 - `ThemeContractTests`：所有 Theme 檔的 StaticResource／DynamicResource 在兩個主題均解析；只允許有角色的按鈕 selector；保留三份 XML baseline 比對。
 - `NfcLegacyFontTests` 與資源解析器測試不變；Dialogs／Panels 的測試改為共用角色，其他行為合約不變。
 
