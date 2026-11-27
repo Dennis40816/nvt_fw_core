@@ -81,6 +81,20 @@
   <Style Selector="ListBoxItem:selected:disabled, ComboBoxItem:selected:disabled">
     <Setter Property="Background" Value="{DynamicResource NfcSelectionSurfaceBrush}" />
   </Style>
+  <!-- The existing indicator inherits Foreground, including the disabled selection color. -->
+  <Style Selector="ListBox.marked > ListBoxItem:selected:not(:disabled), ListBoxItem.marked:selected:not(:disabled), ComboBoxItem.marked:selected:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="ListBox.marked > ListBoxItem:selected:pointerover:not(:disabled), ListBoxItem.marked:selected:pointerover:not(:disabled), ComboBoxItem.marked:selected:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
+  </Style>
+  <Style Selector="ListBox.marked > ListBoxItem:selected:pressed:not(:disabled), ListBoxItem.marked:selected:pressed:not(:disabled), ComboBoxItem.marked:selected:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
+  </Style>
+  <Style Selector="ListBox.marked > ListBoxItem:selected:disabled, ListBoxItem.marked:selected:disabled, ComboBoxItem.marked:selected:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.List.TransparentBrush}" />
+  </Style>
   <Style Selector="ListBoxItem:focus-visible:not(:disabled) /template/ Border#ListFocusRing, ComboBoxItem:focus-visible:not(:disabled) /template/ Border#ListFocusRing">
     <Setter Property="IsVisible" Value="True" />
   </Style>

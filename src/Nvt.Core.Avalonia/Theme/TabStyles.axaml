@@ -105,6 +105,28 @@
   <Style Selector="TabItem:selected:disabled /template/ Border#TabIndicator">
     <Setter Property="Background" Value="{DynamicResource Nvt.Tab.DisabledTextBrush}" />
   </Style>
+  <Style Selector="TabControl.marked > TabItem:selected:not(:disabled), TabItem.marked:selected:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="TabControl.marked > TabItem:selected:pointerover:not(:disabled), TabItem.marked:selected:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="TabControl.marked > TabItem:selected:pressed:not(:disabled), TabItem.marked:selected:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}" />
+  </Style>
+  <Style Selector="TabControl.marked > TabItem:disabled, TabItem.marked:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Tab.TransparentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}" />
+  </Style>
+  <Style Selector="TabControl.marked > TabItem:selected:not(:disabled) /template/ Border#TabIndicator, TabItem.marked:selected:not(:disabled) /template/ Border#TabIndicator">
+    <Setter Property="Background" Value="{DynamicResource NfcAccentBrush}" />
+  </Style>
+  <Style Selector="TabControl.marked > TabItem:selected:disabled /template/ Border#TabIndicator, TabItem.marked:selected:disabled /template/ Border#TabIndicator">
+    <Setter Property="Background" Value="{DynamicResource NfcTextDisabledBrush}" />
+  </Style>
   <Style Selector="TabItem:focus-visible:not(:disabled) /template/ Border#TabFocusRing">
     <Setter Property="IsVisible" Value="True" />
   </Style>
