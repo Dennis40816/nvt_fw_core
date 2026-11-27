@@ -204,7 +204,9 @@ Wait for that new run before merging.
 
 GitHub may send no event when the text does not change, so the function changes one hidden line:
 `<!-- review-record: <first 12 characters of the head> <UTC time> -->`.
-It replaces the last such line, or adds one at the end.
+When the last line of the description has this form, the function replaces it.
+Otherwise it adds the line at the end.
+An earlier line of this form stays, because it can be quoted text.
 It keeps every other character, including the line endings.
 
 It reads the description twice just before the write.

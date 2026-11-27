@@ -853,16 +853,28 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 @($script:Warnings).Count | Should Be 0
             }
         }
-        It 'replaces only the last marker line and keeps every other character' {
-            $quoted = '`<!-- review-record: <head> <time> -->`'
-            $earlier = '<!-- review-record: bbbbbbbbbbbb 2025-12-31T00:00:00.000Z -->'
-            $before = "$quoted`r`n$earlier`r`ntext`r`n"
-            $after = "`r`nadded later`r`n"
-            Set-RefreshResponses ($before + $earlier + $after) -Returned ($before + (Get-Marker) + $after)
+        $earlier = '<!-- review-record: bbbbbbbbbbbb 2025-12-31T00:00:00.000Z -->'
+        foreach ($ending in @('', "`r`n", "`r`n`r`n")) {
+            It "replaces a marker on the last line and keeps every other character (ending length $($ending.Length))" {
+                $before = "text`r`n~~~text`r`n$earlier`r`n~~~`r`n"
+                Set-RefreshResponses ($before + $earlier + $ending) -Returned ($before + (Get-Marker) + $ending)
+                $null = Add-Record
+                $sent = (ConvertFrom-Json @(Get-Patches)[0].Input).body
+                [string]::Equals($sent, $before + (Get-Marker) + $ending, [StringComparison]::Ordinal) | Should Be $true
+                @($script:Warnings).Count | Should Be 0
+            }
+        }
+        It 'leaves a line of the marker form alone when text follows it, because it can be quoted text' {
+            $old = "~~~text`r`n$earlier`r`n~~~`r`n"
+            Set-RefreshResponses $old -Returned ($old + (Get-Marker))
             $null = Add-Record
             $sent = (ConvertFrom-Json @(Get-Patches)[0].Input).body
-            [string]::Equals($sent, $before + (Get-Marker) + $after, [StringComparison]::Ordinal) | Should Be $true
-            @($script:Warnings).Count | Should Be 0
+            [string]::Equals($sent, $old + (Get-Marker), [StringComparison]::Ordinal) | Should Be $true
+        }
+        It 'returns the posted record when the caller turns warnings into errors' {
+            Set-RefreshResponses 'text' -Returned 'unused' -PatchExitCode 1
+            $result = Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -WarningAction Stop
+            $result.id | Should Be 1
         }
         It 'does not write when the description changed between the two reads' {
             Set-RefreshResponses 'first text' -Second 'first text, edited by someone'
