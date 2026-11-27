@@ -121,7 +121,10 @@ public sealed class CollapsiblePanelTests
         var content = new TextBlock { Text = "Synthetic body" };
         var panel = new CollapsiblePanel
         {
-            Title = "Synthetic panel", Content = content, DefaultExpanded = false, UseGhostHeader = useGhostHeader,
+            Title = "Synthetic panel",
+            Content = content,
+            DefaultExpanded = false,
+            UseGhostHeader = useGhostHeader,
         };
         Window host = PanelsTestHost.Create(panel);
         try
@@ -274,7 +277,10 @@ public sealed class CollapsiblePanelTests
         var right = new SelectableTextBlock { Text = "Selectable header text" };
         var panel = new CollapsiblePanel
         {
-            Title = "Title", HeaderRight = right, Content = new TextBlock { Text = "Body" }, UseGhostHeader = useGhostHeader,
+            Title = "Title",
+            HeaderRight = right,
+            Content = new TextBlock { Text = "Body" },
+            UseGhostHeader = useGhostHeader,
         };
         // The test application has no control theme, so the host supplies the plain header's hit-testable background.
         // The ghost header keeps only Core's styles, so this test still fails if that role loses its background.
