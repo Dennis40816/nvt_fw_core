@@ -22,6 +22,8 @@ public sealed class PaletteContrastTests
     private static readonly string[] BodyText = ["NfcTextStrongBrush", "NfcTextBrush", "NfcTextSecondaryBrush"];
     private static readonly string[] FocusRings = ["Nvt.Focus.RingBrush", "Nvt.Focus.DangerRingBrush"];
     private static readonly string[] AccentText = ["NfcAccentBrush", "NfcAccentStrongBrush"];
+    // The opaque colours a checked surface can lie on. A translucent token is painted over each before measuring.
+    private static readonly string[] Backdrops = ["NfcAppBackgroundBrush", "NfcSurfaceBrush"];
     private static readonly string[] SemanticText =
     [
         "NfcDangerTextBrush", "NfcWarningTextBrush", "NfcSuccessTextBrush", "NfcInfoTextBrush",
@@ -94,9 +96,12 @@ public sealed class PaletteContrastTests
 
             void Check(string group, string foreground, string background, double floor)
             {
-                double ratio = Contrast(palette[foreground], palette[background]);
-                Assert.True(ratio + 1e-12 >= floor,
-                    $"{tool} {(dark ? "Dark" : "Light")} {group}: {foreground}/{background} = {ratio:F6}:1, floor {floor}:1");
+                foreach (string backdrop in Backdrops)
+                {
+                    double ratio = ShownColor.PairRatio(palette[foreground], palette[background], palette[backdrop]);
+                    Assert.True(ratio + 1e-12 >= floor,
+                        $"{tool} {(dark ? "Dark" : "Light")} {group}: {foreground}/{background} over {backdrop} = {ratio:F6}:1, floor {floor}:1");
+                }
             }
         }
         finally { host.Close(); }
@@ -122,23 +127,12 @@ public sealed class PaletteContrastTests
         }
     }
 
+    // The brush opacity is folded into the alpha, so a translucent brush is never measured as opaque.
     private static Color ReadColor(Control host, string key)
     {
         Assert.True(host.TryFindResource(key, host.ActualThemeVariant, out object? value), key);
-        return Assert.IsAssignableFrom<ISolidColorBrush>(value).Color;
-    }
-
-    private static double Contrast(Color first, Color second)
-    {
-        static double Channel(byte channel)
-        {
-            double value = channel / 255.0;
-            return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
-        }
-
-        static double Luminance(Color color) => 0.2126 * Channel(color.R) + 0.7152 * Channel(color.G) + 0.0722 * Channel(color.B);
-        double a = Luminance(first);
-        double b = Luminance(second);
-        return (Math.Max(a, b) + 0.05) / (Math.Min(a, b) + 0.05);
+        var brush = Assert.IsAssignableFrom<ISolidColorBrush>(value);
+        Color color = brush.Color;
+        return Color.FromArgb((byte)Math.Round(color.A * brush.Opacity, MidpointRounding.AwayFromZero), color.R, color.G, color.B);
     }
 }
