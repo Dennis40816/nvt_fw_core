@@ -6,17 +6,26 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Changed
+
+- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+
+## 0.9.7 - 2026-11-27
+
+Tag `core-v0.9.7` on the merge commit of the version pull request.
+
+Theme, panel and icon additions for NFH 1.0.0: selection colors follow the application accent, an opt-in `marked` selection for flat controls, `CollapsiblePanel.UseGhostHeader` and four icon names. The default look of selected controls changes as described under Changed. It comes before the 1.0.0 API freeze.
+As in 0.9.5 and 0.9.6, the new public API stays in `PublicAPI.Unshipped.txt` of `Nvt.Core` and `Nvt.Core.Avalonia`, so a later 0.9.x version can still change its shape. `PublicAPI.Shipped.txt` of every published project is unchanged. The new members are source and binary compatible with 0.9.6.
+
 ### Added
 
 - `CollapsiblePanel.UseGhostHeader` lets hosts style `ToggleButton.panelBlockHeader` without Core's `actionGhost` role. The default is `true`, so the existing look and behavior are unchanged.
-- `Nvt.Core.Avalonia` (target `core-v0.9.7`): opt-in `marked` selection for flat ghost buttons, list and dropdown items, and tabs. Selection keeps an accent frame or indicator without a block fill; hover and pressed use neutral overlays. Application accent overrides update the mark and selected text. Defaults do not change.
+- `Nvt.Core.Avalonia`: opt-in `marked` selection for flat ghost buttons, list and dropdown items, and tabs. Selection keeps an accent frame or indicator without a block fill; hover and pressed use neutral overlays. Application accent overrides update the mark and selected text. Defaults do not change.
 - `NvtIcons.DarkMode`, `LightMode`, `Link` and `LinkOff`, with matching `Nvt.Icon.<Name>` resources, for theme and aspect-ratio lock toggles (76 icon names in total).
 
 ### Changed
 
-- Theme (target `core-v0.9.7`): selection follows the application accent at the existing strength. Lists, tabs, soft toggles and choice rows blend surface and accent colors, keeping the default NFC look nearly unchanged; selected text blends strong accent and strong text. Choice labels retain their existing text color. Filled toggles, checked indicators and switch tracks use the accent/primary-label pair, with a distinct blended pressed fill (`#113EA0` Light / `#A4CBFB` Dark). In Dark, filled selections change from deep blue with white content to the accent fill with dark content. Tools override only the seven `NfcAccent*` application keys in Light and Dark; existing public brush keys, progress and splitter previews follow them. Danger, disabled, focus and neutral interaction colors stay unchanged, and existing contrast floors are preserved.
-
-- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+- Theme: selection follows the application accent at the existing strength. Lists, tabs, soft toggles and choice rows blend surface and accent colors, keeping the default NFC look nearly unchanged; selected text blends strong accent and strong text. Choice labels retain their existing text color. Filled toggles, checked indicators and switch tracks use the accent/primary-label pair, with a distinct blended pressed fill (`#113EA0` Light / `#A4CBFB` Dark). In Dark, filled selections change from deep blue with white content to the accent fill with dark content. Tools override only the seven `NfcAccent*` application keys in Light and Dark; existing public brush keys, progress and splitter previews follow them. Danger, disabled, focus and neutral interaction colors stay unchanged, and existing contrast floors are preserved.
 
 ## 0.9.6 - 2026-11-09
 

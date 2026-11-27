@@ -51,7 +51,7 @@ Types and entries count the public API of the namespace. Consumers count source 
 
 The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` next to their project files:
 
-- `Nvt.Core.Avalonia`: 497 entries.
+- `Nvt.Core.Avalonia`: 515 entries.
 - `Nvt.Core.Fonts`: 3 entries.
 - `Nvt.Core.TestSupport`: 50 entries.
 
@@ -59,9 +59,9 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 |---|---:|---:|---|---|---|
 | `Nvt.Core.Avalonia.Dialogs` | 2 | 8 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Focus` | 3 | 11 | Avalonia tests (5) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
-| `Nvt.Core.Avalonia.Icons` | 1 | 76 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
+| `Nvt.Core.Avalonia.Icons` | 1 | 77 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Inputs` | 1 | 36 | Avalonia tests (6) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
-| `Nvt.Core.Avalonia.LogConsole` | 7 | 82 | Avalonia tests (36) | none found (NFH plans to adopt the Console in Core 0.9.1) | keep: Console controls and host adapter contracts |
+| `Nvt.Core.Avalonia.LogConsole` | 7 | 98 | Avalonia tests (36) | none found (NFH plans to adopt the Console in Core 0.9.1) | keep: Console controls and host adapter contracts |
 | `Nvt.Core.Avalonia.MessageCenter` | 3 | 61 | Avalonia tests (2) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Panels` | 2 | 54 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Primitives` | 3 | 28 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
@@ -70,10 +70,10 @@ The three projects have their own `PublicAPI.Shipped.txt` and `PublicAPI.Unshipp
 | `Nvt.Core.Avalonia.RuntimeQuery` | 10 | 62 | Avalonia tests (10) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Shell` | 1 | 3 | Avalonia tests (3) | none found | review: no tool consumes it yet. Adoption is part of the 1.0.0 plan |
 | `Nvt.Core.Avalonia.Theme` | 5 | 17 | Avalonia tests (32) | NFH (7 files) | keep: NFH uses it |
-| `Nvt.Core.Avalonia.Threading` | 1 | 4 | Avalonia tests (8) | NFH (22 files) | keep: NFH uses it |
+| `Nvt.Core.Avalonia.Threading` | 1 | 5 | Avalonia tests (8) | NFH (22 files) | keep: NFH uses it |
 | `Nvt.Core.Fonts` | 1 | 3 | Avalonia tests (1), Fonts tests (2) | NFH (1 files) | keep: NFH uses it |
 | `Nvt.Core.TestSupport` | 7 | 50 | Avalonia tests (1), TestSupport tests (8), Core tests (14) | none found | keep: the shared test helpers; the Core tests use them |
-| **Total** | **53** | **550** | | | |
+| **Total** | **53** | **568** | | | |
 
 `CollapsiblePanel.UseGhostHeader` adds three entries: its getter, setter and `UseGhostHeaderProperty` field.
 
