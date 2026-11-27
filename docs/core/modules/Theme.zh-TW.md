@@ -113,7 +113,40 @@ Core 預設採 NFC 值。一個主色以七個 `NfcAccent*` 鍵表達；工具�
 | NFU | `NfcAccentBorderStrongBrush` | `#3D5B00` | `#97CD1E` |
 | NFU | `NfcAccentBorderLightBrush` | `#4A6F00` | `#82B11A` |
 
-填色按鈕透過 `DynamicResource` 使用 `ThemeTokens.axaml` 的 `Nvt.Button.PrimaryLabelBrush`：Light 為 `#FFFFFF`，Dark 為 `#0B1220`。工具可在採用步驟於應用程式範圍覆寫此鍵。
+填色按鈕與啟用的實心選取使用 `Nvt.Button.PrimaryLabelBrush`：Light 為 `#FFFFFF`，Dark 為 `#0B1220`。工具保留 Core 標籤角色，只覆寫七個主色鍵。
+
+### core-v0.9.7 的選取主色
+
+選取配色以原有強度跟隨應用程式主色，預設 NFC 外觀幾乎不變。
+工具只需設定上述七個應用程式主色鍵，清單、分頁、柔和切換、選項列、實心切換、
+開關軌道、勾選指示、進度與 splitter 預覽即會跟隨工具主色。
+既有公開 token（例如 `Nvt.List.SelectedLabelBrush`）仍是 SolidColorBrush，會跟隨覆寫；
+Core 樣式載入 `Application.Styles` 全域範圍及應用程式切換主題時亦相同。
+
+| 角色 | 色票來源 | NFC Light | NFC Dark |
+| --- | --- | --- | --- |
+| 選取淡色底 | `NfcSurfaceBrush` → `NfcAccentBrush`, 18% / 22% | `#D5E1FB` | `#223755` |
+| 選取滑入底 | `NfcSurfaceBrush` → `NfcAccentBrush`, 12% / 19% | `#E3EBFC` | `#20334F` |
+| 選取按下底 | `NfcSurfaceBrush` → `NfcAccentBrush`, 15% / 25% | `#DCE6FC` | `#243B5C` |
+| 選取文字與標記 | `NfcAccentStrongBrush` → `NfcTextStrongBrush`, 22% / 45% | `#113D9D` | `#BEDAFB` |
+| 實心選取底 | `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| 實心滑入底 | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| 實心按下底 | `NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20% | `#113EA0` | `#A4CBFB` |
+| 實心標籤／符號／已勾選旋鈕 | `Nvt.Button.PrimaryLabelBrush` | `#FFFFFF` | `#0B1220` |
+| 選取透明靜止底 | 滑入色，alpha 為零 | `#00E3EBFC` | `#0020334F` |
+
+內部 `AccentBrush` adapter 混合筆刷型別的 `From` 與 `To`，兩者均透過 `DynamicResource` 綁定。
+各 ARGB 色彩通道依 `From + Amount * (To - From)` 計算，四捨五入至最接近整數，恰為半數時取偶數。
+只設定 `From` 時轉送該筆刷的顏色與 opacity；`Transparent` 將結果的 alpha 設為零。
+List、Tab、Form 與 Soft token 保留指向已調整 `Nvt.Controls.*` 筆刷物件的 `StaticResource` 別名。
+Dark 實心選取由深藍底白色標籤改為應用程式主色底與深色標籤（`#0B1220`）。
+Danger、停用、焦點、中性疊色與未勾選旋鈕維持原色。
+Choice 標籤保留原有文字色。文字 class 保留中性角色，僅啟用、已勾選且不帶 `danger` 的
+`toggleSegment`、`toggleTab`、`toggleIcon` 內文字跟隨實心控制項前景。
+沒有文字 class 的文字保留繼承或宿主設定的顏色。
+
+要換主色時，請替換主色 resource。直接修改已在 resources 內筆刷的 `Color`，衍生的選取筆刷不會更新。
+衍生筆刷支援併入應用程式 resources 的 token。用 XAML 把 token 併入單一視窗，再切換子樹的主題變體，不在支援範圍。
 
 ## 尺寸與圓角
 
@@ -775,22 +808,22 @@ ComboBox 本體保留原有主題與範本。
 ### 清單狀態與 token
 
 靜止時使用 `Nvt.Interaction.RestBrush`（alpha 為 0 的滑入色），滑鼠移入使用 `Nvt.Interaction.HoverBrush`，按下使用 `Nvt.Interaction.PressedBrush`。
-選取項目使用固定的選取底色 `Nvt.Controls.SelectedBrush`、主色文字與 2 × 12 DIP 主色標記。標記距左緣 4 DIP，與文字之間留 4 DIP。
+選取項目使用隨主色變動的選取底色 `Nvt.Controls.SelectedBrush`、主色文字與 2 × 12 DIP 主色標記。標記距左緣 4 DIP，與文字之間留 4 DIP。
 多重選取使用相同外觀。
 停用項目維持 opacity 1，並使用 `NfcTextDisabledBrush`。
 停用且選取時使用 `NfcSelectionSurfaceBrush`。
 鍵盤焦點顯示一個 2 DIP 框，向內縮 2 DIP，避免捲動時裁切。
 滑鼠焦點不顯示框，焦點也不改變清單項目顏色。
 
-List 別名與 Choice 列、`toggleSoft` 共用 `Nvt.Controls.Selected*` 資源。勾選的 MenuItem 不再讀取它們。
+List 別名與 Choice 列、`toggleSoft` 共用已調整的 `Nvt.Controls.Selected*` 筆刷。勾選的 MenuItem 不再讀取它們。
 同時覆寫 `Nvt.List.Selected*` 資源，即可在執行時替換選取色票。
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.List.SelectedBrush` | `#D3E1F8`, `Nvt.Controls.SelectedBrush` | `#1F3558`, `Nvt.Controls.SelectedBrush` |
-| `Nvt.List.SelectedPointerOverBrush` | `#E3ECFC`, `Nvt.Controls.SelectedPointerOverBrush` | `#20334F`, `Nvt.Controls.SelectedPointerOverBrush` |
-| `Nvt.List.SelectedPressedBrush` | `#DCE7FA`, `Nvt.Controls.SelectedPressedBrush` | `#243C5B`, `Nvt.Controls.SelectedPressedBrush` |
-| `Nvt.List.SelectedLabelBrush` | `#0E3C9E`, `Nvt.Controls.SelectedForegroundBrush` | `#BEDAFF`, `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.List.SelectedBrush` | `#D5E1FB`, `Nvt.Controls.SelectedBrush` | `#223755`, `Nvt.Controls.SelectedBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#E3EBFC`, `Nvt.Controls.SelectedPointerOverBrush` | `#20334F`, `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#DCE6FC`, `Nvt.Controls.SelectedPressedBrush` | `#243B5C`, `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#113D9D`, `Nvt.Controls.SelectedForegroundBrush` | `#BEDAFB`, `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.List.TransparentBrush` | `#00FFFFFF`，`Nvt.Toggle.TransparentBrush` | 相同 |
 | `Nvt.List.CompactHeight` | 24 | 24 |
 
@@ -875,7 +908,7 @@ Headless 測試涵蓋兩種主題與形狀、狀態優先順序、精確尺寸�
 
 | 對比 | Light | Dark |
 | --- | --- | --- |
-| 選取清單文字與標記 | 7.363:1 | 7.830:1 |
+| 選取清單文字與標記 | 7.342:1 | 7.876:1 |
 | 停用文字 | 3.582:1 | 3.574:1 |
 | 焦點框對項目填色 | 4.838:1 | 5.988:1 |
 
@@ -950,7 +983,7 @@ NFH 零差異採用：
 | `ToggleSwitch` | 原生控制項不需 class，即使用相同開關外觀。 | 軌道 52 × 28、旋鈕 22 × 22、位移 24。 |
 
 所有尺寸皆為裝置獨立像素。
-兩種主題與形狀下，開關旋鈕皆維持圓形與白色。
+兩種主題與形狀下，開關旋鈕皆維持圓形。啟用且勾選時使用主按鈕標籤筆刷；未勾選、停用及 danger 的旋鈕維持白色。
 開關模板只顯示軌道。可見標籤請放在旁邊，並提供無障礙名稱。
 宿主負責選取規則、命令與內容。
 每個控制項只使用一個切換角色。
@@ -986,22 +1019,20 @@ Danger 控制項使用 `Nvt.Focus.RingBrush`，勾選後的鍵盤焦點也相同
 
 樣式中的每個顏色與圓角都透過資源取得。
 以下色票適用兩種形狀。
-Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持白色內容對比。
-請在同一個資源字典一起覆寫 `Nvt.Toggle.*`，即可替換切換控制項色票。
-替換應用程式或視窗中的該字典，即會更新已掛載的控制項。
+兩種主題的啟用選取填色與標籤皆動態衍生自應用程式主色與主按鈕標籤角色。工具只設定七個應用程式主色鍵，不需覆寫 Toggle token。
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#1148BE` |
-| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
-| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SelectedPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` (`Nvt.Button.PrimaryLabelBrush`) | `#0B1220` (`Nvt.Button.PrimaryLabelBrush`) |
 | `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#CC3F54` |
 | `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
 | `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
-| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2F6BEE` |
-| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#2C68E8` |
-| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#2965E2` |
+| `Nvt.Toggle.SwitchOnBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SwitchPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
 | `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 
@@ -1014,10 +1045,10 @@ Light 別名重用既有 Core 筆刷。Dark 填色使用較深顏色，以維持
 
 | 對比 | Light | Dark |
 | --- | --- | --- |
-| 白色對勾選的 segment、tab 與 icon | 5.879:1 | 7.794:1 |
-| 白色對勾選的開關 | 5.169:1 | 4.710:1 |
+| 主按鈕標籤對勾選的 segment、tab 與 icon | 5.879:1 | 7.355:1 |
+| 主按鈕標籤對勾選的開關 | 5.879:1 | 7.355:1 |
 | 白色對勾選的 danger | 7.184:1 | 4.766:1 |
-| 勾選的開關軌道對頁面表面 | 4.718:1 | 3.038:1 |
+| 勾選的開關軌道對頁面表面 | 5.367:1 | 6.182:1 |
 | 勾選的 danger 填色對頁面表面 | 6.558:1 | 3.094:1 |
 | 標準焦點框對相鄰表面 | 3.879:1 | 4.658:1 |
 | 停用文字 | 3.582:1 | 3.574:1 |
@@ -1098,13 +1129,13 @@ Light 與 Dark 使用相同數值。
 | Disabled，on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Keyboard focus | 保留目前填色。 | 保留目前前景色。 |
 
-以下別名在兩種主題共用 Core 資源。選取狀態使用改版驗證章節記載的淡色色盤。
+以下別名在兩種主題共用 Core 筆刷物件。選取狀態透過已調整的共用筆刷跟隨應用程式主色。
 替換包含這些 `Nvt.Toggle.Soft*` 鍵的單一字典，即可一起更新已掛載的控制項。
 
 | Token | Core 資源 | Light | Dark |
 | --- | --- | --- | --- |
-| `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` |
-| `Nvt.Toggle.SoftCheckedForegroundBrush` | `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
+| `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `Nvt.Controls.SelectedForegroundBrush` | `#113D9D` | `#BEDAFB` |
 | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Interaction.HoverBrush` | `#331E293B` | `#33E2E8F0` |
 | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Interaction.PressedBrush` | `#3D1E293B` | `#3DE2E8F0` |
 | `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
@@ -1124,9 +1155,9 @@ Light 與 Dark 使用相同數值。
 Space 切換數值，Tab 聚焦控制項，停用控制項忽略輸入。
 
 文字與圖示繼承相同前景色，在兩種主題皆達到 4.5:1 對比。
-Light 選取靜止、滑過、按下文字對比為 7.363、8.185、7.807:1。
-Dark 分別為 8.582、8.898、7.830:1。
-此角色使用 `Nvt.Controls.FocusBrush`。對三種選取底色的最低值，Light 為 5.036:1、Dark 為 6.194:1。
+Light 選取靜止、滑過、按下文字對比為 7.342、8.059、7.698:1。
+Dark 分別為 8.370、8.867、7.876:1。
+此角色使用 `Nvt.Controls.FocusBrush`。對三種選取底色的最低值，Light 為 5.067:1、Dark 為 6.252:1。
 Disabled on 的文字對其選取底色，亮色為 3.582:1，暗色為 3.574:1。
 
 採用分成三步：
@@ -1169,7 +1200,7 @@ Disabled on 的文字對其選取底色，亮色為 3.582:1，暗色為 3.574:1�
 目前使用清單需要此變體來呈現篩選核取方塊。
 
 Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾選、勾選、不確定，再回到未勾選。
-不確定狀態顯示白色短橫線，勾選狀態顯示白色勾號。
+不確定狀態顯示短橫線，勾選狀態顯示勾號。啟用時使用主按鈕標籤筆刷，停用時維持白色。
 停用選項保留選取圖示與 opacity 1。
 
 ### 選項狀態
@@ -1193,7 +1224,7 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 | 鍵盤焦點 | 保留目前底色 | 保留目前外框 | 保留目前標籤 |
 
 停用控制項忽略指標、按下與鍵盤焦點樣式。
-兩種主題的白色選取內容均使用 `Nvt.Toggle.SelectedLabelBrush`。
+兩種主題的啟用選取內容使用 `Nvt.Toggle.SelectedLabelBrush`，動態跟隨 `Nvt.Button.PrimaryLabelBrush`；停用內容維持白色。
 深色主題的選取外框使用較亮的 Core 強調色，確保指示框與鄰近底色可辨識。
 
 ### 選項 token
@@ -1221,10 +1252,10 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
 | `NfcAccentBorderBrush` | `#1557E9` | `#5FA5FA` |
 | `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
-| `Nvt.Toggle.SelectedBrush` | `#1557E9` | `#1148BE` |
-| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
-| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SelectedPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` (`Nvt.Button.PrimaryLabelBrush`) | `#0B1220` (`Nvt.Button.PrimaryLabelBrush`) |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 | `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
 | `Nvt.Focus.RingThickness` | 2 | 2 |
@@ -1239,12 +1270,12 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 | 對比 | Light | Dark |
 | --- | --- | --- |
-| 啟用標籤 | 13.513:1 | 11.215:1 |
+| 啟用且選取的標籤 | 13.595:1 | 11.320:1 |
 | 停用標籤 | 3.582:1 | 3.574:1 |
 | 所有狀態的指示框外框 | 3.154:1 | 3.076:1 |
-| 所有選取狀態的白色圖示，含停用 | 4.559:1 | 3.422:1 |
-| 啟用勾選底色上的白色圖示 | 5.879:1 | 7.794:1 |
-| 鍵盤焦點框 | 5.036:1 | 6.194:1 |
+| 所有選取狀態的圖示，含停用 | 4.559:1 | 3.422:1 |
+| 啟用勾選底色上的主按鈕標籤圖示 | 5.879:1 | 7.355:1 |
+| 鍵盤焦點框 | 4.129:1 | 4.923:1 |
 
 ### CheckBox 採用步驟
 
@@ -1269,7 +1300,7 @@ Space 保留 Avalonia 的二態循環。`IsThreeState="True"` 依序循環未勾
 
 `ChoiceStyles.axaml` 同時為原生單選按鈕提供外觀，不需指定外觀 class。
 載入 CheckBox 章節所述的相同主題 token 與樣式。
-單選外框尺寸為 20 × 20 DIP，勾選時顯示 10 DIP 白色圓點。
+單選外框尺寸為 20 × 20 DIP，勾選時顯示 10 DIP 圓點。啟用時跟隨主按鈕標籤筆刷，停用時維持白色。
 `Nvt.Shape.RoundCornerRadius` 讓外框在 Pill 與 Square 均保持圓形。
 標籤間距、列高、換行、焦點框、轉場、停用選取與 `compact` class 均遵循核取方塊規則。
 單選按鈕使用選項狀態表中的勾選與未勾選狀態。
@@ -1311,22 +1342,22 @@ Avalonia 12.1.1 需由宿主設定 `XYFocus.NavigationModes="Keyboard"`，方向
 移除衝突的本機幾何、色盤、列填色、握柄與焦點樣式，保留應用邏輯與原生鍵盤行為。
 
 ListBoxItem、ComboBoxItem、Choice 列與 `toggleSoft` 共用選取底色。勾選的 MenuItem 沒有底色。
-List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換。
+List、Tab、Form 與 Toggle 公開筆刷鍵保留；選取值動態跟隨應用程式主色，不需覆寫家族 token。
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` |
-| `Nvt.Controls.SelectedPointerOverBrush` | `#E3ECFC` | `#20334F` |
-| `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` |
-| `Nvt.Controls.SelectedPressedBrush` | `#DCE7FA` | `#243C5B` |
-| `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
+| `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` |
+| `Nvt.Controls.SelectedPointerOverBrush` | `#E3EBFC` | `#20334F` |
+| `Nvt.Controls.SelectedRestBrush` | `#00E3EBFC` | `#0020334F` |
+| `Nvt.Controls.SelectedPressedBrush` | `#DCE6FC` | `#243B5C` |
+| `Nvt.Controls.SelectedForegroundBrush` | `#113D9D` | `#BEDAFB` |
 | `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
 | `Nvt.Controls.ChoiceForegroundBrush` | `#0F172A` | `#FFFFFF` |
 | `Nvt.Controls.ExpanderPressedBrush` | `#C9CCD0` | `#434A57` |
 | `Nvt.Controls.ExpanderPressedForegroundBrush` | `#0B1220` | `#FFFFFF` |
 | `Nvt.Controls.ExpanderDisabledForegroundBrush` | `#637085` | `#91A1B9` |
-| `Nvt.Toggle.SoftCheckedPointerOverBrush` | `#E3ECFC` | `#20334F` |
-| `Nvt.Toggle.SoftCheckedPressedBrush` | `#DCE7FA` | `#243C5B` |
+| `Nvt.Toggle.SoftCheckedPointerOverBrush` | `#E3EBFC` | `#20334F` |
+| `Nvt.Toggle.SoftCheckedPressedBrush` | `#DCE6FC` | `#243B5C` |
 
 | Token | Pill | Square |
 | --- | --- | --- |
@@ -1355,23 +1386,23 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 | `Nvt.GridSplitter.PressedLineThickness` | 3 | 3 |
 
 下列新配色使用 WCAG 相對亮度、不透明 sRGB 色彩，適用兩種形狀；數值取三位小數。
-文字、圖示、啟用外框與焦點均保留原文件最低對比。
+文字保留 4.5:1、啟用外框與焦點保留 3:1；既有測試對比下限不變。
 裝飾分隔線與停用 splitter 提示依設計刻意變淡，不承載文字或啟用控制項辨識。
 
 | Contrast | Light | Dark |
 | --- | --- | --- |
-| 選取：文字、圖示與標記 | 7.363:1 | 8.582:1 |
-| 選取：Choice 標籤 | 13.513:1 | 12.292:1 |
-| 選取：Choice 外框 | 4.450:1 | 4.829:1 |
-| 選取：淡色列焦點 | 5.036:1 | 6.789:1 |
-| 選取滑過：文字、圖示與標記 | 8.185:1 | 8.898:1 |
-| 選取滑過：Choice 標籤 | 15.022:1 | 12.744:1 |
-| 選取滑過：Choice 外框 | 6.558:1 | 6.683:1 |
-| 選取滑過：淡色列焦點 | 5.598:1 | 7.039:1 |
-| 選取按下：文字、圖示與標記 | 7.807:1 | 7.830:1 |
-| 選取按下：Choice 標籤 | 14.328:1 | 11.215:1 |
-| 選取按下：Choice 外框 | 6.255:1 | 5.882:1 |
-| 選取按下：淡色列焦點 | 5.340:1 | 6.194:1 |
+| 選取：文字、圖示與標記 | 7.342:1 | 8.370:1 |
+| 選取：Choice 標籤 | 13.595:1 | 12.030:1 |
+| 選取：Choice 外框 | 4.477:1 | 4.725:1 |
+| 選取：淡色列焦點 | 5.067:1 | 6.644:1 |
+| 選取滑過：文字、圖示與標記 | 8.059:1 | 8.867:1 |
+| 選取滑過：Choice 標籤 | 14.924:1 | 12.744:1 |
+| 選取滑過：Choice 外框 | 6.516:1 | 6.683:1 |
+| 選取滑過：淡色列焦點 | 5.562:1 | 7.039:1 |
+| 選取按下：文字、圖示與標記 | 7.698:1 | 7.876:1 |
+| 選取按下：Choice 標籤 | 14.254:1 | 11.320:1 |
+| 選取按下：Choice 外框 | 6.223:1 | 5.937:1 |
+| 選取按下：淡色列焦點 | 5.312:1 | 6.252:1 |
 | Choice 標籤／靜止 | 17.063:1 | 15.737:1 |
 | Choice 外框／靜止 | 3.838:1 | 3.959:1 |
 | Choice 焦點／靜止 | 6.359:1 | 8.692:1 |
@@ -1395,15 +1426,15 @@ List 與 Toggle 別名保留供字典替換；同一家族色盤應一起替換�
 | Splitter 滑過握柄／表面 | 5.879:1 | 6.968:1 |
 | Splitter 按下線條與握柄／表面 | 7.794:1 | 9.303:1 |
 | Splitter 停用線條與握柄／表面（非互動） | 1.485:1 | 1.713:1 |
-| 實心選取按下白色符號 | 9.728:1 | 12.081:1 |
-| Switch 按下白色旋鈕 | 8.722:1 | 8.722:1 |
+| 實心選取按下主按鈕標籤符號 | 9.457:1 | 11.157:1 |
+| Switch 按下主按鈕標籤旋鈕 | 9.457:1 | 11.157:1 |
 
 Expander 標頭與選項列的按下底色是 `Nvt.Interaction.PressedFillBrush`（`#C9CCD0` / `#434A57`）。標頭文字在其上為 11.619:1 / 8.914:1。
-亮色按下文字維持 `#0B1220`，深色按下文字維持白色。
-選取文字改為 `#0E3C9E`／`#BEDAFF`；淡色列焦點改為 `#1557C0`／`#8FC5FF`。
-這些配色補償較強的選取底色，不修改全域 `Nfc*` 或 `Nvt.Focus.*` 色彩。
+Expander 按下文字維持 Light `#0B1220`、Dark 白色；Choice 標籤在各選取狀態保留原有文字色。
+選取文字混合為 `#113D9D`／`#BEDAFB`；淡色列焦點維持 `#1557C0`／`#8FC5FF`。
+選取前景由強主色混向強文字色，以原有強度跟隨主色，不改變全域色票。
 本次要求 section 保留 44 DIP，因此未採用審查的 40 DIP 建議。
-本次不新增平面圖示角色；既有 Toggle 角色保留幾何，並增加明確的選取按下回饋。
+本次不新增平面圖示角色；既有 Toggle 角色保留幾何。實心按下底色混入 20% 強文字色，與滑入保持差異。
 
 新增的 `RenderRedesign*` 測試沿用家族環境變數，輸出 `<control>-<pill|square>-<light|dark>.png`。
 `separator.png` 同時展示兩個主題，標示 "Not affected by shape"。
@@ -1560,24 +1591,24 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 | `Nvt.Form.PressedBorderBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
 | `Nvt.Form.ErrorBorderBrush` | `#C04A5C` | `#C96579` | `NfcDangerBorderBrush` |
 | `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
-| `Nvt.Form.SelectionBrush` | `#D3E1F8` | `#1F3558` | `Nvt.Controls.SelectedBrush` |
-| `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Form.SelectionBrush` | `#D5E1FB` | `#223755` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Form.SelectionTextBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.FillBrush` | `#001E293B` | `#00E2E8F0` | `Nvt.Interaction.RestBrush` |
 | `Nvt.Tab.HoverFillBrush` | `#331E293B` | `#33E2E8F0` | `Nvt.Interaction.HoverBrush` |
 | `Nvt.Tab.PressedFillBrush` | `#3D1E293B` | `#3DE2E8F0` | `Nvt.Interaction.PressedBrush` |
-| `Nvt.Tab.SelectedFillBrush` | `#D3E1F8` | `#1F3558` | `Nvt.Controls.SelectedBrush` |
-| `Nvt.Tab.SelectedHoverFillBrush` | `#E3ECFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
-| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE7FA` | `#243C5B` | `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.Tab.SelectedFillBrush` | `#D5E1FB` | `#223755` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Tab.SelectedHoverFillBrush` | `#E3EBFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE6FC` | `#243B5C` | `Nvt.Controls.SelectedPressedBrush` |
 | `Nvt.Tab.TextBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
 | `Nvt.Tab.HoverTextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
 | `Nvt.Tab.PressedTextBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
-| `Nvt.Tab.SelectedTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.SelectedTextBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
 | `Nvt.Tab.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.DisabledSelectedFillBrush` | `#DCE5EF` | `#26364D` | `NfcSelectionSurfaceBrush` |
-| `Nvt.Tab.IndicatorBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.IndicatorBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
 
 ### 表單與頁籤幾何 token
@@ -1651,7 +1682,7 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 | 表單焦點環／按下／展開 | 4.840:1 | 6.273:1 |
 | 表單停用文字、提示、邊框與微調圖示 | 4.358:1 | 4.599:1 |
 | 表單錯誤邊框／停用填色 | 4.587:1 | 4.212:1 |
-| 表單反白文字 | 7.363:1 | 8.582:1 |
+| 表單反白文字 | 7.342:1 | 8.370:1 |
 | 表單與頁籤焦點環／應用程式 | 6.073:1 | 10.341:1 |
 | 表單一般邊框／應用程式 | 3.665:1 | 4.710:1 |
 | 表單滑入邊框／應用程式 | 6.917:1 | 12.611:1 |
@@ -1670,12 +1701,12 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 | 頁籤焦點環／滑入 | 4.293:1 | 4.931:1 |
 | 頁籤文字／按下 | 10.627:1 | 7.538:1 |
 | 頁籤焦點環／按下 | 3.960:1 | 4.356:1 |
-| 頁籤文字與指示線／選取 | 7.363:1 | 8.582:1 |
-| 頁籤焦點環／選取 | 5.036:1 | 6.789:1 |
-| 頁籤文字與指示線／選取滑入 | 8.185:1 | 8.898:1 |
-| 頁籤焦點環／選取滑入 | 5.598:1 | 7.039:1 |
-| 頁籤文字與指示線／選取按下 | 7.807:1 | 7.830:1 |
-| 頁籤焦點環／選取按下 | 5.340:1 | 6.194:1 |
+| 頁籤文字與指示線／選取 | 7.342:1 | 8.370:1 |
+| 頁籤焦點環／選取 | 5.067:1 | 6.644:1 |
+| 頁籤文字與指示線／選取滑入 | 8.059:1 | 8.867:1 |
+| 頁籤焦點環／選取滑入 | 5.562:1 | 7.039:1 |
+| 頁籤文字與指示線／選取按下 | 7.698:1 | 7.876:1 |
+| 頁籤焦點環／選取按下 | 5.312:1 | 6.252:1 |
 | 頁籤文字／停用 | 4.358:1 | 4.599:1 |
 | 頁籤文字與指示線／選取停用 | 3.582:1 | 3.574:1 |
 
@@ -1683,9 +1714,9 @@ Pill 與 Square 使用相同色盤預設值。別名重用既有筆刷，沒有�
 
 `TextStyles.axaml` 提供可選用的 TextBlock 文字角色，也適用其 SelectableTextBlock 子類別。
 每個類別都從既有 `Nvt.Font.<Role>.*` token 設定字型家族、大小與字重。
-所有角色都將前景設為 `NfcTextBrush`，覆寫繼承的前景，包括選取列與實心按鈕的前景。
+一般角色前景為 `NfcTextBrush`；僅啟用、已勾選且不帶 `danger` 的 `toggleSegment`、`toggleTab`、`toggleIcon` 內文字（含 `muted`）沿用控制項前景，維持實心標籤可讀性。
 另外加上 `muted`，只將前景改為 `NfcTextMutedBrush`。
-這些類別套用至任何符合的 TextBlock，也包含其他控制項範本內的文字。
+這些類別套用至任何符合的 TextBlock，也包含其他控制項範本內的文字。List、ComboBox 項目、Tab、Choice 與 `toggleSoft` 保留既有文字 class 行為。
 既有 `title`、`body`、`caption` 或 `muted` 等同名類別可能因此與這些樣式衝突。
 
 這些角色需要 `Nvt.Core.Fonts` 套件及其資源。
@@ -1732,12 +1763,12 @@ H1 至 H3 階層規則不在本次變更範圍。
 | muted 類別／滑入填色 | 4.954:1 | 5.444:1 |
 | 所有文字類別／按下填色 | 10.642:1 | 9.213:1 |
 | muted 類別／按下填色 | 4.588:1 | 5.056:1 |
-| 所有文字類別／選取填色 | 11.073:1 | 9.971:1 |
-| muted 類別／選取填色 | 4.773:1 | 5.472:1 |
-| 所有文字類別／選取滑入填色 | 12.309:1 | 10.338:1 |
-| muted 類別／選取滑入填色 | 5.306:1 | 5.673:1 |
-| 所有文字類別／選取按下填色 | 11.741:1 | 9.098:1 |
-| muted 類別／選取按下填色 | 5.061:1 | 4.993:1 |
+| 所有文字類別／選取填色 | 11.140:1 | 9.758:1 |
+| muted 類別／選取填色 | 4.802:1 | 5.355:1 |
+| 所有文字類別／選取滑入填色 | 12.229:1 | 10.338:1 |
+| muted 類別／選取滑入填色 | 5.271:1 | 5.673:1 |
+| 所有文字類別／選取按下填色 | 11.680:1 | 9.182:1 |
+| muted 類別／選取按下填色 | 5.035:1 | 5.039:1 |
 
 ### 渲染與檢閱
 
@@ -1772,8 +1803,8 @@ token 歸屬與驗證流程請參閱 [導入後微調指南](../post-adoption-tu
 | `Nvt.Interaction.PressedFillBrush` | `#C9CCD0` | `#434A57` | neutral、chip、icon 按鈕、勾選按鈕、選項列與 Expander 標頭的按下底色。為按下層疊在 `NfcSurfaceBrush` 上的結果。 |
 | `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | ComboBox（按下與展開）與 NumericUpDown 微調按鈕的按下底色。placeholder 文字維持 4.5:1，錯誤框線維持 3:1。 |
 | `NfcSelectionSurfaceBrush` | `#DCE5EF` | `#26364D` | Soft 模式下選項列、Expander 標頭與表單欄位的滑入底色，以及作用中 flat ghost 按鈕的滑入底色。原為 `#E8EEF5` / `#1E293B`。 |
-| `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` | 勾選與選取底色。各工具使用同一固定值，不再是 `NfcAccentSurfaceBrush`。 |
-| `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` | 模式 None 下，已勾選選項列的靜止底色。RGB 與選取滑入底色相同，alpha 為 0。 |
+| `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` | 勾選與選取淡色底：由表面混向工具主色，Light 為 18%、Dark 為 22%。 |
+| `Nvt.Controls.SelectedRestBrush` | `#00E3EBFC` | `#0020334F` | 模式 None 下，已勾選選項列的靜止底色。RGB 與選取滑入底色相同，alpha 為 0。 |
 | `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | toggle 與 toggle tab 的靜止底色。 |
 | `Nvt.Toggle.SegmentRestBrush` | `#00DCE5EF` | `#0026364D` | segment 的靜止底色。為 alpha 0 的 segment 群組表面色，淡入 `NfcSurfaceSubtleBrush` 時不會超出範圍。 |
 | `Nvt.Tab.FillBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | tab 的靜止底色。原為 `#00FFFFFF`，淡入時會經過白色。 |
@@ -1787,14 +1818,14 @@ Core 的樣式不再讀取 `NfcSecondaryActionPressedBrush`。這個 key 保留�
 - 已勾選的 soft toggle 畫 1 DIP 的強調色外框。滑入時外框變成 2 DIP 的 `NfcAccentStrongBrush`。
 - `ContextMenu` 與 `MenuFlyoutPresenter` 共用一個彈出樣板。presenter 沒有可取得焦點的捲動箭頭。
 
-在兩種主題下，狀態底色上最低的文字對比，Light 為 4.511:1、Dark 為 5.312:1，閒置連結底線維持 3.076:1。狀態底色對表面的最低分離度，Light 為 1.217:1、Dark 為 1.280:1。這是滑入、按下與勾選底色的實用下限。文字維持 4.5:1，圖形維持 3:1。
+在兩種主題下，狀態底色上最低的文字對比，Light 為 4.511:1、Dark 為 5.312:1，閒置連結底線維持 3.076:1。選取淡色底對承載表面的最低分離度為 1.255:1／1.308:1，保留既有 1.2:1／1.25:1 下限。文字維持 4.5:1，圖形維持 3:1。
 
 標準焦點環（`Nvt.Focus.RingBrush`）的對比如下（Light / Dark）：
 
 | 底色 | 焦點環對比 |
 | --- | --- |
 | `NfcSelectionSurfaceBrush` | 3.879:1 / 4.658:1 |
-| `Nvt.Controls.SelectedBrush` | 3.738:1 / 4.682:1 |
+| `Nvt.Controls.SelectedBrush` | 3.760:1 / 4.582:1 |
 | `Nvt.Interaction.HoverFillBrush` | 3.327:1 / 3.849:1 |
 | `Nvt.Interaction.PressedFillBrush` | 3.064:1 / 3.395:1 |
 | `NfcSurfaceSubtleBrush` 上的滑入層 | 3.186:1 / 3.401:1 |
@@ -1802,7 +1833,7 @@ Core 的樣式不再讀取 `NfcSecondaryActionPressedBrush`。這個 key 保留�
 
 有一個值低於 3:1：Light 主題下 `NfcSurfaceSubtleBrush` 上的按下層。只有控制項在底色內顯示鍵盤焦點環、同時又被滑鼠按住時才會遇到。
 
-較深的滑入底色降低了部分先前的保證值。較舊的表格中，讀取滑入底色或選取底色的列已用本節的數值重新計算。變化最大的配對如下：
+下列表格記錄 `core-v0.9.7` 之前的中性疊色調整。當時較深的滑入底色降低了部分先前的保證值。較舊表格中讀取滑入底色或選取底色的列，已依當時數值重新計算。變化最大的配對如下：
 
 | 配對 | 之前 | 之後（Light / Dark） |
 | --- | --- | --- |
@@ -1872,7 +1903,7 @@ Soft 路徑就是基準路徑：列與標題仍動態讀取 `NfcSurfaceSubtleBru
 | `Nvt.Controls.RestFillMode` | `Soft` | `None` |
 
 Soft 特徵測試與 65 張像素比對所用的凍結基準：儲存庫 `Dennis40816/nvt_fw_core`，分支 `feature/core/controls-forms-tabs`，完整 commit `98f4e3a53c6d0075da693438bca6deb20f54af33`。受影響檔案為 `src/Nvt.Core.Avalonia/Theme/ChoiceStyles.axaml`、`src/Nvt.Core.Avalonia/Theme/ControlTokens.axaml` 與 `src/Nvt.Core.Avalonia/Theme/ExpanderStyles.axaml`。
-`SoftFillsFollowPaletteOverridesAtTheWindow` 釘住動態色票查找。65 張圖以明確 Soft 模式重繪，並與該基準逐像素比對：差異像素為 0。
+`SoftFillsFollowPaletteOverridesAtTheWindow` 釘住動態色票查找。靜止填色功能導入時，65 張圖以明確 Soft 模式重繪，並與該基準逐像素比對：差異像素為 0。這項歷史結果早於 `core-v0.9.7` 的主色混合調整。
 
 ### 靜止填色對比
 
@@ -1881,7 +1912,7 @@ Soft 特徵測試與 65 張像素比對所用的凍結基準：儲存庫 `Dennis
 Pill 與 Square 分別測量且結果相同；下表每一列均適用於兩種形狀。
 下表使用 Choice 下方及 Expander 容器內的 `NfcSurfaceBrush`。
 測試另驗證 Choice 下方的應用程式、柔和、選取及按下表面。
-既有文件記載的數值下限皆維持不變，並容許小數點後三位的捨入誤差。
+既有測試保留歷史數值下限，並容許小數點後三位的捨入誤差。啟用 Dark 符號／指示器固定最低值由 7.794:1（深藍底白色）改為計算所得的 7.355:1（主色底深色主按鈕標籤），其 4.5:1 下限不變。其他固定最低值全部保留。
 啟用文字及符號維持 4.5:1；停用文字及符號、指示器輪廓與焦點環維持 3:1。
 None 模式不需修正任何對比 token。
 
@@ -1902,28 +1933,28 @@ None 模式不需修正任何對比 token。
 | 未勾選 按下 文字／列 | 11.078:1 | 8.914:1 | 11.078:1 | 8.914:1 |
 | 未勾選 按下 指示器邊界／列 | 11.078:1 | 8.520:1 | 11.078:1 | 8.520:1 |
 | 未勾選 按下 焦點／列 | 4.129:1 | 4.923:1 | 4.129:1 | 4.923:1 |
-| 已勾選／不確定 靜止 文字／列 | 13.513:1 | 12.292:1 | 17.853:1 | 17.740:1 |
-| 已勾選／不確定 靜止 指示器邊界／列 | 4.450:1 | 4.829:1 | 5.879:1 | 6.968:1 |
-| 已勾選／不確定 靜止 焦點／列 | 5.036:1 | 6.789:1 | 6.653:1 | 9.798:1 |
-| 已勾選／不確定 滑入 文字／列 | 15.022:1 | 12.744:1 | 15.022:1 | 12.744:1 |
-| 已勾選／不確定 滑入 指示器邊界／列 | 6.558:1 | 6.683:1 | 6.558:1 | 6.683:1 |
-| 已勾選／不確定 滑入 焦點／列 | 5.598:1 | 7.039:1 | 5.598:1 | 7.039:1 |
-| 已勾選／不確定 按下 文字／列 | 14.328:1 | 11.215:1 | 14.328:1 | 11.215:1 |
-| 已勾選／不確定 按下 指示器邊界／列 | 6.255:1 | 5.882:1 | 6.255:1 | 5.882:1 |
-| 已勾選／不確定 按下 焦點／列 | 5.340:1 | 6.194:1 | 5.340:1 | 6.194:1 |
+| 已勾選／不確定 靜止 文字／列 | 13.595:1 | 12.030:1 | 17.853:1 | 17.740:1 |
+| 已勾選／不確定 靜止 指示器邊界／列 | 4.477:1 | 4.725:1 | 5.879:1 | 6.968:1 |
+| 已勾選／不確定 靜止 焦點／列 | 5.067:1 | 6.644:1 | 6.653:1 | 9.798:1 |
+| 已勾選／不確定 滑入 文字／列 | 14.924:1 | 12.744:1 | 14.924:1 | 12.744:1 |
+| 已勾選／不確定 滑入 指示器邊界／列 | 6.516:1 | 6.683:1 | 6.516:1 | 6.683:1 |
+| 已勾選／不確定 滑入 焦點／列 | 5.562:1 | 7.039:1 | 5.562:1 | 7.039:1 |
+| 已勾選／不確定 按下 文字／列 | 14.254:1 | 11.320:1 | 14.254:1 | 11.320:1 |
+| 已勾選／不確定 按下 指示器邊界／列 | 6.223:1 | 5.937:1 | 6.223:1 | 5.937:1 |
+| 已勾選／不確定 按下 焦點／列 | 5.312:1 | 6.252:1 | 5.312:1 | 6.252:1 |
 | 停用 Choice 文字／列 | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
 | 停用 Choice 指示器邊界／列 | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
 | 未勾選 靜止 邊界／指示器填色 | 4.015:1 | 4.462:1 | 4.015:1 | 4.462:1 |
 | 未勾選 滑入 邊界／指示器填色 | 7.243:1 | 10.600:1 | 7.243:1 | 10.600:1 |
 | 未勾選 按下 邊界／指示器填色 | 14.025:1 | 11.688:1 | 14.025:1 | 11.688:1 |
 | 未勾選 停用 邊界／指示器填色 | 4.358:1 | 4.599:1 | 4.358:1 | 4.599:1 |
-| 已勾選／不確定 靜止 邊界／指示器填色 | 1.000:1 | 3.062:1 | 1.000:1 | 3.062:1 |
-| 已勾選／不確定 滑入 邊界／指示器填色 | 1.000:1 | 5.102:1 | 1.000:1 | 5.102:1 |
-| 已勾選／不確定 按下 邊界／指示器填色 | 1.248:1 | 6.336:1 | 1.248:1 | 6.336:1 |
+| 已勾選／不確定 靜止 邊界／指示器填色 | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
+| 已勾選／不確定 滑入 邊界／指示器填色 | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
+| 已勾選／不確定 按下 邊界／指示器填色 | 1.213:1 | 1.136:1 | 1.213:1 | 1.136:1 |
 | 已勾選／不確定 停用 邊界／指示器填色 | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
-| 已選取 靜止 符號／指示器填色 | 5.879:1 | 7.794:1 | 5.879:1 | 7.794:1 |
-| 已選取 滑入 符號／指示器填色 | 7.794:1 | 9.728:1 | 7.794:1 | 9.728:1 |
-| 已選取 按下 符號／指示器填色 | 9.728:1 | 12.081:1 | 9.728:1 | 12.081:1 |
+| 已選取 靜止 符號／指示器填色 | 5.879:1 | 7.355:1 | 5.879:1 | 7.355:1 |
+| 已選取 滑入 符號／指示器填色 | 7.794:1 | 9.819:1 | 7.794:1 | 9.819:1 |
+| 已選取 按下 符號／指示器填色 | 9.457:1 | 11.157:1 | 9.457:1 | 11.157:1 |
 | 已選取 停用 符號／指示器填色 | 4.559:1 | 3.422:1 | 4.559:1 | 3.422:1 |
 | Choice 焦點／五種周圍表面（最低值） | 5.227:1 | 6.754:1 | 5.227:1 | 6.754:1 |
 | Expander 靜止 文字與箭頭／標題 | 13.982:1 | 12.766:1 | 14.629:1 | 14.390:1 |

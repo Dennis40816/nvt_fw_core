@@ -164,6 +164,9 @@
   <Style Selector="ToggleButton.toggleSwitch:checked:pressed:not(:disabled), ToggleSwitch:checked:pressed:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SwitchPressedBrush}"/>
   </Style>
+  <Style Selector="ToggleButton.toggleSwitch:checked:not(:disabled):not(.danger) /template/ Ellipse#ToggleKnob, ToggleSwitch:checked:not(:disabled):not(.danger) /template/ Ellipse#ToggleKnob">
+    <Setter Property="Fill" Value="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"/>
+  </Style>
   <Style Selector="ToggleButton.toggleSwitch:disabled, ToggleSwitch:disabled">
     <Setter Property="Background" Value="{DynamicResource NfcBorderBrush}"/>
   </Style>
@@ -178,7 +181,7 @@
   </Style>
   <Style Selector="ToggleButton.toggleSegment.danger:checked:not(:disabled), ToggleButton.toggleTab.danger:checked:not(:disabled), ToggleButton.toggleIcon.danger:checked:not(:disabled), ToggleButton.toggleSwitch.danger:checked:not(:disabled), ToggleSwitch.danger:checked:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.DangerFillBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.SelectedLabelBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Toggle.KnobBrush}"/>
   </Style>
   <Style Selector="ToggleButton.toggleSegment.danger:checked:pointerover:not(:disabled), ToggleButton.toggleTab.danger:checked:pointerover:not(:disabled), ToggleButton.toggleIcon.danger:checked:pointerover:not(:disabled), ToggleButton.toggleSwitch.danger:checked:pointerover:not(:disabled), ToggleSwitch.danger:checked:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.DangerFillPointerOverBrush}"/>

@@ -7,7 +7,6 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
-using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.Theme;
@@ -84,11 +83,11 @@ public sealed class ChoiceStylesTests(ITestOutputHelper output)
                         }
                         if (selected is not false)
                         {
-                            Color white = Color.Parse("#FFFFFF");
-                            Assert.Equal(white, ColorOf(dot.Fill));
-                            Assert.Equal(white, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
-                            Assert.Equal(white, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
-                            double contrast = Contrast(white, ColorOf(indicator.Background));
+                            Color mark = ResourceColor(control, state.Disabled ? "Nvt.Toggle.KnobBrush" : "Nvt.Button.PrimaryLabelBrush");
+                            Assert.Equal(mark, ColorOf(dot.Fill));
+                            Assert.Equal(mark, ColorOf(Part<Rectangle>(control, "ChoiceDash").Fill));
+                            Assert.Equal(mark, ColorOf(Part<global::Avalonia.Controls.Shapes.Path>(control, "ChoiceCheck").Stroke));
+                            double contrast = Contrast(mark, ColorOf(indicator.Background));
                             Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}: mark {contrast:F3}");
                             markMinimum = Math.Min(markMinimum, contrast);
                         }

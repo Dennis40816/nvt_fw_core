@@ -114,6 +114,12 @@
   <Style Selector="CheckBox:disabled:checked, CheckBox:disabled:indeterminate, RadioButton:disabled:checked">
     <Setter Property="Background" Value="{DynamicResource NfcTextDisabledBrush}"/>
   </Style>
+  <Style Selector="CheckBox:disabled /template/ Path#ChoiceCheck, RadioButton:disabled /template/ Path#ChoiceCheck">
+    <Setter Property="Stroke" Value="{DynamicResource Nvt.Toggle.KnobBrush}"/>
+  </Style>
+  <Style Selector="CheckBox:disabled /template/ Rectangle#ChoiceDash, CheckBox:disabled /template/ Ellipse#ChoiceDot, RadioButton:disabled /template/ Rectangle#ChoiceDash, RadioButton:disabled /template/ Ellipse#ChoiceDot">
+    <Setter Property="Fill" Value="{DynamicResource Nvt.Toggle.KnobBrush}"/>
+  </Style>
   <Style Selector="CheckBox:focus-visible:not(:disabled) /template/ Border#ChoiceFocusRing, RadioButton:focus-visible:not(:disabled) /template/ Border#ChoiceFocusRing">
     <Setter Property="IsVisible" Value="True"/>
   </Style>

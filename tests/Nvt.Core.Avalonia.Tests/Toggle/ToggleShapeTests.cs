@@ -16,7 +16,7 @@ using static Nvt.Core.Avalonia.Tests.Toggle.ToggleTestHost;
 
 namespace Nvt.Core.Avalonia.Tests.Toggle;
 
-/// <summary>Checks the shipped styles' runtime shape contract and literal white selection colors.</summary>
+/// <summary>Checks the shipped styles' runtime shape contract and theme-specific selection labels.</summary>
 public sealed class ToggleShapeTests(ITestOutputHelper output)
 {
     /// <summary>Updates every attached role from one theme root while preserving switch geometry and focus gaps.</summary>
@@ -70,11 +70,11 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                             {
                                 Assert.Equal(square ? 6 : 999, body.CornerRadius.TopLeft);
                                 Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
-                                if (state.Checked) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
+                                if (state.Checked) Assert.Equal(ResourceColor(button, state.Disabled ? "Nvt.Toggle.KnobBrush" : "Nvt.Button.PrimaryLabelBrush"), ColorOf(knob.Fill));
                             }
                             else if (state.Checked && !state.Disabled)
                             {
-                                Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(button.Foreground));
+                                Assert.Equal(ResourceColor(button, "Nvt.Button.PrimaryLabelBrush"), ColorOf(button.Foreground));
                             }
                         }
                     }
@@ -90,7 +90,7 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public void SelectedPinUsesLiteralWhiteAndAccessibleAccent(bool dark, bool square)
+    public void SelectedPinUsesPrimaryLabelAndAccessibleAccent(bool dark, bool square)
     {
         ToggleButton icon = ToggleStylesRenderer.Icon(new ToggleState("Checked", Checked: true));
         Window host = Create(icon, dark);
@@ -103,9 +103,8 @@ public sealed class ToggleShapeTests(ITestOutputHelper output)
                 SetState(icon, state);
                 Flush(host);
                 var glyph = Assert.IsType<global::Avalonia.Controls.Shapes.Path>(icon.Content);
-                Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(glyph.Stroke));
-                Assert.Equal(Color.Parse(dark ? state.Pressed ? "#0B307E" : state.Hover ? "#0E3C9E" : "#1148BE"
-                    : state.Pressed ? "#0E3C9E" : state.Hover ? "#1148BE" : "#1557E9"), ColorOf(icon.Background));
+                Assert.Equal(ResourceColor(icon, "Nvt.Button.PrimaryLabelBrush"), ColorOf(glyph.Stroke));
+                Assert.Equal(ResourceColor(icon, state.Pressed ? "Nvt.Toggle.SelectedPressedBrush" : state.Hover ? "NfcAccentStrongBrush" : "NfcAccentBrush"), ColorOf(icon.Background));
                 Assert.Equal(new CornerRadius(square ? 6 : 999), Part(icon, "ToggleBody").CornerRadius);
                 Assert.Empty(icon.GetVisualDescendants().OfType<CheckBox>());
             }

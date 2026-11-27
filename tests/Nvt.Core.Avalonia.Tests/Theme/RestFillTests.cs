@@ -581,6 +581,8 @@ public sealed class RestFillTests(ITestOutputHelper output)
     {
         bool dark = owner.ActualThemeVariant == ThemeVariant.Dark;
         bool disabled = state.Contains("Disabled", StringComparison.Ordinal);
+        // Dark enabled glyphs now use the primary label on the accent: 7.354665:1 at rest.
+        // Keep the 4.5:1 floor passed by the caller and every other historical minimum.
         double documented = owner is Expander ? pair switch
         {
             "Header text / header" or "Chevron / header" => disabled ? dark ? 5.997 : 4.794 : dark ? 8.197 : 9.856,
@@ -589,7 +591,7 @@ public sealed class RestFillTests(ITestOutputHelper output)
         {
             "Label / row" => disabled ? dark ? 3.574 : 3.582 : dark ? 6.307 : 8.906,
             "Indicator border / row" => dark ? 3.076 : 3.154,
-            "Glyph / indicator" => disabled ? dark ? 3.422 : 4.559 : dark ? 7.794 : 5.879,
+            "Glyph / indicator" => disabled ? dark ? 3.422 : 4.559 : dark ? 7.355 : 5.879,
             "Focus / row" => disabled ? dark ? 6.754 : 5.227 : dark ? 3.483 : 3.319,
             "Focus / surrounding surface" => dark ? 6.754 : 5.227,
             _ => minimum,

@@ -14,6 +14,8 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ### Changed
 
+- Theme (target `core-v0.9.7`): selection follows the application accent at the existing strength. Lists, tabs, soft toggles and choice rows blend surface and accent colors, keeping the default NFC look nearly unchanged; selected text blends strong accent and strong text. Choice labels retain their existing text color. Filled toggles, checked indicators and switch tracks use the accent/primary-label pair, with a distinct blended pressed fill (`#113EA0` Light / `#A4CBFB` Dark). In Dark, filled selections change from deep blue with white content to the accent fill with dark content. Tools override only the seven `NfcAccent*` application keys in Light and Dark; existing public brush keys, progress and splitter previews follow them. Danger, disabled, focus and neutral interaction colors stay unchanged, and existing contrast floors are preserved.
+
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
 
 ## 0.9.6 - 2026-11-09
