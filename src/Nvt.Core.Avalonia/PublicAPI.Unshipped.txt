@@ -1,2 +1,6 @@
 #nullable enable
+const Nvt.Core.Avalonia.Icons.NvtIcons.DarkMode = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.LightMode = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.Link = "" -> string!
+const Nvt.Core.Avalonia.Icons.NvtIcons.LinkOff = "" -> string!
 static Nvt.Core.Avalonia.Threading.UiThread.RegisterCurrentDispatcher() -> Avalonia.Threading.Dispatcher!

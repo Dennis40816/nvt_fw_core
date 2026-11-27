@@ -17,6 +17,7 @@ content_paste e14f
 content_paste_off e4f8
 copy_all e2ec
 crop_square e3c6
+dark_mode e51c
 data_object ead3
 delete e92e
 download f090
@@ -37,6 +38,9 @@ fullscreen_exit e5d1
 history e8b3
 info e88e
 layers e53b
+light_mode e518
+link e250
+link_off e16f
 maximize e930
 menu e5d2
 merge eb98
