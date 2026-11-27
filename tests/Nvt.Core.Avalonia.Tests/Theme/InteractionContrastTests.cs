@@ -33,11 +33,16 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
     private static readonly string[] _textOnLayers = ["NfcTextBrush", "NfcTextSecondaryBrush"];
     private static readonly string[] _textOnFills = ["NfcTextBrush", "NfcTextSecondaryBrush", "NfcTextMutedBrush", "NfcAccentStrongBrush"];
 
-    private static Color Resolved(Window host, string fill, string parent)
+    private static IBrush ResourceBrush(Control owner, string key)
     {
-        Color color = ChoiceTestHost.ResourceColor(host, fill);
-        return color.A == 255 ? color : Nvt.Core.Avalonia.Tests.Toggle.ToggleStylesTests.Flatten(color, ChoiceTestHost.ResourceColor(host, parent));
+        Assert.True(owner.TryFindResource(key, owner.ActualThemeVariant, out object? value), key);
+        return Assert.IsAssignableFrom<IBrush>(value);
     }
+
+    // The colour a resource shows when it is painted over an opaque colour that is already on screen.
+    private static Color Over(Control owner, string key, Color backdrop) => ShownColor.Over(ResourceBrush(owner, key), backdrop);
+
+    private static Color Resolved(Window host, string fill, string parent) => Over(host, fill, ChoiceTestHost.ResourceColor(host, parent));
 
     /// <summary>A fill that shows hover, pressed or checked is visible on every surface that hosts a control.</summary>
     [AvaloniaTheory]
@@ -53,7 +58,7 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             {
                 foreach (string parent in _parents)
                 {
-                    double ratio = ChoiceTestHost.Contrast(Resolved(host, fill, parent), ChoiceTestHost.ResourceColor(host, parent));
+                    double ratio = ShownColor.Contrast(Resolved(host, fill, parent), ChoiceTestHost.ResourceColor(host, parent));
                     output.WriteLine($"{(dark ? "Dark" : "Light")} {fill} / {parent}: {ratio:F3}:1");
                     Assert.True(ratio >= floor, $"{fill} on {parent}: {ratio:F3}:1 < {floor}:1");
                 }
@@ -77,7 +82,8 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
                 {
                     foreach (string text in texts)
                     {
-                        double ratio = ChoiceTestHost.Contrast(ChoiceTestHost.ResourceColor(host, text), Resolved(host, fill, parent));
+                        Color shownFill = Resolved(host, fill, parent);
+                        double ratio = ShownColor.Contrast(Over(host, text, shownFill), shownFill);
                         output.WriteLine($"{(dark ? "Dark" : "Light")} {text} on {fill} over {parent}: {ratio:F3}:1");
                         Assert.True(ratio >= TextFloor, $"{text} on {fill} over {parent}: {ratio:F3}:1 < {TextFloor}:1");
                     }
@@ -85,8 +91,12 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             }
             foreach (string fill in new[] { "Nvt.Controls.SelectedBrush", "Nvt.Controls.SelectedPointerOverBrush", "Nvt.Controls.SelectedPressedBrush" })
             {
-                double ratio = ChoiceTestHost.Contrast(ChoiceTestHost.ResourceColor(host, "Nvt.Controls.SelectedForegroundBrush"), ChoiceTestHost.ResourceColor(host, fill));
-                Assert.True(ratio >= TextFloor, $"Selected label on {fill}: {ratio:F3}:1 < {TextFloor}:1");
+                foreach (string parent in _parents)
+                {
+                    Color shownFill = Resolved(host, fill, parent);
+                    double ratio = ShownColor.Contrast(Over(host, "Nvt.Controls.SelectedForegroundBrush", shownFill), shownFill);
+                    Assert.True(ratio >= TextFloor, $"Selected label on {fill} over {parent}: {ratio:F3}:1 < {TextFloor}:1");
+                }
             }
         }
         finally { host.Close(); }
@@ -103,7 +113,8 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
         {
             foreach (string background in new[] { "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "NfcAppBackgroundBrush", "NfcSelectionSurfaceBrush" })
             {
-                double ratio = ChoiceTestHost.Contrast(ChoiceTestHost.ResourceColor(host, "Nvt.Console.LinkUnderlineBrush"), ChoiceTestHost.ResourceColor(host, background));
+                Color surface = ChoiceTestHost.ResourceColor(host, background);
+                double ratio = ShownColor.Contrast(Over(host, "Nvt.Console.LinkUnderlineBrush", surface), surface);
                 output.WriteLine($"{(dark ? "Dark" : "Light")} underline / {background}: {ratio:F3}:1");
                 Assert.True(ratio >= GraphicFloor, $"Underline on {background}: {ratio:F3}:1 < {GraphicFloor}:1");
             }
@@ -191,7 +202,9 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             Assert.Equal(ChoiceTestHost.ResourceColor(toggle, "NfcAccentStrongBrush"), ChoiceTestHost.ColorOf(outline.BorderBrush));
             ((IPseudoClasses)toggle.Classes).Set(":pointerover", false);
             Flush(host);
-            Assert.True(ChoiceTestHost.Contrast(ChoiceTestHost.ColorOf(outline.BorderBrush), ChoiceTestHost.ResourceColor(toggle, "NfcSurfaceSubtleBrush")) >= GraphicFloor);
+            Color surface = ChoiceTestHost.ResourceColor(toggle, "NfcSurfaceSubtleBrush");
+            Color shownOutline = ShownColor.Over(outline.BorderBrush, surface, ShownColor.ElementOpacity(outline));
+            Assert.True(ShownColor.Contrast(shownOutline, surface) >= GraphicFloor);
         }
         finally { host.Close(); }
     }
@@ -216,8 +229,8 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             })
             {
                 Color under = ChoiceTestHost.ResourceColor(host, surface);
-                double hoverRatio = ChoiceTestHost.Contrast(Toggle.ToggleStylesTests.Flatten(ChoiceTestHost.ResourceColor(host, hover), under), under);
-                double pressedRatio = ChoiceTestHost.Contrast(Toggle.ToggleStylesTests.Flatten(ChoiceTestHost.ResourceColor(host, pressed), under), under);
+                double hoverRatio = ShownColor.Contrast(Over(host, hover, under), under);
+                double pressedRatio = ShownColor.Contrast(Over(host, pressed, under), under);
                 output.WriteLine($"{(dark ? "Dark" : "Light")} {role}: hover {hoverRatio:F3}:1, pressed {pressedRatio:F3}:1");
                 Assert.True(pressedRatio > hoverRatio, $"{role}: pressed {pressedRatio:F3}:1 is not stronger than hover {hoverRatio:F3}:1");
             }
