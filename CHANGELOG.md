@@ -8,6 +8,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ### Added
 
+- `CollapsiblePanel.UseGhostHeader` lets hosts style `ToggleButton.panelBlockHeader` without Core's `actionGhost` role. The default is `true`, so the existing look and behavior are unchanged.
 - `NvtIcons.DarkMode`, `LightMode`, `Link` and `LinkOff`, with matching `Nvt.Icon.<Name>` resources, for theme and aspect-ratio lock toggles (76 icon names in total).
 
 ### Changed

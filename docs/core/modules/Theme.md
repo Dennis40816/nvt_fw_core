@@ -430,7 +430,7 @@ The three approved `role_mapping` sections supply every NFC (59), NFH (105) and 
 
 Former Core `railActionIcon`, `railActionLabel`, `railActionIconSlot`, `NfcSemanticButtonTheme` and theme resources used only by old roles also leave Core: product role, kept in the tool. `codeBlockCopy` maps to `actionIconButton`; `primaryRailAction` and `fileRevealAction` are product roles. Tools remove the old file inclusion and layout classes; no compatibility aliases are supplied.
 
-Core consumers: ConfirmDialog uses primary for confirmation, neutral for cancel and danger for emphasized cancel; WarningDialog uses primary for OK. CollapsiblePanel uses ghost for its header, retaining expansion binding, stretched content and chevron direction. The panel root does not clip the exterior focus ring.
+Core consumers: ConfirmDialog uses primary for confirmation, neutral for cancel and danger for emphasized cancel; WarningDialog uses primary for OK. CollapsiblePanel uses ghost for its header by default (`UseGhostHeader`), retaining expansion binding, stretched content and chevron direction. The panel root does not clip the exterior focus ring.
 
 ## NFC legacy font extraction
 
