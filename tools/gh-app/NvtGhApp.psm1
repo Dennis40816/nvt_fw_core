@@ -360,6 +360,9 @@ function Get-GhAppLedgerPath {
 
 # The default review record: the first line names the head and the verdict. A repository with another format passes its own pattern.
 $script:DefaultReviewRecordPattern = '^Review record: {HEAD} accept\b'
+# The hidden line that Add-GhAppReviewRecord keeps in a PR description. Only the last line counts: an earlier line of
+# the same form can be visible text, for example in a code block.
+$script:ReviewRecordMarkerPattern = '(?m)^<!-- review-record: [0-9a-f]{12} [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]{12}Z -->(?=(?:\r?\n)*\z)'
 
 # Tier B scope: the repositories where a pull request can merge without an owner approval, and the bases it may target.
 # Core is listed for main only (owner 2026-11-05 22:19, tiered approval for Core; narrowed by the owner on 2026-11-06 08:24: "anything that is not UI
@@ -1188,11 +1191,45 @@ function Sync-GhAppLabels {
     $plan
 }
 
+function Get-GhAppDescription {
+    param([hashtable]$Context, [int]$Number)
+    $pr = Invoke-GhAppApi $Context GET "pulls/$Number"
+    # A missing field must never count as an empty description, because the write would then erase the real one.
+    if ($null -eq $pr -or $null -eq $pr.PSObject.Properties['body'] -or ($null -ne $pr.body -and $pr.body -isnot [string])) {
+        throw 'it could not be read as text.'
+    }
+    [string]$pr.body
+}
+
+# GitHub may send no pull_request edited event for an unchanged description, so this changes one hidden line.
+# A description check that failed before the review record was posted then runs again.
+function Update-GhAppReviewRecordMarker {
+    param([hashtable]$Context, [int]$Number, [string]$Head)
+    # The token comes first, so that the helper adds no gap between the reads and the write.
+    $token = Get-GhAppWriteToken $Context "pulls/$Number"
+    $old = Get-GhAppDescription $Context $Number
+    $time = (Get-GhAppUtcNow).ToUniversalTime().ToString("yyyy-MM-dd'T'HH':'mm':'ss.fff'Z'", [Globalization.CultureInfo]::InvariantCulture)
+    $marker = "<!-- review-record: $($Head.Substring(0, 12)) $time -->"
+    $last = [regex]::Match($old, $script:ReviewRecordMarkerPattern)
+    if ($last.Success) {
+        $new = $old.Substring(0, $last.Index) + $marker + $old.Substring($last.Index + $last.Length)
+    } else {
+        $separator = ''
+        if ($old -and -not $old.EndsWith("`n", [StringComparison]::Ordinal)) { $separator = $(if ($old.Contains("`r`n")) { "`r`n" } else { "`n" }) }
+        $new = $old + $separator + $marker
+    }
+    if (-not [string]::Equals((Get-GhAppDescription $Context $Number), $old, [StringComparison]::Ordinal)) { throw 'it changed while it was read.' }
+    $written = Invoke-GhAppApi $Context PATCH "pulls/$Number" @{ body = $new } -AsApp -PreparedToken $token
+    if ($null -eq $written -or -not [string]::Equals([string]$written.body, $new, [StringComparison]::Ordinal)) {
+        Write-Warning "#${Number}: the description was written, but GitHub returned different text. Check the description." -WarningAction Continue
+    }
+}
+
 function Add-GhAppReviewRecord {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
         [Parameter(Mandatory)][string]$ExpectedHeadSha, [Parameter(Mandatory)][string]$BodyFile,
-        [string]$Event = 'COMMENT', [Alias('Repo')][string]$Repository)
+        [string]$Event = 'COMMENT', [Alias('Repo')][string]$Repository, [switch]$SkipBodyRefresh)
     if ($Event -cne 'COMMENT') { throw 'Review event must be COMMENT. Only the owner approves.' }
     $context = Get-GhAppContext $Repository
     $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
@@ -1200,7 +1237,14 @@ function Add-GhAppReviewRecord {
     $pr = Get-GhAppPullRequest $context $Number
     $head = Assert-GhAppSha "head of #$Number" $pr.headRefOid
     if ($head -cne $expected) { throw "#$Number head changed. Expected $expected; found $head." }
-    Invoke-GhAppApi $context POST "pulls/$Number/reviews" @{ event = 'COMMENT'; commit_id = $head; body = $body } -AsApp
+    $review = Invoke-GhAppApi $context POST "pulls/$Number/reviews" @{ event = 'COMMENT'; commit_id = $head; body = $body } -AsApp
+    if (-not $SkipBodyRefresh) {
+        # The record is posted. A failure here must not look like a failed post, because the caller would post it again.
+        # So the warnings never stop, whatever the caller chose for warnings.
+        try { Update-GhAppReviewRecordMarker $context $Number $head }
+        catch { Write-Warning "#${Number}: the review record is posted, but the description was not refreshed: $($_.Exception.Message)" -WarningAction Continue }
+    }
+    $review
 }
 
 function Write-GhAppMergeLog {

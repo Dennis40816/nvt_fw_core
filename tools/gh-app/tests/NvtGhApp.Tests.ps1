@@ -767,10 +767,14 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
     }
 
     Describe 'Review records' {
-        BeforeEach { Reset-Fixture; Import-Fixture }
+        BeforeEach {
+            Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
+            Mock Get-GhAppUtcNow { [DateTime]::new(2026, 1, 2, 3, 4, 5, 6, [DateTimeKind]::Utc) }
+        }
         It 'posts COMMENT with the exact checked commit_id' {
             Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
-            $null = Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha $script:HeadSha -BodyFile $script:BodyFile
+            $null = Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha $script:HeadSha -BodyFile $script:BodyFile -SkipBodyRefresh
+            @(Get-Calls).Count | Should Be 2
             $body = ConvertFrom-Json @(Get-Calls)[1].Input
             $body.event | Should Be COMMENT
             $body.commit_id | Should Be $script:HeadSha
@@ -798,6 +802,116 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Set-Responses @((New-PrStep -Pr (New-Pr -Fork)))
             Get-Message { Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile } | Should Be "Repository mismatch. Expected $script:RepositoryName."
             @(Get-Calls).Count | Should Be 1
+        }
+
+        # After the record, the description gets one hidden marker line, so that GitHub sends pull_request edited.
+        function Get-Marker { "<!-- review-record: $($script:HeadSha.Substring(0, 12)) 2026-01-02T03:04:05.006Z -->" }
+        function Set-RefreshResponses {
+            param($First, $Second = $First, $Returned, [int]$PatchExitCode = 0)
+            $steps = @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App),
+                (New-ApiStep pulls/7 -Value @{ body = $First }), (New-ApiStep pulls/7 -Value @{ body = $Second }))
+            if ($PSBoundParameters.ContainsKey('Returned')) {
+                $steps += New-ApiStep pulls/7 PATCH @{ body = $Returned } -App -ExitCode $PatchExitCode -ErrorText $(if ($PatchExitCode) { 'HTTP 502' } else { '' })
+            }
+            Set-Responses $steps
+        }
+        function Add-Record {
+            $script:Warnings = $null
+            Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -WarningVariable +script:Warnings -WarningAction SilentlyContinue
+        }
+        function Get-Patches { @(Get-Calls | Where-Object { $_.Arguments -contains 'PATCH' }) }
+
+        $original = "Summary $([char]0x4E2D)`r`n`r`n- item  `r`n"
+        foreach ($case in @(
+            @{ Name = 'a CRLF body that ends with a newline'; Old = $original; Suffix = '' },
+            @{ Name = 'an LF body without a final newline'; Old = "Summary`n`n- item"; Suffix = "`n" },
+            @{ Name = 'a CRLF body without a final newline'; Old = "Summary`r`n- item"; Suffix = "`r`n" }
+        )) {
+            It "reads the description and writes it once with only the marker added: $($case.Name)" {
+                $new = $case.Old + $case.Suffix + (Get-Marker)
+                Set-RefreshResponses $case.Old -Returned $new
+                $result = Add-Record
+                $result.id | Should Be 1
+                $calls = @(Get-Calls)
+                $calls.Count | Should Be 5
+                $calls[2].AppToken | Should Be $false
+                $calls[3].AppToken | Should Be $false
+                $calls[4].AppToken | Should Be $true
+                @(Get-Patches).Count | Should Be 1
+                $sent = ConvertFrom-Json $calls[4].Input
+                @($sent.PSObject.Properties.Name) -join ',' | Should Be 'body'
+                [string]::Equals($sent.body, $new, [StringComparison]::Ordinal) | Should Be $true
+                @($script:Warnings).Count | Should Be 0
+                Assert-NoToken ($result | Out-String)
+            }
+        }
+        foreach ($empty in @($null, '')) {
+            It "writes only the marker into an empty description ($(if ($null -eq $empty) { 'null' } else { 'empty string' }))" {
+                Set-RefreshResponses $empty -Returned (Get-Marker)
+                $null = Add-Record
+                (ConvertFrom-Json @(Get-Patches)[0].Input).body | Should Be (Get-Marker)
+                @($script:Warnings).Count | Should Be 0
+            }
+        }
+        $earlier = '<!-- review-record: bbbbbbbbbbbb 2025-12-31T00:00:00.000Z -->'
+        foreach ($ending in @('', "`r`n", "`r`n`r`n")) {
+            It "replaces a marker on the last line and keeps every other character (ending length $($ending.Length))" {
+                $before = "text`r`n~~~text`r`n$earlier`r`n~~~`r`n"
+                Set-RefreshResponses ($before + $earlier + $ending) -Returned ($before + (Get-Marker) + $ending)
+                $null = Add-Record
+                $sent = (ConvertFrom-Json @(Get-Patches)[0].Input).body
+                [string]::Equals($sent, $before + (Get-Marker) + $ending, [StringComparison]::Ordinal) | Should Be $true
+                @($script:Warnings).Count | Should Be 0
+            }
+        }
+        It 'leaves a line of the marker form alone when text follows it, because it can be quoted text' {
+            $old = "~~~text`r`n$earlier`r`n~~~`r`n"
+            Set-RefreshResponses $old -Returned ($old + (Get-Marker))
+            $null = Add-Record
+            $sent = (ConvertFrom-Json @(Get-Patches)[0].Input).body
+            [string]::Equals($sent, $old + (Get-Marker), [StringComparison]::Ordinal) | Should Be $true
+        }
+        It 'returns the posted record when the caller turns warnings into errors' {
+            Set-RefreshResponses 'text' -Returned 'unused' -PatchExitCode 1
+            $result = Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -WarningAction Stop
+            $result.id | Should Be 1
+        }
+        It 'does not write when the description changed between the two reads' {
+            Set-RefreshResponses 'first text' -Second 'first text, edited by someone'
+            $result = Add-Record
+            $result.id | Should Be 1
+            @(Get-Calls).Count | Should Be 4
+            @(Get-Patches).Count | Should Be 0
+            @($script:Warnings).Count | Should Be 1
+            [string]$script:Warnings[0] | Should Be '#7: the review record is posted, but the description was not refreshed: it changed while it was read.'
+        }
+        It 'does not write a description that did not arrive as text' {
+            # ConvertFrom-Json turns a string that is only a date into a DateTime, so its text is no longer exact.
+            Set-RefreshResponses '2026-01-01T00:00:00Z'
+            $null = Add-Record
+            @(Get-Patches).Count | Should Be 0
+            [string]$script:Warnings[0] | Should Be '#7: the review record is posted, but the description was not refreshed: it could not be read as text.'
+        }
+        It 'does not treat a response without a description field as an empty description' {
+            Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App), (New-ApiStep pulls/7 -Value @{ number = 7 }))
+            $null = Add-Record
+            @(Get-Patches).Count | Should Be 0
+            [string]$script:Warnings[0] | Should Be '#7: the review record is posted, but the description was not refreshed: it could not be read as text.'
+        }
+        It 'warns when GitHub returns a different description after the write' {
+            Set-RefreshResponses 'text' -Returned 'something else'
+            $null = Add-Record
+            @(Get-Patches).Count | Should Be 1
+            [string]$script:Warnings[0] | Should Be '#7: the description was written, but GitHub returned different text. Check the description.'
+        }
+        It 'keeps the posted record and does not repeat a failed write' {
+            Set-RefreshResponses 'text' -Returned 'unused' -PatchExitCode 1
+            $result = Add-Record
+            $result.id | Should Be 1
+            @(Get-Patches).Count | Should Be 1
+            @(Get-Calls | Where-Object { $_.Arguments -contains "/repos/$script:RepositoryName/pulls/7/reviews" }).Count | Should Be 1
+            [string]$script:Warnings[0] | Should Be "#7: the review record is posted, but the description was not refreshed: HTTP 502 /repos/$script:RepositoryName/pulls/7"
+            Assert-NoToken
         }
     }
 
