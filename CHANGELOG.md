@@ -12,7 +12,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.7 - 2026-11-27
 
-Tag `core-v0.9.7` on the merge commit of the version pull request.
+Tag `core-v0.9.7` on commit `7ff5882b47336aa57b56f12a1079e0ba49d0a50b` (#289).
 
 Theme, panel and icon additions for NFH 1.0.0: selection colors follow the application accent, an opt-in `marked` selection for flat controls, `CollapsiblePanel.UseGhostHeader` and four icon names. The default look of selected controls changes as described under Changed. It comes before the 1.0.0 API freeze.
 As in 0.9.5 and 0.9.6, the new public API stays in `PublicAPI.Unshipped.txt` of `Nvt.Core` and `Nvt.Core.Avalonia`, so a later 0.9.x version can still change its shape. `PublicAPI.Shipped.txt` of every published project is unchanged. The new members are source and binary compatible with 0.9.6.
