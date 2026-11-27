@@ -24,6 +24,10 @@ public class CollapsiblePanel : ContentControl
     public static readonly StyledProperty<bool> IsCollapsibleProperty =
         AvaloniaProperty.Register<CollapsiblePanel, bool>(nameof(IsCollapsible), true);
 
+    /// <summary>Defines the <see cref="UseGhostHeader"/> property.</summary>
+    public static readonly StyledProperty<bool> UseGhostHeaderProperty =
+        AvaloniaProperty.Register<CollapsiblePanel, bool>(nameof(UseGhostHeader), true);
+
     /// <summary>Defines the <see cref="HeaderRight"/> property.</summary>
     public static readonly StyledProperty<object?> HeaderRightProperty =
         AvaloniaProperty.Register<CollapsiblePanel, object?>(nameof(HeaderRight));
@@ -60,6 +64,16 @@ public class CollapsiblePanel : ContentControl
     {
         get => GetValue(IsCollapsibleProperty);
         set => SetValue(IsCollapsibleProperty, value);
+    }
+
+    /// <summary>
+    /// Gets or sets whether the header uses the shared actionGhost role. Defaults to <see langword="true"/>.
+    /// Set to <see langword="false"/> to style ToggleButton.panelBlockHeader in the host.
+    /// </summary>
+    public bool UseGhostHeader
+    {
+        get => GetValue(UseGhostHeaderProperty);
+        set => SetValue(UseGhostHeaderProperty, value);
     }
 
     /// <summary>Gets or sets optional content on the right of the header. Defaults to null.</summary>

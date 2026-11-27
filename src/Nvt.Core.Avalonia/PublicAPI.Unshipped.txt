@@ -1,6 +1,9 @@
 #nullable enable
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.UseGhostHeader.get -> bool
+Nvt.Core.Avalonia.Panels.CollapsiblePanel.UseGhostHeader.set -> void
 const Nvt.Core.Avalonia.Icons.NvtIcons.DarkMode = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.LightMode = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.Link = "" -> string!
 const Nvt.Core.Avalonia.Icons.NvtIcons.LinkOff = "" -> string!
 static Nvt.Core.Avalonia.Threading.UiThread.RegisterCurrentDispatcher() -> Avalonia.Threading.Dispatcher!
+static readonly Nvt.Core.Avalonia.Panels.CollapsiblePanel.UseGhostHeaderProperty -> Avalonia.StyledProperty<bool>!

@@ -20,7 +20,7 @@ namespace Nvt.Core.Avalonia.Tests.Panels;
 /// <summary>Characterizes the frozen NFH panel behavior using synthetic content.</summary>
 public sealed class CollapsiblePanelTests
 {
-    /// <summary>Pins all five property defaults before initialization.</summary>
+    /// <summary>Pins the property defaults before initialization.</summary>
     [AvaloniaFact]
     public void DefaultsMatchFrozenPanel()
     {
@@ -29,6 +29,7 @@ public sealed class CollapsiblePanelTests
         Assert.True(panel.IsExpanded);
         Assert.True(panel.DefaultExpanded);
         Assert.True(panel.IsCollapsible);
+        Assert.True(panel.UseGhostHeader);
         Assert.Null(panel.HeaderRight);
         Assert.False(panel.IsSet(CollapsiblePanel.IsExpandedProperty));
     }
@@ -111,18 +112,26 @@ public sealed class CollapsiblePanelTests
         finally { host.Close(); }
     }
 
-    /// <summary>Space on the actual header toggles both ways, updating body visibility and vector direction.</summary>
-    [AvaloniaFact]
-    public void HeaderTogglesBodyAndChevronInBothDirections()
+    /// <summary>Both header options toggle both ways, updating body visibility and vector direction.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HeaderTogglesBodyAndChevronInBothDirections(bool useGhostHeader)
     {
         var content = new TextBlock { Text = "Synthetic body" };
-        var panel = new CollapsiblePanel { Title = "Synthetic panel", Content = content, DefaultExpanded = false };
+        var panel = new CollapsiblePanel
+        {
+            Title = "Synthetic panel", Content = content, DefaultExpanded = false, UseGhostHeader = useGhostHeader,
+        };
         Window host = PanelsTestHost.Create(panel);
         try
         {
             ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
             Border body = PanelsTestHost.Find<Border>(panel, "panelBlockContent");
             ShapePath chevron = PanelsTestHost.Find<ShapePath>(panel, "panelBlockChevron");
+            Assert.Contains("panelBlockHeader", header.Classes);
+            Assert.Equal(useGhostHeader, header.Classes.Contains("actionGhost"));
+            Assert.Equal(HorizontalAlignment.Stretch, header.HorizontalContentAlignment);
             Assert.False(panel.IsExpanded);
             Assert.False(header.IsChecked);
             Assert.False(body.IsVisible);
@@ -153,6 +162,69 @@ public sealed class CollapsiblePanelTests
             panel.IsExpanded = true;
             Assert.True(header.IsChecked);
             Assert.True(body.IsVisible);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>The same header gains and loses the ghost class when the option changes.</summary>
+    [AvaloniaFact]
+    public void UseGhostHeaderUpdatesClassInBothDirections()
+    {
+        var panel = new CollapsiblePanel { Title = "Synthetic panel", Content = new TextBlock { Text = "Body" } };
+        Window host = PanelsTestHost.Create(panel);
+        try
+        {
+            ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
+            Assert.Contains("panelBlockHeader", header.Classes);
+            Assert.Contains("actionGhost", header.Classes);
+            panel.UseGhostHeader = false;
+            Assert.Contains("panelBlockHeader", header.Classes);
+            Assert.DoesNotContain("actionGhost", header.Classes);
+            panel.UseGhostHeader = true;
+            Assert.Contains("panelBlockHeader", header.Classes);
+            Assert.Contains("actionGhost", header.Classes);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>A host style can opt panels out of the ghost header without a local value.</summary>
+    [AvaloniaFact]
+    public void HostStyleCanDisableGhostHeader()
+    {
+        var panel = new CollapsiblePanel { Title = "Synthetic panel", Content = new TextBlock { Text = "Body" } };
+        Window host = PanelsTestHost.Create(panel, window => window.Styles.Add(new Style(selector => selector.OfType<CollapsiblePanel>())
+        {
+            Setters = { new Setter(CollapsiblePanel.UseGhostHeaderProperty, false) },
+        }));
+        try
+        {
+            ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
+            Assert.False(panel.UseGhostHeader);
+            Assert.Contains("panelBlockHeader", header.Classes);
+            Assert.DoesNotContain("actionGhost", header.Classes);
+        }
+        finally { host.Close(); }
+    }
+
+    /// <summary>Removing the ghost role exposes the host header padding that the role otherwise overrides.</summary>
+    [AvaloniaFact]
+    public void PlainHeaderUsesHostPadding()
+    {
+        var padding = new Thickness(23, 7);
+        var panel = new CollapsiblePanel { Title = "Synthetic panel", UseGhostHeader = false };
+        Window host = PanelsTestHost.Create(panel, window => window.Styles.Insert(0,
+            new Style(selector => selector.OfType<ToggleButton>().Class("panelBlockHeader"))
+            {
+                Setters = { new Setter(ToggleButton.PaddingProperty, padding) },
+            }));
+        try
+        {
+            ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");
+            Assert.Equal(padding, header.Padding);
+            panel.UseGhostHeader = true;
+            Assert.Equal(new Thickness(14, 0), header.Padding);
+            panel.UseGhostHeader = false;
+            Assert.Equal(padding, header.Padding);
         }
         finally { host.Close(); }
     }
@@ -193,13 +265,29 @@ public sealed class CollapsiblePanelTests
         finally { host.Close(); }
     }
 
-    /// <summary>Selectable header text neither takes focus nor blocks a pointer toggle, as in NFH.</summary>
-    [AvaloniaFact]
-    public void SelectableHeaderTextDoesNotBlockPointerToggle()
+    /// <summary>Selectable text neither takes focus nor blocks pointer toggles with either header option.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectableHeaderTextDoesNotBlockPointerToggle(bool useGhostHeader)
     {
         var right = new SelectableTextBlock { Text = "Selectable header text" };
-        var panel = new CollapsiblePanel { Title = "Title", HeaderRight = right, Content = new TextBlock { Text = "Body" } };
-        Window host = PanelsTestHost.Create(panel);
+        var panel = new CollapsiblePanel
+        {
+            Title = "Title", HeaderRight = right, Content = new TextBlock { Text = "Body" }, UseGhostHeader = useGhostHeader,
+        };
+        // The test application has no control theme, so the host supplies the plain header's hit-testable background.
+        // The ghost header keeps only Core's styles, so this test still fails if that role loses its background.
+        Window host = PanelsTestHost.Create(panel, window =>
+        {
+            if (!useGhostHeader)
+            {
+                window.Styles.Add(new Style(selector => selector.OfType<ToggleButton>().Class("panelBlockHeader"))
+                {
+                    Setters = { new Setter(ToggleButton.BackgroundProperty, Brushes.Transparent) },
+                });
+            }
+        });
         try
         {
             ToggleButton header = PanelsTestHost.Find<ToggleButton>(panel, "panelBlockHeader");

@@ -8,7 +8,8 @@
       <ControlTemplate TargetType="panels:CollapsiblePanel">
         <Border Classes="panelBlockRoot" HorizontalAlignment="Stretch">
           <StackPanel>
-            <ToggleButton Classes="panelBlockHeader actionGhost"
+            <ToggleButton Classes="panelBlockHeader"
+                          Classes.actionGhost="{Binding UseGhostHeader, RelativeSource={RelativeSource TemplatedParent}}"
                           IsEnabled="{TemplateBinding IsCollapsible}"
                           IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                           HorizontalAlignment="Stretch">

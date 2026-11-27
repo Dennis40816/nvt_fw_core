@@ -24,9 +24,14 @@
 | `IsExpanded` | `bool` | `true` |
 | `DefaultExpanded` | `bool` | `true` |
 | `IsCollapsible` | `bool` | `true` |
+| `UseGhostHeader` | `bool` | `true` |
 | `HeaderRight` | `object?` | `null` |
 
 初始化時，未設定的 `IsExpanded` 會採用 `DefaultExpanded`。明確設定的值優先，包括明確設定為 `true`。初始化後變更 `DefaultExpanded` 不會改變展開狀態。關閉 `IsCollapsible` 會強制展開，並拒絕之後的收合嘗試。再次啟用時，面板維持展開，直到明確設定收合或操作標頭。停用的標頭與隱藏的箭頭沿用 NFH 不可收合時的行為。範本依序包含切換標頭與內文；標頭放置標題、右側內容及箭頭，不使用 `Expander` 或巢狀內文卡片。
+
+`UseGhostHeader` 預設為 `true`，標頭保留 `panelBlockHeader` 與 `actionGhost`，既有外觀不變。設為 `false` 時只保留 `panelBlockHeader`，Core 不套用任何 action 角色。在使用端為 `ToggleButton.panelBlockHeader` 設定樣式前，標頭會呈現控制項佈景主題的預設外觀。
+
+可直接設定此選項，或在 `panels|CollapsiblePanel` 的樣式 setter 中設定。執行期間變更時，會加入或移除 `actionGhost`。stretch 內容對齊、箭頭與選取文字命中規則維持不變。
 
 `WorkspaceShell` 繼承 `TemplatedControl`。
 
@@ -78,6 +83,8 @@
 
 ## 驗證
 
+標頭選項測試涵蓋預設的兩個 class、直接與樣式設定停用、執行期間雙向變更、使用端內距，以及兩種標頭選項的切換行為。
+
 沿用現有 `ThemeTestApplication` 執行無視窗測試，不修改測試應用程式。所有內容均為合成資料。`CollapsiblePanelTests` 固定所有預設值、未設定與明確設定的初始化、初始化前清除明確值、透過標頭鍵盤操作雙向切換、不可收合初始化的兩種設定順序、可收合與不可收合之間的轉換、內文可見性、標頭右側可見性，以及平面版面；也檢查向量箭頭方向。`WorkspaceShellTests` 檢查每個插槽的視覺區域、列順序、預設比例，以及自訂與即時更新欄寬。`PanelsStylesTests` 檢查兩種主題中的資源解析、即時主題／使用端覆寫，以及適用的來源版面限制。來源限制測試讀取 checkout 中的樣式檔；執行階段測試載入已編譯的樣式 include。
 
 已搜尋凍結測試來源中的 `HidePanelBlock`、`ReviewWorkspaceShell`、`panelBlock*`、`workspaceTopLayerBox` 與 `workspaceMainTitle`，未找到專用測試或直接參照。從 `tests/FreeformHelper.Tests/UI/Snapshots/UiLayoutGuardTests.cs` 移植適用的限制：token 之外不使用行內十六進位色碼、同一樣式不重複設定同一屬性、不將捲動寬度繫結至 `Bounds.Width`，以及不使用預設 `Expander`。`UI/Smoke/WorkspaceViewsSmokeTests.cs` 與 `UI/Smoke/NotchExportSelectionWindowSmokeTests.cs` 的無視窗版面檢查改以合成插槽涵蓋，產品設定留在 NFH。產品來源雜湊與渲染快照基準不複製至 Core。
@@ -103,7 +110,7 @@ NFH 導入不在本次抽出範圍內。導入 PR 依下列方式驗證展開／
 
 - 以通用名稱取代 `HidePanelBlock` 與 `ReviewWorkspaceShell`。工作區唯一新增的屬性是兩個 `GridLength` 欄寬。
 - NFH 使用圖示字型的 `ExpandMore` 與 `ExpandLess` 字元。Core 在相同的 20×20 容器中以向量 `Path` 繪製，收合時朝下、展開時朝上。置中於容器的固定 12×6 版面與 1.5 線寬取代 `IconSizeSm=12` 字型圖示；現有 token 沒有適用的圖示尺寸／幾何資源。不新增圖示屬性或圖示字型相依項目。
-- 面板標頭使用 Core 的 `actionGhost` 共用角色，採 32 px 高度、膠囊圓角與 14,0 內距。移除局部背景／邊界／狀態／範本覆寫，只保留 stretch 內容、選取文字命中規則與展開／chevron 行為。panel root 不裁切外側焦點框；焦點、停用與 checked 均依共用規則。
+- 面板標頭預設使用 Core 的 `actionGhost` 共用角色，採 32 px 高度、膠囊圓角與 14,0 內距。移除局部背景／邊界／狀態／範本覆寫，只保留 stretch 內容、選取文字命中規則與展開／chevron 行為。panel root 不裁切外側焦點框；焦點、停用與 checked 均依共用規則。
 - NFH 以全域規則對切換按鈕內所有 `SelectableTextBlock` 設定 `IsHitTestVisible=False` 與 `Focusable=False`。Core 只在面板標頭內套用這兩個設定，因此可選取的標頭內容不會擋住切換。
 - 工作區內容仍沿用使用端字型；共用按鈕角色為面板標頭提供既有 Core 字型別名。
 - Core 對應的筆刷值可能與 NFH 色彩不同。對應依據是語意，不代表像素完全相等。NFH 採用 Core 的色彩並審查導入圖片。

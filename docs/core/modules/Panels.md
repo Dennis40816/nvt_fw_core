@@ -24,9 +24,14 @@ Merge `avares://Nvt.Core.Avalonia/Theme/ThemeTokens.axaml` into the host's resou
 | `IsExpanded` | `bool` | `true` |
 | `DefaultExpanded` | `bool` | `true` |
 | `IsCollapsible` | `bool` | `true` |
+| `UseGhostHeader` | `bool` | `true` |
 | `HeaderRight` | `object?` | `null` |
 
 At initialization, an unset `IsExpanded` takes `DefaultExpanded`. An explicit value, including an explicit `true`, wins. Changing `DefaultExpanded` after initialization does not change expansion. Turning `IsCollapsible` off forces expansion and rejects later attempts to collapse. Turning it on again leaves the panel expanded until it is collapsed explicitly or through the header. The disabled header and hidden chevron follow NFH's non-collapsible behavior. The template has a toggle header containing the title, right-hand content and chevron, followed by the body; it uses no `Expander` or nested body card.
+
+`UseGhostHeader` defaults to `true`, keeping both `panelBlockHeader` and `actionGhost` on the header and leaving the existing look unchanged. Set it to `false` to keep only `panelBlockHeader`, with no Core action role. The header has the control theme's default look until the host styles `ToggleButton.panelBlockHeader`.
+
+Set the option directly or through a style setter on `panels|CollapsiblePanel`. Changing it at run time adds or removes `actionGhost`. Stretched content alignment, the chevron and selectable-text hit-test rules stay the same.
 
 `WorkspaceShell` inherits `TemplatedControl`.
 
@@ -78,6 +83,8 @@ Every resource reference in `PanelsStyles.axaml` uses an existing `Nfc*` key thr
 
 ## Verification
 
+The header option tests cover both classes by default, direct and styled opt-out, live changes in both directions, host padding and toggling with either header option.
+
 The existing `ThemeTestApplication` runs the headless tests unchanged. All content is synthetic. `CollapsiblePanelTests` pins all defaults, unset and explicit initialization, clearing an explicit value before initialization, header keyboard toggling in both directions, both assignment orders for non-collapsible initialization, transitions between collapsible and non-collapsible states, body visibility, header-right visibility and flat layout. It also checks the vector's direction. `WorkspaceShellTests` checks every slot's visual region, row order, default proportions and custom/live column widths. `PanelsStylesTests` checks resource resolution in both themes, live theme/host overrides and the applicable source layout guards. Its source guards read the checked-out style file; runtime tests load the compiled style include.
 
 The frozen test sources were searched for `HidePanelBlock`, `ReviewWorkspaceShell`, `panelBlock*`, `workspaceTopLayerBox` and `workspaceMainTitle`. No dedicated tests or direct references were found. Applicable concerns were ported from `tests/FreeformHelper.Tests/UI/Snapshots/UiLayoutGuardTests.cs`: no inline hex colors outside tokens, no duplicate property setters in a style, no scroll-width binding to `Bounds.Width`, and no default `Expander`. The headless layout concern in `UI/Smoke/WorkspaceViewsSmokeTests.cs` and `UI/Smoke/NotchExportSelectionWindowSmokeTests.cs` is covered using synthetic slots; their product setup stays in NFH. Product source-hash and rendered snapshot baselines are not copied into Core.
@@ -103,7 +110,7 @@ NFH adoption is outside this extraction. Its adoption PR verifies zero differenc
 
 - Generic names replace `HidePanelBlock` and `ReviewWorkspaceShell`. The shell's only new properties are its two `GridLength` widths.
 - NFH uses the icon font's `ExpandMore` and `ExpandLess` glyphs. Core draws a vector `Path`, down when collapsed and up when expanded, in the same 20-by-20 host. Its fixed 12-by-6 layout, centered in the host, and 1.5 stroke replace the `IconSizeSm=12` font glyph; no suitable icon size/geometry token exists. There is no icon property or icon-font dependency.
-- The panel header uses Core's shared `actionGhost` role with 32 px height, pill corners and 14,0 padding. Local background/border/state/template overrides are removed; stretched content, selectable-text hit testing and expansion/chevron behavior remain. The panel root does not clip the exterior focus ring; focus, disabled and checked follow the shared rules.
+- By default, the panel header uses Core's shared `actionGhost` role with 32 px height, pill corners and 14,0 padding. Local background/border/state/template overrides are removed; stretched content, selectable-text hit testing and expansion/chevron behavior remain. The panel root does not clip the exterior focus ring; focus, disabled and checked follow the shared rules.
 - NFH sets `IsHitTestVisible=False` and `Focusable=False` on every `SelectableTextBlock` inside a toggle button through a global rule. Core applies the same two setters only inside the panel header, so selectable header content does not block toggling.
 - Workspace content retains the host font; the shared button role supplies the panel header's existing Core font aliases.
 - Core's mapped brush values can differ from NFH's palette. The mapping is semantic, not a claim of pixel equality. NFH adopts Core's colors and reviews adoption images.
