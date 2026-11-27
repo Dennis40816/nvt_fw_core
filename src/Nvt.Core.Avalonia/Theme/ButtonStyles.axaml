@@ -298,6 +298,60 @@
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>
 
+  <!-- marked reserves its frame in every state. These triggers follow the ghost and flat triggers at the same priority. -->
+  <Style Selector="Button.actionGhost.flat.marked, ToggleButton.actionGhost.flat.marked">
+    <Setter Property="BorderThickness" Value="2"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked:not(:disabled), ToggleButton.actionGhost.flat.marked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextSecondaryBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked:pointerover:not(:disabled), ToggleButton.actionGhost.flat.marked:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked:flyout-open:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked:pressed:not(:disabled), ToggleButton.actionGhost.flat.marked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked.active:not(:disabled), ToggleButton.actionGhost.flat.marked.active:not(:disabled), ToggleButton.actionGhost.flat.marked:checked:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked.active:pointerover:not(:disabled), ToggleButton.actionGhost.flat.marked.active:pointerover:not(:disabled), ToggleButton.actionGhost.flat.marked:checked:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked.active:flyout-open:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked.active:pressed:not(:disabled), ToggleButton.actionGhost.flat.marked.active:pressed:not(:disabled), ToggleButton.actionGhost.flat.marked:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked:disabled, ToggleButton.actionGhost.flat.marked:disabled">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+
+  <Style Selector="Button.actionGhost.flat.marked.active:disabled, ToggleButton.actionGhost.flat.marked.active:disabled, ToggleButton.actionGhost.flat.marked:checked:disabled">
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+
   <Style Selector="Button.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder, ToggleButton.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder">
     <Setter Property="IsVisible" Value="True"/>
   </Style>
