@@ -67,7 +67,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     if (!IsSwitch(role))
                     {
                         Assert.Equal(ColorOf(button.Foreground), ColorOf(label.Foreground));
-                        if (state.Checked && !state.Disabled) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(label.Foreground));
+                        if (state.Checked && !state.Disabled) Assert.Equal(ResourceColor(button, "Nvt.Button.PrimaryLabelBrush"), ColorOf(label.Foreground));
                         Color surface = Flatten(ColorOf(button.Background), ResourceColor(button, role == "toggleTab" ? "NfcSurfaceBrush" : "NfcSelectionSurfaceBrush"));
                         double contrast = Contrast(ColorOf(label.Foreground), surface);
                         Assert.True(contrast >= (state.Disabled ? 3 : 4.5), $"{dark}/{role}/{state.Name}: text {contrast:F3}");
@@ -77,7 +77,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
                     else
                     {
                         Ellipse knob = Assert.Single(button.GetVisualDescendants().OfType<Ellipse>());
-                        Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
+                        Assert.Equal(ResourceColor(button, state.Checked && !state.Disabled ? "Nvt.Toggle.SelectedLabelBrush" : "Nvt.Toggle.KnobBrush"), ColorOf(knob.Fill));
                         double contrast = Contrast(ColorOf(knob.Fill), ColorOf(button.Background));
                         Assert.True(contrast >= (state.Checked && !state.Disabled ? 4.5 : 3), $"{dark}/{role}/{state.Name}: knob {contrast:F3}");
                         knobMinimum = Math.Min(knobMinimum, contrast);
@@ -256,7 +256,7 @@ public sealed class ToggleStylesTests(ITestOutputHelper output)
         Border track = Part(button, "ToggleBody");
         Assert.Equal(button.CornerRadius, track.CornerRadius);
         Assert.Equal(new CornerRadius(track.CornerRadius.TopLeft), track.CornerRadius);
-        if (selected) Assert.Equal(Color.Parse("#FFFFFF"), ColorOf(knob.Fill));
+        if (selected) Assert.Equal(ResourceColor(button, button.IsEnabled && !button.Classes.Contains("danger") ? "Nvt.Toggle.SelectedLabelBrush" : "Nvt.Toggle.KnobBrush"), ColorOf(knob.Fill));
         Point point = knob.TranslatePoint(default, track)!.Value;
         Assert.Equal(3, point.Y);
         Assert.Equal(3, track.Bounds.Height - point.Y - knob.Bounds.Height);

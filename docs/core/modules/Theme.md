@@ -113,7 +113,40 @@ Tools do not override basic control styles locally. Core adds a role when a tool
 | NFU | `NfcAccentBorderStrongBrush` | `#3D5B00` | `#97CD1E` |
 | NFU | `NfcAccentBorderLightBrush` | `#4A6F00` | `#82B11A` |
 
-Filled buttons use `Nvt.Button.PrimaryLabelBrush` from `ThemeTokens.axaml`, referenced through `DynamicResource`: `#FFFFFF` in Light and `#0B1220` in Dark. A tool may override it at application scope during the adoption step.
+Filled buttons and enabled filled selections use `Nvt.Button.PrimaryLabelBrush`: `#FFFFFF` in Light and `#0B1220` in Dark. Tools keep this Core label role and override only the seven accent keys.
+
+### Selection accents in core-v0.9.7
+
+Selection follows the application accent at the existing strength, keeping the default NFC look nearly unchanged.
+Tools see their application accent in lists, tabs, soft toggles, choice rows,
+filled toggles, switch tracks, checked indicators, progress and splitter previews after setting only the seven keys above.
+Existing public tokens such as `Nvt.List.SelectedLabelBrush` remain SolidColorBrush values and follow those overrides,
+including when Core styles load globally in `Application.Styles` and the application changes theme variant.
+
+| Role | Palette source | NFC Light | NFC Dark |
+| --- | --- | --- | --- |
+| Selected tint | `NfcSurfaceBrush` → `NfcAccentBrush`, 18% / 22% | `#D5E1FB` | `#223755` |
+| Selected hover tint | `NfcSurfaceBrush` → `NfcAccentBrush`, 12% / 19% | `#E3EBFC` | `#20334F` |
+| Selected pressed tint | `NfcSurfaceBrush` → `NfcAccentBrush`, 15% / 25% | `#DCE6FC` | `#243B5C` |
+| Selected text and markers | `NfcAccentStrongBrush` → `NfcTextStrongBrush`, 22% / 45% | `#113D9D` | `#BEDAFB` |
+| Filled selection | `NfcAccentBrush` | `#1557E9` | `#5FA5FA` |
+| Filled hover | `NfcAccentStrongBrush` | `#1148BE` | `#8FBFFB` |
+| Filled pressed | `NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20% | `#113EA0` | `#A4CBFB` |
+| Filled label / glyph / checked knob | `Nvt.Button.PrimaryLabelBrush` | `#FFFFFF` | `#0B1220` |
+| Selected transparent rest | Hover tint at alpha zero | `#00E3EBFC` | `#0020334F` |
+
+The internal `AccentBrush` adapter blends brush-valued `From` and `To` sources, both bound with `DynamicResource`.
+Each ARGB channel is `From + Amount * (To - From)`, rounded to the nearest integer (ties to even).
+With only `From`, it forwards that brush's color and opacity; `Transparent` sets the resulting alpha to zero.
+List, Tab, Form and Soft tokens retain their `StaticResource` aliases to the adapted `Nvt.Controls.*` brush objects.
+In Dark, filled selections change from deep blue with white labels to the application accent with dark labels (`#0B1220`).
+Danger, disabled, focus, neutral overlays and unchecked knobs keep their existing colors.
+Choice labels retain their existing text color. Text classes keep their neutral roles except inside enabled, checked
+`toggleSegment`, `toggleTab` and `toggleIcon` controls without `danger`, where they follow the filled control's foreground.
+Text without a text class keeps the color it inherits or that the host sets.
+
+To change the accent, replace the accent resource. Changing the `Color` of a brush that is already in resources does not update the derived selection brushes.
+The derived brushes support tokens merged into application resources. Merging the tokens into one window in XAML and then switching the theme variant of a subtree is not supported.
 
 ## Sizes and radii
 
@@ -743,22 +776,22 @@ The ComboBox box keeps its existing theme and template.
 ### List states and tokens
 
 Rest uses `Nvt.Interaction.RestBrush`, the hover colour at zero alpha. Pointer over uses `Nvt.Interaction.HoverBrush`, and pressed uses `Nvt.Interaction.PressedBrush`.
-Selected rows use the fixed selected fill `Nvt.Controls.SelectedBrush`, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
+Selected rows use the accent-derived selected fill `Nvt.Controls.SelectedBrush`, accent text, and a 2 × 12 DIP accent marker. The marker sits 4 DIP from the left edge and leaves a 4 DIP gap before the text.
 Multi-selection uses the same appearance.
 Disabled rows keep opacity 1 and use `NfcTextDisabledBrush`.
 Disabled selected rows use `NfcSelectionSurfaceBrush`.
 Keyboard focus shows one 2 DIP ring inset by 2 DIP, so scrolling does not clip it.
 Pointer focus shows no ring. Focus does not recolor a list row.
 
-List aliases share `Nvt.Controls.Selected*` resources with Choice rows and `toggleSoft`. Checked MenuItems no longer read them.
+List aliases share the adapted `Nvt.Controls.Selected*` brushes with Choice rows and `toggleSoft`. Checked MenuItems no longer read them.
 Override the `Nvt.List.Selected*` resources together to replace the selected palette at runtime.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.List.SelectedBrush` | `#D3E1F8`, `Nvt.Controls.SelectedBrush` | `#1F3558`, `Nvt.Controls.SelectedBrush` |
-| `Nvt.List.SelectedPointerOverBrush` | `#E3ECFC`, `Nvt.Controls.SelectedPointerOverBrush` | `#20334F`, `Nvt.Controls.SelectedPointerOverBrush` |
-| `Nvt.List.SelectedPressedBrush` | `#DCE7FA`, `Nvt.Controls.SelectedPressedBrush` | `#243C5B`, `Nvt.Controls.SelectedPressedBrush` |
-| `Nvt.List.SelectedLabelBrush` | `#0E3C9E`, `Nvt.Controls.SelectedForegroundBrush` | `#BEDAFF`, `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.List.SelectedBrush` | `#D5E1FB`, `Nvt.Controls.SelectedBrush` | `#223755`, `Nvt.Controls.SelectedBrush` |
+| `Nvt.List.SelectedPointerOverBrush` | `#E3EBFC`, `Nvt.Controls.SelectedPointerOverBrush` | `#20334F`, `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.List.SelectedPressedBrush` | `#DCE6FC`, `Nvt.Controls.SelectedPressedBrush` | `#243B5C`, `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.List.SelectedLabelBrush` | `#113D9D`, `Nvt.Controls.SelectedForegroundBrush` | `#BEDAFB`, `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.List.TransparentBrush` | `#00FFFFFF`, `Nvt.Toggle.TransparentBrush` | Same |
 | `Nvt.List.CompactHeight` | 24 | 24 |
 
@@ -843,7 +876,7 @@ The minimum contrast values are identical across shapes.
 
 | Contrast | Light | Dark |
 | --- | --- | --- |
-| Selected list text and marker | 7.363:1 | 7.830:1 |
+| Selected list text and marker | 7.342:1 | 7.876:1 |
 | Disabled text | 3.582:1 | 3.574:1 |
 | Focus ring against item fills | 4.838:1 | 5.988:1 |
 
@@ -918,7 +951,7 @@ Load the style after Fluent alongside the other Core theme styles.
 | `ToggleSwitch` | The native control receives the same switch look without a class. | Track 52 × 28, knob 22 × 22, travel 24. |
 
 All measurements use device-independent pixels.
-Switch knobs stay round and white in both themes and shapes.
+Switch knobs stay round in both themes and shapes. Enabled checked knobs use the primary label brush; unchecked, disabled and danger knobs retain white.
 The switch template shows the track only. Place any visible label beside it and provide an accessible name.
 The host owns selection rules, commands, and content.
 Use one toggle role per control.
@@ -954,22 +987,20 @@ Disabled controls ignore hover, pressed, and focus overrides and keep opacity 1.
 
 Styles resolve every color and corner through resources.
 The following palette applies to both shapes.
-Light aliases reuse existing Core brushes. Dark fills use deeper colors to preserve white content contrast.
-Override the `Nvt.Toggle.*` keys together in one resource dictionary to replace the toggle palette.
-Replace that dictionary in the application or window resources to update attached controls.
+Both themes derive enabled selected fills and labels from the application accent and primary label role. Set only the seven application accent keys; no toggle token override is needed.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#1148BE` |
-| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
-| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SelectedPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` (`Nvt.Button.PrimaryLabelBrush`) | `#0B1220` (`Nvt.Button.PrimaryLabelBrush`) |
 | `Nvt.Toggle.DangerFillBrush` | `#A82035` (`NfcDangerTextBrush`) | `#CC3F54` |
 | `Nvt.Toggle.DangerFillPointerOverBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
 | `Nvt.Toggle.DangerFillPressedBrush` | `#861B2C` (`NfcDangerTextStrongBrush`) | `#C8384D` |
-| `Nvt.Toggle.SwitchOnBrush` | `#2563EB` | `#2F6BEE` |
-| `Nvt.Toggle.SwitchPointerOverBrush` | `#1D4ED8` | `#2C68E8` |
-| `Nvt.Toggle.SwitchPressedBrush` | `#1E40AF` | `#2965E2` |
+| `Nvt.Toggle.SwitchOnBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SwitchPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SwitchPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
 | `Nvt.Toggle.KnobBrush` | `#FFFFFF` | `#FFFFFF` |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 
@@ -982,10 +1013,10 @@ Checked fill checks cover enabled states. Disabled checked states use the neutra
 
 | Contrast | Light | Dark |
 | --- | --- | --- |
-| White on checked segment, tab, and icon | 5.879:1 | 7.794:1 |
-| White on checked switch | 5.169:1 | 4.710:1 |
+| Primary label on checked segment, tab, and icon | 5.879:1 | 7.355:1 |
+| Primary label on checked switch | 5.879:1 | 7.355:1 |
 | White on checked danger | 7.184:1 | 4.766:1 |
-| Checked switch track against the page surfaces | 4.718:1 | 3.038:1 |
+| Checked switch track against the page surfaces | 5.367:1 | 6.182:1 |
 | Checked danger fill against the page surfaces | 6.558:1 | 3.094:1 |
 | Standard focus ring against adjacent surfaces | 3.879:1 | 4.658:1 |
 | Disabled text | 3.582:1 | 3.574:1 |
@@ -1066,14 +1097,14 @@ The role uses `NfcControlHeight` at 32 DIP and horizontal padding of 12 DIP.
 | Disabled on | `Nvt.Toggle.SoftDisabledCheckedBrush` | `Nvt.Toggle.SoftDisabledForegroundBrush` |
 | Keyboard focus | Retains the current fill. | Retains the current foreground. |
 
-The following aliases share Core resources in both themes.
+The following aliases share Core brush objects in both themes.
 Selected states use the tonal palette documented under Control redesign verification.
-Replace one dictionary containing these `Nvt.Toggle.Soft*` keys to update attached controls together.
+The selected soft aliases follow the adapted control brushes and the application accent; tools do not override the family palette.
 
 | Token | Core resource | Light | Dark |
 | --- | --- | --- | --- |
-| `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` |
-| `Nvt.Toggle.SoftCheckedForegroundBrush` | `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
+| `Nvt.Toggle.SoftCheckedBrush` | `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` |
+| `Nvt.Toggle.SoftCheckedForegroundBrush` | `Nvt.Controls.SelectedForegroundBrush` | `#113D9D` | `#BEDAFB` |
 | `Nvt.Toggle.SoftPointerOverBrush` | `Nvt.Interaction.HoverBrush` | `#331E293B` | `#33E2E8F0` |
 | `Nvt.Toggle.SoftPressedBrush` | `Nvt.Interaction.PressedBrush` | `#3D1E293B` | `#3DE2E8F0` |
 | `Nvt.Toggle.SoftForegroundBrush` | `NfcTextSecondaryBrush` | `#475569` | `#CBD5E1` |
@@ -1093,9 +1124,9 @@ Pressed controls use a 0.98 render scale without changing layout or hit targets.
 Space toggles the value, Tab focuses the control, and disabled controls ignore input.
 
 Text and icons share the inherited foreground and meet 4.5:1 contrast in both themes.
-Selected rest, hover, and pressed text measure 7.363, 8.185, and 7.807:1 in Light.
-Dark values are 8.582, 8.898, and 7.830:1.
-The role uses `Nvt.Controls.FocusBrush`. Against all three selected fills, its minimum is 5.036:1 in Light and 6.194:1 in Dark.
+Selected rest, hover, and pressed text calculate to 7.342, 8.059, and 7.698:1 in Light.
+Dark values are 8.370, 8.867, and 7.876:1.
+The role uses `Nvt.Controls.FocusBrush`. Against all three selected fills, its minimum is 5.067:1 in Light and 6.252:1 in Dark.
 Disabled on text measures 3.582:1 in light and 3.574:1 in dark against its selection fill.
 
 Adopt the role in three steps:
@@ -1128,7 +1159,7 @@ Row padding is 10,6; compact padding is 10,2. Enabled labels use `Nvt.Controls.C
 `ChoiceStyles.axaml` gives native checkboxes a shared Core appearance without an appearance class.
 Merge `ThemeTokens.axaml` into application resources and load `ChoiceStyles.axaml` after Fluent.
 
-The indicator measures 20 × 20 DIP. The label uses `Nvt.Controls.ChoiceForegroundBrush`, `NfcUiFontFamily`, and the 13 DIP `NfcFontSize13` body size.
+The indicator measures 20 × 20 DIP. Enabled labels retain `Nvt.Controls.ChoiceForegroundBrush`, `NfcUiFontFamily`, and the 13 DIP `NfcFontSize13` body size in every selection state.
 An 8 DIP gap separates the indicator and label. The whole row accepts input and measures at least 32 DIP high.
 Long string labels wrap and grow the row. The indicator stays aligned with the first line.
 Custom content retains its content template and controls its own text wrapping.
@@ -1138,7 +1169,7 @@ Use `compact` only for single-line labels. The row height is fixed, so a wrapped
 The current inventory requires this variant for filter checkboxes.
 
 Space preserves Avalonia's normal two-state cycle. `IsThreeState="True"` cycles unchecked, checked, indeterminate, then unchecked.
-An indeterminate value shows a white dash. A checked value shows a white check mark.
+An indeterminate value shows a dash. A checked value shows a check mark. Enabled marks use the primary label brush; disabled marks retain white.
 Disabled choices retain their selection glyph and opacity 1.
 
 ### Choice states
@@ -1162,7 +1193,7 @@ Brush transitions last 150 ms. Add `reducedMotion` to the control or an ancestor
 | Keyboard focus | Retains current fill | Retains current outline | Retains current label |
 
 Disabled controls ignore pointer, pressed, and keyboard focus styles.
-White selection content uses `Nvt.Toggle.SelectedLabelBrush` in both themes.
+Enabled selection content uses `Nvt.Toggle.SelectedLabelBrush`, which follows `Nvt.Button.PrimaryLabelBrush` in both themes. Disabled selection content retains white.
 Dark selected outlines use the brighter Core accent to separate the indicator from adjacent surfaces.
 
 ### Choice tokens
@@ -1190,10 +1221,10 @@ Geometry comes from Choice and Shape tokens. Row colors come from the shared pal
 | `NfcTextDisabledBrush` | `#68778C` | `#7B8CA5` |
 | `NfcAccentBorderBrush` | `#1557E9` | `#5FA5FA` |
 | `NfcAccentBorderStrongBrush` | `#1148BE` | `#8FBFFB` |
-| `Nvt.Toggle.SelectedBrush` | `#1557E9` | `#1148BE` |
-| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` | `#0E3C9E` |
-| `Nvt.Toggle.SelectedPressedBrush` | `#0E3C9E` | `#0B307E` |
-| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` | `#FFFFFF` |
+| `Nvt.Toggle.SelectedBrush` | `#1557E9` (`NfcAccentBrush`) | `#5FA5FA` (`NfcAccentBrush`) |
+| `Nvt.Toggle.SelectedPointerOverBrush` | `#1148BE` (`NfcAccentStrongBrush`) | `#8FBFFB` (`NfcAccentStrongBrush`) |
+| `Nvt.Toggle.SelectedPressedBrush` | `#113EA0` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) | `#A4CBFB` (`NfcAccentStrongBrush` → `NfcTextStrongBrush`, 20%) |
+| `Nvt.Toggle.SelectedLabelBrush` | `#FFFFFF` (`Nvt.Button.PrimaryLabelBrush`) | `#0B1220` (`Nvt.Button.PrimaryLabelBrush`) |
 | `Nvt.Toggle.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` |
 | `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
 | `Nvt.Focus.RingThickness` | 2 | 2 |
@@ -1208,12 +1239,12 @@ The following minimum ratios cover both shapes and five adjacent surfaces, inclu
 
 | Contrast | Light | Dark |
 | --- | --- | --- |
-| Enabled label | 13.513:1 | 11.215:1 |
+| Enabled selected label | 13.595:1 | 11.320:1 |
 | Disabled label | 3.582:1 | 3.574:1 |
 | Indicator outline across all states | 3.154:1 | 3.076:1 |
-| White glyph across all selected states, including disabled | 4.559:1 | 3.422:1 |
-| White glyph on enabled checked fill | 5.879:1 | 7.794:1 |
-| Keyboard focus ring | 5.036:1 | 6.194:1 |
+| Glyph across all selected states, including disabled | 4.559:1 | 3.422:1 |
+| Primary-label glyph on enabled checked fill | 5.879:1 | 7.355:1 |
+| Keyboard focus ring | 4.129:1 | 4.923:1 |
 
 ### CheckBox adoption
 
@@ -1238,7 +1269,7 @@ The row shares CheckBox geometry, colors, contrast, and runtime shape changes. T
 
 `ChoiceStyles.axaml` also styles native radio buttons without an appearance class.
 Load the same theme tokens and styles described under CheckBox.
-The radio ring measures 20 × 20 DIP and contains a 10 DIP white dot when checked.
+The radio ring measures 20 × 20 DIP and contains a 10 DIP dot when checked. Its enabled color follows the primary label brush; its disabled color stays white.
 `Nvt.Shape.RoundCornerRadius` keeps the ring round in Pill and Square.
 The label gap, row height, wrapping, focus ring, motion, disabled selection, and `compact` class follow the checkbox rules.
 Radio buttons use the checked and unchecked states in the choice table.
@@ -1280,22 +1311,22 @@ Load the existing family styles after Fluent; `ThemeTokens.axaml` includes `Cont
 Remove competing local geometry, palette, row-fill, grip, and focus styles. Keep application logic and native keyboard behavior.
 
 Shared selected fills apply to ListBoxItem, ComboBoxItem, Choice rows, and `toggleSoft`. A checked MenuItem carries no fill.
-List aliases and Toggle aliases remain available for dictionary replacement. Replace each family palette together.
+Existing List, Tab, Form and Toggle public brush keys remain available. Their selected values dynamically follow the application accent without family overrides.
 
 | Token | Light | Dark |
 | --- | --- | --- |
-| `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` |
-| `Nvt.Controls.SelectedPointerOverBrush` | `#E3ECFC` | `#20334F` |
-| `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` |
-| `Nvt.Controls.SelectedPressedBrush` | `#DCE7FA` | `#243C5B` |
-| `Nvt.Controls.SelectedForegroundBrush` | `#0E3C9E` | `#BEDAFF` |
+| `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` |
+| `Nvt.Controls.SelectedPointerOverBrush` | `#E3EBFC` | `#20334F` |
+| `Nvt.Controls.SelectedRestBrush` | `#00E3EBFC` | `#0020334F` |
+| `Nvt.Controls.SelectedPressedBrush` | `#DCE6FC` | `#243B5C` |
+| `Nvt.Controls.SelectedForegroundBrush` | `#113D9D` | `#BEDAFB` |
 | `Nvt.Controls.FocusBrush` | `#1557C0` | `#8FC5FF` |
 | `Nvt.Controls.ChoiceForegroundBrush` | `#0F172A` | `#FFFFFF` |
 | `Nvt.Controls.ExpanderPressedBrush` | `#C9CCD0` | `#434A57` |
 | `Nvt.Controls.ExpanderPressedForegroundBrush` | `#0B1220` | `#FFFFFF` |
 | `Nvt.Controls.ExpanderDisabledForegroundBrush` | `#637085` | `#91A1B9` |
-| `Nvt.Toggle.SoftCheckedPointerOverBrush` | `#E3ECFC` | `#20334F` |
-| `Nvt.Toggle.SoftCheckedPressedBrush` | `#DCE7FA` | `#243C5B` |
+| `Nvt.Toggle.SoftCheckedPointerOverBrush` | `#E3EBFC` | `#20334F` |
+| `Nvt.Toggle.SoftCheckedPressedBrush` | `#DCE6FC` | `#243B5C` |
 
 | Token | Pill | Square |
 | --- | --- | --- |
@@ -1324,23 +1355,23 @@ List aliases and Toggle aliases remain available for dictionary replacement. Rep
 | `Nvt.GridSplitter.PressedLineThickness` | 3 | 3 |
 
 All new pairs below use WCAG relative luminance, opaque sRGB colors, and both shapes. Ratios are rounded to three decimals.
-Text, icons, active outlines, and focus preserve the previously documented minima.
+Text retains 4.5:1; active outlines and focus retain 3:1. Existing test floors remain unchanged.
 Decorative separators and inactive splitter hints deliberately become lighter; they carry no text or active-control identity.
 
 | Contrast | Light | Dark |
 | --- | --- | --- |
-| Tonal text, icons and markers / Selected | 7.363:1 | 8.582:1 |
-| Choice label / Selected | 13.513:1 | 12.292:1 |
-| Choice outline / Selected | 4.450:1 | 4.829:1 |
-| Tonal focus / Selected | 5.036:1 | 6.789:1 |
-| Tonal text, icons and markers / SelectedPointerOver | 8.185:1 | 8.898:1 |
-| Choice label / SelectedPointerOver | 15.022:1 | 12.744:1 |
-| Choice outline / SelectedPointerOver | 6.558:1 | 6.683:1 |
-| Tonal focus / SelectedPointerOver | 5.598:1 | 7.039:1 |
-| Tonal text, icons and markers / SelectedPressed | 7.807:1 | 7.830:1 |
-| Choice label / SelectedPressed | 14.328:1 | 11.215:1 |
-| Choice outline / SelectedPressed | 6.255:1 | 5.882:1 |
-| Tonal focus / SelectedPressed | 5.340:1 | 6.194:1 |
+| Tonal text, icons and markers / Selected | 7.342:1 | 8.370:1 |
+| Choice label / Selected | 13.595:1 | 12.030:1 |
+| Choice outline / Selected | 4.477:1 | 4.725:1 |
+| Tonal focus / Selected | 5.067:1 | 6.644:1 |
+| Tonal text, icons and markers / SelectedPointerOver | 8.059:1 | 8.867:1 |
+| Choice label / SelectedPointerOver | 14.924:1 | 12.744:1 |
+| Choice outline / SelectedPointerOver | 6.516:1 | 6.683:1 |
+| Tonal focus / SelectedPointerOver | 5.562:1 | 7.039:1 |
+| Tonal text, icons and markers / SelectedPressed | 7.698:1 | 7.876:1 |
+| Choice label / SelectedPressed | 14.254:1 | 11.320:1 |
+| Choice outline / SelectedPressed | 6.223:1 | 5.937:1 |
+| Tonal focus / SelectedPressed | 5.312:1 | 6.252:1 |
 | Choice label / rest | 17.063:1 | 15.737:1 |
 | Choice outline / rest | 3.838:1 | 3.959:1 |
 | Choice focus / rest | 6.359:1 | 8.692:1 |
@@ -1364,15 +1395,15 @@ Decorative separators and inactive splitter hints deliberately become lighter; t
 | Splitter hover grip / surface | 5.879:1 | 6.968:1 |
 | Splitter pressed line and grip / surface | 7.794:1 | 9.303:1 |
 | Splitter disabled line and grip / surface (inactive) | 1.485:1 | 1.713:1 |
-| Solid selected pressed white glyph | 9.728:1 | 12.081:1 |
-| Switch pressed white knob | 8.722:1 | 8.722:1 |
+| Solid selected pressed primary-label glyph | 9.457:1 | 11.157:1 |
+| Switch pressed primary-label knob | 9.457:1 | 11.157:1 |
 
 The pressed Expander header and Choice row fill is `Nvt.Interaction.PressedFillBrush` (`#C9CCD0` / `#434A57`). Header text yields 11.619:1 / 8.914:1 on it.
-Light pressed text stays `#0B1220` and dark pressed text stays white.
-Selected text changes to `#0E3C9E` / `#BEDAFF`, and tonal focus changes to `#1557C0` / `#8FC5FF`.
-These compensate for the stronger selected fills without changing global `Nfc*` or `Nvt.Focus.*` colors.
+Expander pressed text stays `#0B1220` in Light and white in Dark. Choice labels retain their existing text color in every selection state.
+Selected text blends to `#113D9D` / `#BEDAFB`; tonal focus stays `#1557C0` / `#8FC5FF`.
+The selected foreground blends strong accent toward strong text, keeping the existing strength without changing the global palette.
 Section headers remain 44 DIP, as required by this revision, rather than the review's proposed 40 DIP.
-No flat icon role is introduced. Existing Toggle roles retain their geometry and receive distinct selected pressed feedback.
+No flat icon role is introduced. Existing Toggle roles retain their geometry. Filled pressed states blend 20% toward strong text and remain distinct from hover.
 
 The additive `RenderRedesign*` tests export `<control>-<pill|square>-<light|dark>.png` using the existing family environment variables.
 `separator.png` contains both themes and labels the control "Not affected by shape".
@@ -1525,24 +1556,24 @@ Replace a complete family palette together when tuning its theme.
 | `Nvt.Form.PressedBorderBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
 | `Nvt.Form.ErrorBorderBrush` | `#C04A5C` | `#C96579` | `NfcDangerBorderBrush` |
 | `Nvt.Form.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
-| `Nvt.Form.SelectionBrush` | `#D3E1F8` | `#1F3558` | `Nvt.Controls.SelectedBrush` |
-| `Nvt.Form.SelectionTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Form.SelectionBrush` | `#D5E1FB` | `#223755` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Form.SelectionTextBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.TransparentBrush` | `#00FFFFFF` | `#00FFFFFF` | `Nvt.Toggle.TransparentBrush` |
 | `Nvt.Tab.StripBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.FillBrush` | `#001E293B` | `#00E2E8F0` | `Nvt.Interaction.RestBrush` |
 | `Nvt.Tab.HoverFillBrush` | `#331E293B` | `#33E2E8F0` | `Nvt.Interaction.HoverBrush` |
 | `Nvt.Tab.PressedFillBrush` | `#3D1E293B` | `#3DE2E8F0` | `Nvt.Interaction.PressedBrush` |
-| `Nvt.Tab.SelectedFillBrush` | `#D3E1F8` | `#1F3558` | `Nvt.Controls.SelectedBrush` |
-| `Nvt.Tab.SelectedHoverFillBrush` | `#E3ECFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
-| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE7FA` | `#243C5B` | `Nvt.Controls.SelectedPressedBrush` |
+| `Nvt.Tab.SelectedFillBrush` | `#D5E1FB` | `#223755` | `Nvt.Controls.SelectedBrush` |
+| `Nvt.Tab.SelectedHoverFillBrush` | `#E3EBFC` | `#20334F` | `Nvt.Controls.SelectedPointerOverBrush` |
+| `Nvt.Tab.SelectedPressedFillBrush` | `#DCE6FC` | `#243B5C` | `Nvt.Controls.SelectedPressedBrush` |
 | `Nvt.Tab.TextBrush` | `#475569` | `#CBD5E1` | `NfcTextSecondaryBrush` |
 | `Nvt.Tab.HoverTextBrush` | `#1E293B` | `#E2E8F0` | `NfcTextBrush` |
 | `Nvt.Tab.PressedTextBrush` | `#0F172A` | `#F8FAFC` | `NfcTextStrongBrush` |
-| `Nvt.Tab.SelectedTextBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.SelectedTextBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.DisabledTextBrush` | `#68778C` | `#7B8CA5` | `NfcTextDisabledBrush` |
 | `Nvt.Tab.DisabledFillBrush` | `#F8FAFC` | `#182337` | `NfcSurfaceSubtleBrush` |
 | `Nvt.Tab.DisabledSelectedFillBrush` | `#DCE5EF` | `#26364D` | `NfcSelectionSurfaceBrush` |
-| `Nvt.Tab.IndicatorBrush` | `#0E3C9E` | `#BEDAFF` | `Nvt.Controls.SelectedForegroundBrush` |
+| `Nvt.Tab.IndicatorBrush` | `#113D9D` | `#BEDAFB` | `Nvt.Controls.SelectedForegroundBrush` |
 | `Nvt.Tab.FocusBrush` | `#1557C0` | `#8FC5FF` | `Nvt.Controls.FocusBrush` |
 
 ### Form and tab geometry tokens
@@ -1594,7 +1625,7 @@ The left offset negates the spinner width plus the border inset. Both 15 DIP spi
 These pairs use the existing 37-pair table's WCAG relative-luminance method with opaque sRGB colors.
 The ratios apply to both shapes and are rounded to three decimals.
 Enabled text preserves 4.5:1. Disabled text, borders, active indicators, and focus preserve 3:1.
-The shared selected text and focus pairs retain their existing measured ratios.
+The selected text and focus pairs use the accent-derived mapping above; their updated default ratios follow.
 `FormsContrastTests` measures every pair from compiled resources in both shapes and themes.
 
 | Contrast | Light | Dark |
@@ -1616,7 +1647,7 @@ The shared selected text and focus pairs retain their existing measured ratios.
 | Form focus / pressed / open | 4.840:1 | 6.273:1 |
 | Form disabled text, placeholder, border and spinner glyph | 4.358:1 | 4.599:1 |
 | Form error border / disabled fill | 4.587:1 | 4.212:1 |
-| Form text selection | 7.363:1 | 8.582:1 |
+| Form text selection | 7.342:1 | 8.370:1 |
 | Form and tab focus / application | 6.073:1 | 10.341:1 |
 | Form rest border / application | 3.665:1 | 4.710:1 |
 | Form hover border / application | 6.917:1 | 12.611:1 |
@@ -1635,12 +1666,12 @@ The shared selected text and focus pairs retain their existing measured ratios.
 | Tab focus / hover | 4.293:1 | 4.931:1 |
 | Tab text / pressed | 10.627:1 | 7.538:1 |
 | Tab focus / pressed | 3.960:1 | 4.356:1 |
-| Tab text and indicator / selected | 7.363:1 | 8.582:1 |
-| Tab focus / selected | 5.036:1 | 6.789:1 |
-| Tab text and indicator / selected hover | 8.185:1 | 8.898:1 |
-| Tab focus / selected hover | 5.598:1 | 7.039:1 |
-| Tab text and indicator / selected pressed | 7.807:1 | 7.830:1 |
-| Tab focus / selected pressed | 5.340:1 | 6.194:1 |
+| Tab text and indicator / selected | 7.342:1 | 8.370:1 |
+| Tab focus / selected | 5.067:1 | 6.644:1 |
+| Tab text and indicator / selected hover | 8.059:1 | 8.867:1 |
+| Tab focus / selected hover | 5.562:1 | 7.039:1 |
+| Tab text and indicator / selected pressed | 7.698:1 | 7.876:1 |
+| Tab focus / selected pressed | 5.312:1 | 6.252:1 |
 | Tab text / disabled | 4.358:1 | 4.599:1 |
 | Tab text and indicator / selected disabled | 3.582:1 | 3.574:1 |
 
@@ -1648,9 +1679,9 @@ The shared selected text and focus pairs retain their existing measured ratios.
 
 `TextStyles.axaml` adds opt-in font roles to TextBlock and its SelectableTextBlock subclass.
 Each class sets family, size, and weight from the existing `Nvt.Font.<Role>.*` tokens.
-All roles set foreground to `NfcTextBrush`, overriding inherited foregrounds, including those from selected rows and filled buttons.
+Roles set foreground to `NfcTextBrush`. Inside enabled, checked `toggleSegment`, `toggleTab` and `toggleIcon` controls without `danger`, text (including `muted`) follows the owning control's foreground to keep the filled label readable.
 Add `muted` separately to change only foreground to `NfcTextMutedBrush`.
-These classes apply to any matching TextBlock, including text inside other control templates.
+These classes apply to matching TextBlock controls inside templates. Lists, ComboBox items, tabs, choices and `toggleSoft` keep their existing text-class behavior.
 Existing classes with names such as `title`, `body`, `caption`, or `muted` can therefore collide with these styles.
 
 The roles require the `Nvt.Core.Fonts` package and its resources.
@@ -1697,12 +1728,12 @@ These text pairs use the same sRGB method and retain the 4.5:1 text floor in bot
 | Muted class / hover | 4.954:1 | 5.444:1 |
 | All text classes / pressed | 10.642:1 | 9.213:1 |
 | Muted class / pressed | 4.588:1 | 5.056:1 |
-| All text classes / selected | 11.073:1 | 9.971:1 |
-| Muted class / selected | 4.773:1 | 5.472:1 |
-| All text classes / selected hover | 12.309:1 | 10.338:1 |
-| Muted class / selected hover | 5.306:1 | 5.673:1 |
-| All text classes / selected pressed | 11.741:1 | 9.098:1 |
-| Muted class / selected pressed | 5.061:1 | 4.993:1 |
+| All text classes / selected | 11.140:1 | 9.758:1 |
+| Muted class / selected | 4.802:1 | 5.355:1 |
+| All text classes / selected hover | 12.229:1 | 10.338:1 |
+| Muted class / selected hover | 5.271:1 | 5.673:1 |
+| All text classes / selected pressed | 11.680:1 | 9.182:1 |
+| Muted class / selected pressed | 5.035:1 | 5.039:1 |
 
 ### Rendering and review
 
@@ -1737,8 +1768,8 @@ A control that fades in a fill rests on `Nvt.Interaction.RestBrush`, the tint at
 | `Nvt.Interaction.PressedFillBrush` | `#C9CCD0` | `#434A57` | Pressed fill of neutral, chip and icon buttons, checked buttons, Choice rows and Expander headers. The pressed layer over `NfcSurfaceBrush`. |
 | `Nvt.Form.PressedFillBrush` | `#D3DDE8` | `#2A3B53` | Pressed fill of ComboBox (pressed and open) and the NumericUpDown spinner buttons. It keeps placeholder text at 4.5:1 and the error border at 3:1. |
 | `NfcSelectionSurfaceBrush` | `#DCE5EF` | `#26364D` | Hover fill of Choice rows, Expander headers and form fields in the Soft mode, and of active flat ghost buttons. It was `#E8EEF5` / `#1E293B`. |
-| `Nvt.Controls.SelectedBrush` | `#D3E1F8` | `#1F3558` | Checked and selected fill. It is a fixed value in every tool, no longer `NfcAccentSurfaceBrush`. |
-| `Nvt.Controls.SelectedRestBrush` | `#00E3ECFC` | `#0020334F` | Rest fill of a checked Choice row in rest-fill mode None. Same RGB as the selected hover fill at alpha 0. |
+| `Nvt.Controls.SelectedBrush` | `#D5E1FB` | `#223755` | Checked and selected tint: surface blended toward the tool's accent, 18% in Light and 22% in Dark. |
+| `Nvt.Controls.SelectedRestBrush` | `#00E3EBFC` | `#0020334F` | Rest fill of a checked Choice row in rest-fill mode None. Same RGB as the selected hover fill at alpha 0. |
 | `Nvt.Toggle.RestBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | Rest fill of toggles and toggle tabs. |
 | `Nvt.Toggle.SegmentRestBrush` | `#00DCE5EF` | `#0026364D` | Rest fill of a segment. The segment group surface at alpha 0, so the fade to `NfcSurfaceSubtleBrush` stays in range. |
 | `Nvt.Tab.FillBrush` | `Nvt.Interaction.RestBrush` | `Nvt.Interaction.RestBrush` | Rest fill of a tab. It was `#00FFFFFF`, so its fade passed through white. |
@@ -1752,14 +1783,14 @@ No Core style reads `NfcSecondaryActionPressedBrush` any more. The key stays, so
 - A checked soft toggle draws a 1 DIP accent outline. On hover the outline is 2 DIP in `NfcAccentStrongBrush`.
 - `ContextMenu` and `MenuFlyoutPresenter` share one popup template. The presenter has no focusable scroll arrows.
 
-Across both themes, the lowest text ratio on a state fill is 4.511:1 (Light) and 5.312:1 (Dark), and the idle link underline keeps 3.076:1. The lowest fill separation from the surface is 1.217:1 in Light and 1.280:1 in Dark. These are practical floors for a hover, pressed or checked fill. Text keeps 4.5:1 and graphics 3:1.
+Across both themes, the lowest text ratio on a state fill is 4.511:1 (Light) and 5.312:1 (Dark), and the idle link underline keeps 3.076:1. The selected tint separates from its hosting surfaces by at least 1.255:1 / 1.308:1, preserving the 1.2:1 / 1.25:1 fill-separation floors. Text keeps 4.5:1 and graphics 3:1.
 
 The standard focus ring (`Nvt.Focus.RingBrush`) measures these ratios (Light / Dark):
 
 | Fill | Ring ratio |
 | --- | --- |
 | `NfcSelectionSurfaceBrush` | 3.879:1 / 4.658:1 |
-| `Nvt.Controls.SelectedBrush` | 3.738:1 / 4.682:1 |
+| `Nvt.Controls.SelectedBrush` | 3.760:1 / 4.582:1 |
 | `Nvt.Interaction.HoverFillBrush` | 3.327:1 / 3.849:1 |
 | `Nvt.Interaction.PressedFillBrush` | 3.064:1 / 3.395:1 |
 | Hover layer over `NfcSurfaceSubtleBrush` | 3.186:1 / 3.401:1 |
@@ -1767,7 +1798,7 @@ The standard focus ring (`Nvt.Focus.RingBrush`) measures these ratios (Light / D
 
 One value is below 3:1: the Light pressed layer over `NfcSurfaceSubtleBrush`. It applies only when a control shows a keyboard focus ring inside its fill while the pointer presses it.
 
-The darker hover fill lowers some earlier guarantees. The rows of the older tables that read the hover fill or the selected fill were recomputed with the values in this section. These pairs changed the most:
+The following before/after tables describe the earlier neutral-overlay revision, before core-v0.9.7. The darker hover fill lowered some earlier guarantees. The rows of the older tables that read the hover fill or the selected fill were recomputed with the values in this section. These pairs changed the most:
 
 | Pair | Before | After (Light / Dark) |
 | --- | --- | --- |
@@ -1830,14 +1861,14 @@ ThemeRestFills.SetRestFill(Avalonia.Application.Current!.Resources, ThemeRestFil
 Change it only through `SetRestFill`.
 The later merged dictionary overrides the default in both themes.
 The Choice row and the Expander header carry that mode in their `Tag`. A selector on `Tag=None` makes the rest and disabled fills transparent, before the hover and pressed styles, so those still win.
-The Soft path is the baseline path: rows and headers still read `NfcSurfaceSubtleBrush` and `Nvt.Controls.SelectedBrush` dynamically. A palette override at the application or the window, including one set after first use, still reaches them.
+The Soft path is the baseline path: rows and headers still read `NfcSurfaceSubtleBrush` and `Nvt.Controls.SelectedBrush` dynamically. Direct control-token overrides still reach those rows. Tool accents use only the seven application keys, including replacements after first use.
 
 | Token | Soft | None |
 | --- | --- | --- |
 | `Nvt.Controls.RestFillMode` | `Soft` | `None` |
 
 Frozen baseline for the Soft characterization tests and the 65 pixel comparisons: repository `Dennis40816/nvt_fw_core`, branch `feature/core/controls-forms-tabs`, full commit `98f4e3a53c6d0075da693438bca6deb20f54af33`. The affected files are `src/Nvt.Core.Avalonia/Theme/ChoiceStyles.axaml`, `src/Nvt.Core.Avalonia/Theme/ControlTokens.axaml`, and `src/Nvt.Core.Avalonia/Theme/ExpanderStyles.axaml`.
-`SoftFillsFollowPaletteOverridesAtTheWindow` pins the dynamic palette lookup. The 65 sheets were rendered in explicit Soft mode and compared pixel by pixel with that baseline: zero differing pixels.
+`SoftFillsFollowPaletteOverridesAtTheWindow` pins the dynamic palette lookup. At the introduction of rest-fill mode, the 65 sheets were rendered in explicit Soft mode and compared pixel by pixel with that baseline: zero differing pixels. This historical result predates the intentional core-v0.9.7 selection color change.
 
 ### Rest-fill contrast
 
@@ -1846,7 +1877,7 @@ Transparent brushes reveal the actual underlying surface before the relative-lum
 Pill and Square produce identical numbers, measured separately; every row below applies to both shapes.
 The table uses `NfcSurfaceBrush` underneath choices and inside Expander containers.
 The test also checks application, subtle, selection, and pressed surfaces behind choices.
-It preserves the existing documented numeric minima, allowing their three-decimal rounding.
+The existing test retains historical numeric minima, allowing three-decimal rounding. The enabled Dark glyph / indicator minimum changes from 7.794:1 (white on deep blue) to the computed 7.355:1 (dark primary label on accent); its 4.5:1 floor remains unchanged. Every other pinned minimum is preserved.
 Enabled text and glyphs retain 4.5:1; disabled text and glyphs, indicator silhouettes, and focus rings retain 3:1.
 No contrast token needed correction for None mode.
 
@@ -1867,28 +1898,28 @@ Container borders and dividers keep their existing decorative ratios; they carry
 | Unchecked pressed label / row | 11.078:1 | 8.914:1 | 11.078:1 | 8.914:1 |
 | Unchecked pressed indicator border / row | 11.078:1 | 8.520:1 | 11.078:1 | 8.520:1 |
 | Unchecked pressed focus / row | 4.129:1 | 4.923:1 | 4.129:1 | 4.923:1 |
-| Checked / indeterminate rest label / row | 13.513:1 | 12.292:1 | 17.853:1 | 17.740:1 |
-| Checked / indeterminate rest indicator border / row | 4.450:1 | 4.829:1 | 5.879:1 | 6.968:1 |
-| Checked / indeterminate rest focus / row | 5.036:1 | 6.789:1 | 6.653:1 | 9.798:1 |
-| Checked / indeterminate pointer over label / row | 15.022:1 | 12.744:1 | 15.022:1 | 12.744:1 |
-| Checked / indeterminate pointer over indicator border / row | 6.558:1 | 6.683:1 | 6.558:1 | 6.683:1 |
-| Checked / indeterminate pointer over focus / row | 5.598:1 | 7.039:1 | 5.598:1 | 7.039:1 |
-| Checked / indeterminate pressed label / row | 14.328:1 | 11.215:1 | 14.328:1 | 11.215:1 |
-| Checked / indeterminate pressed indicator border / row | 6.255:1 | 5.882:1 | 6.255:1 | 5.882:1 |
-| Checked / indeterminate pressed focus / row | 5.340:1 | 6.194:1 | 5.340:1 | 6.194:1 |
+| Checked / indeterminate rest label / row | 13.595:1 | 12.030:1 | 17.853:1 | 17.740:1 |
+| Checked / indeterminate rest indicator border / row | 4.477:1 | 4.725:1 | 5.879:1 | 6.968:1 |
+| Checked / indeterminate rest focus / row | 5.067:1 | 6.644:1 | 6.653:1 | 9.798:1 |
+| Checked / indeterminate pointer over label / row | 14.924:1 | 12.744:1 | 14.924:1 | 12.744:1 |
+| Checked / indeterminate pointer over indicator border / row | 6.516:1 | 6.683:1 | 6.516:1 | 6.683:1 |
+| Checked / indeterminate pointer over focus / row | 5.562:1 | 7.039:1 | 5.562:1 | 7.039:1 |
+| Checked / indeterminate pressed label / row | 14.254:1 | 11.320:1 | 14.254:1 | 11.320:1 |
+| Checked / indeterminate pressed indicator border / row | 6.223:1 | 5.937:1 | 6.223:1 | 5.937:1 |
+| Checked / indeterminate pressed focus / row | 5.312:1 | 6.252:1 | 5.312:1 | 6.252:1 |
 | Disabled choice label / row | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
 | Disabled choice indicator border / row | 4.358:1 | 4.599:1 | 4.559:1 | 5.184:1 |
 | Unchecked rest border / indicator fill | 4.015:1 | 4.462:1 | 4.015:1 | 4.462:1 |
 | Unchecked pointer over border / indicator fill | 7.243:1 | 10.600:1 | 7.243:1 | 10.600:1 |
 | Unchecked pressed border / indicator fill | 14.025:1 | 11.688:1 | 14.025:1 | 11.688:1 |
 | Unchecked disabled border / indicator fill | 4.358:1 | 4.599:1 | 4.358:1 | 4.599:1 |
-| Checked / indeterminate rest border / indicator fill | 1.000:1 | 3.062:1 | 1.000:1 | 3.062:1 |
-| Checked / indeterminate pointer over border / indicator fill | 1.000:1 | 5.102:1 | 1.000:1 | 5.102:1 |
-| Checked / indeterminate pressed border / indicator fill | 1.248:1 | 6.336:1 | 1.248:1 | 6.336:1 |
+| Checked / indeterminate rest border / indicator fill | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
+| Checked / indeterminate pointer over border / indicator fill | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
+| Checked / indeterminate pressed border / indicator fill | 1.213:1 | 1.136:1 | 1.213:1 | 1.136:1 |
 | Checked / indeterminate disabled border / indicator fill | 1.000:1 | 1.000:1 | 1.000:1 | 1.000:1 |
-| Selected rest glyph / indicator fill | 5.879:1 | 7.794:1 | 5.879:1 | 7.794:1 |
-| Selected pointer over glyph / indicator fill | 7.794:1 | 9.728:1 | 7.794:1 | 9.728:1 |
-| Selected pressed glyph / indicator fill | 9.728:1 | 12.081:1 | 9.728:1 | 12.081:1 |
+| Selected rest glyph / indicator fill | 5.879:1 | 7.355:1 | 5.879:1 | 7.355:1 |
+| Selected pointer over glyph / indicator fill | 7.794:1 | 9.819:1 | 7.794:1 | 9.819:1 |
+| Selected pressed glyph / indicator fill | 9.457:1 | 11.157:1 | 9.457:1 | 11.157:1 |
 | Selected disabled glyph / indicator fill | 4.559:1 | 3.422:1 | 4.559:1 | 3.422:1 |
 | Choice focus / five surrounding surfaces (minimum) | 5.227:1 | 6.754:1 | 5.227:1 | 6.754:1 |
 | Expander rest text and chevron / header | 13.982:1 | 12.766:1 | 14.629:1 | 14.390:1 |

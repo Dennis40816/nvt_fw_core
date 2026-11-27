@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 Dennis Liu -->
 <!-- SPDX-License-Identifier: MIT -->
-<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:transforms="using:Avalonia.Media.Transformation">
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:theme="using:Nvt.Core.Avalonia.Theme" xmlns:transforms="using:Avalonia.Media.Transformation">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedPointerOverBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
@@ -16,15 +16,16 @@
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledCheckedBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <StaticResource x:Key="Nvt.Toggle.SelectedBrush" ResourceKey="NfcAccentBrush" />
-      <StaticResource x:Key="Nvt.Toggle.SelectedPointerOverBrush" ResourceKey="NfcAccentStrongBrush" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" Color="#0E3C9E" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedLabelBrush" theme:AccentBrush.From="{DynamicResource Nvt.Button.PrimaryLabelBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.2" />
       <StaticResource x:Key="Nvt.Toggle.DangerFillBrush" ResourceKey="NfcDangerTextBrush" />
       <StaticResource x:Key="Nvt.Toggle.DangerFillPointerOverBrush" ResourceKey="NfcDangerTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.DangerFillPressedBrush" ResourceKey="NfcDangerTextStrongBrush" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2563EB" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#1D4ED8" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" Color="#1E40AF" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.2" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <StaticResource x:Key="Nvt.Toggle.SoftCheckedPointerOverBrush" ResourceKey="Nvt.Controls.SelectedPointerOverBrush" />
@@ -40,21 +41,21 @@
       <StaticResource x:Key="Nvt.Toggle.SoftPressedForegroundBrush" ResourceKey="NfcTextStrongBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledForegroundBrush" ResourceKey="NfcTextDisabledBrush" />
       <StaticResource x:Key="Nvt.Toggle.SoftDisabledCheckedBrush" ResourceKey="NfcSelectionSurfaceBrush" />
-      <!-- Deep fills preserve white content contrast in the dark theme. -->
-      <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" Color="#1148BE" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" Color="#0E3C9E" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" Color="#0B307E" />
-      <!-- A filled track or segment must keep 3:1 against the page and 4.5:1 against its white label or knob. In the dark theme that leaves a narrow window, so hover and pressed stay inside it. -->
+      <!-- Filled selections use the same accent and label pair as actionPrimary. -->
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedLabelBrush" theme:AccentBrush.From="{DynamicResource Nvt.Button.PrimaryLabelBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SelectedPressedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.2" />
+      <!-- Danger fills keep 3:1 against the page and 4.5:1 against their white label or knob. -->
       <SolidColorBrush x:Key="Nvt.Toggle.DangerFillBrush" Color="#CC3F54" />
       <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPointerOverBrush" Color="#C8384D" />
       <SolidColorBrush x:Key="Nvt.Toggle.DangerFillPressedBrush" Color="#C8384D" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" Color="#2F6BEE" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" Color="#2C68E8" />
-      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" Color="#2965E2" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchOnBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" />
+      <SolidColorBrush x:Key="Nvt.Toggle.SwitchPressedBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.2" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
-  <SolidColorBrush x:Key="Nvt.Toggle.SelectedLabelBrush" Color="#FFFFFF" />
-  <StaticResource x:Key="Nvt.Toggle.KnobBrush" ResourceKey="Nvt.Toggle.SelectedLabelBrush" />
+  <SolidColorBrush x:Key="Nvt.Toggle.KnobBrush" Color="#FFFFFF" />
   <SolidColorBrush x:Key="Nvt.Toggle.TransparentBrush" Color="#00FFFFFF" />
   <Thickness x:Key="Nvt.Toggle.SegmentGroupPadding">4</Thickness>
   <x:Double x:Key="Nvt.Toggle.SegmentSpacing">2</x:Double>

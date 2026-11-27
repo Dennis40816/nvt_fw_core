@@ -64,4 +64,10 @@
   <Style Selector=":is(TextBlock).muted">
     <Setter Property="Foreground" Value="{DynamicResource NfcTextMutedBrush}" />
   </Style>
+  <!-- A text role sets its own neutral color, which is unreadable on a filled selection. Only role text follows the control. -->
+  <Style Selector="ToggleButton.toggleSegment:checked:not(:disabled):not(.danger), ToggleButton.toggleTab:checked:not(:disabled):not(.danger), ToggleButton.toggleIcon:checked:not(:disabled):not(.danger)">
+    <Style x:CompileBindings="True" Selector="^ :is(TextBlock).title, ^ :is(TextBlock).heading, ^ :is(TextBlock).body, ^ :is(TextBlock).caption, ^ :is(TextBlock).mono, ^ :is(TextBlock).numbers, ^ :is(TextBlock).bodyStrong, ^ :is(TextBlock).captionStrong, ^ :is(TextBlock).monoStrong, ^ :is(TextBlock).monoCaption, ^ :is(TextBlock).muted">
+      <Setter Property="Foreground" Value="{Binding $parent[TemplatedControl].Foreground}" />
+    </Style>
+  </Style>
 </Styles>

@@ -105,8 +105,7 @@ public sealed class ToggleContractTests
                     button.Classes.Remove("danger");
                     SetState(button, new ToggleState("Checked", Checked: true));
                     Flush(host);
-                    Color expected = Color.Parse(ToggleStylesTests.IsSwitch(button is ToggleSwitch ? "nativeSwitch" : button.Classes.First())
-                        ? nextDark ? "#2F6BEE" : "#2563EB" : nextDark ? "#1148BE" : "#1557E9");
+                    Color expected = Color.Parse(nextDark ? "#5FA5FA" : "#1557E9");
                     Assert.Equal(expected, ColorOf(button.Background));
                 }
             }

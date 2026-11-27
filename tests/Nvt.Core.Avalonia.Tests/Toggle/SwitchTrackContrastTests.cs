@@ -13,28 +13,28 @@ public sealed class SwitchTrackContrastTests(ITestOutputHelper output)
 {
     private static readonly string[] _pages = ["NfcAppBackgroundBrush", "NfcSurfaceBrush", "NfcSurfaceSubtleBrush"];
 
-    /// <summary>A checked switch track and a danger fill stay visible against every page surface and keep a white knob or label readable.</summary>
+    /// <summary>A checked switch track and a danger fill stay visible against every page surface and keep the actual knob or label readable.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FilledTracksSeparateFromThePageAndKeepWhiteReadable(bool dark)
+    public void FilledTracksSeparateFromThePageAndKeepLabelsReadable(bool dark)
     {
         var content = new Border();
         Window host = Create(content, dark);
         try
         {
             Show(host);
-            Color white = ResourceColor(content, "Nvt.Toggle.SelectedLabelBrush");
             foreach (string key in new[] { "SwitchOnBrush", "SwitchPointerOverBrush", "SwitchPressedBrush", "DangerFillBrush", "DangerFillPointerOverBrush", "DangerFillPressedBrush" })
             {
                 Color fill = ResourceColor(content, "Nvt.Toggle." + key);
-                double label = ToggleStylesTests.Contrast(white, fill);
-                Assert.True(label >= 4.5, $"{dark}/{key}: white on fill {label:F3}:1");
+                Color foreground = ResourceColor(content, key.StartsWith("Danger", StringComparison.Ordinal) ? "Nvt.Toggle.KnobBrush" : "Nvt.Button.PrimaryLabelBrush");
+                double label = ToggleStylesTests.Contrast(foreground, fill);
+                Assert.True(label >= 4.5, $"{dark}/{key}: label on fill {label:F3}:1");
                 foreach (string page in _pages)
                 {
                     double edge = ToggleStylesTests.Contrast(fill, ResourceColor(content, page));
                     Assert.True(edge >= 3, $"{dark}/{key} against {page}: {edge:F3}:1");
-                    output.WriteLine($"{(dark ? "Dark" : "Light")} {key} / {page}: {edge:F3}:1, white {label:F3}:1");
+                    output.WriteLine($"{(dark ? "Dark" : "Light")} {key} / {page}: {edge:F3}:1, label {label:F3}:1");
                 }
             }
         }

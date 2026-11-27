@@ -1,15 +1,15 @@
 <!-- Copyright (c) 2026 Dennis Liu -->
 <!-- SPDX-License-Identifier: MIT -->
-<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:theme="using:Nvt.Core.Avalonia.Theme">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" Color="#D3E1F8" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#E3ECFC" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedRestBrush" Color="#00E3ECFC" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#DCE7FA" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.18" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.12" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedRestBrush" theme:AccentBrush.Transparent="True" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.12" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.15" />
       <!-- The rest fill of a control that gains a hover fill. It has the hover colour at zero alpha, so a BrushTransition fades only alpha and never passes through white. -->
       <StaticResource x:Key="Nvt.Console.LinkUnderlineBrush" ResourceKey="NfcBorderBrush" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#0E3C9E" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.22" />
       <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#1557C0" />
       <StaticResource x:Key="Nvt.Controls.ChoiceForegroundBrush" ResourceKey="NfcTextStrongBrush" />
       <StaticResource x:Key="Nvt.Controls.ExpanderPressedBrush" ResourceKey="Nvt.Interaction.PressedFillBrush" />
@@ -17,12 +17,12 @@
       <SolidColorBrush x:Key="Nvt.Controls.ExpanderDisabledForegroundBrush" Color="#637085" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" Color="#1F3558" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" Color="#20334F" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedRestBrush" Color="#0020334F" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" Color="#243C5B" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.22" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPointerOverBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.19" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedRestBrush" theme:AccentBrush.Transparent="True" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.19" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedPressedBrush" theme:AccentBrush.From="{DynamicResource NfcSurfaceBrush}" theme:AccentBrush.To="{DynamicResource NfcAccentBrush}" theme:AccentBrush.Amount="0.25" />
       <StaticResource x:Key="Nvt.Console.LinkUnderlineBrush" ResourceKey="NfcBorderBrush" />
-      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" Color="#BEDAFF" />
+      <SolidColorBrush x:Key="Nvt.Controls.SelectedForegroundBrush" theme:AccentBrush.From="{DynamicResource NfcAccentStrongBrush}" theme:AccentBrush.To="{DynamicResource NfcTextStrongBrush}" theme:AccentBrush.Amount="0.45" />
       <SolidColorBrush x:Key="Nvt.Controls.FocusBrush" Color="#8FC5FF" />
       <SolidColorBrush x:Key="Nvt.Controls.ChoiceForegroundBrush" Color="#FFFFFF" />
       <StaticResource x:Key="Nvt.Controls.ExpanderPressedBrush" ResourceKey="Nvt.Interaction.PressedFillBrush" />

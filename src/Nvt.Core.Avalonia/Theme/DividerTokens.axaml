@@ -1,18 +1,18 @@
 <!-- Copyright (c) 2026 Dennis Liu -->
 <!-- SPDX-License-Identifier: MIT -->
-<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:theme="using:Nvt.Core.Avalonia.Theme">
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Light">
       <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderMutedBrush" />
-      <StaticResource x:Key="Nvt.Progress.IndicatorBrush" ResourceKey="NfcAccentBrush" />
+      <SolidColorBrush x:Key="Nvt.Progress.IndicatorBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
       <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
-      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+      <SolidColorBrush x:Key="Nvt.GridSplitter.PreviewBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <StaticResource x:Key="Nvt.Progress.TrackBrush" ResourceKey="NfcBorderMutedBrush" />
-      <StaticResource x:Key="Nvt.Progress.IndicatorBrush" ResourceKey="NfcAccentBrush" />
+      <SolidColorBrush x:Key="Nvt.Progress.IndicatorBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
       <StaticResource x:Key="Nvt.Progress.DisabledIndicatorBrush" ResourceKey="NfcTextDisabledBrush" />
-      <StaticResource x:Key="Nvt.GridSplitter.PreviewBrush" ResourceKey="NfcAccentBrush" />
+      <SolidColorBrush x:Key="Nvt.GridSplitter.PreviewBrush" theme:AccentBrush.From="{DynamicResource NfcAccentBrush}" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
   <SolidColorBrush x:Key="Nvt.Divider.TransparentBrush" Color="#00FFFFFF" />

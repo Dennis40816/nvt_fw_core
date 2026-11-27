@@ -5495,16 +5495,6 @@
     },
     {
       "rule": "FORMAT:IDE0005",
-      "syntaxHash": "6f7e558ae90aea07295c05ffeb888085f11aa1574d1b38ff6679578700303100",
-      "member": "<global>",
-      "count": 3,
-      "project": "Nvt.Core.Avalonia.Tests",
-      "owner": "NVT CORE",
-      "symbol": "IDE0005",
-      "path": "tests/Nvt.Core.Avalonia.Tests/Choice/ChoiceStylesTests.cs"
-    },
-    {
-      "rule": "FORMAT:IDE0005",
       "syntaxHash": "71d22828d7ce268fd985aa60909995d42fa657dede2d5cccaee807417d650c94",
       "member": "<global>",
       "count": 3,
