@@ -2,7 +2,7 @@
 
 # Icons
 
-Icons 提供 72 個具名 Material Symbols 字形與選用的 TextBlock 樣式。
+Icons 提供 76 個具名 Material Symbols 字形與選用的 TextBlock 樣式。
 應用程式可共用圖示名稱，不必複製碼位或圖示樣式。
 命名空間為 `Nvt.Core.Avalonia.Icons`，位於 `Nvt.Core.Avalonia`。
 
@@ -107,6 +107,7 @@ icon.Classes.Add("nvtIcon");
 | `ContentPasteOff` | U+E4F8 | 停用貼上 |
 | `CopyAll` | U+E2EC | 複製全部項目 |
 | `CropSquare` | U+E3C6 | 單一視窗外框 |
+| `DarkMode` | U+E51C | 深色主題 |
 | `DataObject` | U+EAD3 | 結構化資料 |
 | `Delete` | U+E92E | 刪除項目 |
 | `Download` | U+F090 | 下載內容 |
@@ -127,6 +128,9 @@ icon.Classes.Add("nvtIcon");
 | `History` | U+E8B3 | 近期活動 |
 | `Info` | U+E88E | 資訊 |
 | `Layers` | U+E53B | 圖層內容 |
+| `LightMode` | U+E518 | 淺色主題 |
+| `Link` | U+E250 | 連結項目 |
+| `LinkOff` | U+E16F | 解除連結 |
 | `Maximize` | U+E930 | 最大化範圍 |
 | `Menu` | U+E5D2 | 開啟導覽 |
 | `Merge` | U+EB98 | 合併路徑 |

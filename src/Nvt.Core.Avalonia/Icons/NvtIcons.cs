@@ -61,6 +61,9 @@ public static class NvtIcons
     /// <summary>Single window outline.</summary>
     public const string CropSquare = "\uE3C6";
 
+    /// <summary>Dark theme.</summary>
+    public const string DarkMode = "\uE51C";
+
     /// <summary>Structured data.</summary>
     public const string DataObject = "\uEAD3";
 
@@ -120,6 +123,15 @@ public static class NvtIcons
 
     /// <summary>Layered content.</summary>
     public const string Layers = "\uE53B";
+
+    /// <summary>Light theme.</summary>
+    public const string LightMode = "\uE518";
+
+    /// <summary>Link items.</summary>
+    public const string Link = "\uE250";
+
+    /// <summary>Unlink items.</summary>
+    public const string LinkOff = "\uE16F";
 
     /// <summary>Maximize extent.</summary>
     public const string Maximize = "\uE930";

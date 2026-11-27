@@ -6,6 +6,10 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Added
+
+- `NvtIcons.DarkMode`, `LightMode`, `Link` and `LinkOff`, with matching `Nvt.Icon.<Name>` resources, for theme and aspect-ratio lock toggles (76 icon names in total).
+
 ### Changed
 
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.

@@ -20,6 +20,7 @@
   <x:String x:Key="Nvt.Icon.ContentPasteOff">&#xE4F8;</x:String>
   <x:String x:Key="Nvt.Icon.CopyAll">&#xE2EC;</x:String>
   <x:String x:Key="Nvt.Icon.CropSquare">&#xE3C6;</x:String>
+  <x:String x:Key="Nvt.Icon.DarkMode">&#xE51C;</x:String>
   <x:String x:Key="Nvt.Icon.DataObject">&#xEAD3;</x:String>
   <x:String x:Key="Nvt.Icon.Delete">&#xE92E;</x:String>
   <x:String x:Key="Nvt.Icon.Download">&#xF090;</x:String>
@@ -40,6 +41,9 @@
   <x:String x:Key="Nvt.Icon.History">&#xE8B3;</x:String>
   <x:String x:Key="Nvt.Icon.Info">&#xE88E;</x:String>
   <x:String x:Key="Nvt.Icon.Layers">&#xE53B;</x:String>
+  <x:String x:Key="Nvt.Icon.LightMode">&#xE518;</x:String>
+  <x:String x:Key="Nvt.Icon.Link">&#xE250;</x:String>
+  <x:String x:Key="Nvt.Icon.LinkOff">&#xE16F;</x:String>
   <x:String x:Key="Nvt.Icon.Maximize">&#xE930;</x:String>
   <x:String x:Key="Nvt.Icon.Menu">&#xE5D2;</x:String>
   <x:String x:Key="Nvt.Icon.Merge">&#xEB98;</x:String>

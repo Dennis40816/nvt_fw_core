@@ -11,7 +11,7 @@ License: MIT. See [LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NO
 | Tokens | `Theme/ThemeTokens.axaml` and the `*Tokens.axaml` files it merges | Colors, radii, sizes and focus ring. Light and dark |
 | Styles | `Theme/*Styles.axaml` | Button, toggle, choice, form, list, menu, tab, expander, divider, scroll, text and progress |
 | Shapes and rest fills | `Theme/ShapePill.axaml`, `ShapeSquare.axaml`, `RestFill*.axaml`, `ThemeShapes`, `ThemeRestFills` | Pill or square corners. Soft or no rest fill |
-| Icons | `Icons/IconResources.axaml`, `Icons/IconStyles.axaml`, `NvtIcons` | 72 icon names mapped to Material Symbols code points |
+| Icons | `Icons/IconResources.axaml`, `Icons/IconStyles.axaml`, `NvtIcons` | 76 icon names mapped to Material Symbols code points |
 | Font roles | `Fonts/FontRoles.axaml` | Names of the font roles. **No font files are included** |
 
 Some resource keys use the prefix `Nfc` (for example `NfcAccentBrush`).

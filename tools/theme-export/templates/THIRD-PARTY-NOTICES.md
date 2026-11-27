@@ -35,7 +35,7 @@ SOFTWARE.
 
 ## Material Symbols (Apache License 2.0)
 
-`Icons/IconResources.axaml` and `Icons/NvtIcons.cs` list 72 icon names and the Unicode code points of the Material Symbols Outlined font. The names and code points follow the upstream code point table of Google's `material-design-icons` repository at commit `737e3324305806514d7909874fa1818ae1808232` (font version 2.973). One entry differs: `Cancel` uses U+E5C9. U+E5C9 is a legacy alias of U+E888 and renders the same glyph in the font. The font file is not included.
+`Icons/IconResources.axaml` and `Icons/NvtIcons.cs` list 76 icon names and the Unicode code points of the Material Symbols Outlined font. The names and code points follow the upstream code point table of Google's `material-design-icons` repository at commit `737e3324305806514d7909874fa1818ae1808232` (font version 2.973). One entry differs: `Cancel` uses U+E5C9. U+E5C9 is a legacy alias of U+E888 and renders the same glyph in the font. The font file is not included.
 
 - Source: https://github.com/google/material-design-icons
 - License: Apache License 2.0, https://www.apache.org/licenses/LICENSE-2.0

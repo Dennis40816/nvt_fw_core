@@ -2,7 +2,7 @@
 
 # Icons
 
-Icons provides 72 named Material Symbols glyphs and an opt-in TextBlock style.
+Icons provides 76 named Material Symbols glyphs and an opt-in TextBlock style.
 Applications share icon names without copying codepoints or icon styles.
 The namespace is `Nvt.Core.Avalonia.Icons` in `Nvt.Core.Avalonia`.
 
@@ -107,6 +107,7 @@ Names follow the pinned [upstream codepoint table](https://github.com/google/mat
 | `ContentPasteOff` | U+E4F8 | Disable pasting |
 | `CopyAll` | U+E2EC | Copy all items |
 | `CropSquare` | U+E3C6 | Single window outline |
+| `DarkMode` | U+E51C | Dark theme |
 | `DataObject` | U+EAD3 | Structured data |
 | `Delete` | U+E92E | Delete an item |
 | `Download` | U+F090 | Download content |
@@ -127,6 +128,9 @@ Names follow the pinned [upstream codepoint table](https://github.com/google/mat
 | `History` | U+E8B3 | Recent activity |
 | `Info` | U+E88E | Information |
 | `Layers` | U+E53B | Layered content |
+| `LightMode` | U+E518 | Light theme |
+| `Link` | U+E250 | Link items |
+| `LinkOff` | U+E16F | Unlink items |
 | `Maximize` | U+E930 | Maximize extent |
 | `Menu` | U+E5D2 | Open navigation |
 | `Merge` | U+EB98 | Merge paths |
