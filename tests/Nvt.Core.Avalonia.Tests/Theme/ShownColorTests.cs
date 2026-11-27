@@ -7,7 +7,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using Avalonia.Threading;
+using Nvt.Core.Avalonia.Tests.ListMenu;
 using Xunit;
 
 namespace Nvt.Core.Avalonia.Tests.Theme;
@@ -56,20 +56,27 @@ public sealed class ShownColorTests
         var glyphBrush = new SolidColorBrush(_buttonGlyph, brushOpacity);
         var glyph = new Border
         {
-            Width = 20, Height = 20, Background = glyphBrush,
-            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+            Width = 20,
+            Height = 20,
+            Background = glyphBrush,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         var button = new Border
         {
-            Width = 60, Height = 60, Opacity = opacity, Background = new SolidColorBrush(_buttonFill), Child = glyph,
-            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+            Width = 60,
+            Height = 60,
+            Opacity = opacity,
+            Background = new SolidColorBrush(_buttonFill),
+            Child = glyph,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
         };
         var window = new Window { Width = 80, Height = 80, Background = new SolidColorBrush(_canvas), Content = button };
         try
         {
             window.Show();
-            Dispatcher.UIThread.RunJobs();
-            window.UpdateLayout();
+            ListMenuTestHost.Flush(window);
 
             Color shownFill = ShownColor.Over(_buttonFill, _canvas, ShownColor.ElementOpacity(button));
             Color shownGlyph = ShownColor.Over(glyphBrush, shownFill, ShownColor.ElementOpacity(glyph));

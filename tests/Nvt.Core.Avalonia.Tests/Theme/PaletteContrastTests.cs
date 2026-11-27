@@ -23,7 +23,7 @@ public sealed class PaletteContrastTests
     private static readonly string[] FocusRings = ["Nvt.Focus.RingBrush", "Nvt.Focus.DangerRingBrush"];
     private static readonly string[] AccentText = ["NfcAccentBrush", "NfcAccentStrongBrush"];
     // The opaque colours a checked surface can lie on. A translucent token is painted over each before measuring.
-    private static readonly string[] Backdrops = ["NfcAppBackgroundBrush", "NfcSurfaceBrush"];
+    private static readonly string[] _backdrops = ["NfcAppBackgroundBrush", "NfcSurfaceBrush"];
     private static readonly string[] SemanticText =
     [
         "NfcDangerTextBrush", "NfcWarningTextBrush", "NfcSuccessTextBrush", "NfcInfoTextBrush",
@@ -96,7 +96,7 @@ public sealed class PaletteContrastTests
 
             void Check(string group, string foreground, string background, double floor)
             {
-                foreach (string backdrop in Backdrops)
+                foreach (string backdrop in _backdrops)
                 {
                     double ratio = ShownColor.PairRatio(palette[foreground], palette[background], palette[backdrop]);
                     Assert.True(ratio + 1e-12 >= floor,
