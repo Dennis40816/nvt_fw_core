@@ -196,6 +196,14 @@ The event always equals `COMMENT`.
 `APPROVE`, `REQUEST_CHANGES`, and other events stop before any network call.
 Only the owner approves.
 
+`-Verdict accept` or `-Verdict reject` lets the function write the first line of the record.
+It puts `Review record: <ExpectedHeadSha> <verdict>` and one empty line before the body file text.
+The SHA is always the `-ExpectedHeadSha` of the caller, which names the head that was reviewed.
+The function never takes it from a local clone or from the PR at posting time, and a changed head still stops execution.
+A body whose first non-empty line already starts with `Review record:` stops before any network call.
+The written line has the default format. A repository whose `-ReviewRecordPattern` does not match that line writes its first line itself.
+Without `-Verdict`, the function posts the same text as before.
+
 After the review is posted, the function writes the PR description once.
 A description check, such as NFC's `authority` workflow, also runs on `pull_request: edited`.
 A run that started before the record was posted fails, and a new review does not start that workflow again.
@@ -221,6 +229,9 @@ A repository with no check on `edited` can pass `-SkipBodyRefresh` to leave the 
 ```powershell
 Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
+
+Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<REVIEWED_HEAD_SHA>' `
+    -Verdict accept -BodyFile .\review-notes.txt
 ```
 
 ## Sync-GhAppLabels
