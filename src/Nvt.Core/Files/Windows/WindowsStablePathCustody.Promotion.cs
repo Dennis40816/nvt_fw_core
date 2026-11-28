@@ -525,8 +525,8 @@ internal sealed partial class WindowsStablePathCustody
     internal WindowsStableCustodyIssue TryDeleteHeldEntry(
         string relativePath,
         bool directory,
-        Action? afterExclusiveOpen = null,
-        bool revalidateTopology = true)
+        Action? afterExclusiveOpen = null, bool revalidateTopology = true,
+        Action<int>? beforeDelete = null, int deletionNumber = 0)
     {
         ThrowIfDisposed();
         string normalized = string.IsNullOrEmpty(relativePath)
@@ -557,7 +557,7 @@ internal sealed partial class WindowsStablePathCustody
             if (!IsSameIdentity(expectedHandle!, deleteHandle) ||
                 (revalidateTopology && directory &&
                  (!TryEnumerateChildNames(absolute, 1, out string[] actual) || actual.Length != 0)) ||
-                !MarkDeleteOnClose(deleteHandle))
+                !MarkDeleteOnClose(deleteHandle, beforeDelete, deletionNumber))
             {
                 return WindowsStableCustodyIssue.Changed;
             }

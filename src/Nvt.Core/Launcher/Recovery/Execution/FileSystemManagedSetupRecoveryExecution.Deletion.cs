@@ -107,7 +107,9 @@ public sealed partial class FileSystemManagedSetupRecoveryExecution
                 relative = Path.GetRelativePath(custody.RootPath, custody.GetAbsoluteFilePath(relative)).Replace('\\', '/');
             WindowsStableCustodyIssue deleted = custody.TryDeleteHeldEntry(
                 relative,
-                directory: step[0] == 'D');
+                directory: step[0] == 'D',
+                beforeDelete: _beforeDelete,
+                deletionNumber: progress.DeleteCount + 1);
             if (deleted != WindowsStableCustodyIssue.None)
             {
                 return MapExecutionIssue(deleted);
@@ -251,7 +253,8 @@ public sealed partial class FileSystemManagedSetupRecoveryExecution
                 !string.Equals(await SecureSnapshotProofAsync(custody, snapshot!, cancellationToken)
                     .ConfigureAwait(false), expected, StringComparison.Ordinal))
                 return ManagedSetupRecoveryExecutionPortOutcome.SourceChanged;
-            deleted = custody.TryDeleteHeldEntry(string.Empty, directory: true);
+            deleted = custody.TryDeleteHeldEntry(string.Empty, directory: true,
+                beforeDelete: _beforeDelete, deletionNumber: progress.DeleteCount + 1);
         }
         if (deleted != WindowsStableCustodyIssue.None)
         {
@@ -306,7 +309,9 @@ public sealed partial class FileSystemManagedSetupRecoveryExecution
             deleted = custody.TryDeleteHeldEntry(
                 Path.GetFileName(path),
                 directory: false,
-                revalidateTopology: false);
+                revalidateTopology: false,
+                beforeDelete: _beforeDelete,
+                deletionNumber: progress.DeleteCount + 1);
         }
         if (deleted != WindowsStableCustodyIssue.None)
         {

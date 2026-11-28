@@ -77,18 +77,20 @@ The dispatcher joins no Job.
 | `lifetime-capture` | `marker`, optional `state-path` and `pause=dispose`, inherited lifetime | Chooses Application when expected application version is set, otherwise Bootstrap when the lifetime role says Bootstrap, otherwise Launcher. Capture is required for a state path or either expected READY value. Writes the Core outcome. The disposal handshake writes `.context` (inheritance flag and five cleared variables), waits up to five seconds for `.release`, disposes capture, writes handle openness to `.disposed`, then waits up to five seconds for `.exit`. | 0 after Captured; 24 otherwise; 25 on handshake timeout |
 | `bootstrap-runtime` | `state-path`, `marker`, inherited Bootstrap START/admission/lifetime context | Calls the public Core runtime with synthetic fail-closed services. Writes `.waiting` after real capture; state composition is blocked until START. Writes composition/load events and `.closed` handle observations. | Core InvalidState (10), StartNotAuthorized (23), or InvalidInheritedContext (22) |
 | `setup-materializer` | `state-path` = existing fixture parent, `boundary`, `marker`, `pause` = owning test assembly path | Loads the fixed `RecoveryHardStopChild.RunSetupAsync` entry point to reuse the setup fixture and synthetic codecs. Runs the real materializer; the two application-state boundaries use the real seed bootstrapper and atomic state writer through the existing store port. | Parent hard stop; 64 for missing inputs; failure if the operation returns before its gate |
-| `recovery-executor` | `state-path` = serialized scenario path, `boundary` = 1-based deletion count, `marker`, `pause` = owning test assembly path | Loads the fixed `RecoveryHardStopChild.RunExecutorAsync` entry point. Reloads synthetic marker/state bytes, constructs fresh execution evidence, acquires the real writer lease, and blocks in the existing `AfterDelete` hook. | Parent hard stop; 64 for missing inputs; failure if the operation returns before its gate |
+| `recovery-executor` | `state-path` = serialized scenario path, `boundary` = `before:n` or `after:n` (1-based deletion count), `marker`, `pause` = owning test assembly path | Loads the fixed `RecoveryHardStopChild.RunExecutorAsync` entry point. Reloads synthetic marker/state bytes, constructs fresh execution evidence, acquires the real writer lease, and blocks in the selected internal `BeforeDelete(n)` or `AfterDelete(n)` hook. | Parent hard stop; 64 for missing inputs; failure if the operation returns before its gate |
 
 Recovery modes create fixture content below the supplied existing parent; they do not own its cleanup.
 Their test assembly is supplied explicitly rather than copied into the shared probe output.
-This follows the repository crash probe's fixture-reuse approach without adding a project reference or a product seam.
+This follows the repository crash probe's fixture-reuse approach without adding a project reference or a public product API.
 At the selected boundary, the child closes `<marker>.pending`, renames it to `<marker>`,
 then writes and flushes `READY:<boundary>` through standard output.
 The synchronous hook waits on `SignalWait` through `TaskBlock`, with a 30-second watchdog and no release path.
 The parent checks both the exact marker and READY line while the child is alive, calls `ChildProcessFixture.KillTree`,
 and waits for exit before constructing fresh readers over disk.
 `ChildProcessFixture` also owns cleanup on assertion failure, cancellation, or timeout.
-There is no `BeforeDelete` hook: executor `before` rows remain explicitly skipped instead of relabeling `AfterDelete(n-1)`.
+The before gate runs after final validation and exclusive custody, immediately before native delete disposition.
+A before row expects exactly n-1 deleted entries; an after row expects n. Both restart with fresh readers and finish the remaining deletions.
+All 154 executor rows are enabled; native capability gates can still skip them in restricted environments.
 See the [hard-stop verification record](../../docs/core/modules/Launcher-hard-stop-evidence.md) for current results and pending capable-host evidence.
 
 ## Test location

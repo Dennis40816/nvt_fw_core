@@ -36,7 +36,7 @@ public static class RecoveryHardStopChild
         throw new InvalidOperationException("Seed bootstrapper completed before boundary: " + outcome);
     }
 
-    /// <summary>Reloads the serialized marker, obtains fresh evidence and writer custody, then blocks after deletion.</summary>
+    /// <summary>Reloads the serialized marker, obtains fresh evidence and writer custody, then blocks on the selected side.</summary>
     public static async Task<int> RunExecutorAsync(string scenario, string boundary, string marker)
     {
         var stored = await RecoveryHardStop.ReadJsonAsync<ManagedSetupMarker>(scenario);
@@ -44,8 +44,13 @@ public static class RecoveryHardStopChild
         string state = stored.StatePathIdentity;
         using var fixture = RecoveryEvidenceFixture.Reopen(parent, Transaction(stored),
             File.Exists(RecoveryEvidenceFixture.LauncherPathFor(state)));
-        int stop = int.Parse(boundary, CultureInfo.InvariantCulture);
-        var executor = fixture.CreateExecutor(count => { if (count == stop) Hold(marker, boundary); });
+        string[] parts = boundary.Split(':');
+        if (parts.Length != 2 || (parts[0] != "before" && parts[0] != "after"))
+            throw new InvalidOperationException("Expected before:n or after:n boundary.");
+        int stop = int.Parse(parts[1], CultureInfo.InvariantCulture);
+        Action<int> hold = count => { if (count == stop) Hold(marker, boundary); };
+        var executor = fixture.CreateExecutor(afterDelete: parts[0] == "after" ? hold : null,
+            beforeDelete: parts[0] == "before" ? hold : null);
         var evidence = await executor.ObserveAsync(fixture.Transaction, CancellationToken.None);
         if (evidence.Issue != ManagedSetupRecoveryEvidenceIssue.None)
             throw new InvalidOperationException("Executor evidence failed: " + evidence.Issue);

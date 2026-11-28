@@ -18,6 +18,7 @@ public sealed partial class FileSystemManagedSetupRecoveryExecution :
     private readonly ILauncherBootstrapStateStore _launcherStateStore;
     private readonly IManagedVersionRepository _repository;
     private readonly IManagedSetupRecoveryStateReader _applicationStateStore;
+    private readonly Action<int>? _beforeDelete;
     private readonly Action<int>? _afterDelete;
     private readonly Action<long>? _afterHashedFile;
     private readonly string _launcherStatePath;
@@ -76,6 +77,7 @@ public sealed partial class FileSystemManagedSetupRecoveryExecution :
         _repository = hooks.Repository ?? _packageRepository;
         _launcherRepository = hooks.LauncherRepository ??
             new FileSystemInstalledLauncherRepository(layout.Descriptor, productPolicy, limits, admissionCodec);
+        _beforeDelete = hooks.BeforeDelete;
         _afterDelete = hooks.AfterDelete;
         _afterHashedFile = hooks.AfterHashedFile;
     }
@@ -95,6 +97,7 @@ internal sealed record RecoveryExecutionTestHooks
 {
     internal IManagedVersionRepository? Repository { get; init; }
     internal IInstalledLauncherRepository? LauncherRepository { get; init; }
+    internal Action<int>? BeforeDelete { get; init; }
     internal Action<int>? AfterDelete { get; init; }
     internal Action<long>? AfterHashedFile { get; init; }
 }

@@ -72,13 +72,14 @@ internal sealed class RecoveryEvidenceFixture : IDisposable
 
     internal FileSystemManagedSetupRecoveryExecution CreateExecutor(Action<int>? afterDelete = null,
         Action<long>? afterHashedFile = null, PackageVerificationLimits? limits = null,
-        bool useProductionRepository = false) =>
+        bool useProductionRepository = false, Action<int>? beforeDelete = null) =>
         new(ApplicationStore, LauncherSuffix, LauncherStore, Layout,
             path => new SyntheticSeedStore(path, Seed), Policy, limits ?? PackageFixture.FrozenLimits,
             new AdmissionCodec(), new RecoveryExecutionTestHooks
             {
                 Repository = useProductionRepository ? null : new SyntheticRepository(Admission),
                 LauncherRepository = new FixedRecoveryLauncherRepository(Launcher),
+                BeforeDelete = beforeDelete,
                 AfterDelete = afterDelete,
                 AfterHashedFile = afterHashedFile,
             });

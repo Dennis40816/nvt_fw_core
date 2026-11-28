@@ -13,7 +13,6 @@ public sealed class RecoveryInterruptionTests
     [MemberData(nameof(PhysicalBoundaries))]
     public async Task RealExecutorHardStopReloadsPhysicalPrefix(string shape, int deletion, string side)
     {
-        Assert.SkipWhen(side == "before", $"No exact pre-delete hook exists for {shape} deletion {deletion}. AfterDelete(n-1) precedes intervening validation/custody work and cannot prove BeforeDelete(n); product seams are out of scope.");
         RecoveryEvidenceFixture.RequireNative();
         using var fixture = shape == "staging" ? await RecoveryEvidenceFixture.CreateFullStagingAsync()
             : await RecoveryEvidenceFixture.CreateAsync(withLauncherState: shape == "root-with-launcher-state");
@@ -26,12 +25,14 @@ public sealed class RecoveryInterruptionTests
             Assert.True(lease.IsAcquired);
         string[] order = DeletionOrder(fixture, shape);
         Assert.Equal(shape == "root" ? 25 : 26, order.Length);
-        var expected = ExpectedPrefix(parent, order, deletion);
+        int removed = side == "before" ? deletion - 1 : deletion;
+        var expected = ExpectedPrefix(parent, order, removed);
         string signal = Path.Combine(parent, "hard-stop-ready");
-        await using var child = RecoveryHardStop.Start("recovery-executor", scenario, deletion.ToString(System.Globalization.CultureInfo.InvariantCulture), signal);
-        await RecoveryHardStop.StopAsync(child, signal, deletion.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        string boundary = side + ":" + deletion.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        await using var child = RecoveryHardStop.Start("recovery-executor", scenario, boundary, signal);
+        await RecoveryHardStop.StopAsync(child, signal, boundary);
         Assert.Equal(expected, RecoveryHardStop.Snapshot(parent));
-        await AssertRestartAsync(fixture, parent, scenario, shape, deletion, order.Length);
+        await AssertRestartAsync(fixture, parent, scenario, shape, removed, order.Length);
     }
 
     private static SortedDictionary<string, string> ExpectedPrefix(string parent, string[] order, int deletion)
@@ -48,7 +49,7 @@ public sealed class RecoveryInterruptionTests
         using var restarted = RecoveryEvidenceFixture.Reopen(parent, RecoveryHardStopChild.Transaction(marker),
             shape == "root-with-launcher-state");
         var state = await restarted.ApplicationStore.LoadAsync(TestContext.Current.CancellationToken);
-        Assert.Equal(shape == "root-with-launcher-state" && deletion == 1
+        Assert.Equal(deletion == 0 || (shape == "root-with-launcher-state" && deletion == 1)
             ? Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.None
             : Nvt.Core.Launcher.Activation.VersionManagerStateLoadIssue.Missing, state.Issue);
         if (deletion == total)
@@ -82,6 +83,41 @@ public sealed class RecoveryInterruptionTests
         Assert.False(File.Exists(restarted.LauncherStatePath));
         Assert.False(Directory.Exists(restarted.ManagedRoot));
         Assert.False(Directory.Exists(FileSystemManagedInstallationRootProbe.GetStagingContainerPath(restarted.ManagedRoot)));
+    }
+
+    /// <summary>Each target still exists at BeforeDelete and disappears before its paired AfterDelete.</summary>
+    [Theory]
+    [InlineData("root")]
+    [InlineData("root-with-launcher-state")]
+    [InlineData("staging")]
+    public async Task DeleteHooksBracketEachPhysicalDeletionInOrder(string shape)
+    {
+        RecoveryEvidenceFixture.RequireNative();
+        using var fixture = shape == "staging" ? await RecoveryEvidenceFixture.CreateFullStagingAsync()
+            : await RecoveryEvidenceFixture.CreateAsync(withLauncherState: shape == "root-with-launcher-state");
+        string parent = Path.GetDirectoryName(fixture.ManagedRoot)!;
+        string[] order = DeletionOrder(fixture, shape);
+        var observed = new List<(string Side, int Number)>();
+        var executor = fixture.CreateExecutor(beforeDelete: count =>
+        {
+            Assert.True(Path.Exists(Path.Combine(parent, order[count - 1])), order[count - 1]);
+            observed.Add(("before", count));
+        }, afterDelete: count =>
+        {
+            Assert.False(Path.Exists(Path.Combine(parent, order[count - 1])), order[count - 1]);
+            observed.Add(("after", count));
+        });
+        var evidence = await executor.ObserveAsync(fixture.Transaction, TestContext.Current.CancellationToken);
+        Assert.Equal(ManagedSetupRecoveryEvidenceIssue.None, evidence.Issue);
+        using var lease = await fixture.ApplicationStore.TryAcquireWriteLeaseAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        Assert.True(lease.IsAcquired);
+
+        var result = await executor.ExecuteAsync(new(ManagedSetupRecoveryAction.RemoveIncompleteInstallation,
+            evidence.ExecutionToken!), lease, TestContext.Current.CancellationToken);
+
+        Assert.Equal(ManagedSetupRecoveryExecutionPortOutcome.Completed, result);
+        Assert.Equal(Enumerable.Range(1, order.Length)
+            .SelectMany(count => new[] { ("before", count), ("after", count) }), observed);
     }
 
     private static string[] DeletionOrder(RecoveryEvidenceFixture fixture, string shape)

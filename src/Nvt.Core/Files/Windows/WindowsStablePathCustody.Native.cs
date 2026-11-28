@@ -352,9 +352,12 @@ internal sealed partial class WindowsStablePathCustody
         return duplicate;
     }
 
-    internal static bool MarkDeleteOnClose(SafeFileHandle handle)
+    internal static bool MarkDeleteOnClose(SafeFileHandle handle,
+        Action<int>? beforeDelete = null, int deletionNumber = 0)
     {
         var disposition = new NativeMethods.FileDispositionInfo { DeleteFile = 1 };
+        // The caller has finished validation and custody; disposition starts deletion.
+        beforeDelete?.Invoke(deletionNumber);
         return NativeMethods.SetFileInformationByHandle(
             handle,
             NativeMethods.FileDispositionInfoClass,
