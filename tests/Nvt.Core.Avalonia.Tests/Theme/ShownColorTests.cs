@@ -48,16 +48,20 @@ public sealed class ShownColorTests
 
     /// <summary>The computed colours are the rendered pixels of a faded element, also when its child draws on its fill.</summary>
     [AvaloniaTheory]
-    [InlineData(0.3, 1.0)]
-    [InlineData(0.72, 1.0)]
-    [InlineData(0.8, 0.5)]
-    public void ComputedColoursMatchRenderedPixels(double opacity, double brushOpacity)
+    [InlineData(0.3, 1.0, 1.0, 255)]
+    [InlineData(0.72, 1.0, 1.0, 255)]
+    [InlineData(0.8, 0.5, 1.0, 255)]
+    [InlineData(0.8, 1.0, 0.5, 255)]
+    [InlineData(1.0, 1.0, 1.0, 128)]
+    [InlineData(0.8, 0.5, 0.5, 128)]
+    public void ComputedColoursMatchRenderedPixels(double opacity, double brushOpacity, double childOpacity, byte colourAlpha)
     {
-        var glyphBrush = new SolidColorBrush(_buttonGlyph, brushOpacity);
+        var glyphBrush = new SolidColorBrush(new Color(colourAlpha, _buttonGlyph.R, _buttonGlyph.G, _buttonGlyph.B), brushOpacity);
         var glyph = new Border
         {
             Width = 20,
             Height = 20,
+            Opacity = childOpacity,
             Background = glyphBrush,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
