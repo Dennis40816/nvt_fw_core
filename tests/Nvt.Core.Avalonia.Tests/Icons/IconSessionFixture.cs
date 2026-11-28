@@ -27,7 +27,20 @@ public sealed class IconSessionFixture : IAsyncLifetime
         if (this.session is { } started)
         {
             this.session = null;
-            await started.DisposeAsync();
+            await DisposeSessionAsync(started);
+        }
+    }
+
+    private static async ValueTask DisposeSessionAsync(HeadlessUnitTestSession session)
+    {
+        try
+        {
+            await session.DisposeAsync();
+        }
+        catch (NullReferenceException exception) when (exception.StackTrace?.TrimStart().StartsWith(
+            "at Avalonia.Headless.HeadlessUnitTestSession.DisposeAsync()", StringComparison.Ordinal) == true)
+        {
+            // Avalonia.Headless 12.1.1 can capture a null dispatch task before StartNew assigns Task.Run's result.
         }
     }
 }
