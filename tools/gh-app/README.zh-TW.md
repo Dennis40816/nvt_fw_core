@@ -151,6 +151,14 @@ Add-GhAppComment -Number 7 -BodyFile .\comment.txt
 `commit_id` 必須等於核對的 head。Event 永遠是 `COMMENT`。
 `APPROVE`、`REQUEST_CHANGES` 與其他 event 都會在任何網路呼叫前被拒絕。只有 owner 可以批准。
 
+`-Verdict accept` 或 `-Verdict reject` 讓函式代寫紀錄的第一行。
+函式在內文檔的文字前面加上 `Review record: <ExpectedHeadSha> <verdict>` 和一行空行。
+SHA 一律是呼叫端傳入的 `-ExpectedHeadSha`，也就是審查時看的那個 head。
+函式不會在貼出時改用本機 clone 或 PR 目前的 head；head 變了仍然停止。
+內文第一個非空行已經以 `Review record:` 開頭時，函式在任何網路呼叫前停止。
+代寫的行是預設格式。repository 的 `-ReviewRecordPattern` 比對不到這一行時，仍自己寫第一行。
+不給 `-Verdict` 時，貼出的文字和以前相同。
+
 review 發出後，函式會把 PR 說明寫一次。
 檢查說明的 workflow（例如 NFC 的 `authority`）也會在 `pull_request: edited` 時執行。
 紀錄貼出前就開始的那次 run 會失敗，而新的 review 不會讓該 workflow 重跑。
@@ -176,6 +184,9 @@ GitHub 回傳的文字和送出的不同時，也會警告。
 ```powershell
 Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<EXPECTED_HEAD_SHA>' `
     -BodyFile .\review-record.txt
+
+Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha '<REVIEWED_HEAD_SHA>' `
+    -Verdict accept -BodyFile .\review-notes.txt
 ```
 
 ## Sync-GhAppLabels
