@@ -28,9 +28,13 @@ public sealed class ManualTimeProvider : TimeProvider
     /// <inheritdoc />
     public override long TimestampFrequency => TimeSpan.TicksPerSecond;
 
+    // Guard: configured before use; the caller serializes observations made by the callback.
+    internal Action? TimestampRead { get; init; }
+
     /// <inheritdoc />
     public override long GetTimestamp()
     {
+        TimestampRead?.Invoke();
         lock (_gate)
         {
             return _now;

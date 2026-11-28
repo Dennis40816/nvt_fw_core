@@ -235,19 +235,26 @@ public sealed class LoadingScopeCoordinatorTests
         using var releaseShow = new ManualResetEventSlim();
         var coordinator = new LoadingScopeCoordinator(static () => Task.CompletedTask, TimeSpan.Zero);
 
-        Task begin = Task.Run(
+        // Begin blocks inside its callback, so it needs a thread independent of the pool.
+        Task begin = Task.Factory.StartNew(
             () => coordinator.Begin(visible =>
             {
                 showEntered.Set();
                 Assert.True(releaseShow.Wait(WaitLimit, token));
                 states.Enqueue(visible);
             }),
-            token);
-        Assert.True(showEntered.Wait(WaitLimit, token));
+            token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-        await coordinator.EndAsync(states.Enqueue);
-        releaseShow.Set();
-        await begin.WaitAsync(WaitLimit, token);
+        try
+        {
+            Assert.True(showEntered.Wait(WaitLimit, token));
+            await coordinator.EndAsync(states.Enqueue);
+        }
+        finally
+        {
+            releaseShow.Set();
+            await begin.WaitAsync(WaitLimit, token);
+        }
 
         Assert.Equal(HiddenThenShown, states);
         var laterEnd = new List<bool>();
