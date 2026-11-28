@@ -20,7 +20,7 @@ Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
     $versionFile = if ($Package -eq 'Fonts') { 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj' } else { 'Directory.Build.props' }
     $tagPrefix = if ($Package -eq 'Fonts') { 'core-fonts-v' } else { 'core-v' }
-    $packageIds = if ($Package -eq 'Fonts') { @('Nvt.Core.Fonts') } else { @('Nvt.Core', 'Nvt.Core.Avalonia') }
+    $packageIds = if ($Package -eq 'Fonts') { @('Nvt.Core.Fonts') } else { @('Nvt.Core', 'Nvt.Core.Avalonia', 'Nvt.Core.TestSupport') }
     [xml]$properties = Get-Content -LiteralPath $versionFile -Raw
     $version = [string]$properties.Project.PropertyGroup.Version
     if ([string]::IsNullOrWhiteSpace($version)) {
@@ -86,7 +86,8 @@ try {
 
     New-Item -ItemType Directory -Path $output -Force | Out-Null
     foreach ($packageId in $packageIds) {
-        Invoke-DotNet -Arguments (@('pack', "src/$packageId/$packageId.csproj",
+        $projectRoot = if ($packageId -eq 'Nvt.Core.TestSupport') { 'tests' } else { 'src' }
+        Invoke-DotNet -Arguments (@('pack', "$projectRoot/$packageId/$packageId.csproj",
             '--configuration', 'Release', '--no-build', '--no-restore', '--output', $output) + $sourceProperties)
     }
 
