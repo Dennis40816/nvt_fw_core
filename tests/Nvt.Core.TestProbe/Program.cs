@@ -32,6 +32,7 @@ namespace Nvt.Core.TestProbe
                 {
                     throw new ProbeInputException("Unknown mode.");
                 }
+                CheckReleasePaths(mode, inputs);
 
                 if (mode == "arguments-environment")
                 {
@@ -101,20 +102,14 @@ namespace Nvt.Core.TestProbe
         internal static Task WaitAsync(ProbeInputs inputs)
         {
             var limit = TimeSpan.FromMilliseconds(inputs.Integer("wait-ms", DefaultWaitMilliseconds, minimum: 1));
-            string? release = inputs.Optional("release-path");
+            var release = ReleaseFile(inputs.Optional("release-path"));
             using var released = new ManualResetEvent(initialState: false);
-            if (release is null)
+            if (release is not var (fullPath, directory))
             {
                 // No release file: the probe lives for the whole limit. The wait handle is never signaled. This is the
                 // lifetime of the helper process, and it is not a synchronization between a test and the probe.
                 _ = released.WaitOne(limit);
                 return Task.CompletedTask;
-            }
-            string fullPath = Path.GetFullPath(release);
-            string directory = Path.GetDirectoryName(fullPath) ?? throw new ProbeInputException("Invalid input: release-path");
-            if (!Directory.Exists(directory))
-            {
-                throw new ProbeInputException("Invalid input: release-path");
             }
             using var watcher = new FileSystemWatcher(directory, Path.GetFileName(fullPath))
             {
@@ -143,6 +138,35 @@ namespace Nvt.Core.TestProbe
             }
             _ = released.WaitOne(limit);
             return Task.CompletedTask;
+        }
+
+        // Rejects a bad release-path before a mode writes or starts anything. A waiting mode reads the argument or the
+        // environment value. A child receives no release-path argument, so it inherits only the environment value.
+        private static void CheckReleasePaths(string mode, ProbeInputs inputs)
+        {
+            if (mode is "silent-wait" or "hold-lock" or "tree-grandchild" or "tree-root-wait" or "orphan-chain-root")
+            {
+                _ = ReleaseFile(inputs.Optional("release-path"));
+            }
+            if (mode is "tree-root-exit" or "tree-root-wait" or "orphan-chain-root" or "orphan-chain-exit" or
+                "detached-descendant-root" or "ready-tree-root")
+            {
+                // Inputs without arguments read only the environment value.
+                _ = ReleaseFile(new ProbeInputs([]).Optional("release-path"));
+            }
+        }
+
+        private static (string FullPath, string Directory)? ReleaseFile(string? release)
+        {
+            if (release is null)
+            {
+                return null;
+            }
+            string fullPath = Path.GetFullPath(release);
+            string? directory = Path.GetDirectoryName(fullPath);
+            return directory is not null && Directory.Exists(directory)
+                ? (fullPath, directory)
+                : throw new ProbeInputException("Invalid input: release-path");
         }
 
         internal static void RequireWindows()
