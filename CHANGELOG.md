@@ -12,7 +12,7 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## 0.9.8 - 2026-11-28
 
-Tag `core-v0.9.8` on the merge commit of the version pull request.
+Tag `core-v0.9.8` on commit `871616baf2b447f6993a68c68194a405ba55ff59` (#294).
 
 Theme additions for the NFH 1.0.0 layout work: flat disclosure rows, side-rail items, an opt-in compact switch and a Core surface for plain flyout panels. Plain flyouts, text inside role button flyouts and, under `FluentTheme`, check box and radio button labels look different as described below. No API change.
 
