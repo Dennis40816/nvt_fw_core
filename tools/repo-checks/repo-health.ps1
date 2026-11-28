@@ -49,7 +49,7 @@ $ErrorActionPreference = 'Stop'
 # Stable output on every host: UTF-8 without BOM, and compiler messages in the invariant culture.
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 [Globalization.CultureInfo]::CurrentUICulture = [Globalization.CultureInfo]::InvariantCulture
-# Fixed tool language on every host: localized compiler and format messages change the fingerprints.
+# Request stable tool messages; dotnet format can ignore these language settings.
 $env:DOTNET_CLI_UI_LANGUAGE = 'en'
 $env:VSLANG = '1033'
 $env:PreferredUILang = 'en-US'
@@ -665,11 +665,13 @@ function Read-ProjectSarif([string]$Path, [string]$Project, [string]$ProjectPath
         }
     }
 }
-function Read-FormatReport([string]$Path, [int]$ExitCode, [string]$Stage, [string]$Project = '') {
+function Read-FormatReport([string]$Path, [int]$ExitCode, [string]$Stage, [string]$Project = '', [string[]]$Output = @()) {
+    if (($Output -join "`n") -match '(?i)(failed to load|error loading|unhandled exception|exception was thrown|could not load|warnings were encountered while loading the workspace|workspace warnings|unable to load)') { throw "HC_FORMAT $Stage`:1 failed project load/tool execution; see log" }
     if ($ExitCode -notin @(0, 2)) { throw "HC_FORMAT $Path`:1 tool crashed/failed with exit $ExitCode" }
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "HC_FORMAT $Path`:1 missing format report" }
     try { $report = ConvertFrom-Json -NoEnumerate -AsHashtable -Depth 100 ([IO.File]::ReadAllText($Path)) } catch { throw "HC_FORMAT $Path`:1 unreadable format report" }
     if ($report -isnot [array]) { throw "HC_FORMAT $Path`:1 expected structured array" }
+    $reported = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $before = $script:DiagnosticRequests.Count
     foreach ($file in $report) {
         if (-not $file.Contains('FilePath') -or $file.FileChanges -isnot [array]) { throw "HC_FORMAT $Path`:1 invalid file report" }
@@ -680,6 +682,7 @@ function Read-FormatReport([string]$Path, [int]$ExitCode, [string]$Stage, [strin
         $used = [Collections.Generic.HashSet[string]]::new()
         foreach ($change in $file.FileChanges) {
             if (-not $change.DiagnosticId -or $change.LineNumber -lt 1 -or $change.CharNumber -lt 1 -or -not $change.FormatDescription) { throw "HC_FORMAT ${source}:1 malformed change" }
+            $null = $reported.Add("$($file.FilePath)($($change.LineNumber),$($change.CharNumber))|$($change.DiagnosticId)")
             foreach ($owner in $owners) {
                 # dotnet format reports unfixable analyzer warnings after its prospective
                 # edits, so these coordinates can have moved. Reuse fresh compiler
@@ -694,6 +697,15 @@ function Read-FormatReport([string]$Path, [int]$ExitCode, [string]$Stage, [strin
                 else { Add-DiagnosticRequest ("FORMAT:" + $change.DiagnosticId) $owner.name $source $change.LineNumber $change.CharNumber $change.DiagnosticId $Stage }
             }
         }
+    }
+    # At minimal verbosity, only report-backed diagnostics are expected. Reject
+    # every other message, including workspace warnings in any UI language.
+    # One fixed pattern and a set lookup per line, so the cost stays linear with thousands of findings.
+    $diagnosticLine = [regex]::new('^(?<at>.+?\(\d+,\d+\)): (?:warning|error) (?<id>[^:\s]+): ')
+    foreach ($line in (($Output -join "`n") -split '\r\n|\r|\n')) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $match = $diagnosticLine.Match($line)
+        if (-not $match.Success -or -not $reported.Contains("$($match.Groups['at'].Value)|$($match.Groups['id'].Value)")) { throw "HC_FORMAT $Stage`:1 unexpected format output (project-load/tool failure); see log" }
     }
     if ($ExitCode -ne 0 -and $script:DiagnosticRequests.Count -eq $before) { throw "HC_FORMAT $Path`:1 nonzero exit without findings (project-load/tool failure)" }
 }
@@ -734,13 +746,12 @@ function Initialize-Enforcement($Baseline) {
         if (Test-Path -LiteralPath $report) { Remove-Item -LiteralPath $report }
         $args = @('format')
         if ($run.style) { $args += 'style' }
-        $args += @($run.target, '--verify-no-changes', '--no-restore', '--severity', 'warn', '--report', $dir)
+        $args += @($run.target, '--verify-no-changes', '--no-restore', '--severity', 'warn', '--report', $dir, '--verbosity', 'minimal')
         if ($run.style) { $args += @('--diagnostics', 'IDE0005') }
         $output = @(& dotnet @args 2>&1)
         $code = $LASTEXITCODE
         [IO.File]::WriteAllLines((Join-Path $Root "artifacts/code-health/$($run.directory).log"), [string[]]$output)
-        if (($output -join "`n") -match '(?i)(failed to load|error loading|unhandled exception|exception was thrown|could not load|warnings were encountered while loading the workspace|workspace warnings|unable to load)') { throw "HC_FORMAT $dir`:1 failed project load/tool execution; see log" }
-        Read-FormatReport $report $code $run.directory $run.project
+        Read-FormatReport $report $code $run.directory $run.project -Output $output
         $script:FormatRuns += @{ stage = $run.directory; exitCode = $code }
     }
 }

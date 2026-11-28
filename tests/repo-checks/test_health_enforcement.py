@@ -170,6 +170,82 @@ try {{
                 self.assertNotEqual(0, r.returncode)
                 self.assertIn('HC_DRIFT src/.editorconfig:2 descendant root=true', r.stdout + r.stderr)
 
+    def format_stage(self, output, *, code=0, stage='format'):
+        self.write('eng/code-health/seam-owners.json', json.dumps({'schemaVersion': 1, 'entries': []}))
+        changes = [{'LineNumber': 4, 'CharNumber': 3, 'DiagnosticId': 'WHITESPACE', 'FormatDescription': 'Fix spacing'}]
+        report = [{'FilePath': str(self.root / 'src/Fixture/One.cs'), 'FileChanges': changes}] if code == 2 else []
+        self.write('format-fixture.json', json.dumps({'output': output, 'report': report, 'code': code, 'stage': stage}))
+        return self.run_ps("""
+$Solution = 'src/Fixture/Fixture.csproj'
+$script:HealthProjects[0].layer = 'tests'
+function Test-BundleDrift {}
+function Get-ProjectCoverage { return $script:HealthProjects }
+function Invoke-Checked {}
+function Read-ProjectSarif {}
+function dotnet {
+    [IO.File]::AppendAllText((Join-Path $Root 'format-arguments.jsonl'), (ConvertTo-Json -Compress -InputObject @($args)) + "`n")
+    $run = if ($args[1] -eq 'style') { 'format-style-Fixture' } else { 'format' }
+    $fixture = Get-Content format-fixture.json -Raw | ConvertFrom-Json -AsHashtable
+    $directory = $args[[Array]::IndexOf($args, '--report') + 1]
+    [void][IO.Directory]::CreateDirectory((Join-Path $Root $directory))
+    $report = @()
+    if ($run -eq $fixture.stage) { $report = @($fixture.report) }
+    [IO.File]::WriteAllText((Join-Path $Root "$directory/format-report.json"), (ConvertTo-Json -Depth 100 -InputObject $report))
+    $global:LASTEXITCODE = if ($run -eq $fixture.stage) { $fixture.code } else { 0 }
+    if ($run -eq $fixture.stage) { $fixture.output | ForEach-Object { $_ } }
+}
+Initialize-Enforcement @{findings=@()}
+ConvertTo-Json -Depth 100 -InputObject $script:FormatRuns
+""")
+
+    def test_format_stage_rejects_load_warnings_in_any_language(self):
+        for warning in (
+            'Warnings were encountered while loading the workspace. Set the verbosity option to diagnostic to log warnings.',
+            '載入工作區時發生警告。請將詳細程度選項設定為 [診斷] 層級以記錄警告。',
+            'Unrecognized workspace message',
+        ):
+            for stage in ('format', 'format-style-Fixture'):
+                for code in (0, 2):
+                    with self.subTest(warning=warning, stage=stage, code=code):
+                        r = self.format_stage([warning], stage=stage, code=code)
+                        self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+                        self.assertIn('HC_FORMAT', r.stdout + r.stderr)
+
+    def test_format_stage_preserves_legacy_output_failures(self):
+        for phrase in ('failed to load', 'error loading', 'unhandled exception', 'exception was thrown',
+                       'could not load', 'workspace warnings', 'unable to load'):
+            with self.subTest(phrase=phrase):
+                # Even a report-backed diagnostic must retain the old failure rule.
+                line = f'{self.root / "src/Fixture/One.cs"}(4,3): error WHITESPACE: {phrase}'
+                r = self.format_stage([line], code=2)
+                self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+                self.assertIn('failed project load/tool execution', r.stdout + r.stderr)
+
+    def test_format_stage_accepts_only_report_backed_diagnostic_output(self):
+        prefix = f'{self.root / "src/Fixture/One.cs"}(4,3): error WHITESPACE: '
+        for message in ('Fix whitespace formatting.', '修正空白字元格式化。'):
+            for stage in ('format', 'format-style-Fixture'):
+                with self.subTest(message=message, stage=stage):
+                    r = self.format_stage([prefix + message], code=2, stage=stage)
+                    self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+                    self.assertEqual(2, len(json.loads(r.stdout)))
+        for line in (prefix.replace('(4,3)', '(5,3)') + 'Fix spacing',
+                     prefix.replace('WHITESPACE', 'IDE0005') + 'Fix spacing',
+                     prefix.replace('One.cs', 'Other.cs') + 'Fix spacing',
+                     prefix + 'Fix spacing\nUnrecognized continuation'):
+            with self.subTest(line=line):
+                r = self.format_stage([line], code=2)
+                self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+                self.assertIn('unexpected format output', r.stdout + r.stderr)
+
+    def test_format_stage_accepts_silent_success(self):
+        r = self.format_stage([])
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual([0, 0], [run['exitCode'] for run in json.loads(r.stdout)])
+        for invocation in (self.root / 'format-arguments.jsonl').read_text().splitlines():
+            args = json.loads(invocation)
+            self.assertEqual('minimal', args[args.index('--verbosity') + 1])
+
     def test_descendant_editorconfig_without_root_passes(self):
         r = self.check_editor('[*.cs]\ndotnet_diagnostic.RS0030.severity = warning\n')
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
