@@ -2016,3 +2016,86 @@ Container borders and dividers keep their existing decorative ratios; they carry
 It keeps the two reference sets in separate directories because four ComboBox filenames overlap.
 `RenderRestFillNoneChoices` and `RenderRestFillNoneExpanders` reuse the existing state sheets and write to `NVT_RESTFILL_NONE_IMAGES_DIR`, so they never overwrite the Soft sheets.
 They export 12 English sheets at 100% scale, each 1200 pixels wide and below one megabyte.
+
+## Inline property-panel inputs (opt-in)
+
+Load `InlineInputStyles.axaml` after `FormStyles.axaml`. `ThemeTokens.axaml` merges
+`InlineInputTokens.axaml`. Add `Classes="inlineInput"` to a TextBox, ComboBox
+(including `IsEditable="True"`), or NumericUpDown. Controls without the class keep
+all existing styles. NumberScrubber is outside this role's current scope.
+
+```xml
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/FormStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/InlineInputStyles.axaml" />
+<TextBox Classes="inlineInput" Text="Current gain" />
+<NumericUpDown Classes="inlineInput" Value="4.125">
+  <NumericUpDown.InnerRightContent>
+    <TextBlock Classes="inlineInputUnit" Text="mm" />
+  </NumericUpDown.InnerRightContent>
+</NumericUpDown>
+```
+
+Rest uses a soft fill and transparent frame. Hover, pressed and drop-down open
+use the same deeper fill; popup rows keep their existing styles. Pointer or
+keyboard editing clears the fill and reveals `NfcBorderBrush`. Only keyboard
+focus adds the existing exterior 2 DIP ring with a 2 DIP gap. The frame always
+reserves 1 DIP so text does not move. Both Pill and Square use compact 6 DIP
+corners (10 DIP on the exterior ring), 8 DIP horizontal padding and the existing
+Core control height. Existing `reducedMotion` classes still remove transitions.
+
+Read-only (`IsReadOnly` on TextBox/NumericUpDown; `readOnly` on ComboBox) uses
+transparent fill/frame and muted text even on hover or focus, with no ring.
+ComboBox's `readOnly` class is an appearance contract; the application controls
+whether selection/editing is allowed. Disabled uses the rest fill, disabled text
+and no ring. The `error` class or native `:error` always wins for the frame,
+including disabled/read-only combinations. Editable text uses the primary role;
+units are separate TextBlocks with `inlineInputUnit`, using the secondary role.
+
+All keys below have prefix `Nvt.Input.Inline.`; existing `Nvt.Form.*` tokens are unchanged.
+
+| Suffix | Light | Dark |
+|---|---|---|
+| `FillBrush`, `DisabledFillBrush` | `#E6ECF4` | `#1E2A40` |
+| `HoverFillBrush` | `#D3DDE8` | `#2A3B53` |
+| `EditingFillBrush`, `ReadOnlyFillBrush` | Transparent | Transparent |
+| `BorderBrush`, `HoverBorderBrush` | Transparent | Transparent |
+| `EditingBorderBrush` | `NfcBorderBrush` | Same alias |
+| `ErrorBorderBrush` | `NfcDangerBorderBrush` | Same alias |
+| `FocusBrush` | `Nvt.Controls.FocusBrush` | Same alias |
+| `TextBrush` | `NfcTextBrush` | Same alias |
+| `SecondaryTextBrush` | `NfcTextSecondaryBrush` | Same alias |
+| `ReadOnlyTextBrush` | `NfcTextMutedBrush` | Same alias |
+| `DisabledTextBrush` | `NfcTextDisabledBrush` | Same alias |
+| `Padding` / `BorderThickness` | `8,0` / `1` | Same |
+| `CornerRadius` / `FocusCornerRadius` | `NfcCompactCornerRadius` / `10` | Same |
+
+Measured by `InlineInputContrastTests` after compositing transparent brushes over
+the parent surface. Rest fill is deliberately below 3:1 and has no 3:1 assertion.
+
+| Measurement | Light | Dark |
+|---|---:|---:|
+| Rest fill / `NfcSurfaceBrush` | 1.189:1 | 1.234:1 |
+| Rest fill / `NfcSurfaceSubtleBrush` | 1.136:1 | 1.094:1 |
+| Hover fill / `NfcSurfaceBrush` | 1.375:1 | 1.562:1 |
+| Primary text on rest / hover | 12.308 / 10.642:1 | 11.664 / 9.213:1 |
+| Disabled text on rest | 3.836:1 | 4.202:1 |
+| Editing frame, minimum over both surfaces | 3.838:1 | 3.959:1 |
+| Error frame, minimum over all fills and both surfaces | 3.492:1 | 3.040:1 |
+| Keyboard ring, minimum over both surfaces | 6.359:1 | 8.692:1 |
+
+Reproduce the English before/after property panels and state strips from the repository root:
+
+```powershell
+$env:DOTNET_CLI_UI_LANGUAGE='en'
+$env:VSLANG='1033'
+$env:PreferredUILang='en-US'
+$env:AVALONIA_TELEMETRY_OPTOUT='1'
+$env:NVT_INLINE_IMAGES_DIR="$PWD/artifacts/inline-input"
+dotnet test tests/Nvt.Core.Avalonia.Tests --no-restore -p:UseSharedCompilation=false --filter FullyQualifiedName~InlineInputRenderer --logger 'console;verbosity=normal'
+```
+
+The renderer follows `FormSheets`: real Fluent + Core controls, headless Skia,
+100% scale, transitions frozen, deterministic state previews. Output files:
+`artifacts/inline-input/inline-input-before-after-{pill|square}-{light|dark}.png`.
+Native pointer/Tab focus, editing, error layout, and unclipped ring geometry are
+verified separately by `InlineInputStylesTests`.

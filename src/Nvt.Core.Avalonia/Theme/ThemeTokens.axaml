@@ -10,6 +10,7 @@
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ShapePill.axaml" />
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/ListTokens.axaml" />
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/FormTokens.axaml" />
+    <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/InlineInputTokens.axaml" />
     <ResourceInclude Source="avares://Nvt.Core.Avalonia/Theme/TabTokens.axaml" />
   </ResourceDictionary.MergedDictionaries>
   <ResourceDictionary.ThemeDictionaries>
