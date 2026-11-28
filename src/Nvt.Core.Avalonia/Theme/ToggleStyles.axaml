@@ -176,6 +176,36 @@
   <Style Selector="ToggleButton.toggleSwitch:checked /template/ Grid#PART_MovingKnobs">
     <Setter Property="Canvas.Left" Value="{DynamicResource Nvt.Toggle.SwitchKnobTravel}"/>
   </Style>
+  <!-- compact is a smaller switch for narrow panels. The click area keeps the shared control height; colors, focus and disabled rules are the same. -->
+  <Style Selector="ToggleButton.toggleSwitch.compact, ToggleSwitch.compact">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchWidth}"/>
+    <Setter Property="MinWidth" Value="{DynamicResource Nvt.Toggle.CompactSwitchWidth}"/>
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}"/>
+    <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact /template/ Border#ToggleBody, ToggleSwitch.compact /template/ Border#ToggleBody">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchTrackWidth}"/>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Toggle.CompactSwitchTrackHeight}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact /template/ Canvas#PART_SwitchKnob, ToggleSwitch.compact /template/ Canvas#PART_SwitchKnob">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobTravel}"/>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Toggle.CompactSwitchTrackHeight}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact /template/ Grid#PART_MovingKnobs, ToggleSwitch.compact /template/ Grid#PART_MovingKnobs">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobSize}"/>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobSize}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact /template/ Ellipse#ToggleKnob, ToggleSwitch.compact /template/ Ellipse#ToggleKnob">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobSize}"/>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobSize}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact /template/ Border#ToggleFocusRing, ToggleSwitch.compact /template/ Border#ToggleFocusRing">
+    <Setter Property="Width" Value="{DynamicResource Nvt.Toggle.CompactSwitchFocusWidth}"/>
+    <Setter Property="Height" Value="{DynamicResource Nvt.Toggle.CompactSwitchFocusHeight}"/>
+  </Style>
+  <Style Selector="ToggleButton.toggleSwitch.compact:checked /template/ Grid#PART_MovingKnobs">
+    <Setter Property="Canvas.Left" Value="{DynamicResource Nvt.Toggle.CompactSwitchKnobTravel}"/>
+  </Style>
   <Style Selector="ToggleButton.toggleSegment:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleButton.toggleTab:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleButton.toggleIcon:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleButton.toggleSwitch:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing, ToggleSwitch:focus-visible:not(:disabled) /template/ Border#ToggleFocusRing">
     <Setter Property="IsVisible" Value="True"/>
   </Style>

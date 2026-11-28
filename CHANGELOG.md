@@ -6,8 +6,19 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Added
+
+- `Nvt.Core.Avalonia`: opt-in `Expander.flat` disclosure rows with transparent headers, the standard 12 DIP header inset and no divider; `Button` and `ToggleButton` with `actionGhost flat rail` provide a 56 DIP icon-and-caption item, including existing `marked` selection, interaction states and keyboard focus. No control types or C# API are added.
+- `Nvt.Core.Avalonia`: opt-in `compact` class for `ToggleSwitch` and `ToggleButton.toggleSwitch`: a 40 × 20 track in a 46 × 32 click area for narrow panels, with seven `Nvt.Toggle.CompactSwitch*` tokens. Colors, states, focus and disabled appearance are unchanged, and the default 58 × 40 switch does not change.
+
+### Fixed
+
+- `Nvt.Core.Avalonia`: under FluentTheme, `CheckBox` and `RadioButton` labels now use the Core label color in every state. Before, checked labels turned black or white and disabled labels used the Fluent gray.
+- `Nvt.Core.Avalonia`: inside the flyout of a role button (`action*`, `chipAction`), list items, combo box values and other `TextBlock` text now take the color of their own control or container. Before, they turned black, also in Dark.
+
 ### Changed
 
+- `MenuStyles.axaml` now styles plain `FlyoutPresenter` panels: the Core menu surface, border, corner radius and UI font with 12 DIP padding. This changes existing plain flyouts in every application that loads this file, including through `LogConsoleStyles.axaml`. The host template, size limits and scrolling stay. Menu flyouts, Dialogs and MessageCenter keep their surfaces.
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
 
 ## 0.9.7 - 2026-11-27

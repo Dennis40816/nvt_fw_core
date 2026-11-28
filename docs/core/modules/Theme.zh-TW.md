@@ -216,6 +216,15 @@ Choice 標籤保留原有文字色。文字 class 保留中性角色，僅啟用
 
 背景、邊界、文字轉場為 120 ms。按下時關閉轉場；primary 按下的內側 2 px 邊線由不占版面的覆蓋層繪製。焦點立即顯示。控制項或任何祖先加 `.reducedMotion` 會關閉轉場。
 
+### Rail 項目
+
+在 `Button` 或 `ToggleButton` 使用 `Classes="actionGhost flat rail"`；需要選取框時再加 `marked`。
+項目寬 56 DIP、至少高 52 DIP，內距 4 DIP，內容置中。
+傳入垂直 `StackPanel`，內含會繼承前景色的圖示（例如 `PathIcon`）與 `TextBlock` 短標籤。角色提供 4 DIP 間距、11 字級與單行省略號。圖示與標籤不要固定前景色。
+flat、marked 的狀態、應用程式主色、鍵盤焦點與 `reducedMotion` 均沿用既有行為；兩種形狀下 flat 都保持矩形。
+已選取的 marked rail 項目在按下時使用 `Nvt.Interaction.PressedFillBrush`，取代半透明按下色層。使用 NFC、NFH、NFU 色票時，強調色標籤在應用程式、一般與 subtle 底色上都保有 4.5:1 對比，Dark 也適用。框線與文字仍跟隨應用程式主色。
+rail 容器、收合與導覽由應用程式負責，四周須留出外側焦點框的空間。
+
 ### 標記式選取
 
 `marked` 是選擇性啟用的修飾 class，供導覽與快速切換使用，目標版本為 `core-v0.9.7`。預設行為不變。
@@ -274,7 +283,7 @@ Core 0.2.0 引入共用色票與按鈕角色；本節為其版本發布說明。
 | `Button.summaryChip` | `chipAction` |
 | `Button.closeButton` | Core 無替代項；須由工具定義 |
 | `Button.fileRevealAction` | Core 無替代項；須由工具定義 |
-| `Button.railAction`（含 `.reducedMotion`） | Core 無 rail 角色；須由工具定義。`.reducedMotion` 仍適用於所有共用角色 |
+| `Button.railAction`（含 `.reducedMotion`） | 共用項目版面可改用 `actionGhost flat rail`，rail 行為留在工具內。`.reducedMotion` 仍適用於所有共用角色 |
 | `Button.primaryRailAction` | Core 無替代項；須由工具定義 |
 | `railActionIcon`, `railActionLabel`, `railActionIconSlot` | Core 無替代項；須由工具定義 |
 | 資源 `NfcSemanticButtonTheme` (ControlTheme) | 無替代資源；改用共用角色 class |
@@ -283,7 +292,7 @@ Core 0.2.0 引入共用色票與按鈕角色；本節為其版本發布說明。
 | `Button.danger Path.confirmDialogDangerIcon` selector | `Button.actionDanger Path.confirmDialogDangerIcon` |
 | 面板標頭專用範本、`PART_ContentPresenter`、12,10 內距、10,10,0,0 圓角及面板根部裁切 | `actionGhost` 角色；先載入 `ButtonStyles.axaml`，再載入 `PanelsStyles.axaml`。共用範本採 14,0 內距與膠囊圓角；面板根部不再裁切外側焦點框 |
 
-`railAction`、`primaryRailAction`、`closeButton`、`fileRevealAction` 等產品角色及 rail 圖示／標籤／插槽版面必須由各工具自行定義。全域 `Button` 規則已移除：未指定角色 class 的按鈕回到 Fluent，包含 Fluent 自己的焦點視覺。
+`railAction`、`primaryRailAction`、`closeButton`、`fileRevealAction` 等產品角色仍留在各工具內，共用 rail 項目版面現在可組合 `actionGhost flat rail`。全域 `Button` 規則已移除：未指定角色 class 的按鈕回到 Fluent，包含 Fluent 自己的焦點視覺。
 
 既有 `ThemeTokens.axaml` 鍵及型別均未移除或改名。下表摘要 token 與行為變更；目前數值詳見前面的色票、主色與尺寸表。
 
@@ -567,6 +576,16 @@ dotnet test Nvt.Core.sln --no-build
 
 ## Expander
 
+### Flat 展開列
+
+加上 `Classes="flat"` 後，容器沒有底色、框線與內距。標頭高 32 DIP，箭頭靠右。
+標頭與內容沿用標準標頭內距（`Nvt.Expander.HeaderPadding`，12 DIP），兩者文字對齊，也不會貼著滑入底色或焦點框。
+兩種 rest-fill 模式下，靜止與停用標頭都透明；滑入與按下使用共用半透明互動色層，停用文字使用 `NfcTextDisabledBrush`。
+標頭與內容之間不畫分隔線，保留既有 6 DIP 間距，Down 與 Up 方向都適用。外距及列分隔線由容器提供；標頭四周須留 4 DIP，讓既有外側鍵盤焦點框完整顯示，且不要裁切。
+形狀與焦點 token、鍵盤展開及 `reducedMotion` 均保留。未加 `flat` 的 Expander 仍使用下述容器。
+
+### 標準容器
+
 內容分隔線與標頭相隔 6 DIP，在焦點環向外延伸的 4 DIP 之外保留 2 DIP；向上展開時採鏡像間距。
 
 
@@ -845,6 +864,16 @@ List 別名與 Choice 列、`toggleSoft` 共用已調整的 `Nvt.Controls.Select
 Pill 表面圓角為 8 DIP，Square 為 6 DIP。
 表面四周預留透明陰影空間，彈出位置的 offset 會補償這段空間。
 
+### 一般 Flyout 面板
+
+載入 `MenuStyles.axaml` 後，所有一般 `FlyoutPresenter` 都會套用樣式，既有應用程式的 `Flyout` 面板也會改變，不需另加 class。
+面板使用選單的表面與框線、和選單彈出面板相同的圓角（Pill 8 / Square 6 DIP），文字使用 `NfcTextBrush` 與 Core UI 字型、13 字級。四邊內距為 12 DIP。
+只設定上述屬性。宿主主題保留自己的範本，所以 [Fluent 12.1.1 的尺寸限制](https://github.com/AvaloniaUI/Avalonia/blob/12.1.1/src/Avalonia.Themes.Fluent/Accents/BaseResources.xaml)仍然有效：寬 96–456 DIP、高 40–758 DIP，水平與垂直自動捲動。上述表面、框線、圓角、字型與內距的值，優先於設定同樣屬性的 `FlyoutPresenterTheme`；要保留別的外觀，請在這個 include 之後宣告應用程式樣式。
+`LogConsoleStyles.axaml` 會載入 `MenuStyles.axaml`，只載入 LogConsole 樣式的應用程式也會套用這個面板外觀。選單 flyout、Dialogs 與 MessageCenter 保留自己的表面。角色按鈕的 flyout 內，文字沿用自己容器的顏色。
+
+`SharedUiRolesTests` 檢查實際幾何、狀態色、100–200% 縮放下的焦點空間、應用程式主色替換、捲動，以及兩種主題下在應用程式、一般與 subtle 底色上至少 4.5:1 的啟用文字對比。Dark 停用文字在這些表面上也達 4.5:1。
+設定 `NVT_ROLES_098_IMAGES_DIR` 後執行 `SharedRoleGalleryTests`，可輸出兩種形狀、兩種 rest-fill 模式、100% 與 150% 縮放的英文合成內容 PNG。
+
 ### 選單狀態與 token
 
 靜止使用 `Nvt.Interaction.RestBrush`。滑鼠移入、鍵盤焦點與子選單展開使用 `Nvt.Interaction.HoverBrush`。
@@ -981,12 +1010,15 @@ NFH 零差異採用：
 | `toggleIcon` | 由宿主提供圖示與無障礙名稱的 `ToggleButton`。 | 40 × 40。 |
 | `toggleSwitch` | 套用開關模板的 `ToggleButton`。 | 點擊區 58 × 40。 |
 | `ToggleSwitch` | 原生控制項不需 class，即使用相同開關外觀。 | 軌道 52 × 28、旋鈕 22 × 22、位移 24。 |
+| `compact` | 窄面板用的選用 class，加在 `ToggleSwitch` 或 `ToggleButton.toggleSwitch`。 | 點擊區 46 × 32、軌道 40 × 20、旋鈕 14 × 14、位移 20。 |
 
 所有尺寸皆為裝置獨立像素。
 兩種主題與形狀下，開關旋鈕皆維持圓形。啟用且勾選時使用主按鈕標籤筆刷；未勾選、停用及 danger 的旋鈕維持白色。
 開關模板只顯示軌道。可見標籤請放在旁邊，並提供無障礙名稱。
 宿主負責選取規則、命令與內容。
-每個控制項只使用一個切換角色。
+每個控制項只使用一個切換角色。`compact` 是尺寸修飾，不算角色。
+
+只在 58 DIP 的開關擠到標籤時使用 `compact`。它只改尺寸：顏色、狀態、`danger`、2 px 焦點框與停用外觀都相同。點擊區高度維持共用控制項高度 `NfcControlHeight`。
 
 ### 切換狀態與 danger
 
@@ -1084,7 +1116,7 @@ Light 與 Dark 使用相同數值。
 | `Nvt.Shape.RoundCornerRadius` | 999 | 999 |
 
 開關軌道使用 `Nvt.Shape.ControlCornerRadius`，焦點框使用 `Nvt.Shape.FocusCornerRadius`。
-旋鈕保持圓形；軌道 52 × 28、旋鈕 22 × 22、移動 24 DIP 均不變。
+旋鈕保持圓形；軌道 52 × 28、旋鈕 22 × 22、移動 24 DIP 均不變（`compact` 為 40 × 20、14 × 14、20 DIP）。
 既有 Button 角色維持目前的圓角資源。
 
 ### 切換控制項採用步驟
@@ -1105,6 +1137,7 @@ Light 與 Dark 使用相同數值。
 <ToggleButton Classes="toggleTab" Content="Overview" />
 <ToggleButton Classes="toggleSwitch danger" AutomationProperties.Name="Enable option" />
 <ToggleSwitch AutomationProperties.Name="Enable option" />
+<ToggleSwitch Classes="compact" AutomationProperties.Name="Enable option" />
 ```
 
 `ToggleStylesRenderer` 以 headless 方式檢查配置，僅在設定 `NVT_TOGGLE_IMAGES_DIR` 時寫入圖片。
@@ -1465,6 +1498,8 @@ Expander 按下文字維持 Light `#0B1220`、Dark 白色；Choice 標籤在各�
 
 原生 `ToggleSwitch` 只有在勾選狀態改變後，才會將旋鈕移至新的 `Nvt.Toggle.SwitchKnobTravel` 位置。
 變更此 token 會立即更新旋鈕畫布寬度，但旋鈕會保留原位置，直到下一次切換。
+compact 開關的 `Nvt.Toggle.CompactSwitchKnobTravel` 也是如此。
+`compact` 與預設開關共用 `Nvt.Toggle.SwitchKnobMargin` 與 `Nvt.Toggle.SwitchKnobTopOffset`。宿主改其中任何一個時，兩種尺寸都要檢查。
 
 | Token | Pill 預設值 | Square 預設值 |
 | --- | --- | --- |
@@ -1517,6 +1552,13 @@ Expander 按下文字維持 Light `#0B1220`、Dark 白色；Choice 標籤在各�
 | `Nvt.Toggle.SwitchKnobTopOffset` | `3` | `3` |
 | `Nvt.Toggle.SwitchFocusWidth` | `60` | `60` |
 | `Nvt.Toggle.SwitchFocusHeight` | `36` | `36` |
+| `Nvt.Toggle.CompactSwitchWidth` | `46` | `46` |
+| `Nvt.Toggle.CompactSwitchTrackWidth` | `40` | `40` |
+| `Nvt.Toggle.CompactSwitchTrackHeight` | `20` | `20` |
+| `Nvt.Toggle.CompactSwitchKnobTravel` | `20` | `20` |
+| `Nvt.Toggle.CompactSwitchKnobSize` | `14` | `14` |
+| `Nvt.Toggle.CompactSwitchFocusWidth` | `48` | `48` |
+| `Nvt.Toggle.CompactSwitchFocusHeight` | `28` | `28` |
 | `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 

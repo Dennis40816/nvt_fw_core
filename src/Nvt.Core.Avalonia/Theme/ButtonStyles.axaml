@@ -105,6 +105,11 @@
     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
   </Style>
 
+  <!-- Flyout content is logically below the trigger, so the rules above also match it. Inside a flyout, text keeps the color of its visual parent. -->
+  <Style Selector="Button.actionPrimary FlyoutPresenter TextBlock, Button.actionPrimary FlyoutPresenter SelectableTextBlock, ToggleButton.actionPrimary FlyoutPresenter TextBlock, ToggleButton.actionPrimary FlyoutPresenter SelectableTextBlock, Button.actionNeutral FlyoutPresenter TextBlock, Button.actionNeutral FlyoutPresenter SelectableTextBlock, ToggleButton.actionNeutral FlyoutPresenter TextBlock, ToggleButton.actionNeutral FlyoutPresenter SelectableTextBlock, Button.actionDanger FlyoutPresenter TextBlock, Button.actionDanger FlyoutPresenter SelectableTextBlock, ToggleButton.actionDanger FlyoutPresenter TextBlock, ToggleButton.actionDanger FlyoutPresenter SelectableTextBlock, Button.actionGhost FlyoutPresenter TextBlock, Button.actionGhost FlyoutPresenter SelectableTextBlock, ToggleButton.actionGhost FlyoutPresenter TextBlock, ToggleButton.actionGhost FlyoutPresenter SelectableTextBlock, Button.actionIconButton FlyoutPresenter TextBlock, Button.actionIconButton FlyoutPresenter SelectableTextBlock, ToggleButton.actionIconButton FlyoutPresenter TextBlock, ToggleButton.actionIconButton FlyoutPresenter SelectableTextBlock, Button.chipAction FlyoutPresenter TextBlock, Button.chipAction FlyoutPresenter SelectableTextBlock, ToggleButton.chipAction FlyoutPresenter TextBlock, ToggleButton.chipAction FlyoutPresenter SelectableTextBlock">
+    <Setter Property="Foreground" Value="{Binding $parent[Visual].(TextElement.Foreground)}"/>
+  </Style>
+
   <Style Selector="Button.actionNeutral, ToggleButton.actionNeutral, Button.chipAction, ToggleButton.chipAction, Button.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost), ToggleButton.actionIconButton:not(.actionPrimary):not(.actionDanger):not(.actionGhost)">
     <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}"/>
@@ -298,6 +303,29 @@
     <Setter Property="Foreground" Value="{DynamicResource NfcAccentStrongBrush}"/>
   </Style>
 
+  <!-- rail uses the existing flat and marked states; selected marked presses use the composite below for text contrast. -->
+  <Style Selector="Button.actionGhost.flat.rail, ToggleButton.actionGhost.flat.rail">
+    <Setter Property="Width" Value="56"/>
+    <Setter Property="Height" Value="NaN"/>
+    <Setter Property="MinHeight" Value="52"/>
+    <Setter Property="Padding" Value="4"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize11}"/>
+  </Style>
+  <Style Selector="Button.actionGhost.flat.rail > StackPanel, ToggleButton.actionGhost.flat.rail > StackPanel">
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Spacing" Value="{DynamicResource NfcSpace4}"/>
+  </Style>
+  <Style Selector="Button.actionGhost.flat.rail > StackPanel > :is(Control), ToggleButton.actionGhost.flat.rail > StackPanel > :is(Control)">
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.actionGhost.flat.rail > StackPanel > TextBlock, ToggleButton.actionGhost.flat.rail > StackPanel > TextBlock">
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+  </Style>
+
   <!-- marked reserves its frame in every state. These triggers follow the ghost and flat triggers at the same priority. -->
   <Style Selector="Button.actionGhost.flat.marked, ToggleButton.actionGhost.flat.marked">
     <Setter Property="BorderThickness" Value="2"/>
@@ -350,6 +378,11 @@
 
   <Style Selector="Button.actionGhost.flat.marked.active:disabled, ToggleButton.actionGhost.flat.marked.active:disabled, ToggleButton.actionGhost.flat.marked:checked:disabled">
     <Setter Property="BorderBrush" Value="{DynamicResource NfcTextDisabledBrush}"/>
+  </Style>
+
+  <!-- Keep strong accent captions at 4.5:1 even over the subtle surface. -->
+  <Style Selector="Button.actionGhost.flat.rail.marked.active:pressed:not(:disabled), ToggleButton.actionGhost.flat.rail.marked.active:pressed:not(:disabled), ToggleButton.actionGhost.flat.rail.marked:checked:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedFillBrush}"/>
   </Style>
 
   <Style Selector="Button.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder, ToggleButton.actionPrimary:pressed:not(:disabled) /template/ Border#PrimaryPressedBorder">

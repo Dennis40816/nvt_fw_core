@@ -152,4 +152,31 @@
     <Setter Property="Margin" Value="{DynamicResource Nvt.Expander.ContentRightMargin}" />
     <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Expander.ContentDividerRightThickness}" />
   </Style>
+  <!-- flat leaves row separation and surrounding focus clearance to the host. Header and content keep the standard header inset, so the label does not touch the hover fill or the focus ring. -->
+  <Style Selector="Expander.flat">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Expander.flat /template/ Border#ExpanderContainer">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Expander.flat /template/ ToggleButton#ExpanderHeader">
+    <Setter Property="Height" Value="{DynamicResource NfcControlHeight}" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
+  </Style>
+  <Style Selector="Expander.flat /template/ ToggleButton#ExpanderHeader:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.HoverBrush}" />
+  </Style>
+  <Style Selector="Expander.flat /template/ ToggleButton#ExpanderHeader:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.PressedBrush}" />
+  </Style>
+  <Style Selector="Expander.flat /template/ ToggleButton#ExpanderHeader:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Interaction.RestBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextDisabledBrush}" />
+  </Style>
+  <Style Selector="Expander.flat /template/ Border#ExpanderContent">
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Expander.HeaderPadding}" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
 </Styles>
