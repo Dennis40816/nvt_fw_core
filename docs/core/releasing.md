@@ -4,7 +4,7 @@ Core has two independent release lines.
 
 | Release line | Version source | Tag | Pack command | Packages |
 | --- | --- | --- | --- | --- |
-| Core | `Directory.Build.props` | `core-v<version>` | `./scripts/pack.ps1 -Package Core` | `Nvt.Core`, `Nvt.Core.Avalonia` |
+| Core | `Directory.Build.props` | `core-v<version>` | `./scripts/pack.ps1 -Package Core` | `Nvt.Core`, `Nvt.Core.Avalonia`, `Nvt.Core.TestSupport` |
 | Fonts | `src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj` | `core-fonts-v<version>` | `./scripts/pack.ps1 -Package Fonts` | `Nvt.Core.Fonts` |
 
 The Core packages share their Core SemVer. Fonts starts at `0.1.0` and advances independently.
@@ -31,6 +31,7 @@ It writes these files into `artifacts/packages/`:
 
 - `Nvt.Core.<version>.nupkg`
 - `Nvt.Core.Avalonia.<version>.nupkg`
+- `Nvt.Core.TestSupport.<version>.nupkg`, for test projects only; its project is in `tests/`
 - `SHA256SUMS`, with each package's SHA-256 checksum
 - `SOURCE.md`, with the version, full source commit, and repository URL
 
@@ -52,7 +53,7 @@ Replace `0.1.0` with the version in `Directory.Build.props`.
 The Core workflow checks that the tag matches that version and points to the checked-out commit.
 Only this tag-triggered run may pack an existing tag, before its first GitHub Release.
 The workflow rejects any existing Release for that tag, including a draft.
-It runs the pack script and attaches both packages, `SHA256SUMS`, and `SOURCE.md` to the new Release.
+It runs the pack script and attaches the Core packages, `SHA256SUMS`, and `SOURCE.md` to the new Release.
 After the workflow creates the Release, copy that version's CHANGELOG notes into the Release description through the GitHub App. Do not change the assets or the tag.
 Use these Release assets as the canonical package files for tool adoption.
 Keep any local pack output as a candidate until the Release exists.
