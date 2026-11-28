@@ -426,14 +426,15 @@ Safety rules of the script:
 
 ## Known limitations
 
-An independent review of the first gate found six gaps. The gate does not close them yet. Each has an Issue.
+An independent review of the first gate found six gaps. The gate does not close five of them yet. Each has an Issue.
 
 1. Dennis40816/nvt_fw_core#163: analyzer configuration outside files named `.editorconfig` (`EditorConfigFiles`, `GlobalAnalyzerConfigFiles`, removed `Analyzer` items) is not checked.
 2. Dennis40816/nvt_fw_core#164: sources and EditorConfig files under any `bin`, `obj` or `artifacts` folder escape coverage.
 3. Dennis40816/nvt_fw_core#165: a baseline entity can be re-pointed, so one structural allowance can offset another.
 4. Dennis40816/nvt_fw_core#166: `eng/code-health/seam-owners.json` and the project `HealthLayer` are not compared with the merge base.
 5. Dennis40816/nvt_fw_core#167: suppressed analyzer results leave no fingerprint.
-6. Dennis40816/nvt_fw_core#168: the format ledger depends on the checkout line endings (see "Checkout line endings").
+
+The sixth gap, Dennis40816/nvt_fw_core#168, was the format ledger depending on the checkout line endings. Core closes it in `.gitattributes` (see "Checkout line endings"). The gate itself does not change.
 
 Policy-change rule until these are fixed: a pull request that changes any of the files below is a policy change. The reviewer reads the change as policy, not as routine code, and the pull request says so.
 
@@ -444,7 +445,7 @@ Policy-change rule until these are fixed: a pull request that changes any of the
 
 ### Checkout line endings
 
-Identity hashes ignore line endings, but the `dotnet format whitespace` ledger does not. Core enrolled the baseline on a CRLF checkout, which is the Git for Windows default and what a Windows runner produces. A pure LF checkout of the same commit reports different WHITESPACE counts (187 format fingerprints differ in this repository). Run Verify on the same checkout style that enrolled the baseline. A repository that enrolls on Windows and verifies on Linux must pin the checkout style first.
+Identity hashes ignore line endings, but the `dotnet format whitespace` ledger does not. Core enrolled the baseline on a CRLF checkout, which is the Git for Windows default and what a Windows runner produces. A pure LF checkout of the same commit reports different WHITESPACE counts (187 format fingerprints differ in this repository). Core therefore pins `*.cs` to `eol=crlf` in `.gitattributes`, so every checkout matches the enrolled baseline. The one file that is consumed as source, `src/Nvt.Core/Threading/UiEventRunner.cs`, stays LF. An existing LF working copy picks up the rule only when the files are checked out again. Other repositories must pin the checkout style that enrolled their own baseline.
 
 ```text
 HEALTH_SKIP_HOST_TESTS=1 python -B -m unittest discover -s tests/repo-checks -p test*.py -v
