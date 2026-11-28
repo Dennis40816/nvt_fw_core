@@ -1229,11 +1229,18 @@ function Add-GhAppReviewRecord {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateRange(1, 2147483647)][int]$Number,
         [Parameter(Mandatory)][string]$ExpectedHeadSha, [Parameter(Mandatory)][string]$BodyFile,
-        [string]$Event = 'COMMENT', [Alias('Repo')][string]$Repository, [switch]$SkipBodyRefresh)
+        [string]$Event = 'COMMENT', [Alias('Repo')][string]$Repository, [switch]$SkipBodyRefresh,
+        [ValidateSet('accept', 'reject')][string]$Verdict)
     if ($Event -cne 'COMMENT') { throw 'Review event must be COMMENT. Only the owner approves.' }
     $context = Get-GhAppContext $Repository
     $expected = Assert-GhAppSha 'ExpectedHeadSha' $ExpectedHeadSha
     $body = Read-GhAppBody $BodyFile
+    if ($Verdict) {
+        if ($body.TrimStart() -match '^Review record:') {
+            throw 'BodyFile already contains a review record on its first non-empty line. Remove it before using Verdict.'
+        }
+        $body = "Review record: $expected $($Verdict.ToLowerInvariant())`n`n$body"
+    }
     $pr = Get-GhAppPullRequest $context $Number
     $head = Assert-GhAppSha "head of #$Number" $pr.headRefOid
     if ($head -cne $expected) { throw "#$Number head changed. Expected $expected; found $head." }
