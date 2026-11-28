@@ -6,8 +6,9 @@ enforcement uses the existing locked restore and host NuGet cache; it never rest
 compiled by that SDK and loads its `Roslyn/bincore` assemblies in an isolated
 context. Measurement version: `roslyn-physical-v1`.
 
-The checker sets `DOTNET_CLI_UI_LANGUAGE=en`, `VSLANG=1033` and `PreferredUILang=en-US` for every tool it starts, so
-compiler and format messages do not change with the host language. It runs `dotnet build` and `dotnet msbuild` with
+The checker requests English tool messages with `DOTNET_CLI_UI_LANGUAGE=en`, `VSLANG=1033` and
+`PreferredUILang=en-US`. These settings do not guarantee the language of `dotnet format` output.
+It runs `dotnet build` and `dotnet msbuild` with
 `-m:4 -nodeReuse:false`, and sets `MSBUILDDISABLENODEREUSE=1` so that `dotnet format` leaves no MSBuild node behind.
 
 ```powershell
@@ -105,8 +106,8 @@ stale named outputs, then run:
 
 ```text
 dotnet build <solution> -c Release --no-restore --no-incremental -p:HealthCollectDiagnostics=true
-dotnet format <solution> --verify-no-changes --no-restore --severity warn --report artifacts/code-health/format
-dotnet format style <test.csproj> --verify-no-changes --no-restore --severity warn --diagnostics IDE0005 --report artifacts/code-health/format-style-<project>
+dotnet format <solution> --verify-no-changes --no-restore --severity warn --report artifacts/code-health/format --verbosity minimal
+dotnet format style <test.csproj> --verify-no-changes --no-restore --severity warn --diagnostics IDE0005 --report artifacts/code-health/format-style-<project> --verbosity minimal
 ```
 
 Every project must produce fresh, readable SARIF 2.1.0. A failed build, analyzer
@@ -132,6 +133,27 @@ within the ledger (or the explicit first Enroll). Exit 0 still requires a valid
 report. Other exits, project-load failures, missing/malformed/empty nonzero reports
 fail. Diagnostic and format fingerprints group equal identities and preserve their
 occurrence count; unrelated removals never offset additions.
+
+Both format passes use a fail-closed console-output check in addition to exit codes and JSON reports.
+At explicit `minimal` verbosity, every nonblank output line must be a diagnostic with the prefix
+`<FilePath>(<LineNumber>,<CharNumber>): warning|error <DiagnosticId>: ` matching an entry in that run's
+report. The diagnostic message can use any language. All other output fails with `HC_FORMAT`, including
+workspace load warnings in any language, even with exit 0 and an empty report. The previous English
+failure phrases remain fatal, including inside a report-backed diagnostic. Existing exit, report,
+coverage and ledger checks still apply; matching console output does not authorize debt.
+
+Measured on zh-TW Windows with SDK 10.0.303: a minimal net10.0 project containing the same
+`AdditionalFiles` item twice prints `載入工作區時發生警告。請將詳細程度選項設定為 [診斷] 層級以記錄警告。`
+despite all three language settings above. Both format passes exit 0 with report `[]`. The binary log
+has no warning or error events; diagnostic verbosity prints a localized duplicate-file message.
+The project remains loaded, so evaluated project coverage alone cannot detect this warning.
+Quiet verbosity hides it. Ordinary formatting diagnostics also use stderr, so rejecting stderr alone
+would reject existing ledger-backed formatting debt. No sufficient language-independent structured
+signal was found for this warning. The console check therefore relies on the diagnostic prefix shape,
+not warning prose. Unexpected or changed SDK output, including multiline diagnostic continuations,
+fails closed and needs investigation in `artifacts/code-health/format*.log`.
+Applications receive this rule through a synchronization to an approved Core pin containing the changed
+checker, following [the bundle update steps](csharp/README.md).
 
 Diagnostic syntaxHash v1 uses the token at the 1-based diagnostic line and UTF-16
 column. Select its nearest StatementSyntax excluding BlockSyntax, else its nearest
