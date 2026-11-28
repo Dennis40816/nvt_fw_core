@@ -771,14 +771,62 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Reset-Fixture; Import-Fixture; Mock Start-Sleep {}
             Mock Get-GhAppUtcNow { [DateTime]::new(2026, 1, 2, 3, 4, 5, 6, [DateTimeKind]::Utc) }
         }
-        It 'posts COMMENT with the exact checked commit_id' {
+        It 'posts COMMENT with the exact checked commit_id and unchanged body when Verdict is omitted' {
             Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
             $null = Add-GhAppReviewRecord -Number 7 -ExpectedHeadSha $script:HeadSha -BodyFile $script:BodyFile -SkipBodyRefresh
             @(Get-Calls).Count | Should Be 2
             $body = ConvertFrom-Json @(Get-Calls)[1].Input
             $body.event | Should Be COMMENT
             $body.commit_id | Should Be $script:HeadSha
+            [string]::Equals($body.body, "A synthetic description.`nSecond line.", [StringComparison]::Ordinal) | Should Be $true
             Assert-NoToken
+        }
+        It 'keeps a manually written record unchanged when Verdict is omitted' {
+            $text = "`n  ReViEw ReCoRd: $script:HeadSha accept`n`nChecked."
+            [IO.File]::WriteAllText($script:BodyFile, $text)
+            Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
+            $null = Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -SkipBodyRefresh
+            $posted = ConvertFrom-Json @(Get-Calls)[1].Input
+            [string]::Equals($posted.body, $text, [StringComparison]::Ordinal) | Should Be $true
+        }
+        foreach ($verdict in @('accept', 'reject', 'AcCePt', 'ReJeCt')) {
+            It "prepends the exact lower-case record for Verdict $verdict using the caller's SHA without reading git" {
+                Mock Invoke-GhAppGit { throw 'Review records must not read local git state.' }
+                Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:NextSha)), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
+                $null = Add-GhAppReviewRecord 7 $script:NextSha $script:BodyFile -Verdict $verdict -SkipBodyRefresh
+                @(Get-Calls).Count | Should Be 2
+                $posted = ConvertFrom-Json @(Get-Calls)[1].Input
+                $posted.event | Should Be COMMENT
+                $posted.commit_id | Should Be $script:NextSha
+                $expected = "Review record: $script:NextSha $($verdict.ToLowerInvariant())`n`nA synthetic description.`nSecond line."
+                [string]::Equals($posted.body, $expected, [StringComparison]::Ordinal) | Should Be $true
+                Assert-MockCalled Invoke-GhAppGit -Times 0 -Exactly -Scope It
+            }
+        }
+        foreach ($case in @(
+            @{ Name = 'plain'; Body = "Review record: $script:HeadSha accept`n`nChecked." },
+            @{ Name = 'indented mixed-case after blank lines'; Body = "`r`n `t`r`n`t ReViEw ReCoRd:$script:HeadSha reject`r`nChecked." }
+        )) {
+            It "rejects a $($case.Name) record line with Verdict before any gh or helper call" {
+                [IO.File]::WriteAllText($script:BodyFile, $case.Body)
+                Get-Message { Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -Verdict accept } |
+                    Should Be 'BodyFile already contains a review record on its first non-empty line. Remove it before using Verdict.'
+                @(Get-Calls).Count | Should Be 0
+                [IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS) | Should Be $false
+            }
+        }
+        It 'allows a record quoted after the first non-empty body line with Verdict' {
+            $text = "`nChecked.`nReview record: $script:NextSha reject"
+            [IO.File]::WriteAllText($script:BodyFile, $text)
+            Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
+            $null = Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -Verdict accept -SkipBodyRefresh
+            $posted = ConvertFrom-Json @(Get-Calls)[1].Input
+            [string]::Equals($posted.body, "Review record: $script:HeadSha accept`n`n$text", [StringComparison]::Ordinal) | Should Be $true
+        }
+        It 'rejects an invalid Verdict before any gh or helper call' {
+            Get-Message { Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -Verdict approve } | Should Match 'accept,reject'
+            @(Get-Calls).Count | Should Be 0
+            [IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS) | Should Be $false
         }
         foreach ($eventName in @('APPROVE', 'REQUEST_CHANGES')) {
             It "rejects $eventName before any gh or helper call" {
@@ -793,6 +841,13 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
             Get-Message { Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile } |
                 Should Be "#7 head changed. Expected $script:HeadSha; found $script:NextSha."
             @(Get-Calls).Count | Should Be 1
+        }
+        It 'keeps the head-changed error with Verdict instead of substituting the current PR head' {
+            Set-Responses @((New-PrStep -Pr (New-Pr -Head $script:NextSha)))
+            Get-Message { Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -Verdict accept } |
+                Should Be "#7 head changed. Expected $script:HeadSha; found $script:NextSha."
+            @(Get-Calls).Count | Should Be 1
+            [IO.File]::Exists($env:NVT_GHAPP_HELPER_CALLS) | Should Be $false
         }
         It 'rejects a short expected SHA before reading the PR' {
             Get-Message { Add-GhAppReviewRecord 7 bad $script:BodyFile } | Should Be 'ExpectedHeadSha is not a 40-character SHA.'
@@ -2307,6 +2362,21 @@ if (@([IO.File]::ReadAllLines($env:NVT_GHAPP_HELPER_CALLS)).Count -le [int]$env:
                 (New-RecordReview -Id 6 -SubmittedAt '2026-01-01T01:00:00Z'))
             Set-Responses @(New-ReadinessSteps -Reviews $reviews)
             (Get-Row (Get-GhAppPullRequestReadiness -Number 7) 'ReviewRecord').Result | Should Be 'PASS'
+        }
+        foreach ($case in @(
+            @{ Name = 'default acceptance'; Verdict = 'accept'; Pattern = ''; Result = 'PASS' },
+            @{ Name = 'default rejection'; Verdict = 'reject'; Pattern = ''; Result = 'FAIL' },
+            @{ Name = 'matching custom acceptance'; Verdict = 'accept'; Pattern = '^Review record: {HEAD} accept$'; Result = 'PASS' },
+            @{ Name = 'incompatible custom acceptance'; Verdict = 'accept'; Pattern = '^Verdict: accept$'; Result = 'FAIL' }
+        )) {
+            It "checks a generated record against the $($case.Name) pattern" {
+                Set-Responses @((New-PrStep), (New-ApiStep pulls/7/reviews POST @{ id = 1 } -App))
+                $null = Add-GhAppReviewRecord 7 $script:HeadSha $script:BodyFile -Verdict $case.Verdict -SkipBodyRefresh
+                $posted = ConvertFrom-Json @(Get-Calls)[1].Input
+                foreach ($path in @($env:NVT_GHAPP_CALLS, $env:NVT_GHAPP_INDEX)) { [IO.File]::Delete($path) }
+                Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body $posted.body)))
+                (Get-Row (Get-GhAppPullRequestReadiness -Number 7 -ReviewRecordPattern $case.Pattern) 'ReviewRecord').Result | Should Be $case.Result
+            }
         }
         It 'does not count another repository format under the default pattern' {
             Set-Responses @(New-ReadinessSteps -Reviews @((New-RecordReview -Body "Verdict: accept`n`nChecked.")))

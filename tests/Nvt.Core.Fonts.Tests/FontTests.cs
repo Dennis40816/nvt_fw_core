@@ -158,18 +158,38 @@ public sealed class FontTests
     [Fact]
     public async Task InterAssetUriNeedsNoRegistration()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(UnregisteredInterApplication));
-        await session.Dispatch(() =>
+        var session = HeadlessUnitTestSession.StartNew(typeof(UnregisteredInterApplication));
+        try
         {
-            var family = new FontFamily(InterFamily);
-            foreach (var weight in new[] { FontWeight.Normal, FontWeight.SemiBold })
+            await session.Dispatch(() =>
             {
-                Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family, weight: weight), out var typeface));
-                string file = weight == FontWeight.Normal ? "Inter-Regular.ttf" : "Inter-SemiBold.ttf";
-                string familyName = weight == FontWeight.Normal ? "Inter" : "Inter SemiBold";
-                AssertTypeface(typeface, familyName, weight, $"avares://Avalonia.Fonts.Inter/Assets/{file}");
-            }
-        }, TestContext.Current.CancellationToken);
+                var family = new FontFamily(InterFamily);
+                foreach (var weight in new[] { FontWeight.Normal, FontWeight.SemiBold })
+                {
+                    Assert.True(FontManager.Current.TryGetGlyphTypeface(new Typeface(family, weight: weight), out var typeface));
+                    string file = weight == FontWeight.Normal ? "Inter-Regular.ttf" : "Inter-SemiBold.ttf";
+                    string familyName = weight == FontWeight.Normal ? "Inter" : "Inter SemiBold";
+                    AssertTypeface(typeface, familyName, weight, $"avares://Avalonia.Fonts.Inter/Assets/{file}");
+                }
+            }, TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            await DisposeSessionAsync(session);
+        }
+    }
+
+    private static async ValueTask DisposeSessionAsync(HeadlessUnitTestSession session)
+    {
+        try
+        {
+            await session.DisposeAsync();
+        }
+        catch (NullReferenceException exception) when (exception.StackTrace?.TrimStart().StartsWith(
+            "at Avalonia.Headless.HeadlessUnitTestSession.DisposeAsync()", StringComparison.Ordinal) == true)
+        {
+            // Avalonia.Headless 12.1.1 can capture a null dispatch task before StartNew assigns Task.Run's result.
+        }
     }
 
     private static T Resource<T>(string key)
