@@ -1,3 +1,5 @@
+# The format ledger depends on C# line endings, so every checkout uses CRLF. Later lines override this one.
+*.cs text eol=crlf
 tools/repo-checks/csharp/* text eol=lf
 /src/Nvt.Core/Threading/UiEventRunner.cs text eol=lf
 eng/core-health/* text eol=lf

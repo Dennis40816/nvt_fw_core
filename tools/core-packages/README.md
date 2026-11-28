@@ -72,6 +72,7 @@ SHA-256 values must contain 64 lowercase hexadecimal characters.
 
 Each package pins its own Release. Packages may use different versions.
 `core-v<version>` contains `Nvt.Core` and `Nvt.Core.Avalonia`.
+From 0.9.9 it also contains `Nvt.Core.TestSupport`, which only test projects reference.
 `Nvt.Core.Fonts` starts at independent version `0.1.0` with tag `core-fonts-v0.1.0`.
 The [example manifest](core-packages.example.json) includes `Nvt.Core.Fonts.0.1.0.nupkg`.
 Its all-zero Fonts SHA-256 is a placeholder. Replace it with the published Release's `SHA256SUMS` value.

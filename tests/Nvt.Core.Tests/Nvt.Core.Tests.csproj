@@ -16,6 +16,10 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Exercise the probe's release callback without racing a FileSystemWatcher event. -->
+    <Compile Include="..\Nvt.Core.TestProbe\ReleaseSignal.cs" Link="TestProbe\ReleaseSignal.cs" />
+  </ItemGroup>
   <!-- Process tests start the probe from probe/ next to the test assembly. -->
   <Target Name="CopyTestProbe" AfterTargets="Build">
     <MSBuild Projects="..\Nvt.Core.TestProbe\Nvt.Core.TestProbe.csproj" Targets="GetTargetPath">

@@ -71,6 +71,7 @@ SHA-256 必須是 64 個小寫十六進位字元。
 
 每個套件各自固定 Release，不要求所有套件使用相同版本。
 `core-v<version>` 包含 `Nvt.Core` 與 `Nvt.Core.Avalonia`。
+0.9.9 起另含 `Nvt.Core.TestSupport`，只給測試專案引用。
 `Nvt.Core.Fonts` 使用獨立版本 `0.1.0` 與 `core-fonts-v0.1.0`。
 [範例 manifest](core-packages.example.json) 已包含 `Nvt.Core.Fonts.0.1.0.nupkg`。
 範例字型項目的全零 SHA-256 是佔位值，必須換成該 Release 的 `SHA256SUMS` 所列雜湊。
