@@ -6,6 +6,16 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 
 ## Unreleased
 
+### Changed
+
+- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+
+## 0.9.8 - 2026-11-28
+
+Tag `core-v0.9.8` on the merge commit of the version pull request.
+
+Theme additions for the NFH 1.0.0 layout work: flat disclosure rows, side-rail items, an opt-in compact switch and a Core surface for plain flyout panels. Plain flyouts, text inside role button flyouts and, under `FluentTheme`, check box and radio button labels look different as described below. No API change.
+
 ### Added
 
 - `Nvt.Core.Avalonia`: opt-in `Expander.flat` disclosure rows with transparent headers, the standard 12 DIP header inset and no divider; `Button` and `ToggleButton` with `actionGhost flat rail` provide a 56 DIP icon-and-caption item, including existing `marked` selection, interaction states and keyboard focus. No control types or C# API are added.
@@ -19,7 +29,6 @@ Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same ve
 ### Changed
 
 - `MenuStyles.axaml` now styles plain `FlyoutPresenter` panels: the Core menu surface, border, corner radius and UI font with 12 DIP padding. This changes existing plain flyouts in every application that loads this file, including through `LogConsoleStyles.axaml`. The host template, size limits and scrolling stay. Menu flyouts, Dialogs and MessageCenter keep their surfaces.
-- `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
 
 ## 0.9.7 - 2026-11-27
 
