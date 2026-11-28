@@ -14,14 +14,14 @@ namespace Nvt.Core.Avalonia.Tests.Inputs;
 /// <summary>Ports generic tooltip coverage and pins mixed, read-only and styled display states.</summary>
 public sealed partial class NumberScrubberTests
 {
-    /// <summary>The new hint is opt-in, updates the plain drag border and treats only null or empty as absent.</summary>
+    /// <summary>The hint is opt-in; the unclassified drag border child paints nothing and only null or empty hides the hint.</summary>
     [AvaloniaFact]
-    public void ScrubHintIsOptionalAndDragAreaHasNoGlyph()
+    public void ScrubHintIsOptionalAndDragAreaChildPaintsNothingByDefault()
     {
         var control = new NumberScrubber();
         Border area = Area(control);
         Assert.Null(ToolTip.GetTip(area));
-        Assert.Null(area.Child);
+        AssertUnstyledGrip(area);
         control.ScrubHint = "Synthetic drag hint";
         Assert.Equal("Synthetic drag hint", ToolTip.GetTip(area));
         control.ScrubHint = "";
@@ -125,7 +125,7 @@ public sealed partial class NumberScrubberTests
             Assert.Equal(6d, Area(control).Width);
             Assert.Equal(new CornerRadius(0, 10, 10, 0), Area(control).CornerRadius);
             Assert.Equal(new Thickness(1, 0, 0, 0), Area(control).BorderThickness);
-            Assert.Null(Area(control).Child);
+            AssertUnstyledGrip(Area(control));
             Assert.Equal(new Thickness(6, 2), Input(control).Padding);
             Assert.Equal(new Thickness(0), Input(control).BorderThickness);
             Assert.Null(Input(control).FocusAdorner);
@@ -143,6 +143,17 @@ public sealed partial class NumberScrubberTests
             Assert.Null(Input(control).FocusAdorner);
         }
         finally { window.Close(); }
+    }
+
+    private static void AssertUnstyledGrip(Border area)
+    {
+        Border grip = Assert.IsType<Border>(area.Child);
+        Assert.Equal("InlineGrip", grip.Name);
+        Assert.Null(grip.Background);
+        Assert.Null(grip.BorderBrush);
+        Assert.Equal(new Thickness(0), grip.BorderThickness);
+        Assert.Null(grip.Child);
+        Assert.False(grip.IsHitTestVisible);
     }
 
     private static void AssertBrush(IBrush? actual, string key, bool dark)

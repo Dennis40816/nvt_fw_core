@@ -101,6 +101,8 @@ public sealed partial class NumberScrubber
     private void SetFocused(bool focused)
     {
         _rootBorder?.Classes.Set("focused", focused);
+        // Pointer capture is not a selector state; expose it only to the private body styles.
+        _rootBorder?.Classes.Set("scrubbing", _scrubSession is not null);
     }
 
     private void InitializeComponent()

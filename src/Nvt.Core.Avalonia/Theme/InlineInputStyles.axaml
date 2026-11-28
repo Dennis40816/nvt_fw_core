@@ -1,6 +1,6 @@
 <!-- Copyright (c) 2026 Dennis Liu -->
 <!-- SPDX-License-Identifier: MIT -->
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:inputs="clr-namespace:Nvt.Core.Avalonia.Inputs">
   <!-- Reserve the frame in every state; only its brush changes during editing. -->
   <Style Selector="TextBox.inlineInput, ComboBox.inlineInput, NumericUpDown.inlineInput">
     <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.FillBrush}" />
@@ -72,10 +72,98 @@
     <Setter Property="Tag"><x:Boolean>False</x:Boolean></Setter>
   </Style>
   <Style Selector="NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin, NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:disabled">
+    <!-- Fill the existing spinner column so the glyph centers and the full column remains clickable. -->
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Foreground" Value="{Binding $parent[NumericUpDown].Foreground}" />
     <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Input.Inline.CornerRadius}" />
   </Style>
   <Style Selector="NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin, NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pointerover, NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pressed">
     <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyFillBrush}" />
+  </Style>
+  <!-- NumberScrubber is a UserControl: its named children use descendant selectors. -->
+  <Style Selector="inputs|NumberScrubber.inlineInput">
+    <Setter Property="Height" Value="{DynamicResource Nvt.Form.Height}" />
+    <Setter Property="MinHeight" Value="{DynamicResource Nvt.Form.Height}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="UseLayoutRounding" Value="False" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput Border#RootBorder.numberScrubber">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.FillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Input.Inline.BorderThickness}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Input.Inline.CornerRadius}" />
+    <Setter Property="ClipToBounds" Value="False" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput:pointerover:not(:disabled) Border#RootBorder.numberScrubber">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.HoverFillBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput:not(:disabled) Border#RootBorder.numberScrubber.focused">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.EditingBorderBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput[IsReadOnly=True]:not(:disabled) Border#RootBorder.numberScrubber">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput:disabled Border#RootBorder.numberScrubber">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.DisabledFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput Border#RootBorder.numberScrubber.inlineEditorError, inputs|NumberScrubber.inlineInput.error Border#RootBorder.numberScrubber, inputs|NumberScrubber.inlineInput:error Border#RootBorder.numberScrubber, inputs|NumberScrubber.inlineInput[(DataValidationErrors.HasErrors)=True] Border#RootBorder.numberScrubber">
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.ErrorBorderBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput TextBox#InputBox.numberScrubberInput">
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Input.Inline.Padding}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.TextBrush}" />
+    <Setter Property="Transitions" Value="{x:Null}" />
+    <Setter Property="Tag"><x:Boolean>False</x:Boolean></Setter>
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput[IsReadOnly=True] TextBox#InputBox.numberScrubberInput">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyTextBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput:disabled TextBox#InputBox.numberScrubberInput">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.DisabledTextBrush}" />
+  </Style>
+  <!-- Tag is a private editor-to-overlay bridge; .focused also includes dragging. -->
+  <Style Selector="inputs|NumberScrubber.inlineInput[IsReadOnly=False]:not(:disabled) Border#RootBorder:not(.scrubbing) TextBox#InputBox:focus-visible">
+    <Setter Property="Tag"><x:Boolean>True</x:Boolean></Setter>
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput TextBox#InputBox /template/ Border#FormFocusRing, inputs|NumberScrubber.inlineInput TextBox#InputBox:focus-visible /template/ Border#FormFocusRing">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput TextBox#InputBox /template/ Border#FormBody, inputs|NumberScrubber.inlineInput TextBox#InputBox:pointerover /template/ Border#FormBody, inputs|NumberScrubber.inlineInput TextBox#InputBox:focus /template/ Border#FormBody, inputs|NumberScrubber.inlineInput TextBox#InputBox:disabled /template/ Border#FormBody, inputs|NumberScrubber.inlineInput TextBox#InputBox[IsReadOnly=True] /template/ Border#FormBody, inputs|NumberScrubber.inlineInput TextBox#InputBox:error /template/ Border#FormBody">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <!-- Validation belongs to the outer frame; the embedded Fluent error presenter must not consume editor space. -->
+  <Style Selector="inputs|NumberScrubber.inlineInput TextBox#InputBox /template/ DataValidationErrors">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput Border#ScrubArea.numberScrubberSpin">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput Border#InlineGrip">
+    <Setter Property="Width" Value="4" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,1,0" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.SecondaryTextBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput:disabled Border#InlineGrip">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.DisabledTextBrush}" />
+  </Style>
+  <Style Selector="inputs|NumberScrubber.inlineInput[IsReadOnly=True] Border#InlineGrip">
+    <Setter Property="IsVisible" Value="False" />
   </Style>
 </Styles>

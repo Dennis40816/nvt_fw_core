@@ -2,18 +2,30 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Nvt.Core.Avalonia.Inputs.NumberScrubber">
-  <Border x:Name="RootBorder" Classes="numberScrubber">
-    <Grid ColumnDefinitions="*,Auto">
-      <TextBox x:Name="InputBox"
-               Classes="numberScrubberInput"
-               Grid.Column="0"
-               BorderThickness="0"
-               Background="Transparent"
-               HorizontalContentAlignment="Left"
-               VerticalContentAlignment="Center"/>
-      <Border x:Name="ScrubArea"
-              Grid.Column="1"
-              Classes="numberScrubberSpin"/>
-    </Grid>
-  </Border>
+  <Grid>
+    <Border x:Name="RootBorder" Classes="numberScrubber" Classes.inlineEditorError="{Binding #InputBox.(DataValidationErrors.HasErrors)}">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox x:Name="InputBox"
+                 Classes="numberScrubberInput"
+                 Grid.Column="0"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 HorizontalContentAlignment="Left"
+                 VerticalContentAlignment="Center"/>
+        <Border x:Name="ScrubArea"
+                Grid.Column="1"
+                Classes="numberScrubberSpin">
+          <!-- Unstyled children paint nothing; inlineInput supplies the grip without changing the hit area. -->
+          <Border x:Name="InlineGrip" IsHitTestVisible="False" />
+        </Border>
+      </Grid>
+    </Border>
+    <!-- The sibling overlay stays outside the clipped legacy body and has no layout footprint. -->
+    <Border x:Name="InlineFocusRing" IsHitTestVisible="False"
+            IsVisible="{Binding #InputBox.Tag, FallbackValue=False, TargetNullValue=False}"
+            Margin="{DynamicResource Nvt.Controls.FocusRingMargin}"
+            BorderThickness="{DynamicResource Nvt.Focus.RingThickness}"
+            BorderBrush="{DynamicResource Nvt.Input.Inline.FocusBrush}"
+            CornerRadius="{DynamicResource Nvt.Input.Inline.FocusCornerRadius}" />
+  </Grid>
 </UserControl>

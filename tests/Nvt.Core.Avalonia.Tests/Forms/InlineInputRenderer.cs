@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
+using Nvt.Core.Avalonia.Inputs;
 using Nvt.Core.Avalonia.Theme;
 using Nvt.Core.Hosting;
 using Xunit;
@@ -19,7 +20,8 @@ namespace Nvt.Core.Avalonia.Tests.Forms;
 /// <summary>Renders English property panels with identical data before and after opting in.</summary>
 public sealed class InlineInputRenderer(ITestOutputHelper output)
 {
-    private static readonly string[] _headings = ["TextBox", "ComboBox", "Editable ComboBox", "Spinner right", "Spinner left"];
+    private static readonly string[] _headings = ["TextBox", "ComboBox", "Editable ComboBox", "Spinner right", "Spinner left", "NumberScrubber"];
+    private static readonly string[] _kinds = [.. InlineInputTestHost.Kinds, "scrubber"];
     /// <summary>Exports Light/Dark and Pill/Square comparisons using the existing headless form-sheet approach.</summary>
     [AvaloniaFact]
     public void RenderInlineInputs()
@@ -45,7 +47,9 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
                         FormSheets.Label("32 DIP controls / 8 DIP horizontal padding / 1 DIP editing frame / 2 DIP keyboard ring + 2 DIP gap", 12),
                     },
                 };
-                Window host = InlineInputTestHost.Create(root, dark, width: 1320, height: 1400);
+                Window host = FormsTestHost.Create(root, dark, width: 1320, height: 1400);
+                InlineScrubberTestHost.IncludeInputs(host);
+                InlineInputTestHost.Include(host);
                 try
                 {
                     ThemeShapes.SetShape(host.Resources, shape);
@@ -53,7 +57,9 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
                     foreach (TemplatedControl control in root.GetVisualDescendants().OfType<TemplatedControl>())
                         if (control.Tag is FormState state)
                         {
-                            if (control.Classes.Contains("inlineInput"))
+                            if (control is NumberScrubber scrubber)
+                                InlineScrubberTestHost.State(scrubber, state, keyboard: state.Name != "Pointer editing", drag: state.Name == "Dragging");
+                            else if (control.Classes.Contains("inlineInput"))
                                 InlineInputTestHost.State(control, state, keyboardFocus: state.Name != "Pointer editing");
                             else FormsTestHost.SetState(control, state);
                         }
@@ -94,6 +100,7 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
         AddRow(panel, "Match (read-only)", readOnly);
         AddRow(panel, "Pad width", Number(inline, 4.125m, "mm"));
         AddRow(panel, "Pad height", Number(inline, 3.8m, "mm"));
+        AddRow(panel, "Scrub gain", Field("scrubber", inline, ""));
         var border = new Border { Padding = new Thickness(20), Child = panel, CornerRadius = new CornerRadius(8) };
         border.Bind(Border.BackgroundProperty, new DynamicResourceExtension("NfcSurfaceBrush"));
         return border;
@@ -110,9 +117,9 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
 
     private static TemplatedControl Field(string kind, bool inline, string value)
     {
-        TemplatedControl control = InlineInputTestHost.Sample(kind);
+        TemplatedControl control = kind == "scrubber" ? InlineScrubberTestHost.Sample() : InlineInputTestHost.Sample(kind);
         if (!inline) control.Classes.Remove("inlineInput");
-        control.SetValue(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Left);
+        if (control is not NumberScrubber) control.SetValue(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Left);
         if (control is TextBox text) text.Text = value;
         if (control is ComboBox combo) { combo.ItemsSource = new[] { value, "Voltage gain" }; combo.SelectedIndex = 0; }
         return control;
@@ -131,8 +138,8 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
     private static StackPanel StateStrip()
     {
         var panel = new StackPanel { Spacing = 16 };
-        var headings = new Grid { ColumnDefinitions = new ColumnDefinitions("190,*,*,*,*,*"), ColumnSpacing = 18 };
-        for (int i = 0; i < InlineInputTestHost.Kinds.Length; i++)
+        var headings = new Grid { ColumnDefinitions = new ColumnDefinitions("190,*,*,*,*,*,*"), ColumnSpacing = 18 };
+        for (int i = 0; i < _kinds.Length; i++)
         {
             var heading = FormSheets.Label(_headings[i], 12);
             Grid.SetColumn(heading, i + 1);
@@ -144,14 +151,15 @@ public sealed class InlineInputRenderer(ITestOutputHelper output)
             new("Rest"), new("Hover", Hover: true), new("Pressed / open", Pressed: true, Open: true),
             new("Pointer editing", Focus: true), new("Keyboard focus", Focus: true),
             new("Disabled", Disabled: true), new("Read-only + hover", ReadOnly: true, Hover: true),
-            new("Error", Error: true), new("Error + keyboard", Error: true, Focus: true),
+            new("Error", Error: true), new("Error + keyboard", Error: true, Focus: true), new("Dragging"),
         })
         {
-            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("190,*,*,*,*,*"), ColumnSpacing = 18, Height = 32 };
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions("190,*,*,*,*,*,*"), ColumnSpacing = 18, Height = 32 };
             row.Children.Add(FormSheets.Label(state.Name));
-            for (int i = 0; i < InlineInputTestHost.Kinds.Length; i++)
+            for (int i = 0; i < _kinds.Length; i++)
             {
-                TemplatedControl control = Field(InlineInputTestHost.Kinds[i], true, "Current gain");
+                if (state.Name == "Dragging" && _kinds[i] != "scrubber") continue;
+                TemplatedControl control = Field(_kinds[i], true, "Current gain");
                 control.Tag = state;
                 Grid.SetColumn(control, i + 1);
                 row.Children.Add(control);

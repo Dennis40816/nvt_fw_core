@@ -2019,13 +2019,14 @@ They export 12 English sheets at 100% scale, each 1200 pixels wide and below one
 
 ## Inline property-panel inputs (opt-in)
 
-Load `InlineInputStyles.axaml` after `FormStyles.axaml`. `ThemeTokens.axaml` merges
-`InlineInputTokens.axaml`. Add `Classes="inlineInput"` to a TextBox, ComboBox
-(including `IsEditable="True"`), or NumericUpDown. Controls without the class keep
-all existing styles. NumberScrubber is outside this role's current scope.
+Load `InlineInputStyles.axaml` after both `FormStyles.axaml` and `InputsStyles.axaml`.
+`ThemeTokens.axaml` merges `InlineInputTokens.axaml`. Add `Classes="inlineInput"` to a TextBox, ComboBox
+(including `IsEditable="True"`), NumericUpDown, or NumberScrubber. Controls without
+the class keep all existing styles.
 
 ```xml
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/FormStyles.axaml" />
+<StyleInclude Source="avares://Nvt.Core.Avalonia/Inputs/InputsStyles.axaml" />
 <StyleInclude Source="avares://Nvt.Core.Avalonia/Theme/InlineInputStyles.axaml" />
 <TextBox Classes="inlineInput" Text="Current gain" />
 <NumericUpDown Classes="inlineInput" Value="4.125">
@@ -2042,6 +2043,8 @@ focus adds the existing exterior 2 DIP ring with a 2 DIP gap. The frame always
 reserves 1 DIP so text does not move. Both Pill and Square use compact 6 DIP
 corners (10 DIP on the exterior ring), 8 DIP horizontal padding and the existing
 Core control height. Existing `reducedMotion` classes still remove transitions.
+Inline NumericUpDown buttons fill the existing 28 DIP spinner column, giving both placements a 9.25 DIP stroked-glyph edge inset and aligning the right glyph with the ComboBox chevron without reducing hit targets.
+NumberScrubber retains its 4 x 12 DIP edge grip: its right edge is 2 DIP inside the control, 7.25 DIP outside the chevron column.
 
 Read-only (`IsReadOnly` on TextBox/NumericUpDown; `readOnly` on ComboBox) uses
 transparent fill/frame and muted text even on hover or focus, with no ring.
@@ -2050,6 +2053,43 @@ whether selection/editing is allowed. Disabled uses the rest fill, disabled text
 and no ring. The `error` class or native `:error` always wins for the frame,
 including disabled/read-only combinations. Editable text uses the primary role;
 units are separate TextBlocks with `inlineInputUnit`, using the secondary role.
+
+NumberScrubber uses the same state table, 32 DIP height, 6 DIP corners, reserved
+1 DIP frame and 8 DIP editor padding. Its drag area keeps the existing 6 DIP hit
+target, cursor and tooltip but paints no separate fill or separator. A pill
+4 x 12 DIP grip is centered vertically, 1 DIP inside the drag area's right edge.
+The short wide shape keeps it from reading as a text caret.
+It uses the secondary text role `NfcTextSecondaryBrush`, because the frame color
+is below 3:1 on the hover fill; disabled uses `NfcTextDisabledBrush`, and
+read-only hides it. The unstyled child paints nothing without `inlineInput`.
+Hover uses the same inline hover fill as the other controls. Pressing has no fill of its own. Editing and dragging clear the fill and show the
+frame. Initial pointer focus has no ring; Tab focus shows one unclipped ring
+around the entire row. A pointer click on an already Tab-focused step 1 TextBox
+retains its ring (measured with native Tab, pointer down and pointer up events:
+visible in all three states). NumberScrubber follows the same framework behavior:
+dragging temporarily hides the ring; release or capture loss restores it if the
+keyboard-focused editor still has focus. `IsReadOnly` applies the read-only role.
+The `error` class, native `:error`, and `DataValidationErrors` on either the
+scrubber or its editor override the outer frame even when disabled or read-only.
+The embedded validation presenter does not reserve space for an error icon, so
+validation cannot move the text; validation errors remain available on the owner.
+
+For NumberScrubber, include order is required: **Fluent -> FormStyles -> InputsStyles
+-> InlineInputStyles**. `InlineScrubberStylesTests` exercises both orders. Loading
+InputsStyles after the inline sheet restores the legacy body fill, corners and
+editor padding because both sheets have active class selectors. The outer height
+still resolves to 32 DIP, so that order produces a mixed appearance.
+
+No new public C# API or tokens are needed. C# adds a private
+`scrubbing` class to the existing body in `SetFocused`: selectors cannot observe
+pointer capture or the scrub session, and `.focused` also covers text editing.
+The input handler does not set the framework `:focus-visible` pseudo-class;
+its original focus behavior is retained for classified and unclassified controls.
+XAML bridges the private editor's `:focus-visible` through its `Tag` to the sibling
+ring and the editor's validation errors through a private body class. These
+bridges avoid adding focus/validation properties to the public control. Drag,
+wheel, live edits, commit/cancel, read-only enforcement and automation retain
+their existing behavior.
 
 All keys below have prefix `Nvt.Input.Inline.`; existing `Nvt.Form.*` tokens are unchanged.
 
@@ -2083,6 +2123,19 @@ the parent surface. Rest fill is deliberately below 3:1 and has no 3:1 assertion
 | Error frame, minimum over all fills and both surfaces | 3.492:1 | 3.040:1 |
 | Keyboard ring, minimum over both surfaces | 6.359:1 | 8.692:1 |
 
+NumberScrubber grip contrast is measured from its actual painted brush by
+`InlineScrubberContrastTests`. Both shapes yield the same values; the grip uses
+full opacity in all enabled states. Surface columns cover both supported panel
+backgrounds, including when the editing fill is transparent.
+
+| Grip measurement | Light | Dark |
+|---|---:|---:|
+| `NfcTextSecondaryBrush` / rest fill | 6.376:1 | 9.685:1 |
+| `NfcTextSecondaryBrush` / hover fill | 5.513:1 | 7.650:1 |
+| `NfcTextSecondaryBrush` / `NfcSurfaceBrush` | 7.578:1 | 11.948:1 |
+| `NfcTextSecondaryBrush` / `NfcSurfaceSubtleBrush` | 7.243:1 | 10.600:1 |
+| Disabled grip / rest fill | 3.836:1 | 4.202:1 |
+
 Reproduce the English before/after property panels and state strips from the repository root:
 
 ```powershell
@@ -2098,4 +2151,14 @@ The renderer follows `FormSheets`: real Fluent + Core controls, headless Skia,
 100% scale, transitions frozen, deterministic state previews. Output files:
 `artifacts/inline-input/inline-input-before-after-{pill|square}-{light|dark}.png`.
 Native pointer/Tab focus, editing, error layout, and unclipped ring geometry are
-verified separately by `InlineInputStylesTests`.
+verified separately by `InlineInputStylesTests` and `InlineScrubberBehaviorTests`.
+The before/after panels include a resting NumberScrubber with its visible inline
+grip. The dragging row contains only NumberScrubber; cells for controls without
+drag behavior are empty.
+`InlineScrubberStylesTests` covers all 1,024 combinations of hover, press, editing,
+dragging, keyboard focus, disabled, read-only, error and four error sources in each
+palette/shape, including grip visibility, disabled color and fixed geometry.
+`InlineScrubberContrastTests` measures actual body, editor, grip and ring brushes
+over both surfaces. The shared contrast thresholds apply to NumberScrubber,
+including its transparent editor and drag area; its hover fill uses the separate
+palette alias documented above.
