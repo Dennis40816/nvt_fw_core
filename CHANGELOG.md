@@ -2,13 +2,23 @@
 
 This file lists the changes in each Core release. The GitHub Release of each `core-v*` tag carries the same notes. Core follows SemVer; 1.x makes no breaking changes.
 
-Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. `Nvt.Core.Fonts` starts at `0.1.0` with independent `core-fonts-v*` tags.
+Each `core-v*` release ships `Nvt.Core` and `Nvt.Core.Avalonia` with the same version. Starting with 0.9.9, releases also ship `Nvt.Core.TestSupport` at that version. `Nvt.Core.Fonts` starts at `0.1.0` with independent `core-fonts-v*` tags.
 
 ## Unreleased
 
 ### Changed
 
 - `Nvt.Core.Fonts` 0.1.2 carries the new component `LICENSE` (Part 1 grant, MIT text and third-party notices) in its package. The font files, the font license texts and the C# API are the same as in 0.1.1. The release tag will be `core-fonts-v0.1.2`.
+
+## 0.9.9 - 2026-11-29
+
+Tag `core-v0.9.9` on the merge commit of the version pull request.
+
+This release adds shared test helpers for NFU. `Nvt.Core` and `Nvt.Core.Avalonia` have no change in behavior or C# API since 0.9.8.
+
+### Added
+
+- The Core release now publishes `Nvt.Core.TestSupport` for test projects only. It has the same version as `Nvt.Core` and depends on it. It provides deterministic manual time, temporary workspaces, signals with watchdogs and child process fixtures. Earlier Core releases do not contain this package.
 
 ## 0.9.8 - 2026-11-28
 
