@@ -1,0 +1,81 @@
+<!-- Copyright (c) 2026 Dennis Liu -->
+<!-- SPDX-License-Identifier: MIT -->
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Reserve the frame in every state; only its brush changes during editing. -->
+  <Style Selector="TextBox.inlineInput, ComboBox.inlineInput, NumericUpDown.inlineInput">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.FillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.TextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Input.Inline.BorderThickness}" />
+    <Setter Property="Padding" Value="{DynamicResource Nvt.Input.Inline.Padding}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Input.Inline.CornerRadius}" />
+  </Style>
+  <Style Selector="TextBlock.inlineInputUnit">
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.SecondaryTextBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput:pointerover:not(:disabled), ComboBox.inlineInput:pointerover:not(:disabled), ComboBox.inlineInput:pressed:not(:disabled), ComboBox.inlineInput:dropdownopen:not(:disabled), NumericUpDown.inlineInput:pointerover:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.HoverFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.HoverBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput:focus:not(:disabled), TextBox.inlineInput:focus-within:not(:disabled), ComboBox.inlineInput:focus:not(:disabled), ComboBox.inlineInput:focus-within:not(:disabled), NumericUpDown.inlineInput:focus:not(:disabled), NumericUpDown.inlineInput:focus-within:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.EditingBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput[IsReadOnly=True]:not(:disabled), NumericUpDown.inlineInput[IsReadOnly=True]:not(:disabled), ComboBox.inlineInput.readOnly:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyTextBrush}" />
+  </Style>
+  <Style Selector="ComboBox.inlineInput.readOnly:not(:disabled):not(.error):not(:error)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput:disabled, ComboBox.inlineInput:disabled, NumericUpDown.inlineInput:disabled">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.DisabledFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Input.Inline.DisabledTextBrush}" />
+  </Style>
+  <!-- Validation wins over editing, read-only and disabled frames. -->
+  <Style Selector="TextBox.inlineInput.error, TextBox.inlineInput:error, ComboBox.inlineInput.error, ComboBox.inlineInput:error, NumericUpDown.inlineInput.error, NumericUpDown.inlineInput:error">
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.ErrorBorderBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput /template/ Border#FormFocusRing, ComboBox.inlineInput /template/ Border#FormFocusRing, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox /template/ Border#SpinnerFocusRing">
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Input.Inline.FocusCornerRadius}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.FocusBrush}" />
+  </Style>
+  <Style Selector="TextBox.inlineInput[IsReadOnly=True] /template/ Border#FormFocusRing, NumericUpDown.inlineInput[IsReadOnly=True] /template/ TextBox#PART_TextBox /template/ Border#SpinnerFocusRing">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="TextBox.inlineInput:disabled /template/ Border#FormFocusRing, NumericUpDown.inlineInput:disabled /template/ TextBox#PART_TextBox /template/ Border#SpinnerFocusRing">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox /template/ Border#PART_BorderElement, ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox:pointerover /template/ Border#PART_BorderElement, ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox:focus /template/ Border#PART_BorderElement, ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox:disabled /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <Style Selector="ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox, ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox:disabled, ComboBox.inlineInput /template/ TextBox#PART_EditableTextBox[IsReadOnly=True]">
+    <Setter Property="Foreground" Value="{Binding $parent[ComboBox].Foreground}" />
+  </Style>
+  <Style Selector="NumericUpDown.inlineInput /template/ TextBox#PART_TextBox, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox:disabled, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox[IsReadOnly=True]">
+    <Setter Property="Foreground" Value="{Binding $parent[NumericUpDown].Foreground}" />
+  </Style>
+  <Style Selector="NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pointerover:not(:disabled), NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pressed:not(:disabled)">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.HoverFillBrush}" />
+  </Style>
+  <!-- Keep the numeric editor transparent even when Fluent paints its template borders on hover. -->
+  <Style Selector="NumericUpDown.inlineInput /template/ TextBox#PART_TextBox /template/ Border#FormBody, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox:pointerover /template/ Border#FormBody, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox:focus /template/ Border#FormBody, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox:disabled /template/ Border#FormBody, NumericUpDown.inlineInput /template/ TextBox#PART_TextBox[IsReadOnly=True] /template/ Border#FormBody">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.EditingFillBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Nvt.Input.Inline.BorderBrush}" />
+  </Style>
+  <!-- ComboBox ring visibility is bound to the private editor Tag in the shared template. -->
+  <Style Selector="ComboBox.inlineInput.readOnly /template/ TextBox#PART_EditableTextBox, ComboBox.inlineInput:disabled /template/ TextBox#PART_EditableTextBox">
+    <Setter Property="Tag"><x:Boolean>False</x:Boolean></Setter>
+  </Style>
+  <Style Selector="NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin, NumericUpDown.inlineInput /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:disabled">
+    <Setter Property="Foreground" Value="{Binding $parent[NumericUpDown].Foreground}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Input.Inline.CornerRadius}" />
+  </Style>
+  <Style Selector="NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin, NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pointerover, NumericUpDown.inlineInput[IsReadOnly=True] /template/ ButtonSpinner#PART_Spinner /template/ RepeatButton.formSpin:pressed">
+    <Setter Property="Background" Value="{DynamicResource Nvt.Input.Inline.ReadOnlyFillBrush}" />
+  </Style>
+</Styles>

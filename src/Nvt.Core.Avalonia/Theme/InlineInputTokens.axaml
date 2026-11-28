@@ -1,0 +1,42 @@
+<!-- Copyright (c) 2026 Dennis Liu -->
+<!-- SPDX-License-Identifier: MIT -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="Nvt.Input.Inline.FillBrush" Color="#E6ECF4" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.HoverFillBrush" Color="#D3DDE8" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.DisabledFillBrush" Color="#E6ECF4" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.EditingFillBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.ReadOnlyFillBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.BorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.HoverBorderBrush" Color="Transparent" />
+      <StaticResource x:Key="Nvt.Input.Inline.TextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.SecondaryTextBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.ReadOnlyTextBrush" ResourceKey="NfcTextMutedBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.EditingBorderBrush" ResourceKey="NfcBorderBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.ErrorBorderBrush" ResourceKey="NfcDangerBorderBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="Nvt.Input.Inline.FillBrush" Color="#1E2A40" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.HoverFillBrush" Color="#2A3B53" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.DisabledFillBrush" Color="#1E2A40" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.EditingFillBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.ReadOnlyFillBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.BorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="Nvt.Input.Inline.HoverBorderBrush" Color="Transparent" />
+      <StaticResource x:Key="Nvt.Input.Inline.TextBrush" ResourceKey="NfcTextBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.SecondaryTextBrush" ResourceKey="NfcTextSecondaryBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.ReadOnlyTextBrush" ResourceKey="NfcTextMutedBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.DisabledTextBrush" ResourceKey="NfcTextDisabledBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.EditingBorderBrush" ResourceKey="NfcBorderBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.ErrorBorderBrush" ResourceKey="NfcDangerBorderBrush" />
+      <StaticResource x:Key="Nvt.Input.Inline.FocusBrush" ResourceKey="Nvt.Controls.FocusBrush" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+  <Thickness x:Key="Nvt.Input.Inline.Padding">8,0</Thickness>
+  <Thickness x:Key="Nvt.Input.Inline.BorderThickness">1</Thickness>
+  <StaticResource x:Key="Nvt.Input.Inline.CornerRadius" ResourceKey="NfcCompactCornerRadius" />
+  <CornerRadius x:Key="Nvt.Input.Inline.FocusCornerRadius">10</CornerRadius>
+</ResourceDictionary>
