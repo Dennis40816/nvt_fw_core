@@ -14,6 +14,7 @@ using Nvt.Core.Launcher.Setup;
 using Nvt.Core.TestSupport;
 using Nvt.Core.Tests.Launcher.Contracts;
 using Nvt.Core.Tests.Launcher.Repository;
+using Nvt.Core.Tests.Launcher.Verification;
 using Xunit;
 
 namespace Nvt.Core.Tests.Launcher.Recovery;
@@ -21,23 +22,28 @@ namespace Nvt.Core.Tests.Launcher.Recovery;
 internal sealed class SetupFixture : IDisposable
 {
     internal const int Ceiling = 65_536;
-    private readonly Nvt.Core.TestSupport.TestWorkspace _workspace = Nvt.Core.TestSupport.TestWorkspace.Create();
-    internal SetupFixture()
+    private readonly TestWorkspace? _workspace;
+    internal SetupFixture(string? parent = null, PackageFixture? installedPackage = null, byte[]? packageBytes = null)
     {
+        _workspace = parent is null ? TestWorkspace.Create() : null;
+        Parent = parent ?? _workspace!.RootPath;
         Root = Path.Combine(Parent, "managed");
         StatePath = Path.Combine(Parent, "state.json");
-        string source = Directory.CreateDirectory(Path.Combine(Parent, "source")).FullName;
-        var package = ContractFixture.CreateSnapshot(version: ManagedAppVersion.Parse("1.0.4"), packageSize: 4096);
+        string source = Path.Combine(Parent, "source");
+        if (parent is null) Directory.CreateDirectory(source);
+        var package = installedPackage is null
+            ? ContractFixture.CreateSnapshot(version: ManagedAppVersion.Parse("1.0.4"), packageSize: 4096)
+            : installedPackage.CandidateFor(packageBytes ?? installedPackage.PackageBytes);
         Candidate = new(new FreshInstallationCandidateIdentity(128, "fixture-registry", 1, HashA, 1,
             package.Version, HashB, Path.Combine(source, "catalog.json"), source, FreshInstallationSourceStatus.Latest,
             package.PackagePath.Value!, package.PackageSize, package.PackageSha256, package.ReleaseManifestSha256),
             package, new VerifiedUpdateCandidate(package.Version, package.Identity, package.ReleaseNotes));
         Admission = new(package.Version, package.Identity, package.ReleaseManifestSha256);
         Seed = ManagedVersionSeedPolicy.CreateCanonicalFirstRunSeed(Admission);
-        Repository = new(Admission);
+        Repository = new(Admission, installedPackage);
     }
 
-    internal string Parent => _workspace.RootPath;
+    internal string Parent { get; }
     internal string Root { get; }
     internal string StatePath { get; }
     internal static string HashA => new('a', 64);
@@ -85,7 +91,7 @@ internal sealed class SetupFixture : IDisposable
             result[Path.GetRelativePath(Parent, path)] = Directory.Exists(path) ? "directory" : Convert.ToBase64String(await ReadAsync(path));
         return result;
     }
-    public void Dispose() => _workspace.Dispose();
+    public void Dispose() => _workspace?.Dispose();
 }
 
 internal sealed class SyntheticMarkerCodec : IManagedSetupMarkerCodec
@@ -152,7 +158,7 @@ internal sealed class TestPayloadCapture(ManagedDistributionPayloadIdentity iden
     public void Dispose() { }
 }
 
-internal sealed class SyntheticRepository(ManagedVersionAdmission admission) : IManagedVersionRepository
+internal sealed class SyntheticRepository(ManagedVersionAdmission admission, PackageFixture? installedPackage = null) : IManagedVersionRepository
 {
     internal int InstallCount { get; private set; }
     internal int InventoryCount { get; private set; }
@@ -167,8 +173,21 @@ internal sealed class SyntheticRepository(ManagedVersionAdmission admission) : I
         cancellationToken.ThrowIfCancellationRequested(); InstallCount++;
         if (CreateRepositoryStaging) Directory.CreateDirectory(Path.Combine(root, ".staging"));
         string versionRoot = Directory.CreateDirectory(Path.Combine(root, "versions", package.Version.ToString())).FullName;
-        SetupFixture.Write(Path.Combine(versionRoot, "payload.txt"), "installed");
+        if (installedPackage is null) SetupFixture.Write(Path.Combine(versionRoot, "payload.txt"), "installed");
+        else WritePackage(versionRoot, installedPackage);
         return ValueTask.FromResult(new ManagedVersionInstallResult(admission, ManagedVersionInstallIssue.None, false));
+    }
+    private void WritePackage(string versionRoot, PackageFixture package)
+    {
+        foreach (var pair in package.Files)
+        {
+            string path = Path.Combine(versionRoot, pair.Key.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            TestFiles.WriteAllBytes(path, pair.Value);
+        }
+        TestFiles.WriteAllBytes(Path.Combine(versionRoot, "RELEASE-MANIFEST.json"), package.ManifestBytes);
+        TestFiles.WriteAllBytes(Path.Combine(versionRoot, "SHA256SUMS.txt"), package.ChecksumBytes);
+        TestFiles.WriteAllBytes(Path.Combine(versionRoot, ".managed-admission.v1.json"), new AdmissionCodec().Encode(admission).ToArray());
     }
     public ValueTask<ManagedVersionInventoryReadResult> InventoryAsync(string root, IReadOnlyList<ManagedVersionAdmission> admissions,
         ManagedAppVersion? active, ManagedAppVersion? lastKnownGood, ManagedAppVersion? failed, CancellationToken cancellationToken)
