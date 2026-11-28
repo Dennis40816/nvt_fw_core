@@ -42,7 +42,15 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
     // The colour a resource shows when it is painted over an opaque colour that is already on screen.
     private static Color Over(Control owner, string key, Color backdrop) => ShownColor.Over(ResourceBrush(owner, key), backdrop);
 
-    private static Color Resolved(Window host, string fill, string parent) => Over(host, fill, ChoiceTestHost.ResourceColor(host, parent));
+    private static Color ParentSurface(Control owner, string key)
+    {
+        // The app background is the canvas under every parent surface, so it must be opaque itself.
+        var canvas = Assert.IsAssignableFrom<ISolidColorBrush>(ResourceBrush(owner, "NfcAppBackgroundBrush"));
+        Assert.True(canvas.Color.A == byte.MaxValue && canvas.Opacity >= 1, "NfcAppBackgroundBrush is not opaque.");
+        return key == "NfcAppBackgroundBrush" ? canvas.Color : Over(owner, key, canvas.Color);
+    }
+
+    private static Color Resolved(Window host, string fill, string parent) => Over(host, fill, ParentSurface(host, parent));
 
     /// <summary>A fill that shows hover, pressed or checked is visible on every surface that hosts a control.</summary>
     [AvaloniaTheory]
@@ -58,7 +66,8 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             {
                 foreach (string parent in _parents)
                 {
-                    double ratio = ShownColor.Contrast(Resolved(host, fill, parent), ChoiceTestHost.ResourceColor(host, parent));
+                    Color surface = ParentSurface(host, parent);
+                    double ratio = ShownColor.Contrast(Over(host, fill, surface), surface);
                     output.WriteLine($"{(dark ? "Dark" : "Light")} {fill} / {parent}: {ratio:F3}:1");
                     Assert.True(ratio >= floor, $"{fill} on {parent}: {ratio:F3}:1 < {floor}:1");
                 }
@@ -113,7 +122,7 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
         {
             foreach (string background in new[] { "NfcSurfaceBrush", "NfcSurfaceSubtleBrush", "NfcAppBackgroundBrush", "NfcSelectionSurfaceBrush" })
             {
-                Color surface = ChoiceTestHost.ResourceColor(host, background);
+                Color surface = ParentSurface(host, background);
                 double ratio = ShownColor.Contrast(Over(host, "Nvt.Console.LinkUnderlineBrush", surface), surface);
                 output.WriteLine($"{(dark ? "Dark" : "Light")} underline / {background}: {ratio:F3}:1");
                 Assert.True(ratio >= GraphicFloor, $"Underline on {background}: {ratio:F3}:1 < {GraphicFloor}:1");
@@ -202,9 +211,13 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
             Assert.Equal(ChoiceTestHost.ResourceColor(toggle, "NfcAccentStrongBrush"), ChoiceTestHost.ColorOf(outline.BorderBrush));
             ((IPseudoClasses)toggle.Classes).Set(":pointerover", false);
             Flush(host);
-            Color surface = ChoiceTestHost.ResourceColor(toggle, "NfcSurfaceSubtleBrush");
-            Color shownOutline = ShownColor.Over(outline.BorderBrush, surface, ShownColor.ElementOpacity(outline));
-            Assert.True(ShownColor.Contrast(shownOutline, surface) >= GraphicFloor);
+            Color surface = ParentSurface(toggle, "NfcSurfaceSubtleBrush");
+            Border body = Assert.Single(toggle.GetVisualDescendants().OfType<Border>(), part => part.Name == "ToggleBody");
+            Color shownBody = ShownColor.Over(body.Background, surface, ShownColor.ElementOpacity(body));
+            Color shownOutline = ShownColor.Over(outline.BorderBrush, shownBody, ShownColor.ElementOpacity(outline));
+            double ratio = ShownColor.Contrast(shownOutline, surface);
+            output.WriteLine($"Dark checked outline / NfcSurfaceSubtleBrush: {ratio:F3}:1");
+            Assert.True(ratio >= GraphicFloor, $"Checked outline on Nvt.Controls.SelectedBrush over NfcSurfaceSubtleBrush: {ratio:F3}:1 < {GraphicFloor}:1");
         }
         finally { host.Close(); }
     }
@@ -228,7 +241,7 @@ public sealed class InteractionContrastTests(ITestOutputHelper output)
                 ("Expander header", "NfcSelectionSurfaceBrush", "Nvt.Controls.ExpanderPressedBrush", "NfcSurfaceSubtleBrush"),
             })
             {
-                Color under = ChoiceTestHost.ResourceColor(host, surface);
+                Color under = ParentSurface(host, surface);
                 double hoverRatio = ShownColor.Contrast(Over(host, hover, under), under);
                 double pressedRatio = ShownColor.Contrast(Over(host, pressed, under), under);
                 output.WriteLine($"{(dark ? "Dark" : "Light")} {role}: hover {hoverRatio:F3}:1, pressed {pressedRatio:F3}:1");
