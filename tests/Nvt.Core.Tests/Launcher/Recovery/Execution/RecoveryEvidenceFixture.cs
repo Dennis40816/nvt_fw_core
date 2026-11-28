@@ -17,14 +17,18 @@ namespace Nvt.Core.Tests.Launcher.Recovery.Execution;
 
 internal sealed class RecoveryEvidenceFixture : IDisposable
 {
-    private readonly TestWorkspace _workspace = TestWorkspace.Create();
+    private readonly TestWorkspace? _workspace;
+    private readonly string _parent;
     internal const string LauncherSuffix = ".launcher";
     internal static ManagedSetupLayout Layout { get; } = new(ContractFixture.Descriptor, "Distribution.exe", "seed.json");
 
-    private RecoveryEvidenceFixture(bool includeLauncher = false)
+    private RecoveryEvidenceFixture(bool includeLauncher = false, string? parent = null,
+        ManagedSetupRecoveryTransaction? transaction = null)
     {
-        ManagedRoot = Path.Combine(_workspace.RootPath, "managed");
-        StatePath = Path.Combine(_workspace.RootPath, "state", "state.json");
+        _workspace = parent is null ? TestWorkspace.Create() : null;
+        _parent = parent ?? _workspace!.RootPath;
+        ManagedRoot = Path.Combine(_parent, "managed");
+        StatePath = Path.Combine(_parent, "state", "state.json");
         Package = PackageFixture.Create(new Dictionary<string, byte[]>(StringComparer.Ordinal)
         {
             [ContractFixture.ApplicationPath] = [0x4d, 0x5a, 1],
@@ -35,7 +39,9 @@ internal sealed class RecoveryEvidenceFixture : IDisposable
             ["docs/contracts/policy.json"] = "{}"u8.ToArray(),
             ["profiles/built-in/index.json"] = "{}"u8.ToArray(),
         }, includeLauncher: includeLauncher);
-        Admission = new(ManagedAppVersion.Parse("1.0.6"), Package.Candidate.Identity, Package.Candidate.ReleaseManifestSha256);
+        Admission = new(ManagedAppVersion.Parse(transaction?.Candidate.Version ?? "1.0.6"),
+            transaction?.Candidate.EntryIdentity ?? Package.Candidate.Identity,
+            transaction?.Candidate.ReleaseManifestSha256 ?? Package.Candidate.ReleaseManifestSha256);
         Policy = new(Package.Manifest with { Version = Admission.Version });
         Seed = ManagedVersionSeedPolicy.CreateCanonicalFirstRunSeed(Admission);
         ApplicationStore = new(StatePath, Seed.BindToManagedRoot(ManagedRoot));
@@ -175,8 +181,8 @@ internal sealed class RecoveryEvidenceFixture : IDisposable
             new(launcherSize, Hash("distribution-launcher"), 10, new string('d', 64), Layout.BootstrapFileName,
                 bootstrapSize, Hash("immutable-bootstrap")),
             new(1, new string('e', 64), 1, Admission.Version.ToString(), new string('f', 64),
-                Path.Combine(_workspace.RootPath, "source", "catalog.json"), "registry",
-                Path.Combine(_workspace.RootPath, "source"), "latest", Admission.Version.ToString(),
+                Path.Combine(_parent, "source", "catalog.json"), "registry",
+                Path.Combine(_parent, "source"), "latest", Admission.Version.ToString(),
                 Package.Candidate.PackagePath.Value!, Package.Candidate.PackageSize, Package.Candidate.PackageSha256,
                 Admission.ReleaseManifestSha256, Admission.AdmissionIdentity));
 
@@ -216,7 +222,17 @@ internal sealed class RecoveryEvidenceFixture : IDisposable
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream)).ToLowerInvariant();
     }
-    public void Dispose() => _workspace.Dispose();
+    internal static RecoveryEvidenceFixture Reopen(string parent, ManagedSetupRecoveryTransaction transaction,
+        bool withLauncherState)
+    {
+        var fixture = new RecoveryEvidenceFixture(parent: parent, transaction: transaction) { Transaction = transaction };
+        if (withLauncherState)
+            fixture.LauncherStore = new(fixture.LauncherStatePath,
+                LauncherBootstrapState.Create(fixture.ManagedRoot, null, null, null, fixture.Launcher));
+        return fixture;
+    }
+
+    public void Dispose() => _workspace?.Dispose();
 }
 
 internal sealed class RecoveryPhysicalStateStore(string path, VersionManagerState expected) : IManagedSetupRecoveryStateStore
