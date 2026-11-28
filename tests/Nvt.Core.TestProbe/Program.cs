@@ -116,17 +116,7 @@ namespace Nvt.Core.TestProbe
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
             };
             // A late event can arrive on a pool thread after the wait ended and the handle was disposed.
-            void Release()
-            {
-                try
-                {
-                    _ = released.Set();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // The wait already ended, so there is nothing left to release.
-                }
-            }
+            void Release() => ReleaseSignal.Set(released);
             watcher.Created += (_, _) => Release();
             watcher.Changed += (_, _) => Release();
             watcher.Renamed += (_, _) => Release();
