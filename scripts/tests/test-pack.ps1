@@ -14,7 +14,7 @@ $commit = 'a' * 40
 [xml]$fontsProperties = Get-Content -LiteralPath (Join-Path $repository 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj') -Raw
 $sets = @(
     @{ Package = 'Core'; Version = $version; TagPrefix = 'core-v'
-        VersionFile = 'Directory.Build.props'; PackageIds = @('Nvt.Core', 'Nvt.Core.Avalonia') }
+        VersionFile = 'Directory.Build.props'; PackageIds = @('Nvt.Core', 'Nvt.Core.Avalonia', 'Nvt.Core.TestSupport') }
     @{ Package = 'Fonts'; Version = [string]$fontsProperties.Project.PropertyGroup.Version; TagPrefix = 'core-fonts-v'
         VersionFile = 'src/Nvt.Core.Fonts/Nvt.Core.Fonts.csproj'; PackageIds = @('Nvt.Core.Fonts') }
 )
@@ -138,6 +138,9 @@ function dotnet {
         if ($packageId -cnotin $case.PackageIds) {
             throw "Unexpected package: $packageId"
         }
+        if (-not (Test-Path -LiteralPath (Join-Path $case.Repository $args[1]) -PathType Leaf)) {
+            throw "The packed project does not exist: $($args[1])"
+        }
         $outputIndex = [Array]::IndexOf($args, '--output')
         if ($outputIndex -lt 0) { throw 'dotnet pack requires --output.' }
         $output = $args[$outputIndex + 1]
@@ -194,6 +197,7 @@ try {
             }
             $version = $case.Version
             $case.Commit = $commit
+            $case.Repository = $repository
             [IO.File]::WriteAllText((Join-Path $fixture 'case.json'), ($case | ConvertTo-Json))
             $runnerPath = Join-Path $fixture 'run.ps1'
             [IO.File]::WriteAllText($runnerPath, $runner)

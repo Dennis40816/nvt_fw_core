@@ -161,7 +161,5 @@ Workspace:
 - A root outside the OS temp directory, or the temp directory itself, fails at construction. The prefix is nvt-.
 - GetPath normalizes with Path.GetFullPath (a/./b becomes a/b, a single dot is the root). It rejects empty and whitespace paths, colons, parent segments and segments of only dots or spaces. A backslash is a separator on every OS.
 
-The package is built with the Core projects but is not packed by
-`scripts/pack.ps1` (it packs `Nvt.Core` and `Nvt.Core.Avalonia` by name), so the
-`core-v*` release does not publish it. Publishing this package is a release
-follow-up.
+The `core-v*` release publishes this package from 0.9.9 on, with the same version
+as `Nvt.Core`. Earlier releases do not contain it.
