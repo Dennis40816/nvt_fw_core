@@ -216,6 +216,15 @@ Disabled has highest priority: every interactive role uses `NfcSurfaceSubtleBrus
 
 Background, border and foreground transitions last 120 ms. Pressing disables transitions; the primary pressed inner 2 px edge is an overlay that does not move content. Focus appears immediately. `.reducedMotion` on the control or any ancestor disables transitions.
 
+### Rail items
+
+Add `rail` to `Button` or `ToggleButton` with `Classes="actionGhost flat rail"`; add `marked` for a selection frame.
+The item is 56 DIP wide and at least 52 DIP high, with 4 DIP padding and centered content.
+Pass a vertical `StackPanel` containing an icon that inherits foreground (for example `PathIcon`) and a `TextBlock` caption. The role supplies a 4 DIP gap, caption size 11, and one-line ellipsis. Do not give the icon or caption a fixed foreground.
+All flat and marked states, application accents, keyboard focus and `reducedMotion` keep their existing behavior. Flat corners remain rectangular in both shapes.
+For a selected marked rail item, pressed uses `Nvt.Interaction.PressedFillBrush` instead of the translucent pressed layer. With the NFC, NFH and NFU palettes, strong accent captions then keep 4.5:1 on application, surface and subtle backgrounds, including Dark. The frame and text still follow the application accent.
+The application owns the rail container, collapse behavior and navigation. Leave room for the exterior focus ring.
+
 ### Marked selection
 
 Targeted for `core-v0.9.7`, the opt-in `marked` modifier supports navigation and quick toggles. Defaults do not change.
@@ -274,7 +283,7 @@ Core 0.2.0 introduces the shared palette and button roles. This section is its r
 | `Button.summaryChip` | `chipAction` |
 | `Button.closeButton` | No Core replacement; define in the tool |
 | `Button.fileRevealAction` | No Core replacement; define in the tool |
-| `Button.railAction` (and `.reducedMotion`) | No Core rail role; define in the tool. `.reducedMotion` remains for every shared role |
+| `Button.railAction` (and `.reducedMotion`) | Use `actionGhost flat rail` for the shared item layout. The tool keeps rail behavior. `.reducedMotion` remains for every shared role |
 | `Button.primaryRailAction` | No Core replacement; define in the tool |
 | `railActionIcon`, `railActionLabel`, `railActionIconSlot` | No Core replacement; define in the tool |
 | Resource `NfcSemanticButtonTheme` (ControlTheme) | No replacement resource; use a shared role class |
@@ -283,7 +292,7 @@ Core 0.2.0 introduces the shared palette and button roles. This section is its r
 | `Button.danger Path.confirmDialogDangerIcon` selector | `Button.actionDanger Path.confirmDialogDangerIcon` |
 | Panel header's own template, `PART_ContentPresenter`, 12,10 padding, 10,10,0,0 radius and panel root clip | `actionGhost` role; load `ButtonStyles.axaml` before `PanelsStyles.axaml`. The shared template uses 14,0 padding and pill corners; the panel root no longer clips the exterior ring |
 
-Product roles such as `railAction`, `primaryRailAction`, `closeButton` and `fileRevealAction`, including rail icon/label/slot layout, must be defined by each tool. The global `Button` rule is gone: a button without a role class falls back to Fluent, including Fluent's focus visual.
+Product roles such as `railAction`, `primaryRailAction`, `closeButton` and `fileRevealAction` remain in each tool. A tool can now compose `actionGhost flat rail` for the shared rail item layout. The global `Button` rule is gone: a button without a role class falls back to Fluent, including Fluent's focus visual.
 
 No existing `ThemeTokens.axaml` key or type is removed or renamed. Token and behavior changes are summarized below; the palette, accent and size tables above give the current values.
 
@@ -567,6 +576,16 @@ Images cover Light/Dark, English/Traditional Chinese, states, DPI and long label
 
 ## Expander
 
+### Flat disclosure rows
+
+Add `Classes="flat"` for a disclosure row without a container fill, border or padding. The header is 32 DIP high with the chevron on the right.
+Header and content keep the standard header inset (`Nvt.Expander.HeaderPadding`, 12 DIP), so their text stays aligned and does not touch the hover fill or the focus ring.
+Rest and disabled headers are transparent in both rest-fill modes. Hover and pressed use the shared translucent interaction overlays; disabled text uses `NfcTextDisabledBrush`.
+There is no header/content divider. The existing 6 DIP gap follows the header when expanding Down or Up. The host owns margins and row dividers, and must leave 4 DIP around the header for the existing exterior keyboard ring. Avoid clipping that space.
+Shape and focus tokens, keyboard expansion and `reducedMotion` still apply. An Expander without `flat` keeps the container described below.
+
+### Standard container
+
 The content divider sits 6 DIP from the header, leaving 2 DIP beyond the focus ring's 4 DIP outer extent; upward expansion mirrors this gap.
 
 
@@ -845,6 +864,16 @@ Their corner follows the shared shape and caps at the existing surface corner to
 Pill surfaces use 8 DIP corners, and Square surfaces use 6 DIP corners.
 Transparent shadow space surrounds the surface. Popup offsets compensate for that space.
 
+### Plain flyout panels
+
+Loading `MenuStyles.axaml` also styles every plain `FlyoutPresenter`, including existing applications' `Flyout` panels; no opt-in class is required.
+The panel uses the menu surface and border, the same corner radius as a menu popup (Pill 8 / Square 6 DIP), `NfcTextBrush`, and the Core UI font at size 13. Padding is 12 DIP on each side.
+Only these properties are set. The host theme keeps its template, so [Fluent 12.1.1's limits](https://github.com/AvaloniaUI/Avalonia/blob/12.1.1/src/Avalonia.Themes.Fluent/Accents/BaseResources.xaml) stay: width 96–456 DIP, height 40–758 DIP, and automatic horizontal and vertical scrolling. The surface, border, radius, font and padding values above win over a `FlyoutPresenterTheme` that sets the same properties. To keep another look, declare an application style after this include.
+`LogConsoleStyles.axaml` includes `MenuStyles.axaml`, so an application that loads only the LogConsole styles also gets this panel look. Menu flyouts, Dialogs and MessageCenter keep their own surfaces. Text inside the flyout of a role button keeps the color of its own container.
+
+`SharedUiRolesTests` checks resolved geometry, state colors, focus clearance through 100–200% scaling, application accent replacement, scrolling and enabled text contrast of at least 4.5:1 on application, surface and subtle backgrounds in both variants. Dark disabled text also meets 4.5:1 on these surfaces.
+Set `NVT_ROLES_098_IMAGES_DIR` and run `SharedRoleGalleryTests` to export synthetic English PNGs for both shapes and rest-fill modes at 100% and 150% scale.
+
 ### Menu states and tokens
 
 Rest uses `Nvt.Interaction.RestBrush`. Pointer over, keyboard focus and an open submenu use `Nvt.Interaction.HoverBrush`.
@@ -981,12 +1010,15 @@ Load the style after Fluent alongside the other Core theme styles.
 | `toggleIcon` | `ToggleButton` with a host-supplied glyph and accessible name. | 40 × 40. |
 | `toggleSwitch` | `ToggleButton` with a switch template. | 58 × 40 click area. |
 | `ToggleSwitch` | The native control receives the same switch look without a class. | Track 52 × 28, knob 22 × 22, travel 24. |
+| `compact` | Opt-in class on `ToggleSwitch` or `ToggleButton.toggleSwitch` for a narrow panel. | 46 × 32 click area, track 40 × 20, knob 14 × 14, travel 20. |
 
 All measurements use device-independent pixels.
 Switch knobs stay round in both themes and shapes. Enabled checked knobs use the primary label brush; unchecked, disabled and danger knobs retain white.
 The switch template shows the track only. Place any visible label beside it and provide an accessible name.
 The host owns selection rules, commands, and content.
-Use one toggle role per control.
+Use one toggle role per control. `compact` is a size modifier, not a role.
+
+Use `compact` only where the 58 DIP switch crowds its label. It changes size only: colors, states, `danger`, the 2 px focus ring and disabled appearance are the same. Its click area keeps the shared control height `NfcControlHeight`.
 
 ### Toggle states and danger
 
@@ -1084,7 +1116,7 @@ The values stay the same in Light and Dark.
 | `Nvt.Shape.RoundCornerRadius` | 999 | 999 |
 
 Switch tracks use `Nvt.Shape.ControlCornerRadius`; their focus rings use `Nvt.Shape.FocusCornerRadius`.
-Knobs remain round. Track, knob, and travel dimensions remain 52 × 28, 22 × 22, and 24 DIP.
+Knobs remain round. Track, knob, and travel dimensions remain 52 × 28, 22 × 22, and 24 DIP (`compact`: 40 × 20, 14 × 14, and 20 DIP).
 The existing Button roles continue using their current radius resources.
 
 ### Toggle adoption
@@ -1105,6 +1137,7 @@ The existing Button roles continue using their current radius resources.
 <ToggleButton Classes="toggleTab" Content="Overview" />
 <ToggleButton Classes="toggleSwitch danger" AutomationProperties.Name="Enable option" />
 <ToggleSwitch AutomationProperties.Name="Enable option" />
+<ToggleSwitch Classes="compact" AutomationProperties.Name="Enable option" />
 ```
 
 `ToggleStylesRenderer` checks the layout headlessly and writes images only when `NVT_TOGGLE_IMAGES_DIR` is set.
@@ -1466,6 +1499,8 @@ The remaining sheet is `separator.png`, which shows both themes and does not dep
 
 Native `ToggleSwitch` moves its knob to a new `Nvt.Toggle.SwitchKnobTravel` only after its checked state changes.
 Changing that token updates the knob canvas width immediately, but keeps the old knob position until the next toggle.
+The same applies to `Nvt.Toggle.CompactSwitchKnobTravel` on a compact switch.
+`compact` shares `Nvt.Toggle.SwitchKnobMargin` and `Nvt.Toggle.SwitchKnobTopOffset` with the default switch. A host that changes either one checks both sizes.
 
 | Token | Pill | Square |
 | --- | --- | --- |
@@ -1518,6 +1553,13 @@ Changing that token updates the knob canvas width immediately, but keeps the old
 | `Nvt.Toggle.SwitchKnobTopOffset` | `3` | `3` |
 | `Nvt.Toggle.SwitchFocusWidth` | `60` | `60` |
 | `Nvt.Toggle.SwitchFocusHeight` | `36` | `36` |
+| `Nvt.Toggle.CompactSwitchWidth` | `46` | `46` |
+| `Nvt.Toggle.CompactSwitchTrackWidth` | `40` | `40` |
+| `Nvt.Toggle.CompactSwitchTrackHeight` | `20` | `20` |
+| `Nvt.Toggle.CompactSwitchKnobTravel` | `20` | `20` |
+| `Nvt.Toggle.CompactSwitchKnobSize` | `14` | `14` |
+| `Nvt.Toggle.CompactSwitchFocusWidth` | `48` | `48` |
+| `Nvt.Toggle.CompactSwitchFocusHeight` | `28` | `28` |
 | `Nvt.Toggle.PressedTransform` | `scale(0.98)` | `scale(0.98)` |
 | `Nvt.Toggle.SoftPadding` | `12,0` | `12,0` |
 

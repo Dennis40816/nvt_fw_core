@@ -10,7 +10,6 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.VisualTree;
 using Nvt.Core.Avalonia.Tests.Theme;
 using Nvt.Core.Avalonia.Theme;
 using Xunit;
@@ -42,7 +41,8 @@ public sealed class ChoiceContractTests
         Assert.Single(XDocument.Load(stream).Descendants(), element => element.Attribute("Source")?.Value == "avares://Nvt.Core.Avalonia/Theme/ChoiceTokens.axaml");
 
         static void AssertResource(string value) => Assert.True(
-            value.StartsWith("{DynamicResource ", StringComparison.Ordinal) || value.StartsWith("{TemplateBinding ", StringComparison.Ordinal), value);
+            value.StartsWith("{DynamicResource ", StringComparison.Ordinal) || value.StartsWith("{TemplateBinding ", StringComparison.Ordinal)
+            || value == "{Binding $parent[ToggleButton].Foreground}", value);
     }
 
     /// <summary>Every resource resolves in both themes and each brush transition honors the shared reducedMotion class.</summary>

@@ -88,6 +88,7 @@
   <Style Selector="CheckBox:checked:not(:disabled), CheckBox:indeterminate:not(:disabled), RadioButton:checked:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SelectedBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NfcAccentBorderBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Nvt.Controls.ChoiceForegroundBrush}"/>
   </Style>
   <Style Selector="CheckBox:checked:pointerover:not(:disabled), CheckBox:indeterminate:pointerover:not(:disabled), RadioButton:checked:pointerover:not(:disabled)">
     <Setter Property="Background" Value="{DynamicResource Nvt.Toggle.SelectedPointerOverBrush}"/>
@@ -157,5 +158,9 @@
   </Style>
   <Style Selector="CheckBox.reducedMotion /template/ Border#ChoiceRow, RadioButton.reducedMotion /template/ Border#ChoiceRow, .reducedMotion CheckBox /template/ Border#ChoiceRow, .reducedMotion RadioButton /template/ Border#ChoiceRow">
     <Setter Property="Transitions" Value="{x:Null}"/>
+  </Style>
+  <!-- A host theme such as FluentTheme also colors the label presenter by state. The state classes give these rules the same priority, so the label keeps the control foreground. -->
+  <Style Selector="CheckBox:not(:disabled) /template/ ContentPresenter#PART_ContentPresenter, RadioButton:not(:disabled) /template/ ContentPresenter#PART_ContentPresenter, CheckBox:disabled /template/ ContentPresenter#PART_ContentPresenter, RadioButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{Binding $parent[ToggleButton].Foreground}"/>
   </Style>
 </Styles>

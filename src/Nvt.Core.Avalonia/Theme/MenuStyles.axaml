@@ -56,6 +56,19 @@
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="Template" Value="{StaticResource Nvt.Menu.PopupTemplate}" />
   </Style>
+  <!-- A plain flyout gets the menu popup surface. The host theme keeps its template, so its size limits and scrolling stay.
+       Fluent applies Padding inside the scroll viewer, which also leaves room for focus rings. -->
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource NfcSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource NfcBorderBrush}" />
+    <Setter Property="BorderThickness" Value="{DynamicResource Nvt.Menu.PopupBorderThickness}" />
+    <!-- The container radius follows the shape with the same 8 / 6 DIP as a menu popup. A pill radius would not fit a panel. -->
+    <Setter Property="CornerRadius" Value="{DynamicResource Nvt.Expander.ContainerCornerRadius}" />
+    <Setter Property="Foreground" Value="{DynamicResource NfcTextBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource NfcUiFontFamily}" />
+    <Setter Property="FontSize" Value="{DynamicResource NfcFontSize13}" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
   <Style Selector="MenuItem">
     <Setter Property="Theme" Value="{StaticResource Nvt.Menu.ItemTheme}" />
     <Setter Property="MinHeight" Value="{DynamicResource NfcControlHeight}" />
